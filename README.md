@@ -1,1 +1,14 @@
-# Dark-Visions
+# Dark Visions (1993)
+
+GAME DESIGN
+--ROB KREUZER--
+--Jon Kreuzer--
+
+STORYLINE MUSIC
+--Rob Kreuzer--
+
+SOUND EFFECTS
+--JON KREUZER--
+
+POINT ' CLICK INTERFACE
+--JON KREUZER--
