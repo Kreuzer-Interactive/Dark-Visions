@@ -14,6 +14,7 @@ DECLARE SUB DeathMusic ()
 DECLARE SUB PctComplete ()
 DECLARE SUB InvGrid ()
 DECLARE SUB DoorOpen ()
+DECLARE SUB LoadConfig ()
 DIM SHARED cr AS SINGLE
 DIM SHARED t0 AS SINGLE
 DIM SHARED ti AS SINGLE
@@ -26,6 +27,9 @@ DIM SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10
 DIM SHARED pk, jx, jy, dx2, dy2, co, co2, pa1, pa2, pa3
 DIM SHARED oh, ohs, pz, j, pc, pp2, gm, mt, tmo, wk, js0, js1
 DIM SHARED sa, sb, sc
+DIM SHARED sfps, fpsc, fpst, fpsv, fpsd
+DIM SHARED ifc, it0, itt
+DIM SHARED jsen
 DIM SHARED do1(150) AS INTEGER
 DIM SHARED do2(300) AS INTEGER
 DIM SHARED do3(300) AS INTEGER
@@ -71,6 +75,7 @@ DIM SHARED sv10(50)
 tmo = 2
 'COM() statements in this programme
 CALL InitVars
+CALL LoadConfig
 CALL Intro
 KEY OFF
 t0 = TIMER
@@ -98,6 +103,7 @@ CLS
 b = 122
 a = 82
 PRINT " Do you want instructions Y/N"
+IF sfps = 1 AND itt > .5 THEN LOCATE 3, 1: PRINT USING "Intro: ### steps in ###.# secs"; ifc; itt
 400 a$ = INKEY$
 IF a$ <> "" THEN GOTO 430
 GOTO 400
@@ -691,6 +697,7 @@ df$(i) = "death"
 GOSUB gotoroom
 7180 DEF SEG = 0
 POKE pk, 32
+IF sfps = 1 THEN GOSUB fpstick
 a$ = INKEY$
 GOSUB joy
 IF ob(43) = 1 AND tk$ = "" THEN cv = CINT(cl): tk$ = "y"
@@ -736,6 +743,21 @@ GOTO mainloop
 7660 IF a$ = "a" OR a$ = "u" OR a$ = "g" OR a$ = "l" THEN GOSUB action: GOSUB events: GOSUB trigger
 GOTO mainloop
 SYSTEM
+fpstick:
+fpsc = fpsc + 1
+fpsd = TIMER - fpst
+IF fpsd < 0 OR fpsd >= 2 THEN
+fpst = TIMER
+fpsc = 0
+ELSEIF fpsd >= 1 THEN
+fpsv = fpsc / fpsd
+IF fpsv > 99999 THEN fpsv = 99999
+LOCATE 1, 35
+PRINT USING "#####"; fpsv;
+fpst = TIMER
+fpsc = 0
+END IF
+RETURN
 loadpac:
 CLOSE
 OPEN q$ + ".pac" FOR INPUT AS #1
@@ -1067,6 +1089,7 @@ LOCATE 1, 1
 PRINT dn$(gr((gy + 1) + (gw * gx)))
 11850
 joy:
+IF jsen <> 1 THEN RETURN
 js0 = STICK(0)
 js1 = STICK(1)
 IF js1 = 0# AND js0 = 0 THEN RETURN
@@ -1085,6 +1108,7 @@ IF js0 < 40 AND js1 > 120 THEN a$ = "1"
 IF a$ = "1" OR a$ = "2" OR a$ = "3" OR a$ = "4" OR a$ = "5" OR a$ = "6" OR a$ = "7" OR a$ = "8" OR a$ = "9" THEN vk$ = ""
 RETURN
 strigon:
+IF jsen <> 1 THEN RETURN
 STRIG(0) ON
 STRIG(2) ON
 STRIG(4) ON
@@ -1386,6 +1410,9 @@ END SUB
 SUB Intro
 SCREEN 1
 RANDOMIZE 0#
+ifc = 0
+itt = 0
+it0 = TIMER
 KEY 16, CHR$(0) + CHR$(1)
 KEY(16) ON
 PALETTE 3, 6
@@ -1408,6 +1435,7 @@ SOUND 32676, 1
 NEXT
 FOR cx = 8 TO 220 STEP 4
 cy = cy - .5
+ifc = ifc + 1
 PUT (cx, cy), ec, XOR
 GOSUB 17070
 PUT (cx, cy), ec, XOR
@@ -1431,6 +1459,7 @@ PALETTE 3, 3
 KEY OFF
 tc = 0#
 FOR n = 1 TO 35
+ifc = ifc + 1
 GOSUB 17070
 IF RND <= .8 THEN GOTO 17310
 COLOR 15
@@ -1466,6 +1495,7 @@ PALETTE 3, 6
 KEY OFF
 DEF SEG = &HB800: BLOAD "enter.pic", 0: DEF SEG
 GOSUB 18310
+IF it0 >= 0 THEN itt = itt + (TIMER - it0): it0 = -1
 GOTO 17780
 17590 KEY OFF
 PALETTE 1, 12
@@ -1552,6 +1582,7 @@ IF tc <= 125 THEN GOTO 18370
 wc = wc + 1
 tc = 150
 18420 PUT (143, tc), r1, XOR
+IF it0 >= 0 THEN ifc = ifc + 1
 GOSUB 17850
 FOR n = 1 TO 2
 SOUND 32676, .3
@@ -1561,10 +1592,12 @@ IF tc <> 130 THEN GOTO 18530
 FOR n = 1 TO 10000
 NEXT
 tf = 0#
+IF it0 >= 0 THEN itt = itt + (TIMER - it0): it0 = -1: GOSUB introlog
 GOSUB 17590
 18530 tf = 1
 tc = tc - 2
 PUT (143, tc), r2, XOR
+IF it0 >= 0 THEN ifc = ifc + 1
 GOSUB 17850
 FOR n = 1 TO 2
 SOUND 32676, .3
@@ -1573,9 +1606,18 @@ PUT (143, tc), r2, XOR
 tc = tc - 2
 IF tc >= 116 THEN GOTO 18420
 RETURN
-18640 ERASE ec
+18640 IF it0 >= 0 THEN itt = itt + (TIMER - it0): it0 = -1: GOSUB introlog
+it0 = -1
+ERASE ec
 ERASE r1
 ERASE r2
+EXIT SUB
+introlog:
+IF sfps <> 1 THEN RETURN
+OPEN "intro.log" FOR APPEND AS #2
+PRINT #2, ifc; itt
+CLOSE #2
+RETURN
 END SUB
 
 SUB InvGrid
@@ -1601,6 +1643,39 @@ NEXT
 gy = 6
 gx = 2
 EXIT SUB
+END SUB
+
+SUB LoadConfig
+CLOSE
+OPEN "dark.ini" FOR APPEND AS #1
+IF LOF(1) = 0 THEN
+PRINT #1, "; Dark Visions settings"
+PRINT #1, "; showfps=1 shows main loop speed top right + intro pace"
+PRINT #1, "showfps=0"
+PRINT #1, "; joystick=1 enables joystick/gamepad control (off avoids stray input)"
+PRINT #1, "joystick=0"
+END IF
+CLOSE
+OPEN "dark.ini" FOR INPUT AS #1
+DO WHILE NOT EOF(1)
+LINE INPUT #1, ln$
+ln$ = LTRIM$(RTRIM$(ln$))
+c$ = LEFT$(ln$, 1)
+IF ln$ <> "" AND c$ <> ";" AND c$ <> "#" AND c$ <> "'" AND c$ <> "[" THEN
+eq = INSTR(ln$, "=")
+IF eq >= 2 THEN
+k$ = LCASE$(LTRIM$(RTRIM$(LEFT$(ln$, eq - 1))))
+v$ = LCASE$(LTRIM$(RTRIM$(MID$(ln$, eq + 1))))
+tv = 0
+IF v$ = "1" OR v$ = "true" OR v$ = "yes" OR v$ = "on" THEN tv = 1
+IF k$ = "showfps" THEN sfps = tv
+IF k$ = "joystick" THEN jsen = tv
+END IF
+END IF
+LOOP
+CLOSE
+fpst = TIMER
+fpsc = 0
 END SUB
 
 SUB NotesSub
