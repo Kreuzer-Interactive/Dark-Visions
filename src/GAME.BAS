@@ -18,6 +18,32 @@ DECLARE SUB InvGrid ()
 DECLARE SUB DoorOpen ()
 DECLARE SUB LoadConfig ()
 
+'----- assembly interrupt support (INT 33h mouse)
+TYPE RegType
+	ax AS INTEGER
+	bx AS INTEGER
+	cx AS INTEGER
+	dx AS INTEGER
+	bp AS INTEGER
+	si AS INTEGER
+	di AS INTEGER
+	flags AS INTEGER
+END TYPE
+DECLARE SUB INTERRUPT (intnum AS INTEGER, inreg AS RegType, outreg AS RegType)
+TYPE RegTypeX
+	ax AS INTEGER
+	bx AS INTEGER
+	cx AS INTEGER
+	dx AS INTEGER
+	bp AS INTEGER
+	si AS INTEGER
+	di AS INTEGER
+	flags AS INTEGER
+	ds AS INTEGER
+	es AS INTEGER
+END TYPE
+DECLARE SUB INTERRUPTX (intnum AS INTEGER, inreg AS RegTypeX, outreg AS RegTypeX)
+
 '----- shared timers and counters
 DIM SHARED cr AS SINGLE
 DIM SHARED t0 AS SINGLE
@@ -36,6 +62,15 @@ DIM SHARED sa, sb, sc
 DIM SHARED sfps, fpsc, fpst, fpsv, fpsd
 DIM SHARED ifc, it0, itt
 DIM SHARED jsen
+DIM SHARED msen, mlb, mrb, mshown
+DIM SHARED mvint AS INTEGER
+DIM SHARED mreg AS RegType, mout AS RegType
+DIM SHARED mcur AS INTEGER, mhsx AS INTEGER, mhsy AS INTEGER, mxor, mraw
+DIM SHARED mregx AS RegTypeX, moutx AS RegTypeX
+DIM SHARED cmask(31) AS INTEGER
+DIM SHARED arow$(15)
+DIM SHARED px(80), py(80), pc(80), npix
+DIM SHARED curbuf(100), cdrawn, cox, coy, mx, my
 
 '----- shared sprite/door buffers
 DIM SHARED do1(150) AS INTEGER
@@ -101,6 +136,7 @@ ON STRIG(4) GOSUB vget
 ON STRIG(6) GOSUB vuse
 GOSUB strigon
 GOSUB loadnames
+GOSUB mouseinit
 ON ERROR GOTO errhand
 
 '----- load door coordinate table
@@ -763,7 +799,7 @@ gotoroom:
 
 '----- main game loop: input, movement, actions
 mainloop:
-	PUT (b, a), d, XOR
+	IF msen <> 1 THEN PUT (b, a), d, XOR
 	pt = (TIMER - t0) + pt
 	t0 = TIMER
 	IF (INT(cl * cr)) <= 35 THEN GOTO 7100
@@ -783,13 +819,15 @@ mainloop:
 	IF sfps = 1 THEN GOSUB fpstick
 	a$ = INKEY$
 	GOSUB joy
+	GOSUB mousepoll
 	IF ob(43) = 1 AND tk$ = "" THEN cv = CINT(cl): tk$ = "y"
 	IF tk$ = "y" AND cv + 120 < cl THEN GOTO burn
 	IF a$ <> "" THEN GOTO 7300
 	GOTO 7180
 
 '----- numpad movement: nudge player by direction
-	7300 PUT (b, a), d, XOR
+	7300 IF msen = 1 THEN GOSUB erasecur
+	IF msen <> 1 THEN PUT (b, a), d, XOR
 	IF a$ <> "8" THEN GOTO 7330
 	a = a - 4
 	7330 IF a$ <> "2" THEN GOTO 7350
@@ -1289,6 +1327,175 @@ strigoff:
 	FOR i = 0 TO 6 STEP 2
 		STRIG(i) OFF
 	NEXT
+	RETURN
+
+'----- initialise the mouse driver (INT 33h)
+mouseinit:
+	IF msen <> 1 THEN RETURN
+	mreg.ax = 0
+	CALL INTERRUPT(mvint, mreg, mout)
+	IF mout.ax = 0 THEN msen = 0
+	mlb = 0
+	mrb = 0
+	cdrawn = 0
+	arow$(0) = "XXXXXXXX........"
+	arow$(1) = "X0000000X......."
+	arow$(2) = "X000XXXX........"
+	arow$(3) = "X0000X.........."
+	arow$(4) = "X0X000X........."
+	arow$(5) = "X0XX000X........"
+	arow$(6) = "X0X.X000X......."
+	arow$(7) = "X0X..X000X......"
+	arow$(8) = ".X....X0X......."
+	arow$(9) = ".......X........"
+	arow$(10) = "................"
+	arow$(11) = "................"
+	arow$(12) = "................"
+	arow$(13) = "................"
+	arow$(14) = "................"
+	arow$(15) = "................"
+	npix = 0
+	FOR mr = 0 TO 15
+		FOR mc = 0 TO 15
+			mch$ = MID$(arow$(mr), mc + 1, 1)
+			IF mch$ = "X" THEN px(npix) = mc: py(npix) = mr: pc(npix) = 1: npix = npix + 1
+			IF mch$ = "0" THEN px(npix) = mc: py(npix) = mr: pc(npix) = 2: npix = npix + 1
+		NEXT
+	NEXT
+	RETURN
+
+'----- poll mouse: move cursor and read buttons
+mousepoll:
+	IF msen <> 1 THEN RETURN
+	mreg.ax = 3
+	CALL INTERRUPT(mvint, mreg, mout)
+	mx = mout.cx \ 2
+	my = mout.dx
+	IF mx < 0 THEN mx = 0
+	IF mx > 304 THEN mx = 304
+	IF my < 0 THEN my = 0
+	IF my > 190 THEN my = 190
+	b = (mx \ 4) * 4 + 2
+	a = (my \ 4) * 4 + 2
+	IF b > 302 THEN b = 302
+	IF a < 10 THEN a = 10
+	IF a > 190 THEN a = 190
+	IF cdrawn = 0 OR mx <> cox OR my <> coy THEN GOSUB erasecur: GOSUB drawcur
+	IF (mout.bx AND 1) <> 0 AND mlb = 0 THEN a$ = "a"
+	IF (mout.bx AND 2) <> 0 AND mrb = 0 THEN a$ = "l"
+	mlb = (mout.bx AND 1)
+	mrb = (mout.bx AND 2)
+	RETURN
+
+'----- draw software cursor: save background, then paint the arrow (1=gray, 2=blue)
+drawcur:
+	GET (mx, my)-(mx + 15, my + 9), curbuf
+	FOR mi = 0 TO npix - 1
+		PSET (mx + px(mi), my + py(mi)), pc(mi)
+	NEXT
+	cox = mx: coy = my: cdrawn = 1
+	RETURN
+
+'----- erase software cursor: restore saved background
+erasecur:
+	IF cdrawn = 1 THEN PUT (cox, coy), curbuf, PSET
+	cdrawn = 0
+	RETURN
+
+'----- install a custom mouse cursor shape (INT 33h AX=9)
+setcursor:
+	IF msen <> 1 OR mcur < 1 THEN RETURN
+	FOR mi = 0 TO 31
+		cmask(mi) = 0
+	NEXT
+	mhsx = 7: mhsy = 7: mxor = 0: mraw = 0
+	IF mcur = 1 THEN GOSUB shArrow
+	IF mcur = 2 THEN GOSUB shCross
+	IF mcur = 3 THEN GOSUB shBox
+	IF mcur = 4 THEN GOSUB shCross: mxor = 1
+	IF mcur = 5 THEN GOSUB shArrowNE
+	IF mraw = 0 THEN
+		FOR mi = 0 TO 15
+			IF mxor = 1 THEN cmask(mi) = &HFFFF ELSE cmask(mi) = NOT cmask(16 + mi)
+		NEXT
+	END IF
+	mregx.ax = 9
+	mregx.bx = mhsx
+	mregx.cx = mhsy
+	mregx.dx = VARPTR(cmask(0))
+	mregx.es = VARSEG(cmask(0))
+	CALL INTERRUPTX(mvint, mregx, moutx)
+	RETURN
+
+'----- cursor shape: NW arrow (user-drawn), black outline + fill, tip top-left
+shArrowNE:
+	mhsx = 0: mhsy = 0
+	cmask(16) = &HFF00
+	cmask(17) = &H8080
+	cmask(18) = &H8F00
+	cmask(19) = &H8400
+	cmask(20) = &HA200
+	cmask(21) = &HB100
+	cmask(22) = &HA880
+	cmask(23) = &HA440
+	cmask(24) = &H4280
+	cmask(25) = &H0100
+	cmask(26) = &H0000
+	cmask(27) = &H0000
+	cmask(28) = &H0000
+	cmask(29) = &H0000
+	cmask(30) = &H0000
+	cmask(31) = &H0000
+	RETURN
+
+'----- cursor shape: arrow (hotspot at tip)
+shArrow:
+	mhsx = 0: mhsy = 0
+	cmask(16) = &H8000
+	cmask(17) = &HC000
+	cmask(18) = &HE000
+	cmask(19) = &HF000
+	cmask(20) = &HF800
+	cmask(21) = &HFC00
+	cmask(22) = &HFE00
+	cmask(23) = &HFF00
+	cmask(24) = &HFF80
+	cmask(25) = &HFFC0
+	RETURN
+
+'----- cursor shape: crosshair (hotspot centre)
+shCross:
+	mhsx = 7: mhsy = 7
+	cmask(16) = &H0100
+	cmask(17) = &H0100
+	cmask(18) = &H0100
+	cmask(19) = &H0100
+	cmask(20) = &H0100
+	cmask(21) = &H0100
+	cmask(22) = &H0100
+	cmask(23) = &HFFFE
+	cmask(24) = &H0100
+	cmask(25) = &H0100
+	cmask(26) = &H0100
+	cmask(27) = &H0100
+	cmask(28) = &H0100
+	cmask(29) = &H0100
+	RETURN
+
+'----- cursor shape: box / target (hotspot centre)
+shBox:
+	mhsx = 7: mhsy = 7
+	cmask(18) = &H3FF8
+	cmask(19) = &H2008
+	cmask(20) = &H2008
+	cmask(21) = &H2008
+	cmask(22) = &H2008
+	cmask(23) = &H2008
+	cmask(24) = &H2008
+	cmask(25) = &H2008
+	cmask(26) = &H2008
+	cmask(27) = &H2008
+	cmask(28) = &H3FF8
 	RETURN
 
 '----- load object display names from object.pac
@@ -1916,6 +2123,10 @@ SUB LoadConfig
 		PRINT #1, "showfps=0"
 		PRINT #1, "; joystick=1 enables joystick/gamepad control (off avoids stray input)"
 		PRINT #1, "joystick=0"
+		PRINT #1, "; mouse=1 enables mouse cursor + hardware pointer (needs a mouse driver)"
+		PRINT #1, "mouse=0"
+		PRINT #1, "; mousecursor: 0 driver default, 1 arrow, 2 crosshair, 3 box, 4 crosshair(xor)"
+		PRINT #1, "mousecursor=1"
 	END IF
 	CLOSE
 
@@ -1933,6 +2144,8 @@ SUB LoadConfig
 				IF v$ = "1" OR v$ = "true" OR v$ = "yes" OR v$ = "on" THEN tv = 1
 				IF k$ = "showfps" THEN sfps = tv
 				IF k$ = "joystick" THEN jsen = tv
+				IF k$ = "mouse" THEN msen = tv
+				IF k$ = "mousecursor" THEN mcur = VAL(v$)
 			END IF
 		END IF
 	LOOP
@@ -1940,6 +2153,7 @@ SUB LoadConfig
 
 	fpst = TIMER
 	fpsc = 0
+	mvint = &H33
 END SUB
 
 '----- display the note/journal for the object under the cursor
