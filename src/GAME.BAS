@@ -62,14 +62,14 @@ DIM SHARED sa, sb, sc
 DIM SHARED sfps, fpsc, fpst, fpsv, fpsd
 DIM SHARED ifc, it0, itt
 DIM SHARED jsen
-DIM SHARED msen, mlb, mrb, mshown
+DIM SHARED msen, mlb, mrb, mshown, snr, exsen, cshp, hovr
 DIM SHARED mvint AS INTEGER
 DIM SHARED mreg AS RegType, mout AS RegType
 DIM SHARED mcur AS INTEGER, mhsx AS INTEGER, mhsy AS INTEGER, mxor, mraw
 DIM SHARED mregx AS RegTypeX, moutx AS RegTypeX
 DIM SHARED cmask(31) AS INTEGER
 DIM SHARED arow$(15)
-DIM SHARED px(80), py(80), pc(80), npix
+DIM SHARED px(4, 80), py(4, 80), pc(4, 80), npix(4)
 DIM SHARED curbuf(100), cdrawn, cox, coy, mx, my
 
 '----- shared sprite/door buffers
@@ -1338,30 +1338,123 @@ mouseinit:
 	mlb = 0
 	mrb = 0
 	cdrawn = 0
-	arow$(0) = "XXXXXXXX........"
-	arow$(1) = "X0000000X......."
-	arow$(2) = "X000XXXX........"
-	arow$(3) = "X0000X.........."
-	arow$(4) = "X0X000X........."
-	arow$(5) = "X0XX000X........"
-	arow$(6) = "X0X.X000X......."
-	arow$(7) = "X0X..X000X......"
-	arow$(8) = ".X....X0X......."
-	arow$(9) = ".......X........"
-	arow$(10) = "................"
-	arow$(11) = "................"
-	arow$(12) = "................"
-	arow$(13) = "................"
-	arow$(14) = "................"
-	arow$(15) = "................"
-	npix = 0
-	FOR mr = 0 TO 15
-		FOR mc = 0 TO 15
-			mch$ = MID$(arow$(mr), mc + 1, 1)
-			IF mch$ = "X" THEN px(npix) = mc: py(npix) = mr: pc(npix) = 1: npix = npix + 1
-			IF mch$ = "0" THEN px(npix) = mc: py(npix) = mr: pc(npix) = 2: npix = npix + 1
+	' arow$(0) = "XXXXXXXX........"
+	' arow$(1) = "X0000000X......."
+	' arow$(2) = "X000XXXX........"
+	' arow$(3) = "X0000X.........."
+	' arow$(4) = "X0X000X........."
+	' arow$(5) = "X0XX000X........"
+	' arow$(6) = "X0X.X000X......."
+	' arow$(7) = "X0X..X000X......"
+	' arow$(8) = ".X....X0X......."
+	' arow$(9) = ".......X........"
+	' arow$(10) = "................"
+	' arow$(11) = "................"
+	' arow$(12) = "................"
+	' arow$(13) = "................"
+	' arow$(14) = "................"
+	' arow$(15) = "................"
+
+	' arow$(0) = "XXXXX..........."
+	' arow$(1) = "X000X..........."
+	' arow$(2) = "X00X............"
+	' arow$(3) = "X0X0X..........."
+	' arow$(4) = "XX.X0X.........."
+	' arow$(5) = "....X..........."
+	' arow$(6) = "................"
+	' arow$(7) = "................"
+	' arow$(8) = "................"
+	' arow$(9) = "................"
+	' arow$(10) = "................"
+	' arow$(11) = "................"
+	' arow$(12) = "................"
+	' arow$(13) = "................"
+	' arow$(14) = "................"
+	' arow$(15) = "................"
+
+	cshp = 0
+	hovr = 8
+	FOR sshp = 0 TO 4
+		GOSUB setgrid
+		npc = 0
+		FOR mr = 0 TO 15
+			FOR mc = 0 TO 15
+				mch$ = MID$(arow$(mr), mc + 1, 1)
+				IF mch$ = "X" THEN px(sshp, npc) = mc: py(sshp, npc) = mr: pc(sshp, npc) = 1: npc = npc + 1
+				IF mch$ = "0" THEN px(sshp, npc) = mc: py(sshp, npc) = mr: pc(sshp, npc) = 2: npc = npc + 1
+			NEXT
 		NEXT
+		npix(sshp) = npc
 	NEXT
+	RETURN
+
+'----- select the cursor grid for shape sshp (0=NW 1=up 2=down 3=right 4=left)
+setgrid:
+	FOR mr = 0 TO 15
+		arow$(mr) = "................"
+	NEXT
+	IF sshp = 0 THEN GOSUB grdnw
+	IF sshp = 1 THEN GOSUB grdup
+	IF sshp = 2 THEN GOSUB grddn
+	IF sshp = 3 THEN GOSUB grdrt
+	IF sshp = 4 THEN GOSUB grdlf
+	RETURN
+
+'----- cursor pixel grids (X = outline/gray, 0 = fill/blue, . = clear)
+grdnw:
+	arow$(0) = "X..............."
+	arow$(1) = "XX.............."
+	arow$(2) = "X0X............."
+	arow$(3) = "X00X............"
+	arow$(4) = "X000X..........."
+	arow$(5) = "X0XX............"
+	arow$(6) = "XX.............."
+	RETURN
+
+'----- north / up exit arrow
+grdup:
+	arow$(0) = "...X............"
+	arow$(1) = "..X0X..........."
+	arow$(2) = "..X0X..........."
+	arow$(3) = ".X000X.........."
+	arow$(4) = "X00000X........."
+	arow$(5) = "..X0X..........."
+	arow$(6) = "..X0X..........."
+	arow$(7) = "..X0X..........."
+	RETURN
+
+'----- south / down exit arrow
+grddn:
+	arow$(0) = "..X0X..........."
+	arow$(1) = "..X0X..........."
+	arow$(2) = "..X0X..........."
+	arow$(3) = "X00000X........."
+	arow$(4) = ".X000X.........."
+	arow$(5) = "..X0X..........."
+	arow$(6) = "..X0X..........."
+	arow$(7) = "...X............"
+	RETURN
+
+'----- east / right exit arrow
+grdrt:
+	arow$(0) = "...X............"
+	arow$(1) = "...0X..........."
+	arow$(2) = "XXX00XX........."
+	arow$(3) = "0000000X........"
+	arow$(4) = "XXX00XX........."
+	arow$(5) = "...0X..........."
+	arow$(6) = "...X............"
+	RETURN
+
+'----- west / left exit arrow
+grdlf:
+	arow$(0) = "....X..........."
+	arow$(1) = "...X0..........."
+	arow$(2) = ".XX00XXX........"
+	arow$(3) = "X0000000........"
+	arow$(4) = ".XX00XXX........"
+	arow$(5) = "...X0..........."
+	arow$(6) = "....X..........."
 	RETURN
 
 '----- poll mouse: move cursor and read buttons
@@ -1380,9 +1473,10 @@ mousepoll:
 	IF b > 302 THEN b = 302
 	IF a < 10 THEN a = 10
 	IF a > 190 THEN a = 190
+	GOSUB hovexit
 	IF cdrawn = 0 OR mx <> cox OR my <> coy THEN GOSUB erasecur: GOSUB drawcur
-	IF (mout.bx AND 1) <> 0 AND mlb = 0 THEN a$ = "a"
-	IF (mout.bx AND 2) <> 0 AND mrb = 0 THEN a$ = "l"
+	IF (mout.bx AND 1) <> 0 AND mlb = 0 THEN a$ = "a": GOSUB msnap
+	IF (mout.bx AND 2) <> 0 AND mrb = 0 THEN a$ = "l": GOSUB msnap
 	mlb = (mout.bx AND 1)
 	mrb = (mout.bx AND 2)
 	RETURN
@@ -1390,8 +1484,8 @@ mousepoll:
 '----- draw software cursor: save background, then paint the arrow (1=gray, 2=blue)
 drawcur:
 	GET (mx, my)-(mx + 15, my + 9), curbuf
-	FOR mi = 0 TO npix - 1
-		PSET (mx + px(mi), my + py(mi)), pc(mi)
+	FOR mi = 0 TO npix(cshp) - 1
+		PSET (mx + px(cshp, mi), my + py(cshp, mi)), pc(cshp, mi)
 	NEXT
 	cox = mx: coy = my: cdrawn = 1
 	RETURN
@@ -1400,6 +1494,59 @@ drawcur:
 erasecur:
 	IF cdrawn = 1 THEN PUT (cox, coy), curbuf, PSET
 	cdrawn = 0
+	RETURN
+
+'----- snap click to nearest hotspot within snr px (0 = off/exact)
+'----- ABS box just prefilters; sdd<snd is the real test = a circle of radius snr (Euclidean)
+'----- breaks at first oy=0 exactly like action, so it never snaps to an entry action can't reach
+msnap:
+	IF snr <= 0 THEN RETURN
+	snd = snr * snr + 1
+	snx = -1
+	FOR sni = 1 TO 100
+		IF oy(sni) = 0# THEN EXIT FOR
+		sdx = mx - ox(sni)
+		sdy = my - oy(sni)
+		IF ABS(sdx) <= snr AND ABS(sdy) <= snr THEN
+			sdd = sdx * sdx + sdy * sdy
+			IF sdd < snd THEN
+				snd = sdd
+				snx = ox(sni)
+				sny = oy(sni)
+			END IF
+		END IF
+	NEXT
+	IF snx >= 0 THEN b = snx: a = sny
+	RETURN
+
+'----- near a walkout exit? morph cursor to point the way the player leaves (exitcursor)
+'----- reads tg$ direction (wn=up ws=down we=right ww=left); reverts to NW arrow otherwise
+hovexit:
+	IF exsen <> 1 THEN RETURN
+	newshp = 0
+	hvdir$ = ""
+	hvb = hovr * hovr + 1
+	FOR hvi = 1 TO 100
+		IF oy(hvi) = 0# THEN EXIT FOR
+		hvo = CINT(oi(hvi))
+		IF LEFT$(tg$(hvo), 1) = "w" THEN
+			hvx = mx - ox(hvi)
+			hvy = my - oy(hvi)
+			IF ABS(hvx) <= hovr AND ABS(hvy) <= hovr THEN
+				hvd = hvx * hvx + hvy * hvy
+				IF hvd < hvb THEN hvb = hvd: hvdir$ = RIGHT$(tg$(hvo), 1)
+			END IF
+		END IF
+	NEXT
+	IF hvb <= hovr * hovr THEN
+		IF hvdir$ = "n" THEN newshp = 1
+		IF hvdir$ = "s" THEN newshp = 2
+		IF hvdir$ = "e" THEN newshp = 3
+		IF hvdir$ = "w" THEN newshp = 4
+	END IF
+	IF newshp = cshp THEN RETURN
+	GOSUB erasecur
+	cshp = newshp
 	RETURN
 
 '----- install a custom mouse cursor shape (INT 33h AX=9)
@@ -2127,9 +2274,15 @@ SUB LoadConfig
 		PRINT #1, "mouse=0"
 		PRINT #1, "; mousecursor: 0 driver default, 1 arrow, 2 crosshair, 3 box, 4 crosshair(xor)"
 		PRINT #1, "mousecursor=1"
+		PRINT #1, "; mousesnap: click pulls to nearest hotspot within N pixels (0=off/exact)"
+		PRINT #1, "mousesnap=6"
+		PRINT #1, "; exitcursor=1 changes the pointer to a direction arrow near room exits"
+		PRINT #1, "exitcursor=1"
 	END IF
 	CLOSE
 
+	snr = 6
+	exsen = 1
 	OPEN "dark.ini" FOR INPUT AS #1
 	DO WHILE NOT EOF(1)
 		LINE INPUT #1, ln$
@@ -2146,6 +2299,8 @@ SUB LoadConfig
 				IF k$ = "joystick" THEN jsen = tv
 				IF k$ = "mouse" THEN msen = tv
 				IF k$ = "mousecursor" THEN mcur = VAL(v$)
+				IF k$ = "mousesnap" THEN snr = VAL(v$)
+				IF k$ = "exitcursor" THEN exsen = tv
 			END IF
 		END IF
 	LOOP
