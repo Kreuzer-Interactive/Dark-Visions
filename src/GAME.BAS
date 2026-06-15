@@ -105,6 +105,8 @@ DIM SHARED cs(100)
 DIM SHARED st(150)
 DIM SHARED tg$(150)
 DIM SHARED dn$(50)
+DIM SHARED sn$(50)
+DIM SHARED iord(34)
 DIM SHARED gp(100)
 DIM SHARED er1(400)
 DIM SHARED d(300)
@@ -435,192 +437,16 @@ inv:
 	LOCATE 5, 1
 	PRINT "      Objects: "
 	gx = 2
-	IF ob(1) <> 1 THEN GOTO 3020
-	LOCATE gy, 2
-	PRINT "Matches"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 1
-	3020 IF ob(2) <> 1 THEN GOTO 3070
-	LOCATE gy, 2
-	PRINT "Poker"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 2
-	3070 IF ob(3) <> 1 THEN GOTO 3120
-	LOCATE gy, 2
-	PRINT "Journal Page"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 3
-	3120 IF ob(4) <> 1 THEN GOTO 3170
-	LOCATE gy, 2
-	PRINT "Pipe Wrench"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 4
-	3170 IF ob(5) <> 1 THEN GOTO 3220
-	LOCATE gy, 2
-	PRINT "Small Key "
-	gy = gy + 1
-	gr((gw * gx) + gy) = 5
-	3220 IF ob(6) <> 1 THEN GOTO 3270
-	LOCATE gy, 2
-	PRINT "Bar"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 6
-	3270 IF ob(7) <> 1 THEN GOTO 3320
-	LOCATE gy, 2
-	PRINT "Baking Soda"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 7
-	3320 IF ob(8) <> 1 THEN GOTO 3370
-	LOCATE gy, gx
-	PRINT "White Key"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 8
-	3370 IF ob(9) <> 1 THEN GOTO 3420
-	LOCATE gy, gx
-	PRINT "Patient book"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 9
-	3420 IF ob(10) <> 1 THEN GOTO 3470
-	LOCATE gy, gx
-	PRINT "Experiment book"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 10
-	3470 IF ob(11) <> 1 THEN GOTO 3520
-	LOCATE gy, gx
-	PRINT "Partial formula"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 11
-	3520 IF ob(12) <> 1 THEN GOTO 3570
-	LOCATE gy, gx
-	PRINT "Penny"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 12
-	3570 IF ob(13) <> 1 THEN GOTO 3620
-	LOCATE gy, gx
-	PRINT "Uncle's key"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 13
-	3620 IF ob(14) <> 1 THEN GOTO 3670
-	LOCATE gy, gx
-	PRINT "Rope"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 14
-	3670 IF ob(15) <> 1 THEN GOTO 3720
-	LOCATE gy, gx
-	PRINT "Polished rock"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 15
-	3720 IF ob(16) <> 1 THEN GOTO 3770
-	LOCATE gy, gx
-	PRINT "Map page"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 16
-	3770 IF ob(17) <> 1 THEN GOTO 3820
-	LOCATE gy, gx
-	PRINT "Spoon"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 17
-	3820 IF ob(18) <> 1 THEN GOTO 3870
-	LOCATE gy, gx
-	PRINT "Small knife"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 18
-	3870 GOSUB gridwrap
-	IF ob(19) <> 1 THEN GOTO 3930
-	LOCATE gy, gx
-	PRINT "Uncle's journal"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 19
-	3930 GOSUB gridwrap
-	IF ob(20) <> 1 THEN GOTO 3990
-	LOCATE gy, gx
-	PRINT "Carpenters saw"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 20
-	3990 GOSUB gridwrap
-	IF ob(21) <> 1 THEN GOTO 4050
-	LOCATE gy, gx
-	PRINT "Syrem book"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 21
-	4050 GOSUB gridwrap
-	IF ob(22) <> 1 THEN GOTO 4110
-	LOCATE gy, gx
-	PRINT "Apple key"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 22
-	4110 GOSUB gridwrap
-	IF ob(23) <> 1 THEN GOTO 4170
-	LOCATE gy, gx
-	PRINT "Clock hand"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 23
-	4170 GOSUB gridwrap
-	IF ob(24) <> 1 THEN GOTO 4230
-	LOCATE gy, gx
-	PRINT "Partial formula"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 24
-	4230 GOSUB gridwrap
-	IF ob(25) <> 1 THEN GOTO 4290
-	LOCATE gy, gx
-	PRINT "Deciphering book"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 25
-	4290 GOSUB gridwrap
-	IF ob(26) <> 1 THEN GOTO 4350
-	LOCATE gy, gx
-	PRINT "Numbered paper"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 26
-	4350 GOSUB gridwrap
-	IF ob(27) <> 1 THEN GOTO 4410
-	LOCATE gy, gx
-	PRINT "Paper clip"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 27
-	4410 GOSUB gridwrap
-	IF ob(28) <> 1 THEN GOTO 4470
-	LOCATE gy, gx
-	PRINT "Red Apple"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 28
-	4470 GOSUB gridwrap
-	IF ob(29) <> 1 THEN GOTO 4530
-	LOCATE gy, gx
-	PRINT "Syringe"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 29
-	4530 GOSUB gridwrap
-	IF ob(19) <> 1 THEN GOTO 4590
-	LOCATE gy, gx
-	PRINT "Valuable jewel"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 19
-	4590 GOSUB gridwrap
-	IF ob(49) <> 1 THEN GOTO 4650
-	LOCATE gy, gx
-	PRINT "Stash of bills"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 49
-	4650 GOSUB gridwrap
-	IF ob(35) <> 1 THEN GOTO 4710
-	LOCATE gy, gx
-	PRINT "Loaded syringe"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 35
-	4710 GOSUB gridwrap
-	IF ob(36) <> 1 THEN GOTO 4770
-	LOCATE gy, gx
-	PRINT "Complete formula"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 36
-	4770 GOSUB gridwrap
-	IF ob(34) <> 1 THEN GOTO 4830
-	LOCATE gy, gx
-	PRINT "Drug"
-	gy = gy + 1
-	gr((gw * gx) + gy) = 34
+	FOR ivi = 1 TO 34
+		IF ivi >= 19 THEN GOSUB gridwrap
+		ivn = iord(ivi)
+		IF ob(ivn) = 1 THEN
+			LOCATE gy, gx
+			PRINT sn$(ivn)
+			gy = gy + 1
+			gr((gw * gx) + gy) = ivn
+		END IF
+	NEXT
 	4830 CALL InvGrid
 
 '----- inventory menu key handling
@@ -944,6 +770,8 @@ loadmsgs:
 	nf$(23) = "You peer closer. Still nothing."
 	nf$(24) = "Nothing reveals itself to you."
 	nf$(25) = "The shadows hide nothing here."
+	FOR ivi = 1 TO 29: iord(ivi) = ivi: NEXT
+	iord(30) = 30: iord(31) = 49: iord(32) = 35: iord(33) = 36: iord(34) = 34
 	RETURN
 
 '----- look at a truly-empty spot: after 3 looks at the same cell, show a non-repeating random line
@@ -1744,7 +1572,7 @@ loadnames:
 	OPEN "object.pac" FOR INPUT AS #1
 	FOR i = 1 TO 50
 		IF EOF(1) THEN GOTO 12580
-		INPUT #1, b, dn$(b)
+		INPUT #1, b, sn$(b), dn$(b)
 	NEXT
 	12580 CLOSE
 	RETURN

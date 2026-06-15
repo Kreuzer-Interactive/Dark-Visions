@@ -36,7 +36,7 @@
     background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}
   canvas{image-rendering:pixelated;image-rendering:crisp-edges;box-shadow:0 6px 30px rgba(0,0,0,.5);
     cursor:crosshair;background:#000}
-  aside{width:380px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);
+  aside{width:466px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);
     display:flex;flex-direction:column;min-height:0}
   .secTitle{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);
     padding:10px 12px 4px}
@@ -110,27 +110,58 @@
   #drop{margin:auto;text-align:center;color:var(--muted)}
   #drop input{display:none}
   .hint{color:var(--muted);font-size:12px}
+  main[hidden]{display:none}
+  .tabs{display:flex;gap:2px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0}
+  .tabs button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 16px;color:var(--muted);cursor:pointer;font-size:13px}
+  .tabs button:hover{color:var(--txt)}
+  .tabs button.active{color:var(--txt);border-bottom-color:var(--accent)}
+  #hitctrls{display:flex;gap:10px;align-items:center}
+  #hitctrls[hidden]{display:none}
+  #tab-inv{flex:1;min-height:0;display:flex;flex-direction:column}
+  #tab-inv[hidden]{display:none}
+  .invbar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+  .invbar code{color:var(--txt)}
+  #objWrap{flex:1;overflow:auto}
+  table.objtbl{border-collapse:collapse;width:100%;table-layout:fixed;font-size:12px}
+  table.objtbl th{position:sticky;top:0;background:var(--panel);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);color:var(--muted);font-weight:500;white-space:nowrap;z-index:1}
+  table.objtbl td{padding:2px 6px;border-bottom:1px solid var(--line);vertical-align:middle;overflow:hidden}
+  table.objtbl tbody tr:hover td{background:var(--panel2)}
+  table.objtbl input,table.objtbl select{width:100%;background:var(--bg);color:var(--txt);border:1px solid transparent;border-radius:4px;padding:4px 6px;font:inherit;min-width:0}
+  table.objtbl input:focus,table.objtbl select:focus{border-color:var(--accent);background:var(--panel2);outline:none}
+  .otnum{white-space:nowrap;color:var(--muted);font-variant-numeric:tabular-nums}
+  .otnum .csw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:6px;border:1px solid rgba(255,255,255,.25)}
+  .otpts{text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+  .mslines{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+  .mslines input{width:100%;font-family:ui-monospace,monospace;min-width:0}
+  #form .msfld{align-items:flex-start}
+  #form .msfld label{padding-top:5px}
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <h1>Dark Visions · Hit-Area Editor <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:0">v24</span></h1>
+    <h1>Dark Visions · Room Tools <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:0">v29</span></h1>
     <select id="room" title="Room"></select>
     <button id="reload" title="Reload from disk (discard changes)">Reload</button>
     <span class="spacer"></span>
     <span id="mode" class="badge">…</span>
     <span id="dirty" class="badge"></span>
-    <button id="peek" title="Hold to hide markers (or hold Space)">Peek</button>
-    <button id="grid" title="Show a faint grid of the action-point lattice (4px)">Grid</button>
-    <button id="zones" title="Show click zones — the mousesnap area around each hit point, tinted by which object it would click">Zones</button>
-    <label class="snapfld" title="mousesnap radius in pixels (DARK.INI mousesnap; default 6). 0 = exact clicks only.">pad<input id="snap" type="number" min="0" max="32" value="6"></label>
-    <button id="zoomOut" title="Zoom out">−</button>
-    <span id="zoomLbl" class="hint">3×</span>
-    <button id="zoomIn" title="Zoom in">+</button>
+    <span id="hitctrls">
+      <button id="peek" title="Hold to hide markers (or hold Space)">Peek</button>
+      <button id="grid" title="Show a faint grid of the action-point lattice (4px)">Grid</button>
+      <button id="zones" title="Show click zones — the mousesnap area around each hit point, tinted by which object it would click">Zones</button>
+      <label class="snapfld" title="mousesnap radius in pixels (DARK.INI mousesnap; default 6). 0 = exact clicks only.">pad<input id="snap" type="number" min="0" max="32" value="6"></label>
+      <button id="zoomOut" title="Zoom out">−</button>
+      <span id="zoomLbl" class="hint">3×</span>
+      <button id="zoomIn" title="Zoom in">+</button>
+    </span>
     <button id="save" class="primary" title="Save .pac (Ctrl+S)">Save</button>
   </header>
-  <main>
+  <nav class="tabs">
+    <button data-tab="hits" class="active">Hit Areas</button>
+    <button data-tab="inv">Inventory</button>
+  </nav>
+  <main id="tab-hits">
     <div id="stage">
       <canvas id="cv" width="960" height="600"></canvas>
       <div id="drop" hidden>
@@ -147,7 +178,7 @@
       <div id="form">
         <div class="secTitle" style="padding:0 0 4px">Selected object <span id="objno"></span></div>
         <div class="fld"><label>target (df)</label><input id="f_df" placeholder="room name / dial / end"><button id="dfPick" class="picbtn" type="button" title="Pick a target room from a grid of thumbnails">…</button></div>
-        <div class="fld"><label>message (ms)</label><input id="f_ms"></div>
+        <div class="fld msfld"><label>message (ms)</label><div class="mslines"><input id="f_ms1" maxlength="40" placeholder="line 1 (40 cols)"><input id="f_ms2" maxlength="40" placeholder="line 2 (optional)"></div></div>
         <div class="fld"><label>verb (ky)</label>
           <div class="vbpick" id="vbPick">
             <button type="button" data-v="a"></button>
@@ -177,9 +208,10 @@
           </div>
         </div>
         <div class="tgfoot">tg = <code id="tgVal">—</code><button id="tgClear" type="button">clear</button></div>
-        <div class="fld"><label title="Action only works if flag/object #bs is ON (set). For a Use action, the inventory item you must be holding. 0 = no requirement.">needs on (bs)</label><input id="f_bs" type="number"></div>
-        <div class="fld"><label title="Action only works if flag #cs is OFF (clear). Use to switch an action off after something else happens. 0 = no requirement.">needs off (cs)</label><input id="f_cs" type="number"></div>
-        <div class="fld"><label title="When the action fires it turns flag #st ON, which later conditions can require. 0 = sets nothing.">sets on (st)</label><input id="f_st" type="number"></div>
+        <div class="fld"><label title="Action only works if flag/object #bs is ON (set). For a Use action, the inventory item you must be holding. 0 = no requirement.">needs on (bs)</label><input id="f_bs" list="invlist" autocomplete="off" placeholder="0 — none"></div>
+        <div class="fld"><label title="Action only works if flag #cs is OFF (clear). Use to switch an action off after something else happens. 0 = no requirement.">needs off (cs)</label><input id="f_cs" list="invlist" autocomplete="off" placeholder="0 — none"></div>
+        <div class="fld"><label title="When the action fires it turns flag #st ON, which later conditions can require. 0 = sets nothing.">sets on (st)</label><input id="f_st" list="invlist" autocomplete="off" placeholder="0 — none"></div>
+        <datalist id="invlist"></datalist>
       </div>
       <div id="help">
         <b>Left-drag</b> paint · <b>Right-drag</b> erase<br>
@@ -187,6 +219,21 @@
       </div>
     </aside>
   </main>
+  <section id="tab-inv" hidden>
+    <div class="invbar">
+      <span>Inventory items — <code>OBJECT.PAC</code> (shared with the game's inventory screen)</span>
+      <span class="spacer"></span>
+      <span id="invDirty" class="badge"></span>
+      <button id="invSave" class="primary">Save inventory</button>
+    </div>
+    <div id="objWrap">
+      <table class="objtbl">
+        <colgroup><col style="width:52px"><col style="width:170px"><col></colgroup>
+        <thead><tr><th>#</th><th>short name</th><th>description</th></tr></thead>
+        <tbody id="invTbody"></tbody>
+      </table>
+    </div>
+  </section>
   <div id="dfModal" class="modal" hidden>
     <div class="modalCard">
       <div class="modalHead"><span>Pick target room (df)</span><button id="dfModalClose" type="button" title="Close (Esc)">✕</button></div>
@@ -363,20 +410,22 @@ function buildList(){
   });
 }
 function esc(s){ return String(s).replace(/[<&]/g,c=>c==='<'?'&lt;':'&amp;'); }
+function splitMsg(s){ s=String(s||''); const a=(s.length<=40?s:s.slice(0,40)).replace(/\s+$/,''); const b=s.length<=40?'':s.slice(40); return [a,b]; }
+function joinMsg(a,b){ a=String(a||'').replace(/\s+$/,''); b=String(b||''); return b ? a.padEnd(40,' ')+b : a; }
 function fillForm(){
   const b=S.objects[curObj-1];
   document.getElementById('objno').textContent='#'+curObj;
-  f_df.value=b.df; f_ms.value=b.ms; renderVerb(); tgState=parseTg(b.tg); renderTg();
-  f_bs.value=b.bs; f_cs.value=b.cs; f_st.value=b.st;
+  f_df.value=b.df; const _m=splitMsg(b.ms); f_ms1.value=_m[0]; f_ms2.value=_m[1]; renderVerb(); tgState=parseTg(b.tg); renderTg();
+  f_bs.value=fmtRef(b.bs); f_cs.value=fmtRef(b.cs); f_st.value=fmtRef(b.st);
 }
 function selectObj(o){ curObj=o; buildList(); fillForm(); draw(); }
 function onFormInput(){
   const b=S.objects[curObj-1];
-  b.df=f_df.value; b.ms=f_ms.value;
+  b.df=f_df.value; b.ms=joinMsg(f_ms1.value,f_ms2.value);
   b.bs=parseInt(f_bs.value)||0; b.cs=parseInt(f_cs.value)||0; b.st=parseInt(f_st.value)||0;
   setDirty(true); buildList(); renderVerb();
 }
-for(const id of ['f_df','f_ms','f_bs','f_cs','f_st'])
+for(const id of ['f_df','f_ms1','f_ms2','f_bs','f_cs','f_st'])
   document.getElementById(id).addEventListener('input',onFormInput);
 
 // ---- tg walk/face picker ----
@@ -633,12 +682,77 @@ document.getElementById('picker').addEventListener('change',async e=>{
     else map[base].pac=await f.text();
   }
   fileBlobs={}; const list=[];
-  for(const b in map){ if(map[b].pic&&map[b].pac){ fileBlobs[b]=map[b]; list.push(b); } }
+  for(const b in map){ if(map[b].pic&&map[b].pac){ fileBlobs[b]=map[b]; list.push(b); } else if(map[b].pac){ fileBlobs[b]={pac:map[b].pac}; } }
   list.sort();
   if(!list.length){ alert('No matching .PIC + .PAC pairs found in that folder.'); return; }
   document.getElementById('drop').hidden=true; cv.style.display='';
-  setRooms(list); loadRoom(list[0]);
+  setRooms(list); loadRoom(list[0]); loadInv();
 });
+
+// ---- tabs + object table ----
+let activeTab='hits';
+function ea(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function verbOpts(cur){
+  return [['','—'],['a','act'],['l','look'],['g','get'],['u','use']]
+    .map(([v,l])=>`<option value="${v}"${v===(cur||'')?' selected':''}>${l}</option>`).join('');
+}
+// ---- inventory (OBJECT.PAC): single source for item names, shared with the game ----
+let inv=[], invByNum={}, invDirty=false;
+function parseInv(text){
+  const k=tokenize(text), out=[];
+  for(let i=0;i+2<k.length;i+=3){ const num=parseInt(k[i],10); if(isNaN(num)) continue; out.push({num, short:k[i+1]||'', desc:k[i+2]||''}); }
+  return out;
+}
+async function loadInv(){
+  let txt=null;
+  if(mode==='server'){ try{ txt=await (await fetch('api/pac?name=OBJECT',{cache:'no-store'})).text(); }catch(_){}}
+  else if(fileBlobs['OBJECT']) txt=fileBlobs['OBJECT'].pac;
+  if(txt==null) return;
+  inv=parseInv(txt); invByNum={}; for(const it of inv) invByNum[it.num]=it;
+  buildInvDatalist(); if(activeTab==='inv') buildInvTable();
+}
+function buildInvDatalist(){
+  const dl=document.getElementById('invlist'); if(!dl) return;
+  dl.innerHTML=inv.filter(it=>it.num>0).sort((a,b)=>a.num-b.num).map(it=>`<option value="${it.num} — ${ea(it.short)}">`).join('');
+}
+function fmtRef(n){ n=n|0; if(!n) return ''; const it=invByNum[n]; return it&&it.short ? n+' — '+it.short : n+' — flag'; }
+function buildInvTable(){
+  const tb=document.getElementById('invTbody'); if(!tb) return;
+  tb.innerHTML='';
+  inv.forEach((it,idx)=>{
+    const tr=document.createElement('tr'), ds=splitMsg(it.desc);
+    tr.innerHTML=`<td class="otpts">${it.num}</td>`
+      +`<td><input data-i="${idx}" data-f="short" value="${ea(it.short)}"></td>`
+      +`<td><div class="mslines"><input data-i="${idx}" data-f="d1" maxlength="40" value="${ea(ds[0])}"><input data-i="${idx}" data-f="d2" maxlength="40" value="${ea(ds[1])}"></div></td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('input').forEach(el=>{
+    el.addEventListener('input',()=>{
+      const i=+el.dataset.i, f=el.dataset.f, tr=el.closest('tr');
+      if(f==='short'){ inv[i].short=el.value; buildInvDatalist(); if(S) fillForm(); }
+      else { inv[i].desc=joinMsg(tr.querySelector('[data-f="d1"]').value, tr.querySelector('[data-f="d2"]').value); }
+      setInvDirty(true);
+    });
+  });
+}
+function setInvDirty(v){ invDirty=v; const d=document.getElementById('invDirty'); if(d){ d.textContent=v?'● unsaved':''; d.className=v?'badge warn':'badge'; } }
+function genInv(){ return inv.map(it=>it.num+',"'+it.short+'","'+it.desc+'"').join('\r\n')+'\r\n'; }
+async function saveInv(){
+  const txt=genInv();
+  if(mode==='server'){ await fetch('api/pac?name=OBJECT',{method:'POST',headers:{'Content-Type':'text/plain'},body:txt}); setInvDirty(false); flash('Saved OBJECT.PAC to disk'); }
+  else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'})); a.download='OBJECT.PAC'; a.click(); setInvDirty(false); }
+}
+document.getElementById('invSave').onclick=saveInv;
+function setTab(t){
+  activeTab=t;
+  document.getElementById('tab-hits').hidden=(t!=='hits');
+  document.getElementById('tab-inv').hidden=(t!=='inv');
+  document.getElementById('hitctrls').hidden=(t!=='hits');
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
+  if(t==='inv') buildInvTable();
+}
+document.querySelectorAll('.tabs button').forEach(x=>x.onclick=()=>setTab(x.dataset.tab));
+setTab('hits');
 
 // ---- boot ----
 (async function(){
@@ -651,6 +765,7 @@ document.getElementById('picker').addEventListener('change',async e=>{
     mb.textContent='file mode · save = download';
     cv.style.display='none'; document.getElementById('drop').hidden=false;
   }
+  await loadInv();
 })();
 </script>
 </body>
