@@ -71,7 +71,7 @@ DIM SHARED mregx AS RegTypeX, moutx AS RegTypeX
 DIM SHARED cmask(31) AS INTEGER
 DIM SHARED arow$(15)
 DIM SHARED px(4, 80), py(4, 80), pc(4, 80), npix(4)
-DIM SHARED curbuf(100), cdrawn, cox, coy, mx, my
+DIM SHARED curbuf(100), cdrawn, cox, coy, mx, my, lmx, lmy
 
 '----- shared sprite/door buffers
 DIM SHARED do1(150) AS INTEGER
@@ -656,6 +656,10 @@ mainloop:
 '----- numpad movement: nudge player by direction
 	7300 IF msen = 1 THEN GOSUB erasecur
 	IF msen <> 1 THEN PUT (b, a), d, XOR
+	IF a$ = CHR$(0) + CHR$(72) THEN a$ = "8"
+	IF a$ = CHR$(0) + CHR$(80) THEN a$ = "2"
+	IF a$ = CHR$(0) + CHR$(75) THEN a$ = "4"
+	IF a$ = CHR$(0) + CHR$(77) THEN a$ = "6"
 	IF a$ <> "8" THEN GOTO 7330
 	a = a - 4
 	7330 IF a$ <> "2" THEN GOTO 7350
@@ -690,7 +694,8 @@ mainloop:
 	a = a - 4
 
 '----- handle inventory, fight, and action keys
-	7610 IF a$ <> "i" THEN GOTO 7630
+	7610 IF msen = 1 AND INSTR("82467139", a$) > 0 THEN GOSUB ksync
+	IF a$ <> "i" THEN GOTO 7630
 	GOSUB inv
 	7630 IF doc <> 1 THEN GOTO 7660
 	GOSUB fight
@@ -701,6 +706,7 @@ mainloop:
 		GOSUB events
 		GOSUB trigger
 		IF a$ = "l" AND nfon = 1 THEN GOSUB lookmiss
+		IF msen = 1 THEN GOSUB synchit
 	END IF
 	GOTO mainloop
 	SYSTEM
@@ -1253,6 +1259,8 @@ mouseinit:
 	mlb = 0
 	mrb = 0
 	cdrawn = 0
+	lmx = -1
+	lmy = -1
 	' arow$(0) = "XXXXXXXX........"
 	' arow$(1) = "X0000000X......."
 	' arow$(2) = "X000XXXX........"
@@ -1377,24 +1385,49 @@ mousepoll:
 	IF msen <> 1 THEN RETURN
 	mreg.ax = 3
 	CALL INTERRUPT(mvint, mreg, mout)
-	mx = mout.cx \ 2
-	my = mout.dx
-	IF mx < 0 THEN mx = 0
-	IF mx > 304 THEN mx = 304
-	IF my < 0 THEN my = 0
-	IF my > 190 THEN my = 190
-	b = (mx \ 4) * 4 + 2
-	a = (my \ 4) * 4 + 2
-	IF b > 302 THEN b = 302
-	IF a < 10 THEN a = 10
-	IF a > 190 THEN a = 190
+	nmx = mout.cx \ 2
+	nmy = mout.dx
+	IF nmx < 0 THEN nmx = 0
+	IF nmx > 304 THEN nmx = 304
+	IF nmy < 0 THEN nmy = 0
+	IF nmy > 190 THEN nmy = 190
+	IF nmx <> lmx OR nmy <> lmy THEN
+		lmx = nmx
+		lmy = nmy
+		mx = nmx
+		my = nmy
+		b = (mx \ 4) * 4 + 2
+		a = (my \ 4) * 4 + 2
+		IF b > 302 THEN b = 302
+		IF a < 10 THEN a = 10
+		IF a > 190 THEN a = 190
+		GOSUB hovexit
+	END IF
 	IF mxyon = 1 THEN GOSUB mxytick
-	GOSUB hovexit
 	IF cdrawn = 0 OR mx <> cox OR my <> coy THEN GOSUB erasecur: GOSUB drawcur
 	IF (mout.bx AND 1) <> 0 AND mlb = 0 THEN a$ = "a": GOSUB msnap
 	IF (mout.bx AND 2) <> 0 AND mrb = 0 THEN a$ = "l": GOSUB msnap
 	mlb = (mout.bx AND 1)
 	mrb = (mout.bx AND 2)
+	RETURN
+
+'----- ksync: keyboard moved the hit point -> move the software pointer to match
+'----- (mouse stays put, so mousepoll won't override until the mouse is moved)
+ksync:
+	mx = b
+	my = a
+	IF my > 190 THEN my = 190
+	GOSUB hovexit
+	RETURN
+
+'----- synchit: re-derive the hit point from the cursor position (undo msnap's
+'----- action-only snap, so a following keyboard nudge starts from the cursor, not the hotspot)
+synchit:
+	b = (mx \ 4) * 4 + 2
+	a = (my \ 4) * 4 + 2
+	IF b > 302 THEN b = 302
+	IF a < 10 THEN a = 10
+	IF a > 190 THEN a = 190
 	RETURN
 
 '----- draw software cursor: save background, then paint the arrow (1=gray, 2=blue)
