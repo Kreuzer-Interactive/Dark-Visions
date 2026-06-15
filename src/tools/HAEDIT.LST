@@ -1,0 +1,470 @@
+                                                                      PAGE   1
+                                                                      14 Jun 26
+                                                                      00:03:17
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    '==============================================================
+                =======
+ 0030   0006    ' HAEDIT.BAS - Dark Visions hit-area (.PAC) editor
+ 0030   0006    '
+ 0030   0006    ' Loads a room .PIC (CGA SCREEN 1, 320x200) into SCREEN 12 (640
+                x480,
+ 0030   0006    ' 16 colour) at 1:1 in the top-left, leaving the rest of the sc
+                reen
+ 0030   0006    ' for data: a list of all 25 objects on the right (colour, name
+                , verb,
+ 0030   0006    ' direction, point count) and the selected object's detail + he
+                lp at
+ 0030   0006    ' the bottom-left.  The .PAC hit points are overlaid as bright 
+                markers,
+ 0030   0006    ' one colour per object; the selected object's points show whit
+                e.
+ 0030   0006    '
+ 0030   0006    ' Drag the LEFT button to paint hit points for the selected obj
+                ect;
+ 0030   0006    ' the RIGHT button erases the point under the cursor.  Click an
+                 object
+ 0030   0006    ' row in the list (or [ ] / 1-9) to pick it.  Hold SPACE to pee
+                k the
+ 0030   0006    ' bare picture under the markers.  E edits the selected object'
+                s text;
+ 0030   0006    ' S saves the .PAC in the game's exact format.
+ 0030   0006    '
+ 0030   0006    ' Run it from the folder that holds the .PIC/.PAC files.  Build
+                 (Q: =
+ 0030   0006    ' QB45 toolchain):  BC HAEDIT /O ;   LINK HAEDIT ,,, Q:\QB.LIB 
+                ;
+ 0030   0006    ' and run with a mouse driver loaded (MOUSE.COM).
+ 0030   0006    '==============================================================
+                =======
+ 0030   0006    DEFINT A-Z
+ 0030   0006    
+ 0030   0006    TYPE RegType
+ 0030   0006       ax AS INTEGER
+ 0030   0006       bx AS INTEGER
+ 0030   0006       cx AS INTEGER
+ 0030   0006       dx AS INTEGER
+ 0030   0006       bp AS INTEGER
+ 0030   0006       si AS INTEGER
+ 0030   0006       di AS INTEGER
+ 0030   0006       flags AS INTEGER
+ 0030   0006    END TYPE
+ 0030   0006    DECLARE SUB INTERRUPT (intnum AS INTEGER, inreg AS RegType, out
+                reg AS RegType)
+ 0030   0006    DECLARE FUNCTION cgapix (x, y)
+ 0030   0006    
+ 0030   0006    CONST MAXH = 256, MAXO = 25
+ 0030   0006    
+ 0030   0006    DIM SHARED reg AS RegType
+ 0030   0006    DIM SHARED pic$
+                                                                      PAGE   2
+                                                                      14 Jun 26
+                                                                      00:03:17
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    DIM SHARED co, pa1, pa2, pa3, pal(3)
+ 0030   0006    DIM SHARED ox(MAXH), oy(MAXH), oi(MAXH), nhot
+ 0030   0006    DIM SHARED df$(MAXO), ms$(MAXO), ky$(MAXO), bs(MAXO), cs(MAXO),
+                 st(MAXO), tg$(MAXO)
+ 0030   0006    DIM SHARED basef$, curobj, dirty
+ 0030   0006    DIM SHARED mcol(9)
+ 0030   0006    DIM SHARED cbuf(120), oxg, oyg, cdrawn
+ 0030   0006    DIM SHARED peeking
+ 0030   0006    DIM SHARED pkt AS SINGLE
+ 0030   0006    
+ 0030   0006    mcol(0) = 12: mcol(1) = 10: mcol(2) = 14: mcol(3) = 11: mcol(4)
+                 = 13
+ 0030   0988    mcol(5) = 9: mcol(6) = 4: mcol(7) = 2: mcol(8) = 1: mcol(9) = 6
+ 0030   0988    curobj = 1
+ 0030   0988    
+ 0030   0988    GOSUB pickfile
+ 0075   0988    GOSUB loadpac
+ 0078   0988    GOSUB loadpic
+ 007B   0988    GOSUB setupmouse
+ 007E   0988    
+ 007E   0988    SCREEN 12
+ 007E   0988    GOSUB drawimage
+ 0092   0988    LINE (321, 0)-(321, 479), 8
+ 0092   0988    LINE (0, 201)-(321, 201), 8
+ 0092   0988    GOSUB drawhots
+ 00E7   0988    GOSUB drawpanel
+ 00EA   0988    GOSUB status
+ 00ED   0988    
+ 00ED   0988    DO
+ 00EE   0988       reg.ax = 3: CALL INTERRUPT(&H33, reg, reg)
+ 0108   098A       sx = reg.cx: sy = reg.dx
+ 0108   098A       IF sx < 0 THEN sx = 0
+ 0124   098E       IF sx > 639 THEN sx = 639
+ 0135   098E       IF sy < 0 THEN sy = 0
+ 0145   098E       IF sy > 479 THEN sy = 479
+ 0156   098E       lb = (reg.bx AND 1): rb = (reg.bx AND 2)
+ 0156   098E    
+ 0156   098E       inart = 0: IF sx < 320 AND sy < 200 THEN inart = -1
+ 0195   0994    
+ 0195   0994       IF inart THEN
+ 0195   0994          cgx = (sx \ 4) * 4 + 2
+ 0195   0994          cgy = (sy \ 4) * 4 + 2
+ 0195   0994          IF cgx > 318 THEN cgx = 318
+ 01D3   0998          IF cgy > 198 THEN cgy = 198
+ 01E4   0998          IF cgx <> ocgx OR cgy <> ocgy OR cdrawn = 0 THEN
+ 01E4   0998             GOSUB drawcross
+ 0217   099C             ocgx = cgx: ocgy = cgy
+ 0217   099C             COLOR 15: LOCATE 30, 1: PRINT "grid"; cgx; ","; cgy; "
+                   ";
+ 0217   099C          END IF
+ 0277   099C          IF lb THEN GOSUB paintpt
+ 0284   099C          IF rb THEN GOSUB erasept
+ 0291   099C       ELSE
+ 0294   099C          IF cdrawn THEN GOSUB eraseCross
+                                                                      PAGE   3
+                                                                      14 Jun 26
+                                                                      00:03:17
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 02A1   099C          IF lb <> 0 AND plb = 0 AND sx >= 322 THEN
+ 02A1   099C             clo = sy \ 16
+ 02A1   099C             IF clo >= 1 AND clo <= MAXO THEN curobj = clo: GOSUB o
+                bjchanged
+ 02FB   09A0          END IF
+ 02FB   09A0       END IF
+ 02FB   09A0       plb = lb
+ 02FB   09A0    
+ 02FB   09A0       k$ = INKEY$
+ 02FB   09A0       IF k$ <> "" THEN GOSUB handlekey
+ 0325   09A4    
+ 0325   09A4       IF peeking AND TIMER > pkt THEN GOSUB unpeek
+ 034F   09A4    LOOP UNTIL quit
+ 034F   09A4    
+ 034F   09A4    SCREEN 0: WIDTH 80: CLS
+ 034F   09A4    PRINT "Done."
+ 034F   09A4    END
+ 034F   09A4    
+ 034F   09A4    '--- choose which room .pic to edit
+ 034F   09A4    pickfile:
+ 038D   09A6       SCREEN 0: WIDTH 80: CLS
+ 038D   09A6       PRINT "=== Dark Visions hit-area editor ==="
+ 038D   09A6       PRINT
+ 038D   09A6       PRINT "Picture files in this folder:"
+ 038D   09A6       FILES "*.PIC"
+ 038D   09A6       PRINT
+ 038D   09A6       INPUT "Edit which room (base name, e.g. room1): ", basef$
+ 0405   09A6       IF INSTR(basef$, ".") > 0 THEN basef$ = LEFT$(basef$, INSTR(
+                basef$, ".") - 1)
+ 043D   09A6       RETURN
+ 043D   09A6    
+ 043D   09A6    '--- read palette, hit points and object info from the .pac
+ 043D   09A6    loadpac:
+ 043E   09A6       OPEN basef$ + ".pac" FOR INPUT AS #1
+ 043E   09A6       INPUT #1, co, pa1, pa2, pa3
+ 0466   09A6       pal(0) = co: pal(1) = pa1: pal(2) = pa2: pal(3) = pa3
+ 0466   09A6       nhot = 0
+ 0466   09A6       FOR i = 1 TO 257
+ 04C0   09A6          INPUT #1, tx, ty, ti
+ 04C9   09A6          IF ty = 0 THEN EXIT FOR
+ 04FC   09AC          nhot = nhot + 1
+ 04FC   09AC          ox(nhot) = tx: oy(nhot) = ty: oi(nhot) = ti
+ 04FC   09AC       NEXT
+ 0527   09AE       FOR i = 1 TO MAXO
+ 052E   09AE          INPUT #1, df$(i), ms$(i), ky$(i)
+ 0537   09AE          INPUT #1, bs(i), cs(i), st(i), tg$(i)
+ 0583   09AE       NEXT
+ 05EF   09AE       CLOSE #1
+ 05EF   09AE       RETURN
+ 05EF   09AE    
+ 05EF   09AE    '--- read raw .pic bytes (7-byte BSAVE header + CGA B800 dump)
+ 05EF   09AE    loadpic:
+ 05FA   09AE       OPEN basef$ + ".pic" FOR BINARY AS #1
+ 05FA   09AE       pic$ = SPACE$(LOF(1))
+                                                                      PAGE   4
+                                                                      14 Jun 26
+                                                                      00:03:17
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 05FA   09AE       GET #1, 1, pic$
+ 05FA   09AE       CLOSE #1
+ 05FA   09AE       RETURN
+ 05FA   09AE    
+ 05FA   09AE    '--- make sure a mouse driver is present
+ 05FA   09AE    setupmouse:
+ 0656   09AE       reg.ax = 0: CALL INTERRUPT(&H33, reg, reg)
+ 0670   09B0       IF reg.ax = 0 THEN
+ 0670   09B0          SCREEN 0: WIDTH 80
+ 0670   09B0          PRINT "No mouse driver found - load MOUSE.COM and try aga
+                in."
+ 0670   09B0          END
+ 0670   09B0       END IF
+ 06A5   09B0       RETURN
+ 06A5   09B0    
+ 06A5   09B0    '--- slow first draw: decode CGA into SCREEN 12 at 1:1
+ 06A5   09B0    drawimage:
+ 06A6   09B0       FOR y = 0 TO 199
+ 06AC   09B0          FOR x = 0 TO 319
+ 06B2   09B0             PSET (x, y), pal(cgapix(x, y))
+ 06B2   09B0          NEXT
+ 06E7   09B6       NEXT
+ 06F3   09B6       RETURN
+ 06F3   09B6    
+ 06F3   09B6    '--- draw every hit-point marker
+ 06F3   09B6    drawhots:
+ 06F4   09B6       FOR i = 1 TO nhot
+ 0700   09B8          GOSUB drawmark
+ 0703   09B8       NEXT
+ 0710   09B8       RETURN
+ 0710   09B8    
+ 0710   09B8    '--- draw the 2x2 marker for hotspot i (selected object shows w
+                hite)
+ 0710   09B8    drawmark:
+ 0711   09B8       px = ox(i): py = oy(i)
+ 0711   09B8       IF oi(i) = curobj THEN mc = 15 ELSE mc = mcol(oi(i) MOD 10)
+ 0756   09BE       LINE (px, py)-(px + 1, py + 1), mc, BF
+ 0756   09BE       RETURN
+ 0756   09BE    
+ 0756   09BE    '--- repaint the bare picture over hotspot i's marker footprint
+ 0756   09BE    restoremark:
+ 0784   09BE       px = ox(i): py = oy(i)
+ 0784   09BE       FOR yy = py - 1 TO py + 2
+ 07A6   09C0          FOR xx = px - 1 TO px + 2
+ 07B6   09C2             IF xx >= 0 AND xx <= 319 AND yy >= 0 AND yy <= 199 THE
+                N PSET (xx, yy), pal(cgapix(xx, yy))
+ 0814   09C8          NEXT
+ 0821   09C8       NEXT
+ 0831   09C8       RETURN
+ 0831   09C8    
+ 0831   09C8    '--- box cursor on the snapped grid point, with save-under
+ 0831   09C8    drawcross:
+ 0832   09C8       IF cdrawn THEN PUT (oxg, oyg), cbuf, PSET
+ 085E   09C8       gx1 = cgx - 2: IF gx1 < 0 THEN gx1 = 0
+                                                                      PAGE   5
+                                                                      14 Jun 26
+                                                                      00:03:17
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0874   09CA       gy1 = cgy - 2: IF gy1 < 0 THEN gy1 = 0
+ 088A   09CC       gx2 = cgx + 2: IF gx2 > 639 THEN gx2 = 639
+ 08A1   09CE       gy2 = cgy + 2: IF gy2 > 479 THEN gy2 = 479
+ 08B8   09D0       GET (gx1, gy1)-(gx2, gy2), cbuf
+ 08B8   09D0       oxg = gx1: oyg = gy1: cdrawn = 1
+ 08B8   09D0       LINE (cgx - 2, cgy - 2)-(cgx + 2, cgy + 2), 15, B
+ 08B8   09D0       RETURN
+ 08B8   09D0    
+ 08B8   09D0    eraseCross:
+ 092D   09D0       IF cdrawn THEN PUT (oxg, oyg), cbuf, PSET
+ 0959   09D0       cdrawn = 0
+ 0959   09D0       RETURN
+ 0959   09D0    
+ 0959   09D0    '--- paint a hit point at the cursor for the current object
+ 0959   09D0    paintpt:
+ 0960   09D0       FOR i = 1 TO nhot
+ 096C   09D2          IF ox(i) = cgx AND oy(i) = cgy AND oi(i) = curobj THEN RE
+                TURN
+ 09A6   09D2       NEXT
+ 09B3   09D2       IF nhot >= MAXH THEN RETURN
+ 09BF   09D2       nhot = nhot + 1
+ 09BF   09D2       ox(nhot) = cgx: oy(nhot) = cgy: oi(nhot) = curobj
+ 09BF   09D2       dirty = 1
+ 09BF   09D2       GOSUB eraseCross
+ 09E7   09D2       i = nhot: GOSUB drawmark
+ 09F0   09D2       COLOR 12: LOCATE 14, 22: PRINT "*UNSAVED*";
+ 09F0   09D2       RETURN
+ 09F0   09D2    
+ 09F0   09D2    '--- erase the hit point under the cursor
+ 09F0   09D2    erasept:
+ 0A24   09D2       FOR i = nhot TO 1 STEP -1
+ 0A2A   09D2          IF ox(i) = cgx AND oy(i) = cgy THEN
+ 0A2A   09D2             GOSUB eraseCross
+ 0A56   09D2             GOSUB restoremark
+ 0A59   09D2             FOR j = i TO nhot - 1
+ 0A66   09D4                ox(j) = ox(j + 1): oy(j) = oy(j + 1): oi(j) = oi(j 
+                + 1)
+ 0A66   09D4             NEXT
+ 0A8C   09D6             nhot = nhot - 1
+ 0A8C   09D6             dirty = 1
+ 0A8C   09D6             GOSUB drawhots
+ 0A99   09D6             GOSUB drawpanel
+ 0A9C   09D6             GOSUB status
+ 0A9F   09D6             RETURN
+ 0A9F   09D6          END IF
+ 0AA0   09D6       NEXT
+ 0AAF   09D6       RETURN
+ 0AAF   09D6    
+ 0AAF   09D6    '--- keyboard handling
+ 0AAF   09D6    handlekey:
+ 0AB0   09D6       SELECT CASE k$
+ 0AB0   09D6          CASE " "
+ 0AB0   09D6             GOSUB dopeek
+ 0AD2   09DA          CASE "["
+                                                                      PAGE   6
+                                                                      14 Jun 26
+                                                                      00:03:17
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0AD5   09DA             curobj = curobj - 1
+ 0AD5   09DA             IF curobj < 1 THEN curobj = MAXO
+ 0AFB   09DA             GOSUB objchanged
+ 0AFE   09DA          CASE "]"
+ 0B01   09DA             curobj = curobj + 1
+ 0B01   09DA             IF curobj > MAXO THEN curobj = 1
+ 0B27   09DA             GOSUB objchanged
+ 0B2A   09DA          CASE "1" TO "9"
+ 0B2D   09DA             curobj = VAL(k$)
+ 0B2D   09DA             GOSUB objchanged
+ 0B6A   09DA          CASE "e", "E"
+ 0B91   09DA             GOSUB editinfo
+ 0B94   09DA          CASE "s", "S"
+ 0BBB   09DA             GOSUB savepac
+ 0BBE   09DA          CASE CHR$(27)
+ 0BC1   09DA             quit = 1
+ 0BC1   09DA       END SELECT
+ 0BE2   09DA       RETURN
+ 0BE2   09DA    
+ 0BE2   09DA    objchanged:
+ 0BE3   09DA       GOSUB eraseCross
+ 0BE6   09DA       GOSUB drawhots
+ 0BE9   09DA       GOSUB drawpanel
+ 0BEC   09DA       GOSUB status
+ 0BEF   09DA       RETURN
+ 0BEF   09DA    
+ 0BEF   09DA    '--- SPACE held: show the bare picture under the markers
+ 0BEF   09DA    dopeek:
+ 0BF0   09DA       pkt = TIMER + .35
+ 0BF0   09DA       IF peeking = 0 THEN
+ 0BF0   09DA          GOSUB eraseCross
+ 0C13   09DA          FOR i = 1 TO nhot
+ 0C20   09DC             GOSUB restoremark
+ 0C23   09DC          NEXT
+ 0C30   09DC          peeking = 1
+ 0C30   09DC       END IF
+ 0C36   09DC       RETURN
+ 0C36   09DC    
+ 0C36   09DC    unpeek:
+ 0C37   09DC       peeking = 0
+ 0C37   09DC       GOSUB eraseCross
+ 0C40   09DC       GOSUB drawhots
+ 0C43   09DC       RETURN
+ 0C43   09DC    
+ 0C43   09DC    '--- list of all 25 objects (right panel)
+ 0C43   09DC    drawpanel:
+ 0C44   09DC       LINE (323, 0)-(639, 479), 0, BF
+ 0C44   09DC       COLOR 7: LOCATE 1, 42: PRINT " # object    v tg  pts";
+ 0C44   09DC       FOR o = 1 TO MAXO
+ 0CA0   09DC          pcnt = 0
+ 0CA0   09DC          FOR i = 1 TO nhot
+ 0CB2   09E0             IF oi(i) = o THEN pcnt = pcnt + 1
+ 0CC7   09E2          NEXT
+ 0CD4   09E2          COLOR mcol(o MOD 10)
+                                                                      PAGE   7
+                                                                      14 Jun 26
+                                                                      00:03:17
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0CD4   09E2          s$ = " ": IF o = curobj THEN s$ = ">"
+ 0D18   09E6          LOCATE o + 1, 42
+ 0D18   09E6          PRINT s$; RIGHT$(" " + LTRIM$(STR$(o)), 2); " "; LEFT$(df
+                $(o) + SPACE$(9), 9); " "; LEFT$(ky$(o) + " ", 1); " "; LEFT$(t
+                g$(o) + SPACE$(3), 3); pcnt;
+ 0D18   09E6       NEXT
+ 0E15   09E6       RETURN
+ 0E15   09E6    
+ 0E15   09E6    '--- selected object detail + help (bottom-left, under the pict
+                ure)
+ 0E15   09E6    status:
+ 0E16   09E6       LINE (0, 204)-(320, 479), 0, BF
+ 0E16   09E6       COLOR 15: LOCATE 14, 1: PRINT basef$; ".pac";
+ 0E16   09E6       IF dirty THEN COLOR 12: LOCATE 14, 22: PRINT "*UNSAVED*";
+ 0EB5   09E6       COLOR mcol(curobj MOD 10)
+ 0EB5   09E6       LOCATE 15, 1: PRINT "object"; curobj; "  points";
+ 0EB5   09E6       pcnt = 0
+ 0EB5   09E6       FOR i = 1 TO nhot
+ 0F16   09E8          IF oi(i) = curobj THEN pcnt = pcnt + 1
+ 0F2B   09E8       NEXT
+ 0F38   09E8       PRINT pcnt;
+ 0F38   09E8       LOCATE 16, 1: PRINT "df="; LEFT$(df$(curobj), 33);
+ 0F38   09E8       LOCATE 17, 1: PRINT "ms="; LEFT$(ms$(curobj), 33);
+ 0F38   09E8       LOCATE 18, 1: PRINT "ky="; ky$(curobj); " tg="; tg$(curobj);
+ 0F38   09E8       LOCATE 19, 1: PRINT "bs="; bs(curobj); " cs="; cs(curobj); "
+                 st="; st(curobj);
+ 0F38   09E8       COLOR 7
+ 0F38   09E8       LOCATE 21, 1: PRINT "LMB paint   RMB erase";
+ 0F38   09E8       LOCATE 22, 1: PRINT "click list / [ ] / 1-9: object";
+ 0F38   09E8       LOCATE 23, 1: PRINT "E edit text   SPACE peek";
+ 0F38   09E8       LOCATE 24, 1: PRINT "S save   ESC quit";
+ 0F38   09E8       RETURN
+ 0F38   09E8    
+ 0F38   09E8    '--- edit the selected object's text fields
+ 0F38   09E8    editinfo:
+ 10DC   09E8       GOSUB eraseCross
+ 10DF   09E8       o = curobj
+ 10DF   09E8       LINE (0, 400)-(639, 479), 0, BF
+ 10DF   09E8       COLOR 15
+ 10DF   09E8       LOCATE 26, 1: PRINT "Edit object"; o; " -- press ENTER alone
+                 to keep the [current] value";
+ 10DF   09E8       LOCATE 28, 1: PRINT "df$ target room ["; df$(o); "]: ";: LIN
+                E INPUT n$: IF n$ <> "" THEN df$(o) = n$
+ 11C5   09EC       LOCATE 28, 1: PRINT SPACE$(79);
+ 11C5   09EC       LOCATE 28, 1: PRINT "ms$ message ["; ms$(o); "]: ";: LINE IN
+                PUT n$: IF n$ <> "" THEN ms$(o) = n$
+ 125F   09EC       LOCATE 28, 1: PRINT SPACE$(79);
+ 125F   09EC       LOCATE 28, 1: PRINT "ky$ verb a/l/g/u ["; ky$(o); "]: ";: LI
+                NE INPUT n$: IF n$ <> "" THEN ky$(o) = n$
+ 12F9   09EC       LOCATE 28, 1: PRINT SPACE$(79);
+ 12F9   09EC       LOCATE 28, 1: PRINT "tg$ dir/flag wn ws we ww f.. ["; tg$(o)
+                ; "]: ";: LINE INPUT n$: IF n$ <> "" THEN tg$(o) = n$
+ 1393   09EC       LOCATE 28, 1: PRINT SPACE$(79);
+ 1393   09EC       LOCATE 28, 1: PRINT "bs needs-item slot ["; bs(o); "]: ";: L
+                                                                      PAGE   8
+                                                                      14 Jun 26
+                                                                      00:03:17
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                INE INPUT n$: IF n$ <> "" THEN bs(o) = VAL(n$)
+ 1433   09EC       LOCATE 28, 1: PRINT SPACE$(79);
+ 1433   09EC       LOCATE 28, 1: PRINT "cs needs-state slot ["; cs(o); "]: ";: 
+                LINE INPUT n$: IF n$ <> "" THEN cs(o) = VAL(n$)
+ 14D3   09EC       LOCATE 28, 1: PRINT SPACE$(79);
+ 14D3   09EC       LOCATE 28, 1: PRINT "st sets-state slot ["; st(o); "]: ";: L
+                INE INPUT n$: IF n$ <> "" THEN st(o) = VAL(n$)
+ 1573   09EC       dirty = 1
+ 1573   09EC       GOSUB drawpanel
+ 157C   09EC       GOSUB status
+ 157F   09EC       RETURN
+ 157F   09EC    
+ 157F   09EC    '--- write the .pac back in the game's exact format
+ 157F   09EC    savepac:
+ 1580   09EC       OPEN basef$ + ".pac" FOR OUTPUT AS #2
+ 1580   09EC       WRITE #2, co, pa1, pa2, pa3
+ 1580   09EC       FOR i = 1 TO nhot
+ 15DE   09EE          WRITE #2, ox(i), oy(i), oi(i)
+ 15DE   09EE       NEXT
+ 161A   09EE       WRITE #2, 0, 0, 0
+ 161A   09EE       FOR i = 1 TO MAXO
+ 1646   09EE          WRITE #2, df$(i), ms$(i), ky$(i), bs(i), cs(i), st(i), tg
+                $(i)
+ 1646   09EE       NEXT
+ 16C2   09EE       CLOSE #2
+ 16C2   09EE       dirty = 0
+ 16C2   09EE       GOSUB status
+ 16D8   09EE       COLOR 10: LOCATE 25, 1: PRINT "Saved "; basef$; ".pac";
+ 16D8   09EE       RETURN
+ 16D8   09EE    
+ 16D8   09EE    '--- decode one CGA SCREEN 1 pixel (x 0-319, y 0-199) -> colour
+                 index 0-3
+ 16D8   09EE    FUNCTION cgapix (x, y)
+ 1726   09EE       bank = y AND 1
+ 1726   09EE       row = y \ 2
+ 1726   09EE       ofs = 7 + bank * 8192 + row * 80 + (x \ 4)
+ 1726   09EE       b = ASC(MID$(pic$, ofs + 1, 1))
+ 1726   09EE       SELECT CASE x AND 3
+ 1726   09EE          CASE 0: cgapix = (b \ 64) AND 3
+ 1726   09EE          CASE 1: cgapix = (b \ 16) AND 3
+ 17BD   09EE          CASE 2: cgapix = (b \ 4) AND 3
+ 17D8   09EE          CASE ELSE: cgapix = b AND 3
+ 17F3   09EE       END SELECT
+ 17FC   09EE    END FUNCTION
+ 1807   09EE    
+ 180C   09EE    
+
+43933 Bytes Available
+37461 Bytes Free
+
+    0 Warning Error(s)
+    0 Severe  Error(s)

@@ -62,7 +62,7 @@ DIM SHARED sa, sb, sc
 DIM SHARED sfps, fpsc, fpst, fpsv, fpsd
 DIM SHARED ifc, it0, itt
 DIM SHARED jsen
-DIM SHARED msen, mlb, mrb, mshown, snr, exsen, cshp, hovr
+DIM SHARED msen, mlb, mrb, mshown, snr, exsen, cshp, hovr, mxyon
 DIM SHARED mvint AS INTEGER
 DIM SHARED mreg AS RegType, mout AS RegType
 DIM SHARED mcur AS INTEGER, mhsx AS INTEGER, mhsy AS INTEGER, mxor, mraw
@@ -93,9 +93,9 @@ DIM SHARED bk(100)
 DIM SHARED bk2(100)
 DIM SHARED gr(2000)
 DIM SHARED ob(100)
-DIM SHARED oy(500)
-DIM SHARED ox(150)
-DIM SHARED oi(500)
+DIM SHARED oy(257) AS INTEGER
+DIM SHARED ox(257) AS INTEGER
+DIM SHARED oi(257) AS INTEGER
 DIM SHARED df$(100)
 DIM SHARED ms$(150)
 DIM SHARED ky$(150)
@@ -712,10 +712,10 @@ action:
 	LOCATE 1, 1
 	PRINT "                                                                               "
 	cl = cl + 8
-	FOR i = 1 TO 110
+	FOR i = 1 TO 257
 		IF b = ox(i) AND a = oy(i) THEN GOTO 6170
 		6130 IF oy(i) <> 0# THEN GOTO 6150
-		i = 110
+		i = 257
 	6150 NEXT
 	RETURN
 
@@ -867,7 +867,12 @@ mainloop:
 	7630 IF doc <> 1 THEN GOTO 7660
 	GOSUB fight
 	GOTO mainloop
-	7660 IF a$ = "a" OR a$ = "u" OR a$ = "g" OR a$ = "l" THEN GOSUB action: GOSUB events: GOSUB trigger
+	7660 IF a$ = "a" OR a$ = "u" OR a$ = "g" OR a$ = "l" THEN
+		IF msen = 1 THEN GOSUB msnap
+		GOSUB action
+		GOSUB events
+		GOSUB trigger
+	END IF
 	GOTO mainloop
 	SYSTEM
 
@@ -886,6 +891,27 @@ fpstick:
 		fpst = TIMER
 		fpsc = 0
 	END IF
+	RETURN
+
+'----- debug readout: raw mouse xy, snapped hit point, and the object+verb a click here resolves to
+mxytick:
+	dbgoi = 0
+	dbgmin = snr * snr + 1
+	FOR dbgsi = 1 TO 257
+		IF oy(dbgsi) = 0# THEN EXIT FOR
+		dbgx = mx - ox(dbgsi)
+		dbgy = my - oy(dbgsi)
+		IF ABS(dbgx) <= snr AND ABS(dbgy) <= snr THEN
+			dbgdd = dbgx * dbgx + dbgy * dbgy
+			IF dbgdd < dbgmin THEN dbgmin = dbgdd: dbgoi = CINT(oi(dbgsi))
+		END IF
+	NEXT
+	dbgv$ = "-"
+	IF dbgoi >= 1 AND dbgoi <= 25 THEN dbgv$ = ky$(dbgoi)
+	IF dbgv$ = "" THEN dbgv$ = "-"
+	LOCATE 24, 1
+	PRINT USING "mxy ### ### hit ### ### obj ## v="; mx; my; b; a; dbgoi;
+	PRINT dbgv$; "  ";
 	RETURN
 '----- load palette/color config from .pac
 loadpac:
@@ -906,9 +932,11 @@ loadroom:
 	CLOSE
 	OPEN q$ + ".pac" FOR INPUT AS #1
 	INPUT #1, co, pa1, pa2, pa3
-	FOR i = 1 TO 100
+	i = 0
+	DO
+		i = i + 1
 		INPUT #1, ox(i), oy(i), oi(i)
-	NEXT
+	LOOP UNTIL oy(i) = 0 OR i = 257
 	FOR i = 1 TO 25
 		INPUT #1, df$(i), ms$(i), ky$(i)
 		INPUT #1, bs(i), cs(i), st(i), tg$(i)
@@ -1473,6 +1501,7 @@ mousepoll:
 	IF b > 302 THEN b = 302
 	IF a < 10 THEN a = 10
 	IF a > 190 THEN a = 190
+	IF mxyon = 1 THEN GOSUB mxytick
 	GOSUB hovexit
 	IF cdrawn = 0 OR mx <> cox OR my <> coy THEN GOSUB erasecur: GOSUB drawcur
 	IF (mout.bx AND 1) <> 0 AND mlb = 0 THEN a$ = "a": GOSUB msnap
@@ -1501,9 +1530,14 @@ erasecur:
 '----- breaks at first oy=0 exactly like action, so it never snaps to an entry action can't reach
 msnap:
 	IF snr <= 0 THEN RETURN
+	' tie-break: a hotspot exactly under the cursor's own cell wins over an expanded (snapped) neighbour
+	FOR sni = 1 TO 257
+		IF oy(sni) = 0# THEN EXIT FOR
+		IF ox(sni) = b AND oy(sni) = a THEN RETURN
+	NEXT
 	snd = snr * snr + 1
 	snx = -1
-	FOR sni = 1 TO 100
+	FOR sni = 1 TO 257
 		IF oy(sni) = 0# THEN EXIT FOR
 		sdx = mx - ox(sni)
 		sdy = my - oy(sni)
@@ -1526,7 +1560,7 @@ hovexit:
 	newshp = 0
 	hvdir$ = ""
 	hvb = hovr * hovr + 1
-	FOR hvi = 1 TO 100
+	FOR hvi = 1 TO 257
 		IF oy(hvi) = 0# THEN EXIT FOR
 		hvo = CINT(oi(hvi))
 		IF LEFT$(tg$(hvo), 1) = "w" THEN
@@ -2278,6 +2312,8 @@ SUB LoadConfig
 		PRINT #1, "mousesnap=6"
 		PRINT #1, "; exitcursor=1 changes the pointer to a direction arrow near room exits"
 		PRINT #1, "exitcursor=1"
+		PRINT #1, "; mousexy=1 shows live mouse x,y + snapped hit point bottom row (debug; needs mouse=1)"
+		PRINT #1, "mousexy=0"
 	END IF
 	CLOSE
 
@@ -2301,6 +2337,7 @@ SUB LoadConfig
 				IF k$ = "mousecursor" THEN mcur = VAL(v$)
 				IF k$ = "mousesnap" THEN snr = VAL(v$)
 				IF k$ = "exitcursor" THEN exsen = tv
+				IF k$ = "mousexy" THEN mxyon = tv
 			END IF
 		END IF
 	LOOP
