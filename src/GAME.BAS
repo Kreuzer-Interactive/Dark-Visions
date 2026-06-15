@@ -63,6 +63,7 @@ DIM SHARED sfps, fpsc, fpst, fpsv, fpsd
 DIM SHARED ifc, it0, itt
 DIM SHARED jsen
 DIM SHARED msen, mlb, mrb, mshown, snr, exsen, cshp, hovr, mxyon
+DIM SHARED nf$(25), nfon, nfseed, lcount, lastlx, lastly, lh1, lh2, lh3
 DIM SHARED mvint AS INTEGER
 DIM SHARED mreg AS RegType, mout AS RegType
 DIM SHARED mcur AS INTEGER, mhsx AS INTEGER, mhsy AS INTEGER, mxor, mraw
@@ -136,6 +137,7 @@ ON STRIG(4) GOSUB vget
 ON STRIG(6) GOSUB vuse
 GOSUB strigon
 GOSUB loadnames
+GOSUB loadmsgs
 GOSUB mouseinit
 ON ERROR GOTO errhand
 
@@ -872,6 +874,7 @@ mainloop:
 		GOSUB action
 		GOSUB events
 		GOSUB trigger
+		IF a$ = "l" AND nfon = 1 THEN GOSUB lookmiss
 	END IF
 	GOTO mainloop
 	SYSTEM
@@ -912,6 +915,62 @@ mxytick:
 	LOCATE 24, 1
 	PRINT USING "mxy ### ### hit ### ### obj ## v="; mx; my; b; a; dbgoi;
 	PRINT dbgv$; "  ";
+	RETURN
+
+'----- 25 generic "nothing to see" lines (used by lookmiss)
+loadmsgs:
+	nf$(1) = "There is nothing to see here."
+	nf$(2) = "Nothing catches your eye."
+	nf$(3) = "You see nothing unusual."
+	nf$(4) = "Nothing worth a closer look."
+	nf$(5) = "You find nothing of interest."
+	nf$(6) = "Nothing remarkable here."
+	nf$(7) = "You look closer, but find nothing."
+	nf$(8) = "There's nothing special about it."
+	nf$(9) = "You see only the ordinary."
+	nf$(10) = "Nothing stands out to you."
+	nf$(11) = "There's nothing here to examine."
+	nf$(12) = "It holds no secrets for you."
+	nf$(13) = "Nothing draws your attention."
+	nf$(14) = "You don't see anything useful."
+	nf$(15) = "Nothing of note here."
+	nf$(16) = "Whatever you sought, it isn't here."
+	nf$(17) = "Nothing worth mentioning."
+	nf$(18) = "There's nothing here for you."
+	nf$(19) = "Just as it looks - nothing more."
+	nf$(20) = "Your eyes find nothing of value."
+	nf$(21) = "Nothing but dust and shadow."
+	nf$(22) = "There's nothing here to help you."
+	nf$(23) = "You peer closer. Still nothing."
+	nf$(24) = "Nothing reveals itself to you."
+	nf$(25) = "The shadows hide nothing here."
+	RETURN
+
+'----- look at a truly-empty spot: after 3 looks at the same cell, show a non-repeating random line
+lookmiss:
+	FOR lmi = 1 TO 257
+		IF oy(lmi) = 0# THEN EXIT FOR
+		IF ox(lmi) = b AND oy(lmi) = a THEN lcount = 0: RETURN
+	NEXT
+	IF b = lastlx AND a = lastly THEN
+		lcount = lcount + 1
+	ELSE
+		lcount = 1
+		lastlx = b
+		lastly = a
+	END IF
+	IF lcount < 3 THEN RETURN
+	IF nfseed = 0 THEN RANDOMIZE TIMER: nfseed = 1
+	DO
+		nfp = INT(RND * 25) + 1
+	LOOP WHILE nfp = lh1 OR nfp = lh2 OR nfp = lh3
+	lh3 = lh2
+	lh2 = lh1
+	lh1 = nfp
+	LOCATE 1, 1
+	PRINT "                                        "
+	LOCATE 1, 1
+	PRINT nf$(nfp)
 	RETURN
 '----- load palette/color config from .pac
 loadpac:
@@ -2314,11 +2373,14 @@ SUB LoadConfig
 		PRINT #1, "exitcursor=1"
 		PRINT #1, "; mousexy=1 shows live mouse x,y + snapped hit point bottom row (debug; needs mouse=1)"
 		PRINT #1, "mousexy=0"
+		PRINT #1, "; lookmiss=1 shows a random 'nothing to see' line after looking 3x at an empty spot"
+		PRINT #1, "lookmiss=1"
 	END IF
 	CLOSE
 
 	snr = 6
 	exsen = 1
+	nfon = 1
 	OPEN "dark.ini" FOR INPUT AS #1
 	DO WHILE NOT EOF(1)
 		LINE INPUT #1, ln$
@@ -2338,6 +2400,7 @@ SUB LoadConfig
 				IF k$ = "mousesnap" THEN snr = VAL(v$)
 				IF k$ = "exitcursor" THEN exsen = tv
 				IF k$ = "mousexy" THEN mxyon = tv
+				IF k$ = "lookmiss" THEN nfon = tv
 			END IF
 		END IF
 	LOOP
