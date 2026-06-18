@@ -62,9 +62,58 @@ while ($listener.IsListening) {
       if ($null -eq $json) { $json = '[]' }
       Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes($json)) 'application/json'
     }
+    elseif ($path -eq '/api/pics') {
+      $names = @(Get-ChildItem (Join-Path $data '*.PIC') -ErrorAction SilentlyContinue | ForEach-Object { $_.BaseName } | Sort-Object)
+      $json = ConvertTo-Json @($names) -Compress
+      if ($null -eq $json) { $json = '[]' }
+      Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes($json)) 'application/json'
+    }
+    elseif ($path -eq '/api/pcts') {
+      $names = @(Get-ChildItem (Join-Path $data '*.PCT') -ErrorAction SilentlyContinue | ForEach-Object { $_.BaseName } | Sort-Object)
+      $json = ConvertTo-Json @($names) -Compress
+      if ($null -eq $json) { $json = '[]' }
+      Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes($json)) 'application/json'
+    }
+    elseif ($path -eq '/api/pct') {
+      $f = Join-Path $data ((Safe-Name $req.QueryString['name']) + '.PCT')
+      if (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
+      else { $res.StatusCode = 404; Write-Host ("  404 .PCT not found: $f") -ForegroundColor Yellow }
+    }
+    elseif ($path -eq '/api/msks') {
+      $names = @(Get-ChildItem (Join-Path $data '*.MSK') -ErrorAction SilentlyContinue | ForEach-Object { $_.BaseName } | Sort-Object)
+      $json = ConvertTo-Json @($names) -Compress
+      if ($null -eq $json) { $json = '[]' }
+      Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes($json)) 'application/json'
+    }
+    elseif ($path -eq '/api/msk') {
+      $name = Safe-Name $req.QueryString['name']
+      $f = Join-Path $data ($name + '.MSK')
+      if ($req.HttpMethod -eq 'POST') {
+        $reader = New-Object IO.StreamReader($req.InputStream, $req.ContentEncoding)
+        $body = $reader.ReadToEnd(); $reader.Close()
+        $body = ($body -replace "`r`n", "`n") -replace "`n", "`r`n"
+        [IO.File]::WriteAllText($f, $body)
+        Write-Host ("  saved {0}.MSK  ({1} bytes)" -f $name, $body.Length) -ForegroundColor Green
+        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+      }
+      elseif ($req.HttpMethod -eq 'DELETE') {
+        if (Test-Path $f) { Remove-Item $f -Force; Write-Host ("  deleted {0}.MSK" -f $name) -ForegroundColor Yellow }
+        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+      }
+      elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
+      else { $res.StatusCode = 404; Write-Host ("  404 .MSK not found: $f") -ForegroundColor Yellow }
+    }
     elseif ($path -eq '/api/pic') {
-      $f = Join-Path $data ((Safe-Name $req.QueryString['name']) + '.PIC')
-      if (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'application/octet-stream' }
+      $name = Safe-Name $req.QueryString['name']
+      $f = Join-Path $data ($name + '.PIC')
+      if ($req.HttpMethod -eq 'POST') {
+        $ms = New-Object IO.MemoryStream
+        $req.InputStream.CopyTo($ms)
+        [IO.File]::WriteAllBytes($f, $ms.ToArray())
+        Write-Host ("  saved {0}.PIC  ({1} bytes)" -f $name, $ms.Length) -ForegroundColor Green
+        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+      }
+      elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'application/octet-stream' }
       else { $res.StatusCode = 404; Write-Host ("  404 .PIC not found: $f") -ForegroundColor Yellow }
     }
     elseif ($path -eq '/api/pac') {

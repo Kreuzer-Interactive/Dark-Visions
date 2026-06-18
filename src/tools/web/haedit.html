@@ -128,6 +128,47 @@
   table.objtbl tbody tr:hover td{background:var(--panel2)}
   table.objtbl input,table.objtbl select{width:100%;background:var(--bg);color:var(--txt);border:1px solid transparent;border-radius:4px;padding:4px 6px;font:inherit;min-width:0}
   table.objtbl input:focus,table.objtbl select:focus{border-color:var(--accent);background:var(--panel2);outline:none}
+  table.invtbl td{vertical-align:top}
+  .xr{font-size:11px;line-height:1.35;padding:2px 0;color:var(--txt)}
+  .xr + .xr{border-top:1px dashed var(--line);margin-top:2px;padding-top:3px}
+  .xr b{color:var(--accent);font-weight:600}
+  .xr i{color:var(--muted);font-size:10px}
+  .xr-none{color:var(--muted)}
+  #tab-bg{flex:1;min-height:0;display:flex;flex-direction:column}
+  #tab-bg[hidden]{display:none}
+  #bgWrap{flex:1;overflow:auto;padding:12px 14px}
+  .bggroup{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:4px 2px 8px}
+  .bggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+  .bgthumb{cursor:pointer;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#000}
+  .bgthumb:hover{border-color:var(--accent)}
+  .bgthumb canvas{width:100%;aspect-ratio:320/200;display:block;image-rendering:pixelated}
+  .bgthumb .tlabel{font-size:11px;padding:4px 6px;color:var(--txt);background:var(--panel);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bgcard{width:auto;max-width:96vw}
+  .bgview{display:flex;justify-content:center;padding:10px;background:#000}
+  .bgview canvas{image-rendering:pixelated;width:min(880px,calc(92vw - 120px),90vh);height:auto;display:block}
+  #bgModal{gap:16px}
+  .navarrow{flex:0 0 auto;align-self:center;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.28);font-size:30px;line-height:1;width:46px;height:72px;border-radius:9px;cursor:pointer;opacity:.75;transition:opacity .1s,background .1s}
+  .navarrow:hover{opacity:1;background:rgba(255,255,255,.22)}
+  .bgpal{display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;justify-content:center;font-size:11px;color:var(--muted)}
+  .bgpal label{display:flex;flex-direction:column;gap:3px;align-items:center}
+  .bgpal select{background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:4px;padding:3px 4px;font:inherit}
+  #tab-spr{flex:1;min-height:0;display:flex;flex-direction:column}
+  #tab-spr[hidden]{display:none}
+  #sprWrap{flex:1;overflow:auto;padding:12px 14px}
+  .sprgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px}
+  .sprthumb{cursor:pointer;border:1px solid var(--line);border-radius:6px;background:#161a22;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:8px 6px;min-height:120px}
+  .sprthumb:hover{border-color:var(--accent)}
+  .sprthumb canvas{image-rendering:pixelated;display:block;margin:auto 0}
+  .sprthumb .tlabel{font-size:10px;margin-top:7px;color:var(--txt);text-align:center;line-height:1.3}
+  .bgpal label.palpick{flex-basis:100%;flex-direction:row;align-items:center;justify-content:center;gap:8px;margin-bottom:2px}
+  .bgpal label.palpick select{min-width:240px}
+  .modalHead .mhbtns{display:flex;gap:8px;align-items:center}
+  #bgExport{background:var(--accent);color:#06122b;border:none;border-radius:5px;padding:3px 10px;font-weight:600;cursor:pointer}
+  #bgImport{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:3px 10px;font-weight:600;cursor:pointer}
+  #bgSaveImport{background:var(--ok);color:#06200f;border:none;border-radius:5px;padding:3px 10px;font-weight:600;cursor:pointer}
+  #bgExport:hover,#bgImport:hover,#bgSaveImport:hover{filter:brightness(1.1)}
+  .pendbadge{font-size:11px;color:var(--danger);font-weight:600;align-self:center;white-space:nowrap}
+  .bgview.spr{background:#161a22;background-image:linear-gradient(45deg,#1f2430 25%,transparent 25%,transparent 75%,#1f2430 75%),linear-gradient(45deg,#1f2430 25%,transparent 25%,transparent 75%,#1f2430 75%);background-size:16px 16px;background-position:0 0,8px 8px}
   .otnum{white-space:nowrap;color:var(--muted);font-variant-numeric:tabular-nums}
   .otnum .csw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:6px;border:1px solid rgba(255,255,255,.25)}
   .otpts{text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -140,7 +181,7 @@
 <body>
 <div id="app">
   <header>
-    <h1>Dark Visions · Room Tools <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:0">v29</span></h1>
+    <h1>Dark Visions · Room Tools <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:0">v40</span></h1>
     <select id="room" title="Room"></select>
     <button id="reload" title="Reload from disk (discard changes)">Reload</button>
     <span class="spacer"></span>
@@ -160,6 +201,8 @@
   <nav class="tabs">
     <button data-tab="hits" class="active">Hit Areas</button>
     <button data-tab="inv">Inventory</button>
+    <button data-tab="bg">Backgrounds</button>
+    <button data-tab="spr">Sprites</button>
   </nav>
   <main id="tab-hits">
     <div id="stage">
@@ -172,6 +215,8 @@
       </div>
     </div>
     <aside>
+      <div class="secTitle">This scene</div>
+      <label id="noplrow" title="ON = the standing player (Joe) is NOT drawn in this scene — for close-ups like safe/window/table/rack. Saved as a 5th value (nopl) in the .pac header." style="display:flex;align-items:center;gap:6px;margin:0 0 10px;padding:2px 12px 0;cursor:pointer;font-size:12px"><input id="noplchk" type="checkbox" style="margin:0"> Hide standing player <span class="hint">· close-up</span></label>
       <div class="secTitle ohdr"><span>Objects (1–25)</span><span id="objTotal">0/256</span></div>
       <div id="verbFilter" class="vfilter"></div>
       <div id="objlist"></div>
@@ -227,13 +272,36 @@
       <button id="invSave" class="primary">Save inventory</button>
     </div>
     <div id="objWrap">
-      <table class="objtbl">
-        <colgroup><col style="width:52px"><col style="width:170px"><col></colgroup>
-        <thead><tr><th>#</th><th>short name</th><th>description</th></tr></thead>
+      <table class="objtbl invtbl">
+        <colgroup><col style="width:44px"><col style="width:150px"><col style="width:320px"><col><col></colgroup>
+        <thead><tr><th>#</th><th>short name</th><th>description</th><th>found in &amp; pickup msg</th><th>used in &amp; use msg</th></tr></thead>
         <tbody id="invTbody"></tbody>
       </table>
     </div>
   </section>
+  <section id="tab-bg" hidden>
+    <div class="invbar">
+      <span>Room &amp; screen backgrounds — every <code>.PIC</code>. Rooms use their <code>.PAC</code> palette; cutscene/intro screens have no stored palette (the game sets it in code), so colours are approximate — click one to enlarge and adjust the 4 colours.</span>
+    </div>
+    <div id="bgWrap"></div>
+  </section>
+  <section id="tab-spr" hidden>
+    <div class="invbar">
+      <span>Foreground sprites — the player (Joe walk/face frames), Wilbur, doors, golf, decoded from the <code>.PCT</code> GET/PUT files. Value&nbsp;0 is transparent; click a sprite to enlarge and adjust colours 1–3.</span>
+    </div>
+    <div id="sprWrap"></div>
+  </section>
+  <div id="bgModal" class="modal" hidden>
+    <button id="bgPrev" class="navarrow" type="button" hidden title="Previous (←)">‹</button>
+    <div class="modalCard bgcard">
+      <div class="modalHead"><span id="bgTitle">background</span><span class="mhbtns"><button id="mskToggle" type="button" hidden title="Toggle sprite / mask view">View mask</button><span id="mskPend" class="pendbadge" hidden>● unsaved mask</span><button id="mskSave" type="button" hidden>💾 Save mask</button><button id="mskImport" type="button" hidden>⬆ Import mask</button><button id="mskExport" type="button" hidden>⬇ Export mask</button><button id="mskDelete" type="button" hidden title="Delete this .MSK file from disk">🗑 Delete mask</button><span id="bgPend" class="pendbadge" hidden>● unsaved import</span><button id="bgSaveImport" type="button" hidden>💾 Save</button><button id="bgImport" type="button" hidden>⬆ Import PNG</button><button id="bgExport" type="button" hidden>⬇ Export PNG</button><button id="bgModalClose" type="button" title="Close (Esc)">✕</button></span></div>
+      <div class="bgview"><canvas id="bgCanvas" width="320" height="200"></canvas></div>
+      <div id="bgPalUI" class="bgpal"></div>
+      <input type="file" id="bgImportFile" accept="image/png" hidden>
+      <input type="file" id="mskImportFile" accept="image/png" hidden>
+    </div>
+    <button id="bgNext" class="navarrow" type="button" hidden title="Next (→)">›</button>
+  </div>
   <div id="dfModal" class="modal" hidden>
     <div class="modalCard">
       <div class="modalHead"><span>Pick target room (df)</span><button id="dfModalClose" type="button" title="Close (Esc)">✕</button></div>
@@ -268,17 +336,20 @@ function tokenize(t){
   return out;
 }
 function parsePac(t){
-  const k=tokenize(t); let i=0;
+  const nl=t.indexOf('\n');                                  // header is line 1: co,pa1,pa2,pa3[,nopl]
+  const hv=(nl<0?t:t.slice(0,nl)).replace(/\r/g,'').split(',').map(x=>parseInt(x,10)||0);
+  const st={co:hv[0]||0,pa1:hv[1]||0,pa2:hv[2]||0,pa3:hv[3]||0,nopl:(hv[4]===1?1:0),hotspots:[],objects:[]};
+  const k=tokenize(nl<0?'':t.slice(nl+1)); let i=0;          // tokenize the REST (hotspots + objects)
   const num=()=>{ const v=parseInt(k[i++],10); return isNaN(v)?0:v; };
   const str=()=> (k[i++] ?? '');
-  const st={co:num(),pa1:num(),pa2:num(),pa3:num(),hotspots:[],objects:[]};
   for(let h=0;h<257;h++){ const x=num(),y=num(),oi=num(); if(y===0) break; st.hotspots.push({x,y,oi}); }
   for(let o=0;o<25;o++) st.objects.push({df:str(),ms:str(),ky:str(),bs:num(),cs:num(),st:num(),tg:str()});
   return st;
 }
 function genPac(s){
   const q=v=>'"'+String(v)+'"';
-  let out=[s.co,s.pa1,s.pa2,s.pa3].join(',')+'\r\n';
+  const hdr=[s.co,s.pa1,s.pa2,s.pa3]; if(s.nopl===1) hdr.push(1);   // 5th value = "don't render player" (close-ups)
+  let out=hdr.join(',')+'\r\n';
   for(const p of s.hotspots){ out+=p.x+','+p.y+','+p.oi+'\r\n'; }
   out+='0,0,0\r\n';
   for(let o=0;o<25;o++){ const b=s.objects[o];
@@ -606,10 +677,13 @@ async function loadRoom(name){
   }
   curObj=1; undo.length=0; peeking=false; setDirty(false); hidden.clear();
   renderArt(); buildList(); fillForm(); resize();
+  document.getElementById('noplchk').checked=(S.nopl===1);
 }
+document.getElementById('noplchk').onchange=function(){ if(S){ S.nopl=this.checked?1:0; setDirty(true); } };
 async function save(){
   if(!S) return;
   const txt=genPac(S);
+  itemXref=null; delete roomObjCache[room];
   if(mode==='server'){
     await fetch('api/pac?name='+encodeURIComponent(room),{method:'POST',headers:{'Content-Type':'text/plain'},body:txt});
     setDirty(false); flash('Saved '+room+'.PAC to disk');
@@ -676,13 +750,15 @@ window.addEventListener('keydown',e=>{ if(e.key==='Escape' && !dfModal.hidden) c
 document.getElementById('picker').addEventListener('change',async e=>{
   const map={};
   for(const f of e.target.files){
-    const m=f.name.match(/^(.*)\.(PIC|PAC)$/i); if(!m) continue;
-    const base=m[1]; map[base]=map[base]||{};
-    if(m[2].toUpperCase()==='PIC') map[base].pic=new Uint8Array(await f.arrayBuffer());
+    const m=f.name.match(/^(.*)\.(PIC|PAC|PCT|MSK)$/i); if(!m) continue;
+    const base=m[1], ext=m[2].toUpperCase(); map[base]=map[base]||{};
+    if(ext==='PIC') map[base].pic=new Uint8Array(await f.arrayBuffer());
+    else if(ext==='PCT') map[base].pct=await f.text();
+    else if(ext==='MSK') map[base].msk=await f.text();
     else map[base].pac=await f.text();
   }
   fileBlobs={}; const list=[];
-  for(const b in map){ if(map[b].pic&&map[b].pac){ fileBlobs[b]=map[b]; list.push(b); } else if(map[b].pac){ fileBlobs[b]={pac:map[b].pac}; } }
+  for(const b in map){ const e=map[b]; fileBlobs[b]=e; if(e.pic&&e.pac) list.push(b); }
   list.sort();
   if(!list.length){ alert('No matching .PIC + .PAC pairs found in that folder.'); return; }
   document.getElementById('drop').hidden=true; cv.style.display='';
@@ -716,14 +792,49 @@ function buildInvDatalist(){
   dl.innerHTML=inv.filter(it=>it.num>0).sort((a,b)=>a.num-b.num).map(it=>`<option value="${it.num} — ${ea(it.short)}">`).join('');
 }
 function fmtRef(n){ n=n|0; if(!n) return ''; const it=invByNum[n]; return it&&it.short ? n+' — '+it.short : n+' — flag'; }
+// ---- item cross-reference: scan every room for where each item is picked up (st=item#) and used (verb u, bs=item#) ----
+let itemXref=null, xrefBuilding=false;
+const roomObjCache={};
+async function getRoomObjects(name){
+  if(name===room && S) return S.objects;            // current room: use live (maybe-unsaved) edits
+  if(roomObjCache[name]) return roomObjCache[name];
+  let pt=null;
+  if(mode==='server'){ try{ pt=await (await fetch('api/pac?name='+encodeURIComponent(name),{cache:'no-store'})).text(); }catch(_){ return null; } }
+  else if(fileBlobs[name]) pt=fileBlobs[name].pac;
+  if(pt==null) return null;
+  return (roomObjCache[name]=parsePac(pt).objects);
+}
+async function ensureXref(){
+  if(itemXref || xrefBuilding) return;
+  xrefBuilding=true; const xr={};
+  for(const name of rooms){
+    const objs=await getRoomObjects(name); if(!objs) continue;
+    objs.forEach(o=>{
+      if(o.st>0){ (xr[o.st]=xr[o.st]||{found:[],used:[]}).found.push({room:name, ky:o.ky, msg:o.ms}); }
+      if(o.ky==='u' && o.bs>0){ (xr[o.bs]=xr[o.bs]||{found:[],used:[]}).used.push({room:name, msg:o.ms}); }
+    });
+  }
+  itemXref=xr; xrefBuilding=false;
+}
+function cleanMsg(s){ return String(s||'').replace(/\s+/g,' ').trim(); }
+function xrefCell(list){
+  if(!list||!list.length) return '<span class="xr-none">—</span>';
+  const vn={a:'act',l:'look',u:'use',g:'get'};
+  return list.map(e=>{
+    const v=e.ky&&e.ky!=='g'?' <i>via '+(vn[e.ky]||ea(e.ky))+'</i>':'', m=cleanMsg(e.msg);
+    return '<div class="xr"><b>'+ea(e.room)+'</b>'+v+' '+(m?ea(m):'<span class="xr-none">(no message)</span>')+'</div>';
+  }).join('');
+}
 function buildInvTable(){
   const tb=document.getElementById('invTbody'); if(!tb) return;
   tb.innerHTML='';
   inv.forEach((it,idx)=>{
-    const tr=document.createElement('tr'), ds=splitMsg(it.desc);
+    const tr=document.createElement('tr'), ds=splitMsg(it.desc), xr=itemXref&&itemXref[it.num];
     tr.innerHTML=`<td class="otpts">${it.num}</td>`
       +`<td><input data-i="${idx}" data-f="short" value="${ea(it.short)}"></td>`
-      +`<td><div class="mslines"><input data-i="${idx}" data-f="d1" maxlength="40" value="${ea(ds[0])}"><input data-i="${idx}" data-f="d2" maxlength="40" value="${ea(ds[1])}"></div></td>`;
+      +`<td><div class="mslines"><input data-i="${idx}" data-f="d1" maxlength="40" value="${ea(ds[0])}"><input data-i="${idx}" data-f="d2" maxlength="40" value="${ea(ds[1])}"></div></td>`
+      +`<td>${itemXref?xrefCell(xr&&xr.found):'<span class="xr-none">scanning…</span>'}</td>`
+      +`<td>${itemXref?xrefCell(xr&&xr.used):'<span class="xr-none">scanning…</span>'}</td>`;
     tb.appendChild(tr);
   });
   tb.querySelectorAll('input').forEach(el=>{
@@ -743,14 +854,449 @@ async function saveInv(){
   else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'})); a.download='OBJECT.PAC'; a.click(); setInvDirty(false); }
 }
 document.getElementById('invSave').onclick=saveInv;
+// ---- backgrounds gallery: view every .PIC (rooms + cutscene/intro screens) ----
+// cutscene .PICs have no .pac; the game sets these palettes in code (some animate). Best-guess defaults; adjustable in the viewer.
+const CUTSCENE_PAL={ title:[0,11,9,1], book:[0,7,2,15], map1:[0,6,4,8], burn:[0,14,12,4], end:[0,8,4,14], end1:[0,8,4,14], end2:[0,8,2,6], carr:[0,2,11,6], hill:[0,2,11,3], enter:[0,8,1,6], talk:[0,12,6,8] };
+const DEFAULT_BG_PAL=[0,8,7,15];
+const CGA_NAMES=['black','blue','green','cyan','red','magenta','brown','lt gray','dk gray','lt blue','lt green','lt cyan','lt red','lt magenta','yellow','white'];
+const picBytesCache={};
+let allPics=[], bgNavOrder=[];
+async function getAllPics(){
+  if(mode==='server'){ try{ const r=await fetch('api/pics',{cache:'no-store'}); if(r.ok) return await r.json(); }catch(_){} return []; }
+  return Object.keys(fileBlobs).filter(n=>fileBlobs[n]&&fileBlobs[n].pic).sort();
+}
+async function getPicBytes(name){
+  if(thumbCache[name]&&thumbCache[name].pic) return thumbCache[name].pic;
+  if(picBytesCache[name]) return picBytesCache[name];
+  let pb=null;
+  if(mode==='server'){ try{ pb=new Uint8Array(await (await fetch('api/pic?name='+encodeURIComponent(name),{cache:'no-store'})).arrayBuffer()); }catch(_){ return null; } }
+  else pb=(fileBlobs[name]&&fileBlobs[name].pic)||null;
+  if(pb) picBytesCache[name]=pb;
+  return pb;
+}
+function bgPalette(name){
+  if(rooms.includes(name)&&thumbCache[name]&&thumbCache[name].palette) return thumbCache[name].palette.slice();
+  return (CUTSCENE_PAL[name.toLowerCase()]||DEFAULT_BG_PAL).slice();
+}
+async function buildBgGallery(){
+  const wrap=document.getElementById('bgWrap'); if(!wrap) return;
+  allPics=await getAllPics();
+  const roomPics=allPics.filter(n=>rooms.includes(n)), scr=allPics.filter(n=>!rooms.includes(n));
+  bgNavOrder=roomPics.concat(scr);   // nav order matches the grid (rooms, then screens)
+  await Promise.all(roomPics.map(n=>getRoomData(n)));   // load .pac palettes into thumbCache
+  wrap.innerHTML='';
+  const section=(title,list)=>{
+    if(!list.length) return;
+    const h=document.createElement('div'); h.className='bggroup'; h.textContent=title+' ('+list.length+')'; wrap.appendChild(h);
+    const g=document.createElement('div'); g.className='bggrid'; wrap.appendChild(g);
+    list.forEach(name=>{
+      const t=document.createElement('div'); t.className='bgthumb'; t.title='Click to enlarge';
+      const c=document.createElement('canvas'); c.width=320; c.height=200;
+      const lab=document.createElement('div'); lab.className='tlabel'; lab.textContent=name;
+      t.appendChild(c); t.appendChild(lab); t.onclick=()=>openBgView(name); g.appendChild(t);
+      getPicBytes(name).then(pb=>{ if(pb) paintThumb(c, pb, bgPalette(name)); });
+    });
+  };
+  section('Rooms', roomPics);
+  section('Cutscene / intro screens', scr);
+}
+let bgPic=null, bgPal=null;
+function bgRender(){
+  if(!bgPic) return;
+  const c=document.getElementById('bgCanvas'); c.width=320; c.height=200;
+  const g=c.getContext('2d'), img=g.createImageData(320,200), d=img.data;
+  for(let y=0;y<200;y++) for(let x=0;x<320;x++){ const e=EGA[bgPal[cgapix(bgPic,x,y)]]||[0,0,0], p=(y*320+x)*4; d[p]=e[0];d[p+1]=e[1];d[p+2]=e[2];d[p+3]=255; }
+  g.putImageData(img,0,0);
+}
+async function openBgView(name){
+  const pb=await getPicBytes(name); if(!pb) return;
+  bgPic=pb; bgPal=bgPalette(name);
+  document.querySelector('.bgview').classList.remove('spr');
+  bgName=name; clearBgPending(); document.getElementById('bgExport').hidden=false; document.getElementById('bgImport').hidden=false;
+  ['mskToggle','mskExport','mskImport','mskSave','mskPend','mskDelete'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=true; }); clearMskPending(); mskCur=null; sprMode='sprite'; mskPeek=false; mskPaintBtn=null;
+  document.getElementById('bgPrev').hidden=false; document.getElementById('bgNext').hidden=false;
+  document.getElementById('bgTitle').textContent=name+(rooms.includes(name)?'  ·  .PAC palette':'  ·  screen — palette approximate, adjust below');
+  const ui=document.getElementById('bgPalUI'); ui.innerHTML='';
+  ['background','colour 1','colour 2','colour 3'].forEach((lbl,idx)=>{
+    const w=document.createElement('label'); w.textContent=lbl;
+    const s=document.createElement('select');
+    for(let ci=0;ci<16;ci++){ const o=document.createElement('option'); o.value=ci; o.textContent=ci+' '+CGA_NAMES[ci]; if(ci===bgPal[idx]) o.selected=true; s.appendChild(o); }
+    s.onchange=()=>{ bgPal[idx]=+s.value; bgRender(); };
+    w.appendChild(s); ui.appendChild(w);
+  });
+  bgRender();
+  document.getElementById('bgModal').hidden=false;
+}
+function closeBg(){
+  if(bgPendingPic && !confirm('Discard the imported image? It has NOT been saved over '+bgName+'.PIC.')) return;
+  if(mskPending && !confirm('Discard the imported mask? It has NOT been saved to '+sprName+'.MSK.')) return;
+  clearBgPending(); clearMskPending();
+  document.getElementById('bgModal').hidden=true;
+}
+document.getElementById('bgModalClose').onclick=closeBg;
+document.getElementById('bgModal').addEventListener('click',e=>{ if(e.target.id==='bgModal') closeBg(); });
+function bgNav(dir){
+  if(!bgNavOrder.length) return;
+  if(bgPendingPic && !confirm('Discard the imported image? It has NOT been saved over '+bgName+'.PIC.')) return;
+  let i=bgNavOrder.indexOf(bgName); if(i<0) i=0;
+  openBgView(bgNavOrder[(i+dir+bgNavOrder.length)%bgNavOrder.length]);   // loops at the ends
+}
+function sprNav(dir){
+  if(!sprNavOrder.length) return;
+  let i=sprNavOrder.findIndex(e=>e.name===sprName && e.idx===sprIdx); if(i<0) i=0;
+  const n=sprNavOrder[(i+dir+sprNavOrder.length)%sprNavOrder.length];
+  openSprView(n.spr,n.label,n.name,n.idx,n.k, sprMode==='mask');
+}
+function modalNav(dir){ if(document.querySelector('.bgview').classList.contains('spr')) sprNav(dir); else bgNav(dir); }
+document.getElementById('bgPrev').onclick=()=>modalNav(-1);
+document.getElementById('bgNext').onclick=()=>modalNav(1);
+window.addEventListener('keydown',e=>{
+  const m=document.getElementById('bgModal'); if(!m||m.hidden) return;
+  if(e.key==='Escape'){ closeBg(); return; }
+  if(e.code==='Space' && sprMode==='mask' && mskCur && !/^(SELECT|INPUT|TEXTAREA)$/.test(e.target.tagName||'')){ e.preventDefault(); if(!mskPeek){ mskPeek=true; sprRender(); } return; }
+  if(document.getElementById('bgNext').hidden) return;                    // sprite view: no nav
+  if(/^(SELECT|INPUT|TEXTAREA)$/.test(e.target.tagName||'')) return;      // let dropdowns use the arrows
+  if(e.key==='ArrowRight'){ e.preventDefault(); modalNav(1); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); modalNav(-1); }
+});
+// ---- indexed-PNG export (for Aseprite): CGA art is natively 4-colour indexed, so it round-trips losslessly ----
+const PNG_CRC=(()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; } return t; })();
+function pngCrc(b){ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=PNG_CRC[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function pngAdler(b){ let a=1,d=0; for(let i=0;i<b.length;i++){ a=(a+b[i])%65521; d=(d+a)%65521; } return ((d<<16)|a)>>>0; }
+function be32(n){ return [(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255]; }
+function pngChunk(type,data){ const b=[type.charCodeAt(0),type.charCodeAt(1),type.charCodeAt(2),type.charCodeAt(3),...data]; return be32(data.length).concat(b, be32(pngCrc(Uint8Array.from(b)))); }
+function zlibStored(raw){ const out=[0x78,0x01]; let i=0; do{ const len=Math.min(65535,raw.length-i), last=(i+len>=raw.length)?1:0; out.push(last,len&255,(len>>8)&255,(~len)&255,((~len)>>8)&255); for(let j=0;j<len;j++) out.push(raw[i+j]); i+=len; }while(i<raw.length); const ad=pngAdler(raw); out.push((ad>>>24)&255,(ad>>>16)&255,(ad>>>8)&255,ad&255); return out; }
+function encodeIndexedPNG(w,h,indices,palRGB,transIdx){   // bit depth 8, colour type 3 (indexed)
+  const plte=[]; palRGB.forEach(c=>plte.push(c[0],c[1],c[2]));
+  const raw=new Uint8Array((w+1)*h);
+  for(let y=0;y<h;y++){ raw[y*(w+1)]=0; for(let x=0;x<w;x++) raw[y*(w+1)+1+x]=indices[y*w+x]; }   // filter 0 per row
+  let png=[137,80,78,71,13,10,26,10].concat(pngChunk('IHDR', be32(w).concat(be32(h),[8,3,0,0,0])), pngChunk('PLTE', plte));
+  if(transIdx!=null){ const tr=[]; for(let i=0;i<=transIdx;i++) tr.push(i===transIdx?0:255); png=png.concat(pngChunk('tRNS', tr)); }
+  png=png.concat(pngChunk('IDAT', zlibStored(raw)), pngChunk('IEND', []));
+  return new Uint8Array(png);
+}
+function downloadPNG(bytes,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([bytes],{type:'image/png'})); a.download=name; a.click(); }
+let bgName='';
+function exportBgPNG(){
+  if(!bgPic) return;
+  const w=320,h=200, idx=new Uint8Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++) idx[y*w+x]=cgapix(bgPic,x,y);
+  downloadPNG(encodeIndexedPNG(w,h,idx, bgPal.map(n=>EGA[n]||[0,0,0]), null), (bgName||'background')+'.png');
+}
+document.getElementById('bgExport').onclick=exportBgPNG;
+// ---- indexed-PNG import: browser decodes the PNG, map pixels -> CGA indices, re-encode the .PIC ----
+function nearestIndex(r,g,b,palRGB){ let best=0,bd=Infinity; for(let i=0;i<palRGB.length;i++){ const c=palRGB[i], d=(r-c[0])*(r-c[0])+(g-c[1])*(g-c[1])+(b-c[2])*(b-c[2]); if(d<bd){bd=d;best=i;} } return best; }
+function encodePic(indices){   // inverse of cgapix: 7-byte BSAVE header [FD,seg=B800,off=0,len=0x4000] + 16384 bytes
+  const out=new Uint8Array(16391);
+  out.set([0xFD,0x00,0xB8,0x00,0x00,0x00,0x40],0);
+  for(let y=0;y<200;y++) for(let x=0;x<320;x++){ const v=indices[y*320+x]&3; out[7+(y&1)*8192+(y>>1)*80+(x>>2)] |= v<<(6-2*(x&3)); }
+  return out;
+}
+let bgPendingPic=null;
+async function importBgPNG(file){
+  if(!bgName) return;
+  const img=new Image(), ok=await new Promise(res=>{ img.onload=()=>res(true); img.onerror=()=>res(false); img.src=URL.createObjectURL(file); });
+  if(!ok){ alert('Could not read that PNG.'); return; }
+  if(img.width!==320||img.height!==200){ alert('Background must be 320×200 — this PNG is '+img.width+'×'+img.height+'.'); return; }
+  const cv=document.createElement('canvas'); cv.width=320; cv.height=200; const g=cv.getContext('2d'); g.drawImage(img,0,0);
+  const d=g.getImageData(0,0,320,200).data, palRGB=bgPal.map(n=>EGA[n]||[0,0,0]), idx=new Uint8Array(320*200), seen=new Set();
+  for(let i=0;i<320*200;i++){ const p=i*4; seen.add((d[p]<<16)|(d[p+1]<<8)|d[p+2]); idx[i]=nearestIndex(d[p],d[p+1],d[p+2],palRGB); }
+  bgPendingPic=encodePic(idx);
+  bgPic=bgPendingPic; bgRender();                       // PREVIEW only — nothing written to disk until Save
+  document.getElementById('bgSaveImport').hidden=false;
+  document.getElementById('bgPend').hidden=false;
+  document.getElementById('bgTitle').textContent=bgName+'  ·  PREVIEW of import — review, then Save'+(seen.size>4?'  ('+seen.size+' colours → 4)':'');
+}
+async function saveBgImport(){
+  if(!bgPendingPic) return;
+  const pic=bgPendingPic;
+  if(mode==='server'){ await fetch('api/pic?name='+encodeURIComponent(bgName),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:pic}); }
+  else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([pic],{type:'application/octet-stream'})); a.download=bgName+'.PIC'; a.click(); if(fileBlobs[bgName]) fileBlobs[bgName].pic=pic; }
+  picBytesCache[bgName]=pic; if(thumbCache[bgName]) thumbCache[bgName].pic=pic;
+  bgPendingPic=null;
+  document.getElementById('bgSaveImport').hidden=true; document.getElementById('bgPend').hidden=true;
+  document.getElementById('bgTitle').textContent=bgName+(rooms.includes(bgName)?'  ·  .PAC palette':'  ·  screen')+'   ✓ saved';
+  if(activeTab==='bg') buildBgGallery();
+}
+function clearBgPending(){ bgPendingPic=null; const s=document.getElementById('bgSaveImport'), p=document.getElementById('bgPend'); if(s) s.hidden=true; if(p) p.hidden=true; }
+document.getElementById('bgImport').onclick=()=>document.getElementById('bgImportFile').click();
+document.getElementById('bgImportFile').onchange=e=>{ const f=e.target.files[0]; if(f) importBgPNG(f); e.target.value=''; };
+document.getElementById('bgSaveImport').onclick=saveBgImport;
+// ---- foreground sprites (.PCT files = interleaved CGA GET/PUT arrays) ----
+const PCT_LAYOUT={ joes:{k:1,names:['standing']}, joew1:{k:2,names:['walk A','walk B']}, joew2:{k:2,names:['walk A','walk B']}, joew3:{k:2,names:['walk A','walk B']}, joew4:{k:2,names:['walk A','walk B']}, joed:{k:8,names:['face down','face up','face right','face left','face dn-left','face dn-right','face up-left','face up-right']}, wilb:{k:1,names:['Wilbur']}, golf:{k:2,names:['swing A','swing B']}, door:{k:4,names:['frame 1','frame 2','frame 3','frame 4']} };
+let sprDefaultPal=[0,8,1,6];   // sprite colours 1-3 default to the halls palette (room1/2/3); index 0 = transparent
+let spritePals=[];             // distinct room palettes for the picker, built dynamically from the backgrounds
+const roomPalCache={};
+function isHallRoom(n){ return /^room[123]$/i.test(n); }
+async function getRoomPalette(name){
+  if(thumbCache[name]&&thumbCache[name].palette) return thumbCache[name].palette;
+  if(roomPalCache[name]) return roomPalCache[name];
+  let pt=null;
+  if(mode==='server'){ try{ pt=await (await fetch('api/pac?name='+encodeURIComponent(name),{cache:'no-store'})).text(); }catch(_){ return null; } }
+  else if(fileBlobs[name]&&fileBlobs[name].pac) pt=fileBlobs[name].pac;
+  if(pt==null) return null;
+  const s=parsePac(pt);
+  return (roomPalCache[name]=[s.co,s.pa1,s.pa2,s.pa3]);
+}
+async function loadSpritePalettes(){   // gather DISTINCT room palettes; default = the halls'
+  if(spritePals.length) return;
+  const list=[];
+  for(const name of rooms){
+    const p=await getRoomPalette(name); if(!p) continue;
+    const key=p.join(',');
+    let e=list.find(x=>x.key===key);
+    if(!e){ e={key, pal:p.slice(), rooms:[]}; list.push(e); }
+    e.rooms.push(name);
+  }
+  list.sort((a,b)=>(b.rooms.some(isHallRoom)?1:0)-(a.rooms.some(isHallRoom)?1:0));   // halls first
+  spritePals=list;
+  const hall=list.find(e=>e.rooms.some(isHallRoom));
+  if(hall) sprDefaultPal=[0, hall.pal[1], hall.pal[2], hall.pal[3]];
+}
+function palLabel(e){
+  const names=e.rooms.slice(0,3).join(' ')+(e.rooms.length>3?' +'+(e.rooms.length-3):'');
+  return (e.rooms.some(isHallRoom)?'★ halls · ':'')+names+'  ['+e.pal.slice(1).join(',')+']';
+}
+const pctTextCache={};
+let allPcts=[];
+async function getAllPcts(){
+  if(mode==='server'){ try{ const r=await fetch('api/pcts',{cache:'no-store'}); if(r.ok) return await r.json(); }catch(_){} return []; }
+  return Object.keys(fileBlobs).filter(n=>fileBlobs[n]&&fileBlobs[n].pct).sort();
+}
+async function getPctText(name){
+  if(pctTextCache[name]) return pctTextCache[name];
+  let t=null;
+  if(mode==='server'){ try{ t=await (await fetch('api/pct?name='+encodeURIComponent(name),{cache:'no-store'})).text(); }catch(_){ return null; } }
+  else t=(fileBlobs[name]&&fileBlobs[name].pct)||null;
+  if(t!=null) pctTextCache[name]=t;
+  return t;
+}
+function u16s(v){ return ((v%65536)+65536)%65536; }
+function decodeSprite(ints){    // CGA GET/PUT: word0=width*2 bits, word1=height, then row-major 2bpp (LE bytes)
+  const wb=u16s(ints[0]||0), h=u16s(ints[1]||0), wpx=wb>>1, bpr=Math.ceil(wb/8);
+  if(wpx<1||h<1||wpx>140||h>140) return null;   // empty/invalid slot
+  const by=[]; for(let k=2;k<ints.length;k++){ const v=u16s(ints[k]); by.push(v&255,(v>>8)&255); }
+  const px=new Uint8Array(wpx*h);
+  for(let y=0;y<h;y++) for(let x=0;x<wpx;x++){ const b=by[y*bpr+(x>>2)]||0; px[y*wpx+x]=(b>>(6-2*(x&3)))&3; }
+  return {w:wpx, h:h, px:px};
+}
+function parsePct(text,k){
+  const all=text.split(/[\s,]+/).filter(s=>s.length).map(Number), out=[];
+  for(let s=0;s<k;s++){ const ints=[]; for(let i=s;i<all.length;i+=k) ints.push(all[i]); out.push(decodeSprite(ints)); }
+  return out;
+}
+function paintSprite(canvas,spr,pal,scale){
+  canvas.width=spr.w*scale; canvas.height=spr.h*scale;
+  const g=canvas.getContext('2d'); g.imageSmoothingEnabled=false;
+  const tmp=document.createElement('canvas'); tmp.width=spr.w; tmp.height=spr.h;
+  const tg=tmp.getContext('2d'), img=tg.createImageData(spr.w,spr.h), d=img.data;
+  for(let i=0;i<spr.px.length;i++){ const v=spr.px[i], p=i*4; if(!v){ d[p+3]=0; } else { const e=EGA[pal[v]]||[255,0,255]; d[p]=e[0];d[p+1]=e[1];d[p+2]=e[2];d[p+3]=255; } }
+  tg.putImageData(img,0,0); g.clearRect(0,0,canvas.width,canvas.height); g.drawImage(tmp,0,0,canvas.width,canvas.height);
+}
+async function buildSprites(){
+  const wrap=document.getElementById('sprWrap'); if(!wrap) return;
+  await loadSpritePalettes();
+  allPcts=await getAllPcts();
+  wrap.innerHTML='';
+  const grid=document.createElement('div'); grid.className='sprgrid'; wrap.appendChild(grid);
+  sprNavOrder=[];
+  for(const name of allPcts){
+    const lay=PCT_LAYOUT[name.toLowerCase()]||{k:1,names:['sprite']};
+    const txt=await getPctText(name); if(txt==null) continue;
+    parsePct(txt,lay.k).forEach((spr,idx)=>{
+      if(!spr) return;
+      const lbl=name+(lay.k>1?' · '+(lay.names[idx]||('#'+(idx+1))):'');
+      const t=document.createElement('div'); t.className='sprthumb'; t.title='Click to enlarge';
+      const c=document.createElement('canvas');
+      paintSprite(c,spr,sprDefaultPal,Math.max(2,Math.floor(92/Math.max(spr.w,spr.h))));
+      const la=document.createElement('div'); la.className='tlabel'; la.textContent=lbl+'  ('+spr.w+'×'+spr.h+')';
+      sprNavOrder.push({spr:spr,label:lbl,name:name,idx:idx,k:lay.k});
+      t.appendChild(c); t.appendChild(la); t.onclick=()=>openSprView(spr,lbl,name,idx,lay.k); grid.appendChild(t);
+    });
+  }
+  if(!grid.children.length) wrap.innerHTML='<div class="bggroup">No .PCT sprite files found.</div>';
+}
+let sprCur=null, sprPal=null, sprName='', sprIdx=0, sprK=1, sprLabel='', sprNavOrder=[], sprPreferMask=false;
+let mskFrames=null, mskCur=null, sprMode='sprite', mskPending=null, mskPeek=false, mskPaintBtn=null;
+function sprRender(){
+  const c=document.getElementById('bgCanvas');
+  if(sprMode==='mask'&&!mskPeek&&mskCur) paintMask(c,mskCur,1);
+  else if(sprCur) paintSprite(c,sprCur,sprPal,1);
+}
+function openSprView(spr,label,name,idx,k,preferMask){
+  if(mskPending && !confirm('Discard unsaved mask edits to '+sprName+'.MSK?')) return;
+  sprCur=spr; sprPal=sprDefaultPal.slice(); sprName=name||''; sprIdx=idx||0; sprK=k||1; sprLabel=label; sprPreferMask=!!preferMask;
+  mskFrames=null; mskCur=null; sprMode='sprite'; clearMskPending();
+  document.querySelector('.bgview').classList.add('spr');
+  document.getElementById('bgExport').hidden=true; document.getElementById('bgImport').hidden=true; clearBgPending();
+  document.getElementById('bgPrev').hidden=false; document.getElementById('bgNext').hidden=false;
+  { const tog=document.getElementById('mskToggle'); tog.hidden=false; tog.disabled=true; tog.textContent='View mask'; }
+  document.getElementById('mskExport').hidden=true; document.getElementById('mskImport').hidden=true; document.getElementById('mskDelete').hidden=true;
+  document.getElementById('bgTitle').textContent=label+'  ·  '+spr.w+'×'+spr.h+'  ·  sprite (colour 0 = transparent)';
+  const ui=document.getElementById('bgPalUI'); ui.innerHTML='';
+  const colSels=[];
+  // room-palette picker — list built from the room backgrounds, defaults to the halls
+  if(spritePals.length){
+    const rw=document.createElement('label'); rw.className='palpick'; rw.textContent='room palette';
+    const rs=document.createElement('select');
+    spritePals.forEach((e,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=palLabel(e); rs.appendChild(o); });
+    const cur=spritePals.findIndex(e=>e.pal[1]===sprPal[1]&&e.pal[2]===sprPal[2]&&e.pal[3]===sprPal[3]);
+    if(cur>=0) rs.value=cur;
+    rs.onchange=()=>{ const e=spritePals[+rs.value]; if(!e) return; sprPal=[0,e.pal[1],e.pal[2],e.pal[3]]; colSels.forEach((s,j)=>{ s.value=sprPal[j+1]; }); sprRender(); };
+    rw.appendChild(rs); ui.appendChild(rw);
+  }
+  // manual fine-tune of colours 1-3
+  ['colour 1','colour 2','colour 3'].forEach((lbl,j)=>{
+    const idx=j+1, w=document.createElement('label'); w.textContent=lbl;
+    const s=document.createElement('select'); colSels.push(s);
+    for(let ci=0;ci<16;ci++){ const o=document.createElement('option'); o.value=ci; o.textContent=ci+' '+CGA_NAMES[ci]; if(ci===sprPal[idx]) o.selected=true; s.appendChild(o); }
+    s.onchange=()=>{ sprPal[idx]=+s.value; sprRender(); };
+    w.appendChild(s); ui.appendChild(w);
+  });
+  sprRender();
+  document.getElementById('bgModal').hidden=false;
+  loadMaskForCurrent();
+}
+// ---- sprite MASKS (.MSK = parallel to .PCT, same K-interleave; black = solid/opaque = mask 0, white = see-through/transparent = mask 3) ----
+const mskTextCache={};
+async function getMskText(name){
+  if(mskTextCache[name]) return mskTextCache[name];
+  let t=null;
+  if(mode==='server'){ try{ const r=await fetch('api/msk?name='+encodeURIComponent(name),{cache:'no-store'}); if(r.ok) t=await r.text(); }catch(_){ return null; } }
+  else t=(fileBlobs[name]&&fileBlobs[name].msk)||null;
+  if(t!=null) mskTextCache[name]=t;
+  return t;
+}
+function deinterleaveInts(text,k){   // -> k raw int-arrays (parallel to parsePct, but keeps the ints for re-encoding)
+  const all=text.split(/[\s,]+/).filter(s=>s.length).map(Number), out=[];
+  for(let s=0;s<k;s++){ const ints=[]; for(let i=s;i<all.length;i+=k) ints.push(all[i]); out.push(ints); }
+  return out;
+}
+function s16(v){ v=((v%65536)+65536)%65536; return v>=32768?v-65536:v; }
+function packMaskInts(px,w,h,origInts){   // inverse of decodeSprite; preserves word0/word1 + padding bits, repacks the 2bpp data
+  const word0=origInts[0], word1=origInts[1], wb=u16s(word0), bpr=Math.ceil(wb/8);
+  const by=new Uint8Array(bpr*h);
+  for(let j=2;j<origInts.length;j++){ const v=u16s(origInts[j]), o=(j-2)*2; if(o<by.length) by[o]=v&255; if(o+1<by.length) by[o+1]=(v>>8)&255; }   // seed from original so bits outside the sprite stay byte-faithful
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const sh=6-2*(x&3), bi=y*bpr+(x>>2); by[bi]=(by[bi]&~(3<<sh))|((px[y*w+x]&3)<<sh); }
+  const ints=[word0,word1];
+  for(let i=0;i<by.length;i+=2) ints.push(s16(by[i] | ((by[i+1]||0)<<8)));
+  return ints;
+}
+function interleaveMskText(frames){   // k int-arrays -> .MSK text (k ints per line, CRLF; the game INPUTs k-at-a-time)
+  const k=frames.length, N=Math.max(...frames.map(f=>f.length)), lines=[];
+  for(let i=0;i<N;i++){ const row=[]; for(let s=0;s<k;s++) row.push(frames[s][i]); lines.push(row.join(',')); }
+  return lines.join('\r\n')+'\r\n';
+}
+function paintMask(canvas,mask,scale){   // black = opaque(0) = solid, white = transparent(3) = see-through
+  canvas.width=mask.w*scale; canvas.height=mask.h*scale;
+  const g=canvas.getContext('2d'); g.imageSmoothingEnabled=false;
+  const tmp=document.createElement('canvas'); tmp.width=mask.w; tmp.height=mask.h;
+  const tg=tmp.getContext('2d'), img=tg.createImageData(mask.w,mask.h), d=img.data;
+  for(let i=0;i<mask.px.length;i++){ const v=(mask.px[i]===0)?0:255, p=i*4; d[p]=v;d[p+1]=v;d[p+2]=v;d[p+3]=255; }
+  tg.putImageData(img,0,0); g.clearRect(0,0,canvas.width,canvas.height); g.drawImage(tmp,0,0,canvas.width,canvas.height);
+}
+async function loadMaskForCurrent(){
+  const tog=document.getElementById('mskToggle');
+  if(!sprName){ tog.textContent='no .MSK'; tog.disabled=true; return; }
+  const txt=await getMskText(sprName);
+  if(txt==null){ mskFrames=null; mskCur=null; tog.textContent='no .MSK'; tog.disabled=true; return; }
+  mskFrames=deinterleaveInts(txt,sprK);
+  mskCur=decodeSprite(mskFrames[sprIdx]||[]);
+  if(!mskCur){ tog.textContent='bad .MSK'; tog.disabled=true; return; }
+  tog.disabled=false; tog.textContent=(sprMode==='mask')?'View sprite':'View mask';
+  document.getElementById('mskExport').hidden=false; document.getElementById('mskImport').hidden=false; document.getElementById('mskDelete').hidden=false;
+  if(sprPreferMask && sprMode!=='mask') toggleMaskView();
+}
+function toggleMaskView(){
+  if(!mskCur) return;
+  sprMode=(sprMode==='mask')?'sprite':'mask';
+  document.getElementById('mskToggle').textContent=(sprMode==='mask')?'View sprite':'View mask';
+  if(sprMode==='mask') document.getElementById('bgTitle').textContent=(sprLabel||sprName)+'  ·  '+mskCur.w+'×'+mskCur.h+'  ·  MASK · black=solid, white=see-through · paint L/R · hold Space=peek';
+  else document.getElementById('bgTitle').textContent=(sprLabel||'')+'  ·  '+sprCur.w+'×'+sprCur.h+'  ·  sprite (colour 0 = transparent)';
+  sprRender();
+}
+function exportMaskPNG(){
+  if(!mskCur) return;
+  const w=mskCur.w,h=mskCur.h, ix=new Uint8Array(w*h);
+  for(let i=0;i<mskCur.px.length;i++) ix[i]=(mskCur.px[i]===0)?0:1;   // 0=black=solid, 1=white=see-through
+  downloadPNG(encodeIndexedPNG(w,h,ix,[[0,0,0],[255,255,255]],null), (sprName||'mask')+(sprK>1?'-'+(sprIdx+1):'')+'.mask.png');
+}
+async function importMaskPNG(file){
+  if(!mskCur||!mskFrames){ alert('Open a sprite that has a .MSK first.'); return; }
+  const w=mskCur.w,h=mskCur.h, bw=[[0,0,0],[255,255,255]];
+  const img=new Image(), ok=await new Promise(r=>{ img.onload=()=>r(true); img.onerror=()=>r(false); img.src=URL.createObjectURL(file); });
+  if(!ok){ alert('Could not read that PNG.'); return; }
+  if(img.width!==w||img.height!==h){ alert('Mask must be '+w+'×'+h+' to match this sprite — this PNG is '+img.width+'×'+img.height+'.'); return; }
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const g=cv.getContext('2d'); g.drawImage(img,0,0);
+  const d=g.getImageData(0,0,w,h).data, px=new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++){ const p=i*4; px[i]=(nearestIndex(d[p],d[p+1],d[p+2],bw)===0)?0:3; }   // black->0 solid, white->3 see-through
+  mskPending=px; mskCur={w,h,px}; sprMode='mask';
+  document.getElementById('mskToggle').textContent='View sprite'; document.getElementById('mskToggle').disabled=false;
+  sprRender();
+  document.getElementById('mskSave').hidden=false; document.getElementById('mskPend').hidden=false;
+  document.getElementById('bgTitle').textContent=(sprLabel||sprName)+'  ·  MASK PREVIEW — review, then Save mask';
+}
+async function saveMaskImport(){
+  if(!mskPending||!mskFrames) return;
+  mskFrames[sprIdx]=packMaskInts(mskPending,mskCur.w,mskCur.h, mskFrames[sprIdx]);
+  const text=interleaveMskText(mskFrames);
+  if(mode==='server'){ await fetch('api/msk?name='+encodeURIComponent(sprName),{method:'POST',headers:{'Content-Type':'text/plain'},body:text}); }
+  else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'})); a.download=sprName+'.MSK'; a.click(); if(fileBlobs[sprName]) fileBlobs[sprName].msk=text; }
+  mskTextCache[sprName]=text; mskPending=null;
+  document.getElementById('mskSave').hidden=true; document.getElementById('mskPend').hidden=true;
+  document.getElementById('bgTitle').textContent=(sprLabel||sprName)+'  ·  mask  ✓ saved';
+}
+function clearMskPending(){ mskPending=null; const s=document.getElementById('mskSave'), p=document.getElementById('mskPend'); if(s) s.hidden=true; if(p) p.hidden=true; }
+document.getElementById('mskToggle').onclick=toggleMaskView;
+document.getElementById('mskExport').onclick=exportMaskPNG;
+document.getElementById('mskImport').onclick=()=>document.getElementById('mskImportFile').click();
+document.getElementById('mskImportFile').onchange=e=>{ const f=e.target.files[0]; if(f) importMaskPNG(f); e.target.value=''; };
+document.getElementById('mskSave').onclick=saveMaskImport;
+async function deleteMask(){
+  if(!sprName) return;
+  if(!confirm('Delete '+sprName+'.MSK from disk?\n\nUse this for sprites that DON\'T need a mask (e.g. the door — the game draws it with PSET). Do NOT delete a mask the game loads (the walk joew1-4, face joed, Wilbur, golf) or that sprite will break in-game.')) return;
+  if(mode==='server'){ await fetch('api/msk?name='+encodeURIComponent(sprName),{method:'DELETE'}); }
+  else if(fileBlobs[sprName]){ delete fileBlobs[sprName].msk; }
+  delete mskTextCache[sprName];
+  mskFrames=null; mskCur=null; mskPending=null; sprMode='sprite'; clearMskPending();
+  document.getElementById('mskExport').hidden=true; document.getElementById('mskImport').hidden=true; document.getElementById('mskDelete').hidden=true;
+  const tog=document.getElementById('mskToggle'); tog.disabled=true; tog.textContent='no .MSK';
+  sprRender();
+  document.getElementById('bgTitle').textContent=(sprLabel||sprName)+'  ·  '+(sprCur?sprCur.w+'×'+sprCur.h:'')+'  ·  mask deleted — sprite drawn unmasked';
+}
+document.getElementById('mskDelete').onclick=deleteMask;
+// ---- in-app mask painting (mask mode only: left=solid/black, right=see-through/white) + hold-Space peek of the sprite ----
+(function(){
+  const mc=document.getElementById('bgCanvas');
+  function mskPaintAt(e){
+    if(!mskCur) return;
+    const r=mc.getBoundingClientRect();
+    const x=Math.floor((e.clientX-r.left)/r.width*mskCur.w), y=Math.floor((e.clientY-r.top)/r.height*mskCur.h);
+    if(x<0||y<0||x>=mskCur.w||y>=mskCur.h) return;
+    const i=y*mskCur.w+x; if(mskCur.px[i]===mskPaintBtn) return;
+    mskCur.px[i]=mskPaintBtn; mskPending=mskCur.px;
+    document.getElementById('mskSave').hidden=false; document.getElementById('mskPend').hidden=false;
+    sprRender();
+  }
+  mc.addEventListener('contextmenu',e=>{ if(sprMode==='mask') e.preventDefault(); });
+  mc.addEventListener('mousedown',e=>{ if(sprMode!=='mask'||!mskCur||mskPeek) return; e.preventDefault(); mskPaintBtn=(e.button===2||e.shiftKey)?3:0; mskPaintAt(e); });
+  mc.addEventListener('mousemove',e=>{ if(sprMode==='mask'&&mskPaintBtn!=null&&!mskPeek) mskPaintAt(e); });
+  window.addEventListener('mouseup',()=>{ mskPaintBtn=null; });
+})();
+window.addEventListener('keyup',e=>{ if(e.code==='Space'&&mskPeek){ mskPeek=false; sprRender(); } });
 function setTab(t){
   activeTab=t;
   document.getElementById('tab-hits').hidden=(t!=='hits');
   document.getElementById('tab-inv').hidden=(t!=='inv');
+  document.getElementById('tab-bg').hidden=(t!=='bg');
+  document.getElementById('tab-spr').hidden=(t!=='spr');
   document.getElementById('hitctrls').hidden=(t!=='hits');
   document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
-  if(t==='inv') buildInvTable();
+  if(t==='inv') showInv();
+  if(t==='bg') buildBgGallery();
+  if(t==='spr') buildSprites();
 }
+async function showInv(){ buildInvTable(); await ensureXref(); if(activeTab==='inv') buildInvTable(); }
 document.querySelectorAll('.tabs button').forEach(x=>x.onclick=()=>setTab(x.dataset.tab));
 setTab('hits');
 

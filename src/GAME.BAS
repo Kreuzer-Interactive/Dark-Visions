@@ -88,6 +88,20 @@ DIM SHARED fdl(300) AS INTEGER
 DIM SHARED fdr(300) AS INTEGER
 DIM SHARED ful(300) AS INTEGER
 DIM SHARED fur(300) AS INTEGER
+'----- masks for the 8 face sprites (AND-mask) + save-under for the standing player at (140,130)
+DIM SHARED mfd(150) AS INTEGER
+DIM SHARED mfu(150) AS INTEGER
+DIM SHARED mfr(150) AS INTEGER
+DIM SHARED mfl(150) AS INTEGER
+DIM SHARED mfdl(150) AS INTEGER
+DIM SHARED mfdr(150) AS INTEGER
+DIM SHARED mful(150) AS INTEGER
+DIM SHARED mfur(150) AS INTEGER
+DIM SHARED fbg(150) AS INTEGER
+'----- masks for the shared walk-frame buffers (wa/wb) + a per-frame save-under for the moving player
+DIM SHARED mwa(150) AS INTEGER
+DIM SHARED mwb(150) AS INTEGER
+DIM SHARED wbg(150) AS INTEGER
 
 '----- shared world and inventory arrays
 DIM SHARED bk(100)
@@ -473,7 +487,7 @@ inv:
 	done$ = ""
 	GOTO inv
 	5060 GOSUB invcur
-	IF a$ = "g" OR a$ = "x" THEN GOTO 5100
+	IF a$ = "g" OR a$ = "x" OR a$ = "i" THEN GOTO 5100
 	GOTO 4860
 
 '----- exit inventory -- restore game state and redraw
@@ -824,7 +838,12 @@ loadpac:
 loadroom:
 	CLOSE
 	OPEN q$ + ".pac" FOR INPUT AS #1
-	INPUT #1, co, pa1, pa2, pa3
+	LINE INPUT #1, hd$
+	co = VAL(hd$): hd$ = MID$(hd$, INSTR(hd$, ",") + 1)
+	pa1 = VAL(hd$): hd$ = MID$(hd$, INSTR(hd$, ",") + 1)
+	pa2 = VAL(hd$): hd$ = MID$(hd$, INSTR(hd$, ",") + 1)
+	pa3 = VAL(hd$)
+	nopl = 0: IF INSTR(hd$, ",") > 0 THEN nopl = VAL(MID$(hd$, INSTR(hd$, ",") + 1))
 	i = 0
 	DO
 		i = i + 1
@@ -843,6 +862,7 @@ loadroom:
 	BLOAD q$ + ".pic", 0
 	KEY OFF
 	GET (1, 8)-(9, 18), bk: GET (1, 8)-(9, 18), bk2
+	GET (140, 130)-(170, 160), fbg
 	DEF SEG
 	IF q$ <> "title" THEN GOTO walkout
 
@@ -888,8 +908,14 @@ walkout:
 	'----- load walk sprite frames
 	8350 OPEN q$ + ".pct" FOR INPUT AS #1
 	FOR i = 0 TO 125
-		IF EOF(1) THEN GOTO 8420
+		IF EOF(1) THEN GOTO 8415
 		INPUT #1, wa(i), wb(i)
+	NEXT
+	8415 CLOSE
+	OPEN q$ + ".msk" FOR INPUT AS #1
+	FOR i = 0 TO 125
+		IF EOF(1) THEN GOTO 8420
+		INPUT #1, mwa(i), mwb(i)
 	NEXT
 
 	8420 sf$ = a$
@@ -910,111 +936,107 @@ walkout:
 
 	'----- walk down animation
 	8570 FOR i = 130 TO 150 STEP 2
-		PUT (140, i), wa, XOR
+		GET (140, i)-(170, i + 30), wbg
+		PUT (140, i), mwa, AND: PUT (140, i), wa, OR
 		SOUND f3, .1
 		FOR j = 1 TO 2
 			SOUND 32676, 1.2
 		NEXT
-		PUT (140, i), wa, XOR
+		PUT (140, i), wbg, PSET
 		i = i + 2
-		PUT (140, i), wb, XOR
+		GET (140, i)-(170, i + 30), wbg
+		PUT (140, i), mwb, AND: PUT (140, i), wb, OR
 		SOUND f3, .1
 		FOR j = 1 TO 2
 			SOUND 32676, 1.2
 		NEXT
-		PUT (140, i), wb, XOR
+		PUT (140, i), wbg, PSET
 	NEXT
 	GOTO 9220
 
 	'----- walk up animation
 	8730 GOTO 8880
-	8740 PUT (140, i), wa, XOR
+	8740 GET (140, i)-(170, i + 30), wbg
+	PUT (140, i), mwa, AND: PUT (140, i), wa, OR
 	SOUND f3, .1
 	FOR j = 1 TO 2
 		SOUND 32676, 1.4
 	NEXT
-	PUT (140, i), wa, XOR
+	PUT (140, i), wbg, PSET
 	i = i - 3
-	PUT (140, i), wb, XOR
+	GET (140, i)-(170, i + 30), wbg
+	PUT (140, i), mwb, AND: PUT (140, i), wb, OR
 	SOUND f3, .1
 	FOR j = 1 TO 2
 		SOUND 32676, 1.4
 	NEXT
-	PUT (140, i), wb, XOR
+	PUT (140, i), wbg, PSET
 	i = i + -2
 	8880 IF i >= 120 THEN GOTO 8740
 	GOTO 9220
 
 	'----- walk right animation
 	8900 FOR i = 140 TO 195 STEP 3
-		PUT (i, 130), wa, XOR
+		GET (i, 130)-(i + 30, 160), wbg
+		PUT (i, 130), mwa, AND: PUT (i, 130), wa, OR
 		SOUND f3, .1
 		FOR j = 1 TO 2
 			SOUND 32676, 1
 		NEXT
-		PUT (i, 130), wa, XOR
+		PUT (i, 130), wbg, PSET
 		i = i + 3
-		PUT (i, 130), wb, XOR
+		GET (i, 130)-(i + 30, 160), wbg
+		PUT (i, 130), mwb, AND: PUT (i, 130), wb, OR
 		SOUND f3, .1
 		FOR j = 1 TO 2
 			SOUND 32676, 1
 		NEXT
-		PUT (i, 130), wb, XOR
+		PUT (i, 130), wbg, PSET
 	NEXT
 	GOTO 9220
 
 	'----- walk left animation
 	9060 GOTO 9210
-	9070 PUT (i, 130), wa, XOR
+	9070 GET (i, 130)-(i + 30, 160), wbg
+	PUT (i, 130), mwa, AND: PUT (i, 130), wa, OR
 	SOUND f3, .1
 	FOR j = 1 TO 2
 		SOUND 32676, 1
 	NEXT
-	PUT (i, 130), wa, XOR
+	PUT (i, 130), wbg, PSET
 	i = i - 3
-	PUT (i, 130), wb, XOR
+	GET (i, 130)-(i + 30, 160), wbg
+	PUT (i, 130), mwb, AND: PUT (i, 130), wb, OR
 	SOUND f3, .1
 	FOR j = 1 TO 2
 		SOUND 32676, 1
 	NEXT
-	PUT (i, 130), wb, XOR
+	PUT (i, 130), wbg, PSET
 	i = i + -3
 	9210 IF i >= 90 THEN GOTO 9070
 	9220 RETURN
 face:
-	IF lf$ <> "4" THEN GOTO 9250
-	PUT (140, 130), fl, XOR
-	9250 IF lf$ <> "2" THEN GOTO 9270
-	PUT (140, 130), fd, XOR
-	9270 IF lf$ <> "6" THEN GOTO 9290
-	PUT (140, 130), fr, XOR
-	9290 IF lf$ <> "8" THEN GOTO 9310
-	PUT (140, 130), fu, XOR
-	9310 IF lf$ <> "1" THEN GOTO 9330
-	PUT (140, 130), fdl, XOR
-	9330 IF lf$ <> "7" THEN GOTO 9350
-	PUT (140, 130), ful, XOR
-	9350 IF lf$ <> "9" THEN GOTO 9370
-	PUT (140, 130), fur, XOR
-	9370 IF lf$ <> "3" THEN GOTO 9390
-	PUT (140, 130), fdr, XOR
-
+	'----- erase the previous standing sprite by restoring the saved room background
+	PUT (140, 130), fbg, PSET
+	'----- close-up scenes (nopl flag = 5th value in the .pac header) skip the standing player
+	IF nopl = 1 THEN GOTO 9550
+	'----- draw the new facing direction: mask cuts the silhouette, sprite ORs in the colours
 	9390 IF a$ <> "4" THEN GOTO 9410
-	PUT (140, 130), fl, XOR
+	PUT (140, 130), mfl, AND: PUT (140, 130), fl, OR
 	9410 IF a$ <> "2" THEN GOTO 9430
-	PUT (140, 130), fd, XOR
+	PUT (140, 130), mfd, AND: PUT (140, 130), fd, OR
 	9430 IF a$ <> "6" THEN GOTO 9450
-	PUT (140, 130), fr, XOR
+	PUT (140, 130), mfr, AND: PUT (140, 130), fr, OR
 	9450 IF a$ <> "8" THEN GOTO 9470
-	PUT (140, 130), fu, XOR
+	PUT (140, 130), mfu, AND: PUT (140, 130), fu, OR
 	9470 IF a$ <> "1" THEN GOTO 9490
-	PUT (140, 130), fdl, XOR
+	PUT (140, 130), mfdl, AND: PUT (140, 130), fdl, OR
 	9490 IF a$ <> "7" THEN GOTO 9510
-	PUT (140, 130), ful, XOR
+	PUT (140, 130), mful, AND: PUT (140, 130), ful, OR
 	9510 IF a$ <> "9" THEN GOTO 9530
-	PUT (140, 130), fur, XOR
+	PUT (140, 130), mfur, AND: PUT (140, 130), fur, OR
 	9530 IF a$ <> "3" THEN GOTO 9550
-	PUT (140, 130), fdr, XOR
+	PUT (140, 130), mfdr, AND: PUT (140, 130), fdr, OR
 
 	9550 lf$ = a$
 	RETURN
@@ -1024,8 +1046,14 @@ joeface:
 	CLOSE
 	OPEN "joed.pct" FOR INPUT AS #1
 	FOR i = 0 TO 125
-		IF EOF(1) THEN GOTO 9710
+		IF EOF(1) THEN GOTO 9705
 		INPUT #1, fd(i), fu(i), fr(i), fl(i), fdl(i), fdr(i), ful(i), fur(i)
+	NEXT
+	9705 CLOSE
+	OPEN "joed.msk" FOR INPUT AS #1
+	FOR i = 0 TO 125
+		IF EOF(1) THEN GOTO 9710
+		INPUT #1, mfd(i), mfu(i), mfr(i), mfl(i), mfdl(i), mfdr(i), mful(i), mfur(i)
 	NEXT
 
 	9710 dx2 = jx - b
@@ -1055,11 +1083,17 @@ wilb:
 	CLOSE
 	OPEN "wilb.pct" FOR INPUT AS #1
 	FOR i = 0 TO 125
-		IF EOF(1) THEN GOTO 9960
+		IF EOF(1) THEN GOTO 9955
 		INPUT #1, wa(i)
 	NEXT
+	9955 CLOSE
+	OPEN "wilb.msk" FOR INPUT AS #1
+	FOR i = 0 TO 125
+		IF EOF(1) THEN GOTO 9960
+		INPUT #1, mwa(i)
+	NEXT
 
-	9960 PUT (110, 128), wa, XOR
+	9960 PUT (110, 128), mwa, AND: PUT (110, 128), wa, OR
 
 	ti = TIMER
 	FOR i = 1 TO 4
@@ -1085,30 +1119,36 @@ golf:
 	CLOSE
 	OPEN "golf.pct" FOR INPUT AS #1
 	FOR i = 0 TO 125
-		IF EOF(1) THEN GOTO 10200
+		IF EOF(1) THEN GOTO 10205
 		INPUT #1, wa(i), wb(i)
+	NEXT
+	10205 CLOSE
+	OPEN "golf.msk" FOR INPUT AS #1
+	FOR i = 0 TO 125
+		IF EOF(1) THEN GOTO 10200
+		INPUT #1, mwa(i), mwb(i)
 	NEXT
 	10200 i = 150
 
-	10210 PUT (135, i), wa, XOR
+	10210 GET (135, i)-(165, i + 30), wbg: PUT (135, i), mwa, AND: PUT (135, i), wa, OR
 	SOUND f3, .1
 	FOR j = 1 TO 2
 		SOUND 32676, 1.2
 	NEXT
-	PUT (135, i), wa, XOR
+	PUT (135, i), wbg, PSET
 	i = i - 2
-	PUT (135, i), wb, XOR
+	GET (135, i)-(165, i + 30), wbg: PUT (135, i), mwb, AND: PUT (135, i), wb, OR
 	SOUND f3, .1
 	FOR j = 1 TO 2
 		SOUND 32676, 1.2
 	NEXT
-	PUT (135, i), wb, XOR
+	PUT (135, i), wbg, PSET
 	i = i + -2
 	IF i >= 135 THEN GOTO 10210
-	PUT (135, 135), wa, XOR
+	GET (135, 135)-(165, 165), wbg: PUT (135, 135), mwa, AND: PUT (135, 135), wa, OR
 	IF sy$ <> "y" THEN GOTO 10400
 	sy$ = ""
-	PUT (135, 135), wa, XOR: RETURN
+	PUT (135, 135), wbg, PSET: RETURN
 
 	10400 i = 0
 	df$(i) = "death"
@@ -1937,6 +1977,9 @@ SUB Intro
 	DIM ec(1000) AS INTEGER
 	DIM r1(130) AS INTEGER
 	DIM r2(130) AS INTEGER
+	DIM mr1(130) AS INTEGER
+	DIM mr2(130) AS INTEGER
+	DIM rbg(130) AS INTEGER
 	DEF SEG = &HB800: BLOAD "carr.pic", 0: DEF SEG
 	cy = 133
 	GET (8, 133)-(105, 175), ec
@@ -2133,9 +2176,16 @@ SUB Intro
 	18370 INPUT #1, r1(tc), r2(tc)
 	tc = tc + 1
 	IF tc <= 125 THEN GOTO 18370
+	CLOSE
+	OPEN (w$) + ".msk" FOR INPUT AS #1
+	tc = 0
+	18375 INPUT #1, mr1(tc), mr2(tc)
+	tc = tc + 1
+	IF tc <= 125 THEN GOTO 18375
+	CLOSE
 	wc = wc + 1
 	tc = 150
-	18420 PUT (143, tc), r1, XOR
+	18420 GET (143, tc)-(173, tc + 30), rbg: PUT (143, tc), mr1, AND: PUT (143, tc), r1, OR
 	IF INKEY$ = "s" THEN GOTO 18640
 	IF it0 >= 0 THEN ifc = ifc + 1
 	GOSUB 17850
@@ -2143,7 +2193,7 @@ SUB Intro
 	FOR n = 1 TO 2
 		SOUND 32676, .3
 	NEXT
-	PUT (143, tc), r1, XOR
+	PUT (143, tc), rbg, PSET
 	IF tc <> 130 THEN GOTO 18530
 
 	FOR n = 1 TO 10000
@@ -2154,7 +2204,7 @@ SUB Intro
 	IF skp = 1 THEN GOTO 18640
 	18530 tf = 1
 	tc = tc - 2
-	PUT (143, tc), r2, XOR
+	GET (143, tc)-(173, tc + 30), rbg: PUT (143, tc), mr2, AND: PUT (143, tc), r2, OR
 	IF INKEY$ = "s" THEN GOTO 18640
 	IF it0 >= 0 THEN ifc = ifc + 1
 	GOSUB 17850
@@ -2162,7 +2212,7 @@ SUB Intro
 	FOR n = 1 TO 2
 		SOUND 32676, .3
 	NEXT
-	PUT (143, tc), r2, XOR
+	PUT (143, tc), rbg, PSET
 	tc = tc - 2
 	IF tc >= 116 THEN GOTO 18420
 	RETURN
@@ -2173,6 +2223,9 @@ SUB Intro
 	ERASE ec
 	ERASE r1
 	ERASE r2
+	ERASE mr1
+	ERASE mr2
+	ERASE rbg
 	EXIT SUB
 
 	'----- write intro frame/time log

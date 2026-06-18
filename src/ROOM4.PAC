@@ -107,16 +107,18 @@
 114,146,6
 118,142,7
 218,142,12
+230,158,19
+234,162,19
 0,0,0
 "","The flowers are almost dead.","l",0,0,0,"f8"
 "","It is a picture of a table full of      vials.","l",0,0,0,"f4"
-"","Nothing on the table interests you.","l",0,0,0,"f4"
+"","Nothing on the table interests you.","l",0,0,0,"f1"
 "","The top of the desk is barren.","l",0,0,0,"f8"
 "","The portrait is of a old man in a white coat.","l",0,0,0,"f8"
 "","The rug is lumpy.","l",0,0,0,"f7"
 "","It is a piece of lint you don't need anymore lint.","l",0,0,0,"f8"
-"","Contained in the drawer is a...copper   penny.","l",0,0,0,"f6"
-"","This drawer is empty.","l",0,0,0,"f6"
+"","Contained in the drawer is a...copper   penny.","l",0,12,0,"f3"
+"","This drawer is empty.","l",0,0,0,"f3"
 "","It is a canopy bed.","l",0,0,0,"f9"
 "","You remove a copper penny from the      drawer.","g",0,12,12,"f6"
 "","It is a closet.","l",0,0,0,"f6"
@@ -126,7 +128,7 @@
 "room3","You leave the room.","a",0,0,0,"ws"
 "","You open the window.","a",0,40,40,"f7"
 "end","You tie the rope then repel down the side of the house.","u",14,0,0,"f7"
-"","","",0,0,0,""
+"","This drawer is now empty.","l",12,0,0,"f3"
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
