@@ -467,6 +467,10 @@ inv:
 	LOCATE 25, 1
 	PRINT "r=restore,s=save,q=quit,x=exit inventory";
 	4860 a$ = INKEY$
+	IF a$ = CHR$(0) + CHR$(72) THEN a$ = "8"
+	IF a$ = CHR$(0) + CHR$(80) THEN a$ = "2"
+	IF a$ = CHR$(0) + CHR$(75) THEN a$ = "4"
+	IF a$ = CHR$(0) + CHR$(77) THEN a$ = "6"
 	GOSUB joy
 	IF a$ <> "" THEN GOTO 4900
 	GOTO 4860
