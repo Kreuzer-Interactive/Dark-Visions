@@ -1,0 +1,443 @@
+                                                                      PAGE   1
+                                                                      30 Jun 26
+                                                                      18:25:53
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    '----- GAME4.BAS: graphical Save / Load screen (10 slots). Own 
+                64K code segment.
+ 0030   0006    '----- Pure library module (no COMMON SHARED): invoked from inv
+                hi as
+ 0030   0006    '-----   CALL SaveLoadScreen(fontData(), mvint, msen, act)
+ 0030   0006    '----- It loads SVLDBG.PIC, reads each saver?.pac header to sho
+                w per-slot
+ 0030   0006    '----- Location + Progress%, runs its own mouse/keyboard loop w
+                ith a self-drawn
+ 0030   0006    '----- cursor, and delegates the real file I/O to SaveGame/Load
+                Game (GAME.BAS).
+ 0030   0006    '----- New Game / overwrite-save / load each confirm via a yes/
+                no modal.
+ 0030   0006    '----- act returns 1 if a game was LOADED, 2 if NEW GAME chosen
+                 (caller RUNs), else 0.
+ 0030   0006    
+ 0030   0006    TYPE RegType
+ 0030   0006            ax AS INTEGER
+ 0030   0006            bx AS INTEGER
+ 0030   0006            cx AS INTEGER
+ 0030   0006            dx AS INTEGER
+ 0030   0006            bp AS INTEGER
+ 0030   0006            si AS INTEGER
+ 0030   0006            di AS INTEGER
+ 0030   0006            flags AS INTEGER
+ 0030   0006            ds AS INTEGER
+ 0030   0006            es AS INTEGER
+ 0030   0006    END TYPE
+ 0030   0006    DECLARE SUB INTERRUPT (intnum AS INTEGER, inreg AS RegType, out
+                reg AS RegType)
+ 0030   0006    DECLARE SUB drawText (x AS INTEGER, y AS INTEGER, text AS STRIN
+                G, textColor AS INTEGER, fontData() AS INTEGER)
+ 0030   0006    DECLARE FUNCTION textWidth (text AS STRING, fontData() AS INTEG
+                ER)
+ 0030   0006    DECLARE SUB DrawYNBox (msg AS STRING, dk AS INTEGER, fontData()
+                 AS INTEGER)
+ 0030   0006    DECLARE SUB SaveGame (slot AS INTEGER)
+ 0030   0006    DECLARE SUB LoadGame (slot AS INTEGER)
+ 0030   0006    DECLARE FUNCTION slLoc$ (rq AS STRING)
+ 0030   0006    
+ 0030   0006    '----- per-slot occupancy (1 = has a save); set by slDrawStat, 
+                read for overwrite/load confirms
+ 0030   0006    DIM SHARED slUsed(10) AS INTEGER
+ 0030   0006    '----- selection ring from src/ART/SLRing.png, parsed to SLRING
+                .DAT: slrN packed pixels
+ 0030   0006    '----- (attr*10000 + dy*100 + dx); slrbuf = GET save-under for 
+                clean erase.
+ 0030   0006    DIM SHARED slrp(400) AS INTEGER
+ 0030   0006    DIM SHARED slrbuf(280) AS INTEGER
+ 0030   0006    DIM SHARED slrN AS INTEGER
+ 0030   0006    '----- last slot saved/loaded; persists across SaveLoadScreen o
+                pens (reset by RUN/New Game)
+ 0030   0006    DIM SHARED slLast AS INTEGER
+ 0030   0006    
+                                                                      PAGE   2
+                                                                      30 Jun 26
+                                                                      18:25:53
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    '----- map a saved room tag (q$) to a short location name shown
+                 on the slot
+ 0030   0006    FUNCTION slLoc$ (rq AS STRING)
+ 0040   0574            DIM hd$, nm$, q1 AS INTEGER, q2 AS INTEGER
+ 0040   0574            IF rq = "" THEN
+ 0040   0574                    slLoc$ = "?"
+ 0040   0574            ELSEIF LEFT$(rq, 4) = "room" THEN
+ 0061   0574                    nm$ = ""
+ 0061   0574                    OPEN rq + ".pac" FOR INPUT AS #4
+ 0061   0574                    LINE INPUT #4, hd$
+ 00B0   0574                    CLOSE #4
+ 00B0   0574                    q1 = INSTR(hd$, CHR$(34))
+ 00B0   0574                    IF q1 > 0 THEN
+ 00B0   0574                            q2 = INSTR(q1 + 1, hd$, CHR$(34))
+ 00B0   0574                            IF q2 > q1 + 1 THEN nm$ = MID$(hd$, q1 
+                + 1, q2 - q1 - 1)
+ 0132   0574                    END IF
+ 0132   0574                    IF nm$ <> "" THEN slLoc$ = nm$ ELSE slLoc$ = "R
+                oom " + MID$(rq, 5)
+ 0178   0574            ELSE
+ 017B   0574                    slLoc$ = rq
+ 017B   0574            END IF
+ 0187   0574    END FUNCTION
+ 01AA   0574    
+ 01AA   0574    '----- draw one slot's stats: Location + Progress%, or "- empty
+                 -" for an unused slot.
+ 01AA   0574    '----- Also records slUsed(slot). Progress mirrors GAME3 drawSt
+                ats.
+ 01AA   0574    SUB slDrawStat (slot AS INTEGER, sx AS INTEGER, sy AS INTEGER, 
+                fontData() AS INTEGER)
+ 01B5   0574            DIM f$, sq$, sdn$, stt$, sa$, slf$
+ 01B5   0574            DIM scl AS SINGLE, spt AS SINGLE, sob AS INTEGER, j AS 
+                INTEGER, pc AS INTEGER
+ 01B5   0574            '----- wipe the stat area (covers a previous "- empty -
+                " on refresh)
+ 01B5   0574            LINE (sx - 1, sy - 1)-(sx + 53, sy + 12), 0, BF
+ 01B5   0574            f$ = "saver" + CHR$(slot + 96) + ".pac"
+ 01B5   0574            OPEN f$ FOR APPEND AS #2: CLOSE #2          ' ensure th
+                e file exists (no truncate)
+ 01B5   0574            OPEN f$ FOR INPUT AS #2
+ 01B5   0574            IF EOF(2) THEN
+ 01B5   0574                    slUsed(slot) = 0
+ 01B5   0574                    CALL drawText(sx - 1, sy + 3, "- empty -", 2, f
+                ontData())
+ 02BF   0574                    CLOSE #2: EXIT SUB
+ 02BF   0574            END IF
+ 02CF   0574            slUsed(slot) = 1
+ 02CF   0574            INPUT #2, sq$, scl, spt, sdn$, stt$, sa$, slf$
+ 02E5   0574            pc = 0
+ 02E5   0574            FOR j = 1 TO 65
+ 034E   0574                    sob = 0: IF NOT EOF(2) THEN INPUT #2, sob
+ 037F   0574                    IF j <= 51 AND sob = 1 THEN pc = pc + 1
+ 039F   0574                    IF j = 35 AND sob = 1 THEN pc = pc + 2
+ 03C0   0574                    IF j = 36 AND sob = 1 THEN pc = pc + 2
+                                                                      PAGE   3
+                                                                      30 Jun 26
+                                                                      18:25:53
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 03E1   0574            NEXT j
+ 03F0   0574            CLOSE #2
+ 03F0   0574            pc = CINT(pc * 100 / 47)
+ 03F0   0574            CALL drawText(sx - 1, sy - 1, slLoc$(sq$), 2, fontData(
+                ))
+ 0457   0574            CALL drawText(sx - 1, sy + 6, LTRIM$(STR$(pc)) + "% don
+                e", 2, fontData())
+ 04B3   0574    END SUB
+ 04FA   0574    
+ 04FA   0574    '----- draw (vis=1, orange) or erase (vis=0, black interior) th
+                e selection ring
+ 04FA   0574    '----- around a slot's number. Drawn on the black slot interior
+                , so erase = black.
+ 04FA   0574    '----- draw (vis=1) the SLRing sprite around a slot via PSET (a
+                fter GETting a save-under),
+ 04FA   0574    '----- or erase (vis=0) by PUTting the save-under back. Left sl
+                ots rx=52, right rx=156.
+ 04FA   0574    SUB slRing (slot AS INTEGER, vis AS INTEGER)
+ 0505   0574            DIM rx AS INTEGER, ry AS INTEGER, i AS INTEGER, p AS IN
+                TEGER
+ 0505   0574            IF slot <= 5 THEN rx = 54 ELSE rx = 157
+ 051D   0574            ry = 37 + ((slot - 1) MOD 5) * 21
+ 051D   0574            IF vis = 1 THEN
+ 051D   0574                    GET (rx, ry)-(rx + 98, ry + 20), slrbuf
+ 051D   0574                    FOR i = 1 TO slrN
+ 057A   0574                            p = slrp(i)
+ 057A   0574                            PSET (rx + p MOD 100, ry + (p \ 100) MO
+                D 100), p \ 10000
+ 057A   0574                    NEXT
+ 05BC   0574            ELSE
+ 05BF   0574                    PUT (rx, ry), slrbuf, PSET
+ 05BF   0574            END IF
+ 05DF   0574    END SUB
+ 05E7   0574    
+ 05E7   0574    SUB SaveLoadScreen (fontData() AS INTEGER, mvint AS INTEGER, ms
+                en AS SINGLE, act AS INTEGER, dead AS INTEGER)
+ 05F2   0574            DIM mr AS RegType, mo AS RegType
+ 05F2   0574            DIM cbuf(40) AS INTEGER
+ 060A   0574            DIM sel AS INTEGER, osel AS INTEGER, i AS INTEGER, sx A
+                S INTEGER, sy AS INTEGER
+ 060A   0574            DIM mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy A
+                S INTEGER, mlb AS INTEGER
+ 060A   0574            DIM k$, r AS INTEGER, cs AS INTEGER, done AS INTEGER, c
+                drn AS INTEGER
+ 060A   0574            DIM cmsg$, ck$
+ 060A   0574            DIM cyes AS INTEGER, cmlb AS INTEGER, cnodraw AS INTEGE
+                R
+ 060A   0574    
+ 060A   0574            '----- mlb starts PRESSED so the click that opened this
+                 screen (still held) is not
+ 060A   0574            '----- re-registered as a button press here (it overlap
+                s the New Game button).
+ 060A   0574            act = 0: done = 0: sel = 1: mlb = 1: cdrn = 0
+ 060A   0574            IF slLast >= 1 AND slLast <= 10 THEN sel = slLast
+                                                                      PAGE   4
+                                                                      30 Jun 26
+                                                                      18:25:53
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 064A   0574            SCREEN 1
+ 064A   0574            '----- load the selection-ring pixel data (SLRING.DAT) 
+                + size the save-under buffer
+ 064A   0574            OPEN "SLRING.DAT" FOR INPUT AS #2
+ 064A   0574            INPUT #2, slrN
+ 0676   0574            FOR i = 1 TO slrN: INPUT #2, slrp(i): NEXT
+ 06C2   0574            CLOSE #2
+ 06C2   0574            GOSUB drawall
+ 06D7   0574            IF msen = 1 THEN mr.ax = 2: CALL INTERRUPT(mvint, mr, m
+                o): mx = 160: my = 100: GOSUB drawcur4
+ 0715   0574    
+ 0715   0574            slwait:
+ 0715   0574            IF msen = 1 THEN
+ 0715   0574                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+ 0746   0574                    nmx = mo.cx \ 2: nmy = mo.dx
+ 0746   0574                    IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THE
+                N nmx = 0
+ 0778   0574                    IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THE
+                N nmy = 0
+ 0798   0574                    IF nmx <> mx OR nmy <> my THEN GOSUB erasecur4:
+                 mx = nmx: my = nmy: GOSUB drawcur4
+ 07D5   0574                    IF (mo.bx AND 1) <> 0 AND mlb = 0 THEN GOSUB sl
+                click
+ 07FE   0574                    mlb = (mo.bx AND 1)
+ 07FE   0574            END IF
+ 0807   0574            k$ = INKEY$
+ 0807   0574            IF k$ <> "" THEN GOSUB slkey
+ 0830   0574            IF done = 0 THEN GOTO slwait
+ 0839   0574            IF msen = 1 THEN GOSUB erasecur4
+ 0858   0574            EXIT SUB
+ 0858   0574    
+ 0858   0574            '----- (re)draw the whole screen: background, all slot 
+                stats, the selector ring.
+ 0858   0574            '----- Used at startup and to wipe a confirm modal.
+ 0858   0574            drawall:
+ 085B   0574            DEF SEG = &HB800: BLOAD "SVLDBG.PIC", 0: DEF SEG
+ 085B   0574            PALETTE 1, 8: PALETTE 2, 7: PALETTE 3, 6
+ 085B   0574            IF dead = 1 THEN LINE (60, 170)-(106, 190), 0, BF: LINE
+                 (214, 170)-(289, 190), 0, BF
+ 090A   0574            FOR i = 1 TO 10
+ 0910   0574                    IF i <= 5 THEN sx = 91: sy = 41 + (i - 1) * 21 
+                ELSE sx = 193: sy = 41 + (i - 6) * 21
+ 093C   0574                    CALL slDrawStat(i, sx, sy, fontData())
+ 0950   0574            NEXT i
+ 095C   0574            CALL slRing(sel, 1)
+ 096E   0574            RETURN
+ 096E   0574    
+ 096E   0574            '----- mouse click: pick a slot, or fire a bottom butto
+                n
+ 096E   0574            slclick:
+ 0973   0574            r = 0
+ 0973   0574            IF my >= 37 AND my <= 58 THEN r = 1
+ 099F   0574            IF my >= 59 AND my <= 79 THEN r = 2
+ 09C1   0574            IF my >= 80 AND my <= 100 THEN r = 3
+                                                                      PAGE   5
+                                                                      30 Jun 26
+                                                                      18:25:53
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 09E3   0574            IF my >= 101 AND my <= 121 THEN r = 4
+ 0A05   0574            IF my >= 122 AND my <= 143 THEN r = 5
+ 0A28   0574            IF r > 0 THEN
+ 0A28   0574                    cs = 0
+ 0A28   0574                    IF mx >= 64 AND mx <= 152 THEN cs = r
+ 0A5A   0574                    IF mx >= 166 AND mx <= 254 THEN cs = r + 5
+ 0A82   0574                    IF cs > 0 AND cs <> sel THEN GOSUB erasecur4: C
+                ALL slRing(sel, 0): sel = cs: CALL slRing(sel, 1): GOSUB drawcu
+                r4
+ 0ADD   0574            END IF
+ 0ADD   0574            IF my >= 171 AND my <= 189 THEN
+ 0ADD   0574                    IF mx >= 60 AND mx <= 104 THEN GOSUB dosave: RE
+                TURN
+ 0B26   0574                    IF mx >= 108 AND mx <= 152 THEN GOSUB doload: R
+                ETURN
+ 0B51   0574                    IF mx >= 164 AND mx <= 213 THEN GOSUB donew: RE
+                TURN
+ 0B7D   0574                    IF mx >= 216 AND mx <= 287 AND dead = 0 THEN do
+                ne = 1: RETURN
+ 0BB4   0574            END IF
+ 0BB4   0574            RETURN
+ 0BB4   0574    
+ 0BB4   0574            '----- key: S save, L load, N new; C/X = back to invent
+                ory; Esc = close inventory entirely (act=3 -> game); arrows mov
+                e the selector
+ 0BB4   0574            slkey:
+ 0BB9   0574            IF k$ = "s" OR k$ = "S" THEN GOSUB dosave: RETURN
+ 0C00   0574            IF k$ = "l" OR k$ = "L" THEN GOSUB doload: RETURN
+ 0C42   0574            IF k$ = "n" OR k$ = "N" THEN GOSUB donew: RETURN
+ 0C84   0574            IF k$ = CHR$(27) AND dead = 0 THEN act = 3: done = 1: R
+                ETURN
+ 0CC3   0574            IF (k$ = "c" OR k$ = "C" OR k$ = "x" OR k$ = "X") AND d
+                ead = 0 THEN done = 1: RETURN
+ 0D4C   0574            osel = sel
+ 0D4C   0574            IF k$ = CHR$(0) + CHR$(72) THEN sel = sel - 1
+ 0D7C   0574            IF k$ = CHR$(0) + CHR$(80) THEN sel = sel + 1
+ 0DA6   0574            IF k$ = CHR$(0) + CHR$(75) AND sel > 5 THEN sel = sel -
+                 5
+ 0DE5   0574            IF k$ = CHR$(0) + CHR$(77) AND sel <= 5 THEN sel = sel 
+                + 5
+ 0E24   0574            IF sel < 1 THEN sel = 1
+ 0E32   0574            IF sel > 10 THEN sel = 10
+ 0E40   0574            IF sel <> osel THEN GOSUB erasecur4: CALL slRing(osel, 
+                0): CALL slRing(sel, 1): GOSUB drawcur4
+ 0E83   0574            RETURN
+ 0E83   0574    
+ 0E83   0574            '----- save to the selected slot; confirm first if it a
+                lready holds a save
+ 0E83   0574            dosave:
+ 0E88   0574            IF dead = 1 THEN RETURN
+ 0E9D   0574            IF slUsed(sel) = 1 THEN cmsg$ = "Overwrite this slot?":
+                 GOSUB confirm: IF cyes = 0 THEN RETURN
+ 0ECF   0574            IF msen = 1 THEN GOSUB erasecur4
+ 0EEE   0574            CALL SaveGame(sel)
+                                                                      PAGE   6
+                                                                      30 Jun 26
+                                                                      18:25:53
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0EF7   0574            slLast = sel
+ 0EF7   0574            IF sel <= 5 THEN sx = 91: sy = 41 + (sel - 1) * 21 ELSE
+                 sx = 193: sy = 41 + (sel - 6) * 21
+ 0F29   0574            CALL slDrawStat(sel, sx, sy, fontData())
+ 0F3D   0574            CALL slRing(sel, 1)
+ 0F51   0574            IF msen = 1 THEN GOSUB drawcur4
+ 0F70   0574            mlb = 1
+ 0F70   0574            RETURN
+ 0F70   0574    
+ 0F70   0574            '----- load the selected slot (only if it holds a save)
+                ; confirm losing the current game
+ 0F70   0574            doload:
+ 0F7A   0574            IF slUsed(sel) = 0 THEN RETURN
+ 0F93   0574            IF dead = 0 THEN cmsg$ = "Load? unsaved game lost.": GO
+                SUB confirm: IF cyes = 0 THEN RETURN
+ 0FC1   0574            IF msen = 1 THEN GOSUB erasecur4
+ 0FE0   0574            CALL LoadGame(sel)
+ 0FE9   0574            slLast = sel
+ 0FE9   0574            act = 1: done = 1
+ 0FE9   0574            RETURN
+ 0FE9   0574    
+ 0FE9   0574            '----- start a new game (confirm losing the current gam
+                e); caller RUNs to replay the intro
+ 0FE9   0574            donew:
+ 1000   0574            IF dead = 0 THEN cnodraw = 1: cmsg$ = "New game? unsave
+                d game lost.": GOSUB confirm: cnodraw = 0: IF cyes = 0 THEN RET
+                URN
+ 103D   0574            act = 2: done = 1
+ 103D   0574            RETURN
+ 103D   0574    
+ 103D   0574            '----- yes/no modal. In: cmsg$. Out: cyes (1/0). Mouse 
+                Yes/No boxes + Y/N/Esc keys.
+ 103D   0574            '----- cmlb starts pressed (debounce the triggering cli
+                ck); wipes itself via drawall.
+ 103D   0574            confirm:
+ 104E   0574            IF msen = 1 THEN GOSUB erasecur4
+ 1072   0574            CALL DrawYNBox(cmsg$, 1, fontData())
+ 1089   0574            cyes = -1: cmlb = 1
+ 1089   0574            IF msen = 1 THEN GOSUB drawcur4
+ 10B2   0574            cfw:
+ 10B2   0574            IF msen = 1 THEN
+ 10B2   0574                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+ 10E3   0574                    nmx = mo.cx \ 2: nmy = mo.dx
+ 10E3   0574                    IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THE
+                N nmx = 0
+ 1115   0574                    IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THE
+                N nmy = 0
+ 1135   0574                    IF nmx <> mx OR nmy <> my THEN GOSUB erasecur4:
+                 mx = nmx: my = nmy: GOSUB drawcur4
+ 1172   0574                    IF (mo.bx AND 1) <> 0 AND cmlb = 0 THEN
+ 1172   0574                            IF my >= 105 AND my <= 117 AND mx >= 92
+                 AND mx <= 142 THEN cyes = 1
+ 11CE   0574                            IF my >= 105 AND my <= 117 AND mx >= 17
+                8 AND mx <= 228 THEN cyes = 0
+                                                                      PAGE   7
+                                                                      30 Jun 26
+                                                                      18:25:53
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 120A   0574                            IF my >= 80 AND my <= 87 AND mx >= 260 
+                AND mx <= 270 THEN cyes = 0
+ 1246   0574                    END IF
+ 1246   0574                    cmlb = (mo.bx AND 1)
+ 1246   0574            END IF
+ 124F   0574            ck$ = INKEY$
+ 124F   0574            IF ck$ = "y" OR ck$ = "Y" THEN cyes = 1
+ 129A   0574            IF ck$ = "n" OR ck$ = "N" OR ck$ = CHR$(27) THEN cyes =
+                 0
+ 12F9   0574            IF cyes = -1 THEN GOTO cfw
+ 1302   0574            IF msen = 1 THEN GOSUB erasecur4
+ 1321   0574            IF cnodraw = 1 AND cyes = 1 THEN RETURN
+ 1343   0574            GOSUB drawall
+ 134B   0574            IF msen = 1 THEN GOSUB drawcur4
+ 136A   0574            RETURN
+ 136A   0574    
+ 136A   0574            '----- self-drawn NW-arrow cursor matching the inventor
+                y's grdnw (attr3 brown outline + attr2 ltgray fill) with save-u
+                nder
+ 136A   0574            drawcur4:
+ 136F   0574            GET (mx, my)-(mx + 5, my + 7), cbuf
+ 136F   0574            PSET (mx, my), 3
+ 136F   0574            PSET (mx, my + 1), 3: PSET (mx + 1, my + 1), 3
+ 136F   0574            PSET (mx, my + 2), 3: PSET (mx + 2, my + 2), 3
+ 136F   0574            PSET (mx, my + 3), 3: PSET (mx + 3, my + 3), 3
+ 136F   0574            PSET (mx, my + 4), 3: PSET (mx + 4, my + 4), 3
+ 136F   0574            PSET (mx, my + 5), 3: PSET (mx + 2, my + 5), 3: PSET (m
+                x + 3, my + 5), 3
+ 136F   0574            PSET (mx, my + 6), 3: PSET (mx + 1, my + 6), 3
+ 136F   0574            PSET (mx + 1, my + 2), 2
+ 136F   0574            PSET (mx + 1, my + 3), 2: PSET (mx + 2, my + 3), 2
+ 136F   0574            PSET (mx + 1, my + 4), 2: PSET (mx + 2, my + 4), 2: PSE
+                T (mx + 3, my + 4), 2
+ 136F   0574            PSET (mx + 1, my + 5), 2
+ 136F   0574            cdrn = 1
+ 136F   0574            RETURN
+ 136F   0574            erasecur4:
+ 15AF   0574            IF cdrn = 1 THEN PUT (mx, my), cbuf, PSET
+ 15DB   0574            cdrn = 0
+ 15DB   0574            RETURN
+ 15DB   0574    END SUB
+ 1611   0574    
+ 1611   0574    '----- shared yes/no modal window (inventory quit style): ltgra
+                y(2) body, black(0) outer border + dkgray(dk)
+ 1611   0574    '----- inner frame, BLACK title bar with an "x", centered black
+                 message, raised Yes/No buttons. dk = the
+ 1611   0574    '----- active palette's dark-gray attr (1 on the save/load scre
+                en, 3 in the inventory). Caller polls the
+ 1611   0574    '----- hit zones: Yes 92-142, No 178-228, x 260-270 (=No), all 
+                y 105-117 (x at y 80-87).
+ 1611   0574    SUB DrawYNBox (msg AS STRING, dk AS INTEGER, fontData() AS INTE
+                GER)
+ 161C   0574            LINE (44, 76)-(276, 124), 2, BF
+ 161C   0574            LINE (44, 76)-(276, 124), 0, B
+                                                                      PAGE   8
+                                                                      30 Jun 26
+                                                                      18:25:53
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 161C   0574            LINE (46, 78)-(274, 122), dk, B
+ 161C   0574            LINE (48, 80)-(272, 87), 0, BF
+ 161C   0574            LINE (262, 81)-(267, 86), 2: LINE (262, 86)-(267, 81), 
+                2
+ 161C   0574            CALL drawText(160 - textWidth(msg, fontData()) \ 2, 94,
+                 msg, 0, fontData())
+ 1771   0574            LINE (92, 105)-(142, 117), 2, BF: LINE (92, 105)-(142, 
+                117), 0, B
+ 1771   0574            LINE (93, 116)-(141, 116), dk: LINE (141, 106)-(141, 11
+                6), dk
+ 1771   0574            CALL drawText(110, 108, "Yes", 0, fontData())
+ 1856   0574            LINE (178, 105)-(228, 117), 2, BF: LINE (178, 105)-(228
+                , 117), 0, B
+ 1856   0574            LINE (179, 116)-(227, 116), dk: LINE (227, 106)-(227, 1
+                16), dk
+ 1856   0574            CALL drawText(198, 108, "No", 0, fontData())
+ 193B   0574    END SUB
+ 1943   0574    
+ 194A   0574    
+
+43949 Bytes Available
+35911 Bytes Free
+
+    0 Warning Error(s)
+    0 Severe  Error(s)

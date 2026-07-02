@@ -75,8 +75,21 @@ while ($listener.IsListening) {
       Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes($json)) 'application/json'
     }
     elseif ($path -eq '/api/pct') {
-      $f = Join-Path $data ((Safe-Name $req.QueryString['name']) + '.PCT')
-      if (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
+      $name = Safe-Name $req.QueryString['name']
+      $f = Join-Path $data ($name + '.PCT')
+      if ($req.HttpMethod -eq 'POST') {
+        $reader = New-Object IO.StreamReader($req.InputStream, $req.ContentEncoding)
+        $body = $reader.ReadToEnd(); $reader.Close()
+        $body = ($body -replace "`r`n", "`n") -replace "`n", "`r`n"
+        [IO.File]::WriteAllText($f, $body)
+        Write-Host ("  saved {0}.PCT  ({1} bytes)" -f $name, $body.Length) -ForegroundColor Green
+        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+      }
+      elseif ($req.HttpMethod -eq 'DELETE') {
+        if (Test-Path $f) { Remove-Item $f -Force; Write-Host ("  deleted {0}.PCT" -f $name) -ForegroundColor Yellow }
+        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+      }
+      elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
       else { $res.StatusCode = 404; Write-Host ("  404 .PCT not found: $f") -ForegroundColor Yellow }
     }
     elseif ($path -eq '/api/msks') {
@@ -128,6 +141,32 @@ while ($listener.IsListening) {
       }
       elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
       else { $res.StatusCode = 404; Write-Host ("  404 .PAC not found: $f") -ForegroundColor Yellow }
+    }
+    elseif ($path -eq '/api/anims') {
+      $f = Join-Path $data 'ANIMS.PAC'
+      if ($req.HttpMethod -eq 'POST') {
+        $reader = New-Object IO.StreamReader($req.InputStream, $req.ContentEncoding)
+        $body = $reader.ReadToEnd(); $reader.Close()
+        $body = ($body -replace "`r`n", "`n") -replace "`n", "`r`n"
+        [IO.File]::WriteAllText($f, $body)
+        Write-Host ("  saved ANIMS.PAC  ({0} bytes)" -f $body.Length) -ForegroundColor Green
+        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+      }
+      elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
+      else { $res.StatusCode = 404 }
+    }
+    elseif ($path -eq '/api/font') {
+      $f = Join-Path $data 'font.txt'
+      if ($req.HttpMethod -eq 'POST') {
+        $reader = New-Object IO.StreamReader($req.InputStream, $req.ContentEncoding)
+        $body = $reader.ReadToEnd(); $reader.Close()
+        $body = ($body -replace "`r`n", "`n") -replace "`n", "`r`n"
+        [IO.File]::WriteAllText($f, $body)
+        Write-Host ("  saved font.txt  ({0} bytes)" -f $body.Length) -ForegroundColor Green
+        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+      }
+      elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
+      else { $res.StatusCode = 404 }
     }
     else { $res.StatusCode = 404 }
   }

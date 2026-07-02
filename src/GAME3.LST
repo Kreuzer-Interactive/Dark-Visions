@@ -1,0 +1,430 @@
+                                                                      PAGE   1
+                                                                      30 Jun 26
+                                                                      18:25:52
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    '----- GAME3.BAS: variable-width small-font renderer (from ART/
+                font2.png, proportional ~7px).
+ 0030   0006    '----- Own 64K code segment. Pure PSET = transparent over backg
+                rounds. Pass a CGA attr (0-3) as textColor.
+ 0030   0006    '----- font file: a HEIGHT line, then per glyph = ASCII code, w
+                idth, then <height> rows of width-bit binary.
+ 0030   0006    '----- fontData(0) = height H; fontData(code*(H+1)) = width; +1
+                +row = that row's bits.  DIM fontData(2047) in GAME.BAS.
+ 0030   0006    '----- gItal = italic flag (module-shared): drawText sets it fr
+                om the _ markup, drawChar shears each row by it.
+ 0030   0006    DIM SHARED gItal AS INTEGER
+ 0030   0006    '----- pw2(n) = 2^n bit-mask LUT (filled in initFontSystem); av
+                oids per-pixel floating-point 2^n in drawChar
+ 0030   0006    DIM SHARED pw2(14) AS INTEGER
+ 0030   0006    
+ 0030   0006    '----- load font.txt: ASCII code, width, then 7 rows
+ 0030   0006    SUB initFontSystem (fontData() AS INTEGER, fpath AS STRING)
+ 0040   0026            DIM lineText AS STRING
+ 0040   0026            DIM cc AS INTEGER, wdt AS INTEGER, row AS INTEGER, di A
+                S INTEGER, pat AS INTEGER, i AS INTEGER, hh AS INTEGER
+ 0040   0026            pw2(0) = 1: FOR i = 1 TO 14: pw2(i) = pw2(i - 1) * 2: N
+                EXT i
+ 0063   0026            FOR i = 0 TO 2047
+ 0068   0026                    fontData(i) = 0
+ 0068   0026            NEXT i
+ 0086   0026            CLOSE #1
+ 0086   0026            OPEN fpath FOR INPUT AS #1
+ 0086   0026            hgtRead:
+ 00A4   0026            IF EOF(1) THEN GOTO fsExit
+ 00B9   0026            LINE INPUT #1, lineText
+ 00C2   0026            IF LEFT$(lineText, 1) = "#" OR LEN(lineText) = 0 THEN G
+                OTO hgtRead
+ 0111   0026            hh = VAL(lineText): fontData(0) = hh
+ 0111   0026            DO WHILE NOT EOF(1)
+ 0136   0026                    LINE INPUT #1, lineText
+ 0151   0026                    IF LEFT$(lineText, 1) = "#" OR LEN(lineText) = 
+                0 THEN GOTO fsMain
+ 01A3   0026                    cc = VAL(lineText): di = cc * (hh + 1)
+ 01A3   0026                    fsWid:
+ 01C2   0026                    IF EOF(1) THEN GOTO fsMain
+ 01D7   0026                    LINE INPUT #1, lineText
+ 01E0   0026                    IF LEFT$(lineText, 1) = "#" OR LEN(lineText) = 
+                0 THEN GOTO fsWid
+ 022F   0026                    wdt = VAL(lineText): fontData(di) = wdt
+ 022F   0026                    FOR row = 0 TO hh - 1
+ 0262   0026                            fsRow:
+ 0262   0026                            IF EOF(1) THEN EXIT FOR
+ 0277   0026                            LINE INPUT #1, lineText
+ 0280   0026                            IF LEFT$(lineText, 1) = "#" OR LEN(line
+                Text) = 0 THEN GOTO fsRow
+ 02CF   0026                            lineText = LTRIM$(RTRIM$(lineText))
+ 02CF   0026                            pat = 0
+ 02CF   0026                            FOR i = 1 TO LEN(lineText)
+ 0300   0026                                    IF MID$(lineText, i, 1) = "1" T
+                                                                      PAGE   2
+                                                                      30 Jun 26
+                                                                      18:25:52
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                HEN pat = pat + pw2(LEN(lineText) - i)
+ 0336   0026                            NEXT i
+ 0342   0026                            fontData(di + 1 + row) = pat
+ 0342   0026                    NEXT row
+ 036D   0026                    fsMain:
+ 036D   0026            LOOP
+ 0376   0026            fsExit:
+ 0376   0026            CLOSE #1
+ 0376   0026    END SUB
+ 0396   0026    
+ 0396   0026    '----- draw one glyph (variable width); each of 7 rows holds (w
+                idth) bits, MSB = leftmost pixel
+ 0396   0026    SUB drawChar (x AS INTEGER, y AS INTEGER, char AS STRING, textC
+                olor AS INTEGER, fontData() AS INTEGER)
+ 03A1   0026            DIM cc AS INTEGER, di AS INTEGER, w AS INTEGER, r AS IN
+                TEGER, c AS INTEGER, pat AS INTEGER, hh AS INTEGER, sh AS INTEG
+                ER
+ 03A1   0026            DIM bit AS INTEGER, msb AS INTEGER
+ 03A1   0026            hh = fontData(0)
+ 03A1   0026            cc = ASC(char): di = cc * (hh + 1): w = fontData(di)
+ 03A1   0026            IF w = 0 THEN EXIT SUB
+ 03DD   0026            msb = pw2(w - 1)
+ 03DD   0026            FOR r = 0 TO hh - 1
+ 03F6   0026                    pat = fontData(di + 1 + r)
+ 03F6   0026                    IF pat <> 0 THEN
+ 03F6   0026                            IF gItal <> 0 THEN sh = (hh - 1 - r) \ 
+                5 ELSE sh = 0
+ 0438   0026                            bit = msb
+ 0438   0026                            FOR c = 0 TO w - 1
+ 044A   0026                                    IF (pat AND bit) <> 0 THEN PSET
+                 (x + c + sh, y + r), textColor
+ 0478   0026                                    bit = bit \ 2
+ 0478   0026                            NEXT c
+ 0490   0026                    END IF
+ 0490   0026            NEXT r
+ 049F   0026    END SUB
+ 04A7   0026    
+ 04A7   0026    '----- underline cols x0..x1 at row uy, leaving 1px black on ea
+                ch side of any glyph pixel (descender tails). POINT-based, assu
+                mes black bg (message bar).
+ 04A7   0026    SUB drawUnder (x0 AS INTEGER, x1 AS INTEGER, uy AS INTEGER, col
+                 AS INTEGER)
+ 04B2   0026            DIM ux AS INTEGER, gp AS INTEGER, gc AS INTEGER, gn AS 
+                INTEGER
+ 04B2   0026            gp = 0
+ 04B2   0026            FOR ux = x0 TO x1
+ 04C8   0026                    IF POINT(ux, uy) <> 0 THEN gc = 1 ELSE gc = 0
+ 04E7   0026                    IF POINT(ux + 1, uy) <> 0 THEN gn = 1 ELSE gn =
+                 0
+ 050A   0026                    IF gp = 0 AND gc = 0 AND gn = 0 THEN PSET (ux, 
+                uy), col
+ 054A   0026                    gp = gc
+ 054A   0026            NEXT ux
+ 055F   0026    END SUB
+                                                                      PAGE   3
+                                                                      30 Jun 26
+                                                                      18:25:52
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0567   0026    
+ 0567   0026    '----- draw a string left-to-right; each glyph advances by its 
+                own width + 1px, space = 4px
+ 0567   0026    SUB drawText (x AS INTEGER, y AS INTEGER, text AS STRING, textC
+                olor AS INTEGER, fontData() AS INTEGER)
+ 0572   0026            DIM i AS INTEGER, cx AS INTEGER, cc AS INTEGER, w AS IN
+                TEGER, hh AS INTEGER, curcol AS INTEGER, ulOn AS INTEGER, ulSta
+                rt AS INTEGER
+ 0572   0026            hh = fontData(0): cx = x: curcol = textColor: gItal = 0
+                : ulOn = 0
+ 0572   0026            FOR i = 1 TO LEN(text)
+ 05B0   0026                    cc = ASC(MID$(text, i, 1))
+ 05B0   0026                    IF cc = 126 THEN
+ 05B0   0026                            IF curcol = textColor THEN curcol = 2 E
+                LSE curcol = textColor
+ 05EB   0026                    ELSEIF cc = 95 THEN
+ 05EE   0026                            IF gItal = 0 THEN gItal = 1 ELSE gItal 
+                = 0
+ 0610   0026                    ELSEIF cc = 124 THEN
+ 0613   0026                            IF ulOn = 0 THEN
+ 0613   0026                                    ulOn = 1: ulStart = cx
+ 0613   0026                            ELSE
+ 0633   0026                                    ulOn = 0: CALL drawUnder(ulStar
+                t, cx - 2, y + hh - 1, curcol)
+ 0662   0026                            END IF
+ 0662   0026                    ELSEIF cc = 32 THEN
+ 0665   0026                            cx = cx + 4
+ 0665   0026                    ELSE
+ 0675   0026                            CALL drawChar(cx, y, MID$(text, i, 1), 
+                curcol, fontData())
+ 06AE   0026                            w = fontData(cc * (hh + 1)): IF w = 0 T
+                HEN w = 3
+ 06D4   0026                            cx = cx + w + 1
+ 06D4   0026                    END IF
+ 06DE   0026            NEXT i
+ 06ED   0026            gItal = 0
+ 06ED   0026    END SUB
+ 06FB   0026    
+ 06FB   0026    '----- pixel width of a string (for proportional word-wrap)
+ 06FB   0026    FUNCTION textWidth (text AS STRING, fontData() AS INTEGER)
+ 0706   0026            DIM i AS INTEGER, cc AS INTEGER, w AS INTEGER, tot AS I
+                NTEGER, hh AS INTEGER
+ 0706   0026            hh = fontData(0): tot = 0
+ 0706   0026            FOR i = 1 TO LEN(text)
+ 072E   0026                    cc = ASC(MID$(text, i, 1))
+ 072E   0026                    IF cc = 32 THEN
+ 072E   0026                            tot = tot + 4
+ 072E   0026                    ELSEIF cc <> 126 AND cc <> 95 AND cc <> 124 THE
+                N
+ 0753   0026                            w = fontData(cc * (hh + 1)): IF w = 0 T
+                HEN w = 3
+ 07A2   0026                            tot = tot + w + 1
+ 07A2   0026                    END IF
+ 07AC   0026            NEXT i
+                                                                      PAGE   4
+                                                                      30 Jun 26
+                                                                      18:25:52
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 07BB   0026            textWidth = tot
+ 07BB   0026    END FUNCTION
+ 07D6   0026    
+ 07D6   0026    '----- draw a string word-wrapped to maxpx pixels/line (collaps
+                es space runs); a backslash forces a line break, two backslashe
+                s = a blank line
+ 07D6   0026    SUB drawWrap (x AS INTEGER, y AS INTEGER, txt AS STRING, col AS
+                 INTEGER, maxpx AS INTEGER, lineh AS INTEGER, fontData() AS INT
+                EGER)
+ 07E1   0026            DIM cy AS INTEGER, i AS INTEGER, ch AS STRING, word AS 
+                STRING, ln AS STRING, ww AS INTEGER, lw AS INTEGER, brc AS STRI
+                NG
+ 07E1   0026            cy = y: ln = "": lw = 0: word = "": brc = CHR$(92)
+ 07E1   0026            FOR i = 1 TO LEN(txt) + 1
+ 082E   0026                    IF i <= LEN(txt) THEN ch = MID$(txt, i, 1) ELSE
+                 ch = " "
+ 0867   0026                    IF ch = " " OR ch = brc THEN
+ 0867   0026                            IF LEN(word) > 0 THEN
+ 0867   0026                                    ww = textWidth(word, fontData()
+                )
+ 0867   0026                                    IF lw = 0 THEN
+ 0867   0026                                            ln = word: lw = ww
+ 0867   0026                                    ELSEIF lw + 4 + ww > maxpx THEN
+ 08E7   0026                                            CALL drawText(x, cy, ln
+                , col, fontData()): cy = cy + lineh: ln = word: lw = ww
+ 0910   0026                                    ELSE
+ 092E   0026                                            ln = ln + " " + word: l
+                w = lw + 4 + ww
+ 092E   0026                                    END IF
+ 095B   0026                                    word = ""
+ 095B   0026                            END IF
+ 0968   0026                            IF ch = brc THEN CALL drawText(x, cy, l
+                n, col, fontData()): cy = cy + lineh: ln = "": lw = 0
+ 09AA   0026                    ELSE
+ 09AD   0026                            word = word + ch
+ 09AD   0026                    END IF
+ 09C4   0026            NEXT i
+ 09D3   0026            IF LEN(ln) > 0 THEN CALL drawText(x, cy, ln, col, fontD
+                ata())
+ 09F9   0026    END SUB
+ 0A25   0026    
+ 0A25   0026    '----- live Progress % (top-left box) + in-game clock H:MM (top
+                -right box), drawn in the empty
+ 0A25   0026    '----- space right of INVMAIN's baked "Progress"/"Time" labels.
+                 Heavy code lives here (GAME3 has room).
+ 0A25   0026    SUB drawStats (ob() AS SINGLE, cl AS SINGLE, cr AS SINGLE, font
+                Data() AS INTEGER)
+ 0A30   0026            DIM tmin AS INTEGER, hh AS INTEGER, mm AS INTEGER, pcnt
+                 AS INTEGER, i AS INTEGER
+ 0A30   0026            tmin = INT(cl * cr): hh = 8 + tmin \ 60: mm = tmin - (h
+                h - 8) * 60
+ 0A30   0026            pcnt = 0
+ 0A30   0026            FOR i = 1 TO 51
+ 0A72   0026                    IF ob(i) = 1 THEN pcnt = pcnt + 1
+                                                                      PAGE   5
+                                                                      30 Jun 26
+                                                                      18:25:52
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0A99   0026            NEXT i
+ 0AA5   0026            IF ob(36) = 1 THEN pcnt = pcnt + 2
+ 0ACA   0026            IF ob(35) = 1 THEN pcnt = pcnt + 2
+ 0AEF   0026            pcnt = CINT(pcnt * 100 / 47)
+ 0AEF   0026            CALL drawText(49, 11, LTRIM$(STR$(pcnt)) + "%", 2, font
+                Data())
+ 0B57   0026            CALL drawText(278, 11, LTRIM$(STR$(hh)) + ":" + RIGHT$(
+                "0" + LTRIM$(STR$(mm)), 2), 2, fontData())
+ 0BD2   0026    END SUB
+ 0BDA   0026    
+ 0BDA   0026    '----- load all three fonts at startup, each into its own array
+                 (renderer selects via the fontData() arg)
+ 0BDA   0026    SUB initAllFonts (fontData() AS INTEGER, font3Data() AS INTEGER
+                , fontbData() AS INTEGER)
+ 0BE5   0026            CALL initFontSystem(fontData(), "font.txt")
+ 0C07   0026            CALL initFontSystem(font3Data(), "font3.txt")
+ 0C29   0026            CALL initFontSystem(fontbData(), "fontbold.txt")
+ 0C4B   0026    END SUB
+ 0C53   0026    
+ 0C53   0026    '----- top-of-screen message: black-bar the top rows, then word
+                -wrap the string in the given font
+ 0C53   0026    SUB drawMsg (s AS STRING, fontData() AS INTEGER)
+ 0C5E   0026            DIM lh AS INTEGER
+ 0C5E   0026            lh = fontData(0) + 1
+ 0C5E   0026            LINE (0, 0)-(319, lh * 2 - 1), 0, BF
+ 0C5E   0026            CALL drawWrap(2, 1, s, 3, 314, lh, fontData())
+ 0CCA   0026    END SUB
+ 0CD2   0026    
+ 0CD2   0026    '----- intro: black the palette, hold ~1s (hides the slow carr.
+                pic BLOAD on old hardware), then load + reveal the car scene
+ 0CD2   0026    SUB introShowCarr
+ 0CDD   0026            DIM t9 AS SINGLE, d9 AS SINGLE
+ 0CDD   0026            PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
+ 0CDD   0026            t9 = TIMER
+ 0CDD   0026            DO
+ 0D18   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
+ 0D50   0026            LOOP WHILE d9 < 1
+ 0D50   0026            DEF SEG = &HB800: BLOAD "carr.pic", 0: DEF SEG
+ 0D50   0026            PALETTE 3, 6: PALETTE 1, 2: PALETTE 2, 11
+ 0D50   0026    END SUB
+ 0DB5   0026    
+ 0DB5   0026    '----- fade "A Kreuzer Production" (attr 3) in through the CGA 
+                grays: 0 black -> 8 dk-gray -> 7 lt-gray -> 15 white, then hold
+ 0DB5   0026    SUB introFadeCredit
+ 0DC0   0026            DIM t9 AS SINGLE, d9 AS SINGLE, fws AS SINGLE
+ 0DC0   0026            fws = .15
+ 0DC0   0026            PALETTE 3, 8: GOSUB fcw
+ 0DE2   0026            PALETTE 3, 7: GOSUB fcw
+ 0DF9   0026            PALETTE 3, 15: GOSUB fcw
+ 0E10   0026            fws = .5: GOSUB fcw
+ 0E23   0026            EXIT SUB
+ 0E23   0026            fcw:
+ 0E26   0026            t9 = TIMER
+ 0E26   0026            DO
+                                                                      PAGE   6
+                                                                      30 Jun 26
+                                                                      18:25:52
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0E3C   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
+ 0E74   0026            LOOP WHILE d9 < fws
+ 0E74   0026            RETURN
+ 0E74   0026    END SUB
+ 0E92   0026    
+ 0E92   0026    '----- book reader: hold the just-loaded book picture ~1.5s, th
+                en clear and word-wrap the book's text in the given font
+ 0E92   0026    SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
+ 0E9D   0026            DIM t9 AS SINGLE, d9 AS SINGLE, bt AS STRING, lh AS INT
+                EGER
+ 0E9D   0026            t9 = TIMER
+ 0E9D   0026            DO
+ 0EAE   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
+ 0EE6   0026            LOOP WHILE d9 < 1.5
+ 0EE6   0026            bt = ""
+ 0EE6   0026            SELECT CASE sel
+ 0EE6   0026            CASE 9
+ 0EE6   0026                    bt = "Patient: Naton McDaniel\Disorder: Paranoi
+                d"
+ 0EE6   0026                    bt = bt + " Schizophrenia\Notes: Nervous, compl
+                ains of"
+ 0EE6   0026                    bt = bt + " voices, often talks in gibberish.\I
+                D: 12443"
+ 0EE6   0026                    bt = bt + "\\Patient: Havos Lobos\Disorder: Sev
+                ere"
+ 0EE6   0026                    bt = bt + " Delusions\Notes: What he sees and h
+                ears becomes"
+ 0EE6   0026                    bt = bt + " his reality. Very dangerous.\ID: 38
+                5938"
+ 0EE6   0026                    bt = bt + "\\Patient: Gary Coleman\Disorder: Ps
+                ychotic"
+ 0EE6   0026                    bt = bt + " dementia\Notes: A leader among the 
+                patients,"
+ 0EE6   0026                    bt = bt + " fixated on knives, blood and sacrif
+                ice."
+ 0EE6   0026                    bt = bt + " Extremely disturbed.\ID: 485970"
+ 0EE6   0026            CASE 10
+ 1005   0026                    bt = "I have concluded another successful exper
+                iment."
+ 1005   0026                    bt = bt + "  This time the other doctors have g
+                rown greedy"
+ 1005   0026                    bt = bt + " and want the notes for themselves. 
+                 So I gave"
+ 1005   0026                    bt = bt + " them to the servants and coded them
+                 -- and the"
+ 1005   0026                    bt = bt + " code book is hidden, where they wil
+                l never find"
+ 1005   0026                    bt = bt + " it nor steal my breakthrough."
+ 1005   0026            CASE 19
+ 109D   0026                    bt = "3/15\The patients have become unruly. I f
+                ear they"
+ 109D   0026                    bt = bt + " will overpower us, but the research
+                 must go on."
+ 109D   0026                    bt = bt + "\\3/17\The other doctors too are con
+                                                                      PAGE   7
+                                                                      30 Jun 26
+                                                                      18:25:52
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                cerned. We"
+ 109D   0026                    bt = bt + " are tired from the long hours and m
+                ake many"
+ 109D   0026                    bt = bt + " errors of judgment.\\3/23\Something
+                 in the air"
+ 109D   0026                    bt = bt + " down there clouds my head. I have m
+                oved my"
+ 109D   0026                    bt = bt + " practice to the attic, hidden behin
+                d a pit of"
+ 109D   0026                    bt = bt + " ash that only an electric circuit w
+                ill open."
+ 109D   0026                    bt = bt + " The MPTP vials are upper left.\\3/2
+                9\Edwards has"
+ 109D   0026                    bt = bt + " been following me. I fear he grows 
+                suspicious."
+ 109D   0026                    bt = bt + " (The rest of the page is torn away.
+                )"
+ 109D   0026            CASE 21
+ 11A8   0026                    bt = "The Zombie Syrem\\MPTP -- this formula ha
+                rbors the"
+ 11A8   0026                    bt = bt + " most dangerous compound known, one 
+                that leaves a"
+ 11A8   0026                    bt = bt + " victim paralyzed for days at a time
+                . The"
+ 11A8   0026                    bt = bt + " conclusive test on human subjects h
+                as yielded"
+ 11A8   0026                    bt = bt + " promising results.\\The subjects, t
+                hough, gain in"
+ 11A8   0026                    bt = bt + " strength and reflex, growing harder
+                 to control."
+ 11A8   0026                    bt = bt + " We have begun using torture to curb
+                 them; it is"
+ 11A8   0026                    bt = bt + " almost safer to keep them on it per
+                manently, lest"
+ 11A8   0026                    bt = bt + " they overthrow the doctors."
+ 11A8   0026            CASE 25
+ 1285   0026                    bt = "A Cipher Key\\A slim codex of symbols, ea
+                ch set"
+ 1285   0026                    bt = bt + " beside its true letter. The doctor 
+                coded his"
+ 1285   0026                    bt = bt + " notes to keep them from greedy hand
+                s -- but with"
+ 1285   0026                    bt = bt + " this key the cipher gives way. Lay 
+                it against the"
+ 1285   0026                    bt = bt + " torn halves of the formula and the 
+                scattered"
+ 1285   0026                    bt = bt + " notations resolve into a single, co
+                mplete"
+ 1285   0026                    bt = bt + " working."
+ 1285   0026            CASE ELSE
+ 1334   0026                    bt = "The pages are water-stained and illegible
+                ."
+ 1334   0026            END SELECT
+ 1341   0026            LINE (0, 0)-(319, 199), 0, BF
+                                                                      PAGE   8
+                                                                      30 Jun 26
+                                                                      18:25:52
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 1341   0026            PALETTE 3, 6
+ 1341   0026            lh = fontData(0) + 1
+ 1341   0026            CALL drawWrap(6, 2, bt, 3, 308, lh, fontData())
+ 13BA   0026    END SUB
+ 13CB   0026    
+ 13D2   0026    
+
+43949 Bytes Available
+36373 Bytes Free
+
+    0 Warning Error(s)
+    0 Severe  Error(s)

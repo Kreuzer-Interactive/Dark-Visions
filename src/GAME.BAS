@@ -5,18 +5,30 @@ REM $DYNAMIC
 '----- SUB declarations
 DECLARE SUB Intro ()
 DECLARE SUB Credits ()
+DECLARE SUB invhi ()
+DECLARE SUB SaveLoadScreen (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS INTEGER, dead AS INTEGER)
+DECLARE SUB drawcur ()
+DECLARE SUB erasecur ()
 DECLARE SUB InitVars ()
 DECLARE SUB Snd1 ()
 DECLARE SUB Snd2 ()
 DECLARE SUB Snd3 ()
 DECLARE SUB Snd4 ()
 DECLARE SUB Snd5 ()
-DECLARE SUB NotesSub ()
+DECLARE SUB QuitConfirm ()
+DECLARE SUB DrawYNBox (msg AS STRING, dk AS INTEGER, fontData() AS INTEGER)
 DECLARE SUB DeathMusic ()
-DECLARE SUB PctComplete ()
-DECLARE SUB InvGrid ()
-DECLARE SUB DoorOpen ()
 DECLARE SUB LoadConfig ()
+DECLARE SUB initAllFonts (fontData() AS INTEGER, font3Data() AS INTEGER, fontbData() AS INTEGER)
+DECLARE SUB drawChar (x AS INTEGER, y AS INTEGER, char AS STRING, textColor AS INTEGER, fontData() AS INTEGER)
+DECLARE SUB drawText (x AS INTEGER, y AS INTEGER, text AS STRING, textColor AS INTEGER, fontData() AS INTEGER)
+DECLARE SUB drawWrap (x AS INTEGER, y AS INTEGER, txt AS STRING, col AS INTEGER, maxc AS INTEGER, lineh AS INTEGER, fontData() AS INTEGER)
+DECLARE FUNCTION textWidth (text AS STRING, fontData() AS INTEGER)
+DECLARE SUB drawStats (ob() AS SINGLE, cl AS SINGLE, cr AS SINGLE, fontData() AS INTEGER)
+DECLARE SUB drawMsg (s AS STRING, fontData() AS INTEGER)
+DECLARE SUB introShowCarr ()
+DECLARE SUB introFadeCredit ()
+DECLARE SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
 
 '----- assembly interrupt support (INT 33h mouse)
 TYPE RegType
@@ -55,29 +67,29 @@ DIM SHARED pt AS SINGLE
 DIM SHARED q$, a$, done$, tt$, lf$, sl$, dop$, vk$, tk$, m$, sf$, sy$
 DIM SHARED cl, h9, h10, h11, hr, mn, t1, t2, t3, cv
 DIM SHARED gw, gy, gx, sel, doc, sn, di, dn1, dn2, dn3
-DIM SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10
+COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$
+COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
 DIM SHARED pk, jx, jy, dx2, dy2, co, co2, pa1, pa2, pa3
-DIM SHARED oh, ohs, pz, j, pc, pp2, gm, mt, tmo, wk, js0, js1
-DIM SHARED sa, sb, sc
-DIM SHARED sfps, fpsc, fpst, fpsv, fpsd
+DIM SHARED oh, ohs, pz, j, pc, pp2, gm, tmo, wk, js0, js1
+DIM SHARED fpsv, fpsd
 DIM SHARED ifc, it0, itt
-DIM SHARED jsen
-DIM SHARED msen, mlb, mrb, mshown, snr, exsen, cshp, hovr, mxyon
-DIM SHARED nf$(25), nfon, nfseed, lcount, lastlx, lastly, lh1, lh2, lh3
-DIM SHARED mvint AS INTEGER
+DIM SHARED mlb, mrb, mshown, cshp, hovr
+DIM SHARED nf$(25), nfseed, lcount, lastlx, lastly, lh1, lh2, lh3
 DIM SHARED mreg AS RegType, mout AS RegType
-DIM SHARED mcur AS INTEGER, mhsx AS INTEGER, mhsy AS INTEGER, mxor, mraw
+DIM SHARED mhsx AS INTEGER, mhsy AS INTEGER, mxor, mraw
 DIM SHARED mregx AS RegTypeX, moutx AS RegTypeX
 DIM SHARED cmask(31) AS INTEGER
 DIM SHARED arow$(15)
 DIM SHARED px(4, 80), py(4, 80), pc(4, 80), npix(4)
-DIM SHARED curbuf(100), cdrawn, cox, coy, mx, my, lmx, lmy
+DIM SHARED curbuf(100), cdrawn, cox, coy
+DIM SHARED mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy AS INTEGER, lmx AS INTEGER, lmy AS INTEGER
+DIM SHARED fontData(2047) AS INTEGER
+DIM SHARED font3Data(2047) AS INTEGER
+DIM SHARED fontbData(2047) AS INTEGER
+DIM SHARED curp$(15)
+DIM SHARED cbg(100) AS INTEGER
 
 '----- shared sprite/door buffers
-DIM SHARED do1(150) AS INTEGER
-DIM SHARED do2(300) AS INTEGER
-DIM SHARED do3(300) AS INTEGER
-DIM SHARED do4(300) AS INTEGER
 DIM SHARED wa(150) AS INTEGER
 DIM SHARED wb(300) AS INTEGER
 DIM SHARED fd(150) AS INTEGER
@@ -102,11 +114,22 @@ DIM SHARED fbg(150) AS INTEGER
 DIM SHARED mwa(150) AS INTEGER
 DIM SHARED mwb(150) AS INTEGER
 DIM SHARED wbg(150) AS INTEGER
+'----- data-driven animation system: ANIMS.PAC library + per-room placements
+DIM SHARED nAnim AS INTEGER, nPlace AS INTEGER
+DIM SHARED anId(50) AS INTEGER, anRate(50) AS INTEGER
+DIM SHARED anName$(50), anType$(50), anSrc$(50), anFrames$(50), anMode$(50), anPal$(50), anSnd$(50)
+DIM SHARED plAnim(20) AS INTEGER, plX(20) AS INTEGER, plY(20) AS INTEGER, plCond(20) AS INTEGER, plSet(20) AS INTEGER
+'----- scratch buffers for the generic .pct/.msk frame loader (de-interleave + masked draw)
+DIM SHARED aflat(1600) AS INTEGER, afrm(150) AS INTEGER, amfrm(150) AS INTEGER, fsq(30) AS INTEGER
+'----- active loop-animation instances for the current room (idle-loop tick)
+DIM SHARED nLoop AS INTEGER
+DIM SHARED liAnim(4) AS INTEGER, liX(4) AS INTEGER, liY(4) AS INTEGER, liCur(4) AS INTEGER, liRate(4) AS INTEGER
+DIM SHARED liLast(4) AS SINGLE, liSaveAll(640) AS INTEGER
 
 '----- shared world and inventory arrays
 DIM SHARED bk(100)
 DIM SHARED bk2(100)
-DIM SHARED gr(2000)
+DIM SHARED gr(1700)
 DIM SHARED ob(100)
 DIM SHARED oy(257) AS INTEGER
 DIM SHARED ox(257) AS INTEGER
@@ -124,25 +147,45 @@ DIM SHARED iord(34)
 DIM SHARED gp(100)
 DIM SHARED er1(400)
 DIM SHARED d(300)
+DIM SHARED tilarr(12600) AS INTEGER
+DIM SHARED iconarr(9100) AS INTEGER
+DIM SHARED kmarr(9100) AS INTEGER
+DIM SHARED dsav(250) AS INTEGER
+DIM SHARED tix(65) AS INTEGER
+DIM SHARED cilist(40) AS INTEGER
+DIM SHARED aqo(65) AS INTEGER
+DIM SHARED nwf(65) AS INTEGER
+DIM SHARED starr(10) AS INTEGER
+DIM SHARED aqc AS INTEGER
 
 '----- shared save-slot arrays
-DIM SHARED sv1(50)
-DIM SHARED sv2(50)
-DIM SHARED sv3(50)
-DIM SHARED sv4(50)
-DIM SHARED sv5(50)
-DIM SHARED sv6(50)
-DIM SHARED sv7(50)
-DIM SHARED sv8(50)
-DIM SHARED sv9(50)
-DIM SHARED sv10(50)
+DIM SHARED slvAct AS INTEGER
 
 '----- startup
 tmo = 2
 'COM() statements in this programme
+'----- reset the 8253 timer (channel 0) to the standard 18.2 Hz tick.  Win98
+'      "MS-DOS mode" can hand off with channel 0 left reprogrammed faster,
+'      which shortens SOUND durations (the intro races past) and skews TIMER
+'      (the in-room clock) -- prime suspect for the MS-DOS-mode rush + lock-up.
+'      No-op on a healthy DOS boot (it's already 18.2 Hz there).
+OUT &H43, &H36
+OUT &H40, 0
+OUT &H40, 0
 CALL InitVars
 CALL LoadConfig
-CALL Intro
+CALL initAllFonts(fontData(), font3Data(), fontbData())
+'----- guard Intro's cutscene sound loops on fast CPUs: QB's SOUND runtime
+'      can raise "Illegal function call" in the tight loops on hardware far
+'      faster than this 1993 intro targets.  Intro has no handler of its own
+'      (it runs before the ON ERROR GOTO errhand below).  RESUME NEXT would
+'      need /X, which overflows the 64K module, so on such an error introSkip
+'      bails out of the cutscene to introDone -- the intro ends early but the
+'      game runs instead of crashing to DOS.  (Throttle work restores it.)
+ON ERROR GOTO introSkip
+IF inon <> 0 THEN CALL Intro
+introDone:
+ON ERROR GOTO 0
 KEY OFF
 t0 = TIMER
 
@@ -157,22 +200,20 @@ GOSUB loadmsgs
 GOSUB mouseinit
 ON ERROR GOTO errhand
 
-'----- load door coordinate table
 SCREEN 1
 CLS
 CLOSE
-OPEN "door.pct " FOR INPUT AS #1
-FOR i = 0 TO 125
-	INPUT #1, do1(i), do2(i), do3(i), do4(i)
-NEXT
+GOSUB loadanims
 
 '----- title screen
 SCREEN 1
+PALETTE 3, 0
 LOCATE 10, 12
 PRINT "A Kreuzer Production"
 a$ = INKEY$
 GOSUB joeface
 a$ = INKEY$
+CALL introFadeCredit
 CLS
 b = 122
 a = 82
@@ -386,177 +427,35 @@ dialup:
 	2250 IF (di / 10) <> 0# THEN GOTO 2270
 	SOUND f3, .1
 	2270 RETURN
-'----- error handler -- show ERR/ERL diagnostic then exit
+'----- error handler: show the error and exit cleanly
 errhand:
-	BEEP
+	ehcode = ERR: ehline = ERL
+	'----- keep this handler SOUND-FREE: a sound here can itself fail on some
+	'      machines and hang before the message can be shown.
 	SCREEN 0: WIDTH 80: CLS
-	LOCATE 5, 5: PRINT "PASS2-RECON DIAGNOSTIC -- error handler triggered"
-	LOCATE 7, 5: PRINT "ERR  (code) ="; ERR
-	LOCATE 8, 5: PRINT "ERL  (line) ="; ERL
-	LOCATE 10, 5: PRINT "Common QB4.5 codes: 5=IllFnCall 6=Overflow 9=SubscriptOOR"
-	LOCATE 11, 5: PRINT "  11=DivByZero 13=TypeMismatch 53=FileNotFound 54=BadMode"
-	LOCATE 12, 5: PRINT "  55=FileOpen 57=DevIOErr 62=InputPastEOF 68=DeviceUnavail"
+	LOCATE 10, 5: PRINT "Dark Visions has hit an unexpected error and must close."
+	LOCATE 12, 5: PRINT "  (error"; ehcode; "at line"; ehline; ")"
 	LOCATE 14, 5: PRINT "Press any key to exit..."
 	a$ = INPUT$(1)
-	PRINT "Program terminated!"
-	SOUND 32676, 20
-	SOUND f3, .1
-	FOR i = 1000 TO 50 STEP -15
-		SOUND i, .2
-		SOUND f4, .1
-		SOUND i * 2, .05
-	NEXT
 	SYSTEM
 
-'----- inventory screen
-inv:
-	CLS
-	td = TIMER - ti
-	IF ob(32) = 1 AND ob(36) = 1 THEN ob(33) = 1
-	m$ = ""
+'----- Intro-only error trap (armed around CALL Intro at startup): on CPUs
+'      far faster than 1993 hardware, QB's SOUND runtime can raise err 5 in
+'      the cutscene sound loops.  Bail to introDone (just past CALL Intro):
+'      the cutscene ends early but the game continues instead of crashing.
+introSkip:
+	RESUME introDone
 
-'----- compute in-game clock (hr:mn) from elapsed time
-	IF (INT(cl * cr)) <= h9 THEN GOTO 2530
-	hr = 9
-	mn = INT(cl * cr) - 60
-	GOTO 2550
-	2530 mn = INT(cl * cr)
-	hr = 8
-	2550 IF (INT(cl * cr)) <= h10 THEN GOTO 2580
-	hr = 10
-	mn = INT(cl * cr) - 120
-	2580 IF (INT(cl * cr)) <= h11 THEN GOTO 2610
-	hr = 11
-	mn = INT(cl * cr) - 180
-	2610 LOCATE 3, 1
-	PRINT "The time is "; hr; ":"; mn;
-	CALL PctComplete
-
-'----- name the current room from the screen tag
-	PRINT "You are in the ";
-	IF q$ = "openclos" OR q$ = "room4" THEN PRINT "guest room."
-	IF q$ = "room6" THEN PRINT "library."
-	IF q$ = "desk" OR q$ = "room7" THEN PRINT "master bedroom."
-	IF q$ = "room8" THEN PRINT "servant's quarters."
-	IF q$ = "room9" THEN PRINT "cell block."
-	IF q$ = "room10" THEN PRINT "cell."
-	IF q$ = "room1" THEN PRINT "entrance hall."
-	IF q$ = "room2" THEN PRINT "upstairs hall."
-	IF q$ = "safe" OR q$ = "window" OR q$ = "room3" THEN PRINT "storage hall."
-	IF q$ = "table" OR q$ = "room11" THEN PRINT "attic."
-	IF q$ = "rack" OR q$ = "room5" THEN PRINT "kitchen"
-
-'----- list carried objects and build selectable grid
-	gy = 6
-	LOCATE 5, 1
-	PRINT "      Objects: "
-	gx = 2
-	FOR ivi = 1 TO 34
-		IF ivi >= 19 THEN GOSUB gridwrap
-		ivn = iord(ivi)
-		IF ob(ivn) = 1 THEN
-			LOCATE gy, gx
-			PRINT sn$(ivn)
-			gy = gy + 1
-			gr((gw * gx) + gy) = ivn
-		END IF
-	NEXT
-	4830 CALL InvGrid
-
-'----- inventory menu key handling
-	LOCATE 25, 1
-	PRINT "r=restore,s=save,q=quit,x=exit inventory";
-	4860 a$ = INKEY$
-	IF a$ = CHR$(0) + CHR$(72) THEN a$ = "8"
-	IF a$ = CHR$(0) + CHR$(80) THEN a$ = "2"
-	IF a$ = CHR$(0) + CHR$(75) THEN a$ = "4"
-	IF a$ = CHR$(0) + CHR$(77) THEN a$ = "6"
-	GOSUB joy
-	IF a$ <> "" THEN GOTO 4900
-	GOTO 4860
-	4900 IF a$ <> "r" THEN GOTO 4940
-	GOSUB reload
-	a$ = "x"
-	GOTO 4960
-	4940 IF a$ <> "q" THEN GOTO 4960
-	GOSUB quit
-	4960 IF a$ <> "s" THEN GOTO 4990
-	GOSUB save
-	a$ = "x"
-	4990 IF a$ <> "u" THEN GOTO 5010
-	GOSUB usecombine
-	5010 IF a$ <> "a" THEN GOTO 5030
-	GOSUB lookmap
-	5030 IF done$ <> "y" THEN GOTO 5060
-	done$ = ""
-	GOTO inv
-	5060 GOSUB invcur
-	IF a$ = "g" OR a$ = "x" OR a$ = "i" THEN GOTO 5100
-	GOTO 4860
-
-'----- exit inventory -- restore game state and redraw
-	5100 IF doc <> 1 THEN GOTO 5120
-	ti = TIMER - td
-	5120 IF q$ <> "smart" THEN GOTO 5140
-	GOTO 14570
-	5140 GOSUB loadroom
-	IF tt$ = "y" THEN GOTO 5190
-	a$ = lf$
-	lf$ = ""
-	GOSUB face
-	5190 IF doc = 1 THEN PUT (135, 135), wa, XOR
-	RETURN
-'----- Load saved game from saverN.pac
-reload:
-	LOCATE 1, 8
-	PRINT "Load game 1,2,3 or 4?"
-	CLOSE
-	INPUT ""; sn
-	IF sn > 4 OR sn < 0# THEN GOTO reload
-	OPEN "saver" + CHR$(sn + 97) + ".pac" FOR INPUT AS #1
-	INPUT #1, q$, cl, pt, done$, tt$, a$, lf$
-	FOR i = 1 TO 65
-		INPUT #1, ob(i)
-	NEXT
-	ERASE er1
-	FOR i = 1 TO 40
-		gp(i) = 0#
-	NEXT
-	LOCATE 2, 1
-	PRINT "Load is complete!              "
-	RETURN
-
-'----- Save game to saverN.pac
-save:
-	LOCATE 1, 8
-	PRINT "Save under 1,2,3, or 4?"
-	CLOSE
-	INPUT ""; sn
-	IF sn > 4 OR sn < 0# THEN GOTO save
-	OPEN "saver" + CHR$(sn + 97) + ".pac" FOR OUTPUT AS #1
-	WRITE #1, q$, cl, pt, done$, tt$, a$, lf$
-	FOR i = 1 TO 65
-		WRITE #1, ob(i)
-	NEXT
-	LOCATE 2, 1
-	PRINT "Save is complete!              "
-	RETURN
-
-'----- Confirm and exit to DOS
-quit:
-	LOCATE 1, 1
-	PRINT "Do you really want to quit?"
-	5990 a$ = INKEY$
-	IF a$ <> "" THEN GOTO 6020
-	GOTO 5990
-	6020 IF a$ = "y" THEN SYSTEM
-	RETURN
 
 '----- Resolve action on object under cursor
+'----- clrtxt: wipe only the rows the last top message used
+clrtxt:
+	IF txr > 0 THEN LINE (0, 0)-(319, 21), 0, BF
+	RETURN
+
 action:
 	GOSUB strigoff
-	LOCATE 1, 1
-	PRINT "                                                                               "
+	GOSUB clrtxt: txr = 0
 	cl = cl + 8
 	FOR i = 1 TO 257
 		IF b = ox(i) AND a = oy(i) THEN GOTO 6170
@@ -584,13 +483,10 @@ action:
 
 '----- Apply state change and print message
 6340 ob(CINT(st(i))) = 1
-	IF a$ = "g" AND st(i) <> 0# THEN CALL Snd1
+	'----- pickup sound now plays via the acquisition scan (mainloop) so action-gets sound too
 	IF a$ <> "u" THEN GOTO 6400
 	CALL Snd3
-	6400 LOCATE 1, 1
-	PRINT "                                                                               "
-	LOCATE 1, 1
-	PRINT ms$(i)
+	6400 CALL drawMsg(ms$(i), font3Data()): txr = 1
 	IF tg$(i) = "" THEN GOTO 6740
 	IF MID$(tg$(i), 2, 1) = "c" THEN sl$ = "s": tt$ = "y"
 	IF LEFT$(tg$(i), 1) <> "w" THEN GOTO 6710
@@ -640,17 +536,32 @@ gotoroom:
 	IF tt$ = "y" AND sl$ = "z" THEN a$ = lf$: lf$ = "": GOSUB face: tt$ = "n"
 	sl$ = "z"
 	cl = cl + 30
-	GOSUB face
+	IF q$ = "room3" AND ob(50) = 1 AND ob(42) = 0 THEN GOSUB dooseq ELSE GOSUB face
+	RETURN
+
+'----- invhi: ESC inventory -- graphical SCREEN 1 (320x200, 4-color) tile grid.
+'      Loads INVTIL1/2.PIC, GETs the 36 45x54 tiles into tilarr, then PUTs the
+'      carried items into a 7-col grid with a movable selection ring.
+doinv:
+	CALL invhi
+	IF slvAct = 2 THEN RUN
+	GOSUB loadroom
+	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
+	t0 = TIMER
 	RETURN
 
 '----- main game loop: input, movement, actions
 mainloop:
+	FOR iaq = 1 TO 34
+		IF ob(iord(iaq)) = 1 AND aqo(iord(iaq)) = 0 THEN aqc = aqc + 1: aqo(iord(iaq)) = aqc: nwf(iord(iaq)) = 1: CALL Snd1
+	NEXT
 	IF msen <> 1 THEN PUT (b, a), d, XOR
 	pt = (TIMER - t0) + pt
 	t0 = TIMER
 	IF (INT(cl * cr)) <= 35 THEN GOTO 7100
-	CALL DoorOpen
-	7100 IF doc <> 1 THEN GOTO 7180
+	'CALL DoorOpen   ' door migrated to data-driven animation (ANIMS.PAC id 1 + room3.pac placement)
+	7100 GOSUB reanim
+	IF doc <> 1 THEN GOTO 7180
 	IF (TIMER - ti) <= tmo THEN GOTO 7180
 	LOCATE 1, 1
 	PRINT "You should have been ready"
@@ -666,18 +577,19 @@ mainloop:
 	a$ = INKEY$
 	GOSUB joy
 	GOSUB mousepoll
+	GOSUB animtick
 	IF ob(43) = 1 AND tk$ = "" THEN cv = CINT(cl): tk$ = "y"
 	IF tk$ = "y" AND cv + 120 < cl THEN GOTO burn
 	IF a$ <> "" THEN GOTO 7300
 	GOTO 7180
 
 '----- numpad movement: nudge player by direction
-	7300 IF msen = 1 THEN GOSUB erasecur
-	IF msen <> 1 THEN PUT (b, a), d, XOR
+	7300 IF msen <> 1 THEN PUT (b, a), d, XOR
 	IF a$ = CHR$(0) + CHR$(72) THEN a$ = "8"
 	IF a$ = CHR$(0) + CHR$(80) THEN a$ = "2"
 	IF a$ = CHR$(0) + CHR$(75) THEN a$ = "4"
 	IF a$ = CHR$(0) + CHR$(77) THEN a$ = "6"
+	IF msen = 1 AND INSTR("82467139", a$) > 0 THEN CALL erasecur
 	IF a$ <> "8" THEN GOTO 7330
 	a = a - 4
 	7330 IF a$ <> "2" THEN GOTO 7350
@@ -713,8 +625,9 @@ mainloop:
 
 '----- handle inventory, fight, and action keys
 	7610 IF msen = 1 AND INSTR("82467139", a$) > 0 THEN GOSUB ksync
+	IF a$ = CHR$(27) THEN GOSUB doinv: GOTO mainloop
 	IF a$ <> "i" THEN GOTO 7630
-	GOSUB inv
+	GOSUB doinv: GOTO mainloop
 	7630 IF doc <> 1 THEN GOTO 7660
 	GOSUB fight
 	GOTO mainloop
@@ -767,7 +680,25 @@ mxytick:
 	PRINT dbgv$; "  ";
 	RETURN
 
-'----- 25 generic "nothing to see" lines (used by lookmiss)
+'----- debug overlay, config dark.ini hitzones=<verbs> (e.g. l): ring each hotspot's snr click-zone COLORED
+'----- BY VERB (look=blue, action=brown, get/use=gray) + dot its hit point. A click registers only INSIDE a circle.
+hitzones:
+	IF hzon$ = "" OR snr <= 0 THEN RETURN
+	FOR hzi = 1 TO 257
+		IF oy(hzi) = 0 THEN EXIT FOR
+		hzv$ = ky$(CINT(oi(hzi)))
+		IF hzv$ <> "" AND INSTR(hzon$, hzv$) > 0 THEN
+			hzc = 2
+			IF hzv$ = "a" THEN hzc = 3
+			IF hzv$ = "g" THEN hzc = 1
+			IF hzv$ = "u" THEN hzc = 1
+			CIRCLE (ox(hzi), oy(hzi)), snr, hzc
+			PSET (ox(hzi), oy(hzi)), hzc
+		END IF
+	NEXT
+	RETURN
+
+'----- 25 generic"nothing to see" lines (used by lookmiss)
 loadmsgs:
 	nf$(1) = "There is nothing to see here."
 	nf$(2) = "Nothing catches your eye."
@@ -819,10 +750,8 @@ lookmiss:
 	lh3 = lh2
 	lh2 = lh1
 	lh1 = nfp
-	LOCATE 1, 1
-	PRINT "                                        "
-	LOCATE 1, 1
-	PRINT nf$(nfp)
+	GOSUB clrtxt
+	CALL drawMsg(nf$(nfp), font3Data()): txr = 1
 	RETURN
 '----- load palette/color config from .pac
 loadpac:
@@ -839,7 +768,279 @@ loadpac:
 	RETURN
 
 '----- load room: colors, object positions, door/exit data, picture
+'----- loadanims: load the ANIMS.PAC animation library (id,name,type,src,frames,rate,mode,pal); robust if absent
+loadanims:
+	nAnim = 0
+	ON ERROR GOTO animeof
+	CLOSE #3
+	OPEN "ANIMS.PAC" FOR INPUT AS #3
+	animloop:
+	IF nAnim >= 50 THEN GOTO animend
+	INPUT #3, anId(nAnim + 1), anName$(nAnim + 1), anType$(nAnim + 1), anSrc$(nAnim + 1), anFrames$(nAnim + 1), anRate(nAnim + 1), anMode$(nAnim + 1), anPal$(nAnim + 1), anSnd$(nAnim + 1)
+	nAnim = nAnim + 1
+	GOTO animloop
+	animeof:
+	RESUME animend
+	animend:
+	CLOSE #3
+	ON ERROR GOTO errhand
+	RETURN
+
+'----- animframe: draw 1-based frame FN of sprite source SRC$ at (PX,PY); mask if .msk present, else PSET
+animframe:
+	anf = 0
+	ON ERROR GOTO afeof1
+	CLOSE #3
+	OPEN SRC$ + ".pct" FOR INPUT AS #3
+	afl1:
+	IF anf >= 1600 THEN GOTO afd1
+	anf = anf + 1
+	INPUT #3, aflat(anf)
+	GOTO afl1
+	afeof1:
+	anf = anf - 1
+	RESUME afd1
+	afd1:
+	CLOSE #3
+	ON ERROR GOTO errhand
+	IF anf < 2 THEN RETURN
+	ank = 0
+	afk1:
+	IF ank >= anf THEN GOTO afk2
+	IF aflat(ank + 1) <> aflat(1) THEN GOTO afk2
+	ank = ank + 1
+	GOTO afk1
+	afk2:
+	IF ank < 1 THEN ank = 1
+	anpf = anf \ ank
+	IF anpf > 150 THEN anpf = 150
+	IF afn < 1 THEN afn = 1
+	IF afn > ank THEN afn = ank
+	FOR aj = 0 TO anpf - 1: afrm(aj) = aflat(afn + aj * ank): NEXT
+	anm = 0
+	ON ERROR GOTO afeof2
+	CLOSE #3
+	OPEN SRC$ + ".msk" FOR INPUT AS #3
+	afl2:
+	IF anm >= 1600 THEN GOTO afd2
+	anm = anm + 1
+	INPUT #3, aflat(anm)
+	GOTO afl2
+	afeof2:
+	anm = anm - 1
+	RESUME afd2
+	afd2:
+	CLOSE #3
+	ON ERROR GOTO errhand
+	IF anm >= anf THEN
+		FOR aj = 0 TO anpf - 1: amfrm(aj) = aflat(afn + aj * ank): NEXT
+		PUT (PX, PY), amfrm, AND
+		PUT (PX, PY), afrm, OR
+	ELSE
+		PUT (PX, PY), afrm, PSET
+	END IF
+	RETURN
+
+'----- animparse: parse anFrames$(aidx) like "0;1;2" into fsq(1..nfr) frame indices
+animparse:
+	nfr = 0
+	aps$ = anFrames$(aidx) + ";"
+	apst = 1
+	FOR apc = 1 TO LEN(aps$)
+		IF MID$(aps$, apc, 1) = ";" THEN
+			IF apc > apst AND nfr < 30 THEN
+				nfr = nfr + 1
+				fsq(nfr) = VAL(MID$(aps$, apst, apc - apst))
+			END IF
+			apst = apc + 1
+		END IF
+	NEXT
+	RETURN
+
+'----- animwait: pause awrate*0.05s between animation frames (TIMER-based, midnight-safe)
+animwait:
+	awt! = TIMER
+	awd:
+	IF TIMER < awt! THEN RETURN
+	IF TIMER < awt! + awrate * .05 THEN GOTO awd
+	RETURN
+
+'----- animdraw: composite scene-animation placements onto the room (static / hold / once; loop = Phase 1b3)
+animdraw:
+	nLoop = 0
+	IF nPlace < 1 THEN RETURN
+	'----- bg pass: full-screen .pic swaps (BLOAD over the base) BEFORE the sprite overlays
+	FOR pp = 1 TO nPlace
+		bgi = 0
+		FOR aa = 1 TO nAnim
+			IF anId(aa) = plAnim(pp) THEN bgi = aa
+		NEXT
+		IF bgi = 0 THEN GOTO bgnext
+		IF anType$(bgi) <> "bg" THEN GOTO bgnext
+		IF plCond(pp) <> 0 THEN IF ob(plCond(pp)) <> 1 THEN GOTO bgnext
+		bgf$ = anFrames$(bgi)
+		bgp = 0
+		FOR bgc = 1 TO LEN(bgf$)
+			IF MID$(bgf$, bgc, 1) = ";" THEN bgp = bgc
+		NEXT
+		IF bgp > 0 THEN bgf$ = MID$(bgf$, bgp + 1)
+		IF bgf$ <> "" THEN DEF SEG = -18432: BLOAD bgf$ + ".pic", 0: DEF SEG
+		bgnext:
+	NEXT
+	'----- sprite pass
+	FOR pp = 1 TO nPlace
+		aidx = 0
+		FOR aa = 1 TO nAnim
+			IF anId(aa) = plAnim(pp) THEN aidx = aa
+		NEXT
+		IF aidx = 0 THEN GOTO adnext
+		IF anType$(aidx) = "bg" THEN GOTO adnext
+		IF plCond(pp) <> 0 THEN IF ob(plCond(pp)) <> 1 THEN GOTO adnext
+		GOSUB animparse
+		IF nfr < 1 THEN GOTO adnext
+		SRC$ = anSrc$(aidx)
+		PX = plX(pp)
+		PY = plY(pp)
+		awrate = anRate(aidx)
+		IF anMode$(aidx) = "static" THEN
+			afn = fsq(nfr) + 1
+			GOSUB animframe
+		ELSEIF anMode$(aidx) = "hold" OR anMode$(aidx) = "once" THEN
+			adplayed = 0
+			IF plSet(pp) > 0 THEN IF ob(plSet(pp)) = 1 THEN adplayed = 1
+			IF adplayed = 1 THEN
+				IF anMode$(aidx) = "hold" THEN afn = fsq(nfr) + 1: GOSUB animframe
+			ELSE
+				IF q$ = "room3" THEN GOTO adnext
+				GET (PX, PY)-(PX + 30, PY + 30), wbg
+				FOR adf = 1 TO nfr
+					afn = fsq(adf) + 1
+					GOSUB animframe
+					GOSUB animwait
+				NEXT
+				IF anSnd$(aidx) <> "" THEN PLAY anSnd$(aidx)
+				IF anMode$(aidx) = "once" THEN PUT (PX, PY), wbg, PSET
+				IF plSet(pp) > 0 THEN ob(plSet(pp)) = 1
+			END IF
+		ELSEIF anMode$(aidx) = "loop" THEN
+			IF nLoop < 4 THEN
+				nLoop = nLoop + 1
+				liAnim(nLoop) = aidx
+				liX(nLoop) = PX
+				liY(nLoop) = PY
+				liCur(nLoop) = 1
+				liRate(nLoop) = awrate
+				liLast(nLoop) = TIMER
+				GET (PX, PY)-(PX + 30, PY + 30), liSaveAll((nLoop - 1) * 150)
+				afn = fsq(1) + 1
+				GOSUB animframe
+			END IF
+		END IF
+		adnext:
+	NEXT
+	RETURN
+
+'----- animtick: advance active loop animations (idle-loop tick, TIMER-delta gated)
+animtick:
+	IF nLoop < 1 THEN RETURN
+	FOR li = 1 TO nLoop
+		IF TIMER < liLast(li) THEN liLast(li) = TIMER
+		IF TIMER >= liLast(li) + liRate(li) * .05 THEN
+			liLast(li) = TIMER
+			aidx = liAnim(li)
+			GOSUB animparse
+			IF nfr >= 1 THEN
+				PUT (liX(li), liY(li)), liSaveAll((li - 1) * 150), PSET
+				liCur(li) = liCur(li) + 1
+				IF liCur(li) > nfr THEN liCur(li) = 1
+				SRC$ = anSrc$(aidx)
+				PX = liX(li)
+				PY = liY(li)
+				afn = fsq(liCur(li)) + 1
+				GOSUB animframe
+			END IF
+		END IF
+	NEXT
+	RETURN
+
+'----- reanim: mainloop check -- play any placement that just became active+unplayed (hold/once); data-driven DoorOpen
+reanim:
+	IF nPlace < 1 THEN RETURN
+	FOR pp = 1 TO nPlace
+		aidx = 0
+		FOR aa = 1 TO nAnim
+			IF anId(aa) = plAnim(pp) THEN aidx = aa
+		NEXT
+		IF aidx = 0 THEN GOTO ranext
+		IF anType$(aidx) = "bg" THEN GOTO ranext
+		IF anMode$(aidx) <> "hold" AND anMode$(aidx) <> "once" THEN GOTO ranext
+		IF plCond(pp) = 0 THEN GOTO ranext
+		IF ob(plCond(pp)) <> 1 THEN GOTO ranext
+		IF plSet(pp) < 1 THEN GOTO ranext
+		IF ob(plSet(pp)) = 1 THEN GOTO ranext
+		GOSUB animparse
+		IF nfr < 1 THEN GOTO ranext
+		SRC$ = anSrc$(aidx)
+		PX = plX(pp)
+		PY = plY(pp)
+		awrate = anRate(aidx)
+		GET (PX, PY)-(PX + 30, PY + 30), wbg
+		FOR adf = 1 TO nfr
+			afn = fsq(adf) + 1
+			GOSUB animframe
+			GOSUB animwait
+		NEXT
+		IF anSnd$(aidx) <> "" THEN PLAY anSnd$(aidx)
+		IF anMode$(aidx) = "once" THEN PUT (PX, PY), wbg, PSET
+		ob(plSet(pp)) = 1
+		ranext:
+	NEXT
+	RETURN
+
+'----- dooseq: room3 door entry cutscene -- walk player in from the door while it opens, face up-right
+dooseq:
+	CLOSE
+	OPEN "joew3.pct" FOR INPUT AS #1
+	FOR i = 0 TO 125: IF NOT EOF(1) THEN INPUT #1, wa(i), wb(i)
+	NEXT: CLOSE
+	OPEN "joew3.msk" FOR INPUT AS #1
+	FOR i = 0 TO 125: IF NOT EOF(1) THEN INPUT #1, mwa(i), mwb(i)
+	NEXT: CLOSE
+	FOR i = 90 TO 140 STEP 3
+		GET (i, 130)-(i + 30, 160), wbg
+		PUT (i, 130), mwa, AND: PUT (i, 130), wa, OR
+		SOUND f3, .1: FOR j = 1 TO 2: SOUND 32676, 1: NEXT
+		PUT (i, 130), wbg, PSET
+		i = i + 3
+		GET (i, 130)-(i + 30, 160), wbg
+		PUT (i, 130), mwb, AND: PUT (i, 130), wb, OR
+		SOUND f3, .1: FOR j = 1 TO 2: SOUND 32676, 1: NEXT
+		PUT (i, 130), wbg, PSET
+	NEXT
+	a$ = "6": GOSUB face
+	dwsec = .5: GOSUB dwait
+	a$ = "9": GOSUB face
+	dwsec = .5: GOSUB dwait
+	SRC$ = "door"
+	PLAY "MB<<f6p20d7p20g-7p20e-7p20a5>>"
+	FOR i = 1 TO 4
+		afn = i: PX = 175: PY = 109: GOSUB animframe
+		dwsec = .18: GOSUB dwait
+	NEXT
+	PLAY "MF"
+	ob(42) = 1
+	RETURN
+
+dwait:
+	dwt = TIMER
+	dwl1:
+	dwd = TIMER - dwt
+	IF dwd < 0 THEN dwd = dwd + 86400
+	IF dwd < dwsec THEN GOTO dwl1
+	RETURN
+
 loadroom:
+	txr = 0: cdrawn = 0
 	CLOSE
 	OPEN q$ + ".pac" FOR INPUT AS #1
 	LINE INPUT #1, hd$
@@ -849,14 +1050,38 @@ loadroom:
 	pa3 = VAL(hd$)
 	nopl = 0: IF INSTR(hd$, ",") > 0 THEN nopl = VAL(MID$(hd$, INSTR(hd$, ",") + 1))
 	i = 0
+	ON ERROR GOTO hoterr
 	DO
 		i = i + 1
 		INPUT #1, ox(i), oy(i), oi(i)
 	LOOP UNTIL oy(i) = 0 OR i = 257
+	hotok:
+	ON ERROR GOTO objerr
 	FOR i = 1 TO 25
 		INPUT #1, df$(i), ms$(i), ky$(i)
 		INPUT #1, bs(i), cs(i), st(i), tg$(i)
 	NEXT
+	objok:
+	ON ERROR GOTO errhand
+	nPlace = 0
+	ON ERROR GOTO placeeof
+	placeloop:
+	IF nPlace >= 20 THEN GOTO placeend
+	INPUT #1, pla, plb, plc, pld, ple
+	IF pla < 1 THEN GOTO placeend
+	nPlace = nPlace + 1
+	plAnim(nPlace) = pla: plX(nPlace) = plb: plY(nPlace) = plc: plCond(nPlace) = pld: plSet(nPlace) = ple
+	GOTO placeloop
+	placeeof:
+	RESUME placeend
+	'----- on a bad/short room file, skip the rest of that read and keep going
+	hoterr:
+	IF i >= 1 AND i <= 257 THEN oy(i) = 0
+	RESUME hotok
+	objerr:
+	RESUME objok
+	placeend:
+	ON ERROR GOTO errhand
 	CLS
 	COLOR co
 	PALETTE 1, pa1
@@ -865,9 +1090,11 @@ loadroom:
 	DEF SEG = -18432
 	BLOAD q$ + ".pic", 0
 	KEY OFF
+	DEF SEG
+	GOSUB animdraw
 	GET (1, 8)-(9, 18), bk: GET (1, 8)-(9, 18), bk2
 	GET (140, 130)-(170, 160), fbg
-	DEF SEG
+	GOSUB hitzones
 	IF q$ <> "title" THEN GOTO walkout
 
 	'----- title screen music
@@ -881,17 +1108,6 @@ loadroom:
 '----- walk-out: dispatch to walking animation
 walkout:
 	GOTO 8240
-	SYSTEM
-	GET (100, 100)-(130, 130), d
-	CLOSE
-	LOCATE 1, 1
-	INPUT ""; a$
-	OPEN a$ + ".pct" FOR OUTPUT AS #1
-	FOR i = 0 TO 125 STEP 10
-		WRITE #1, sv1(i), sv2(i), sv3(i), sv4(i), sv5(i), sv6(i), sv7(i), sv8(i), sv9(i), sv10(i)
-	NEXT
-	SYSTEM
-
 	'----- decide whether to walk out and which direction sprite to load
 	8240 CLOSE
 	IF q$ = "title" OR q$ = "death" OR q$ = "dindead" THEN RETURN
@@ -1020,6 +1236,8 @@ walkout:
 	9210 IF i >= 90 THEN GOTO 9070
 	9220 RETURN
 face:
+	'----- tear down the mouse cursor first: its save-under was sampled before this turn, so restoring it later would repaint the OLD player (erasecur no-ops when the cursor isn't drawn). Next mousepoll re-samples after the turn.
+	CALL erasecur
 	'----- erase the previous standing sprite by restoring the saved room background
 	PUT (140, 130), fbg, PSET
 	'----- close-up scenes (nopl flag = 5th value in the .pac header) skip the standing player
@@ -1166,12 +1384,6 @@ golf:
 	SOUND f1, .5
 	GOTO gotoroom
 
-'----- gridwrap: wrap inventory cursor back to top-left
-gridwrap:
-	IF gy <= 22 THEN GOTO 10810
-	gx = 21
-	gy = 6
-	10810 RETURN
 
 '----- events: fire room-specific Wilbur / golf events by step count
 events:
@@ -1198,33 +1410,6 @@ events:
 	ob(37) = 1
 	11580 RETURN
 
-'----- invcur: move inventory cursor and report selected item
-invcur:
-	LOCATE gy, gx - 1
-	PRINT " "
-	IF a$ <> "2" THEN GOTO 11640
-	gy = gy + 1
-	GOTO 11650
-	11640 GOTO 11670
-	11650 IF gr((gy + 1) + (gw * gx)) <> 0 THEN GOTO 11670
-	gy = gy - 1
-	11670 IF a$ <> "8" THEN GOTO 11750
-	gy = gy - 1
-	IF gy >= 6 THEN GOTO 11750
-	gy = 6
-	IF gx <> 2 THEN GOTO 11740
-	gx = 21
-	GOTO 11750
-	11740 gx = 2
-	11750 LOCATE gy, gx - 1
-	PRINT CHR$(26)
-	IF gr((gy + 1) + (gw * gx)) <> sel AND a$ = "6" THEN sel = gr((gy + 1) + (gw * gx)): PLAY "a50b50e-30"
-	IF a$ <> "l" THEN GOTO 11850
-	LOCATE 1, 1
-	PRINT "                                                                              "
-	LOCATE 1, 1
-	PRINT dn$(gr((gy + 1) + (gw * gx)))
-	11850
 '----- joystick poll: read STICK, set direction a$
 joy:
 	IF jsen <> 1 THEN RETURN
@@ -1297,6 +1482,29 @@ strigoff:
 '----- initialise the mouse driver (INT 33h)
 mouseinit:
 	IF msen <> 1 THEN RETURN
+	'----- no mouse driver loaded? the INT 33h vector is 0000:0000 when none
+	'      is present; CALL INTERRUPT would then jump into the interrupt
+	'      vector table and hang.  Bail out (disable the mouse) before calling.
+	'      Test the 4 vector bytes directly -- PEEK()*256 would overflow INTEGER.
+	DEF SEG = 0
+	m33a = PEEK(&HCC): m33b = PEEK(&HCD): m33c = PEEK(&HCE): m33d = PEEK(&HCF)
+	DEF SEG
+	IF m33a = 0 AND m33b = 0 AND m33c = 0 AND m33d = 0 THEN msen = 0: RETURN
+	'----- ...and bail if the vector points to a bare IRET stub (first byte
+	'      &HCF).  That is what is there with NO real driver (e.g. after
+	'      exiting Win98 to MS-DOS mode); calling INT 33h on it hangs.  A real
+	'      driver's handler starts with executable code (mouse.com begins with
+	'      a JMP, &HEB), never a bare IRET (&HCF) or a 0/dead byte -- so this
+	'      tells a real driver from a dead leftover vector (seen as &HCF on one
+	'      PC, 0 on another) without ever calling INT 33h.
+	m33ls& = m33c + m33d * 256&
+	m33lo& = m33a + m33b * 256&
+	IF m33ls& > 32767 THEN m33si = m33ls& - 65536 ELSE m33si = m33ls&
+	IF m33lo& > 32767 THEN m33oi = m33lo& - 65536 ELSE m33oi = m33lo&
+	DEF SEG = m33si
+	m33fb = PEEK(m33oi)
+	DEF SEG
+	IF m33fb = &HCF OR m33fb = 0 THEN msen = 0: RETURN
 	mreg.ax = 0
 	CALL INTERRUPT(mvint, mreg, mout)
 	IF mout.ax = 0 THEN msen = 0
@@ -1448,7 +1656,7 @@ mousepoll:
 		GOSUB hovexit
 	END IF
 	IF mxyon = 1 THEN GOSUB mxytick
-	IF cdrawn = 0 OR mx <> cox OR my <> coy THEN GOSUB erasecur: GOSUB drawcur
+	IF cdrawn = 0 OR mx <> cox OR my <> coy THEN CALL erasecur: CALL drawcur
 	IF (mout.bx AND 1) <> 0 AND mlb = 0 THEN a$ = "a": GOSUB msnap
 	IF (mout.bx AND 2) <> 0 AND mrb = 0 THEN a$ = "l": GOSUB msnap
 	mlb = (mout.bx AND 1)
@@ -1474,22 +1682,11 @@ synchit:
 	IF a > 190 THEN a = 190
 	RETURN
 
-'----- draw software cursor: save background, then paint the arrow (1=gray, 2=blue)
-drawcur:
-	GET (mx, my)-(mx + 15, my + 9), curbuf
-	FOR mi = 0 TO npix(cshp) - 1
-		PSET (mx + px(cshp, mi), my + py(cshp, mi)), pc(cshp, mi)
-	NEXT
-	cox = mx: coy = my: cdrawn = 1
-	RETURN
 
-'----- erase software cursor: restore saved background
-erasecur:
-	IF cdrawn = 1 THEN PUT (cox, coy), curbuf, PSET
-	cdrawn = 0
-	RETURN
 
 '----- snap click to nearest hotspot within snr px (0 = off/exact)
+'----- VERB-AWARE: only weighs hotpoints whose object verb = a$, so a look-click snaps to
+'----- the nearest LOOK point, never a closer get/action point that the action scan can't use
 '----- ABS box just prefilters; sdd<snd is the real test = a circle of radius snr (Euclidean)
 '----- breaks at first oy=0 exactly like action, so it never snaps to an entry action can't reach
 msnap:
@@ -1497,7 +1694,7 @@ msnap:
 	' tie-break: a hotspot exactly under the cursor's own cell wins over an expanded (snapped) neighbour
 	FOR sni = 1 TO 257
 		IF oy(sni) = 0# THEN EXIT FOR
-		IF ox(sni) = b AND oy(sni) = a THEN RETURN
+		IF ox(sni) = b AND oy(sni) = a AND ky$(oi(sni)) = a$ THEN RETURN
 	NEXT
 	snd = snr * snr + 1
 	snx = -1
@@ -1505,7 +1702,7 @@ msnap:
 		IF oy(sni) = 0# THEN EXIT FOR
 		sdx = mx - ox(sni)
 		sdy = my - oy(sni)
-		IF ABS(sdx) <= snr AND ABS(sdy) <= snr THEN
+		IF ky$(oi(sni)) = a$ AND ABS(sdx) <= snr AND ABS(sdy) <= snr THEN
 			sdd = sdx * sdx + sdy * sdy
 			IF sdd < snd THEN
 				snd = sdd
@@ -1527,7 +1724,7 @@ hovexit:
 	FOR hvi = 1 TO 257
 		IF oy(hvi) = 0# THEN EXIT FOR
 		hvo = CINT(oi(hvi))
-		IF LEFT$(tg$(hvo), 1) = "w" THEN
+		IF LEFT$(tg$(hvo), 1) = "w" AND (bs(hvo) = 0 OR ob(bs(hvo)) = 1) AND (cs(hvo) = 0 OR ob(cs(hvo)) = 0) THEN
 			hvx = mx - ox(hvi)
 			hvy = my - oy(hvi)
 			IF ABS(hvx) <= hovr AND ABS(hvy) <= hovr THEN
@@ -1543,105 +1740,11 @@ hovexit:
 		IF hvdir$ = "w" THEN newshp = 4
 	END IF
 	IF newshp = cshp THEN RETURN
-	GOSUB erasecur
+	CALL erasecur
 	cshp = newshp
 	RETURN
 
-'----- install a custom mouse cursor shape (INT 33h AX=9)
-setcursor:
-	IF msen <> 1 OR mcur < 1 THEN RETURN
-	FOR mi = 0 TO 31
-		cmask(mi) = 0
-	NEXT
-	mhsx = 7: mhsy = 7: mxor = 0: mraw = 0
-	IF mcur = 1 THEN GOSUB shArrow
-	IF mcur = 2 THEN GOSUB shCross
-	IF mcur = 3 THEN GOSUB shBox
-	IF mcur = 4 THEN GOSUB shCross: mxor = 1
-	IF mcur = 5 THEN GOSUB shArrowNE
-	IF mraw = 0 THEN
-		FOR mi = 0 TO 15
-			IF mxor = 1 THEN cmask(mi) = &HFFFF ELSE cmask(mi) = NOT cmask(16 + mi)
-		NEXT
-	END IF
-	mregx.ax = 9
-	mregx.bx = mhsx
-	mregx.cx = mhsy
-	mregx.dx = VARPTR(cmask(0))
-	mregx.es = VARSEG(cmask(0))
-	CALL INTERRUPTX(mvint, mregx, moutx)
-	RETURN
-
-'----- cursor shape: NW arrow (user-drawn), black outline + fill, tip top-left
-shArrowNE:
-	mhsx = 0: mhsy = 0
-	cmask(16) = &HFF00
-	cmask(17) = &H8080
-	cmask(18) = &H8F00
-	cmask(19) = &H8400
-	cmask(20) = &HA200
-	cmask(21) = &HB100
-	cmask(22) = &HA880
-	cmask(23) = &HA440
-	cmask(24) = &H4280
-	cmask(25) = &H0100
-	cmask(26) = &H0000
-	cmask(27) = &H0000
-	cmask(28) = &H0000
-	cmask(29) = &H0000
-	cmask(30) = &H0000
-	cmask(31) = &H0000
-	RETURN
-
-'----- cursor shape: arrow (hotspot at tip)
-shArrow:
-	mhsx = 0: mhsy = 0
-	cmask(16) = &H8000
-	cmask(17) = &HC000
-	cmask(18) = &HE000
-	cmask(19) = &HF000
-	cmask(20) = &HF800
-	cmask(21) = &HFC00
-	cmask(22) = &HFE00
-	cmask(23) = &HFF00
-	cmask(24) = &HFF80
-	cmask(25) = &HFFC0
-	RETURN
-
-'----- cursor shape: crosshair (hotspot centre)
-shCross:
-	mhsx = 7: mhsy = 7
-	cmask(16) = &H0100
-	cmask(17) = &H0100
-	cmask(18) = &H0100
-	cmask(19) = &H0100
-	cmask(20) = &H0100
-	cmask(21) = &H0100
-	cmask(22) = &H0100
-	cmask(23) = &HFFFE
-	cmask(24) = &H0100
-	cmask(25) = &H0100
-	cmask(26) = &H0100
-	cmask(27) = &H0100
-	cmask(28) = &H0100
-	cmask(29) = &H0100
-	RETURN
-
-'----- cursor shape: box / target (hotspot centre)
-shBox:
-	mhsx = 7: mhsy = 7
-	cmask(18) = &H3FF8
-	cmask(19) = &H2008
-	cmask(20) = &H2008
-	cmask(21) = &H2008
-	cmask(22) = &H2008
-	cmask(23) = &H2008
-	cmask(24) = &H2008
-	cmask(25) = &H2008
-	cmask(26) = &H2008
-	cmask(27) = &H2008
-	cmask(28) = &H3FF8
-	RETURN
+'----- AX=9 hardware-cursor shape code removed (software cursor is used instead)
 
 '----- load object display names from object.pac
 loadnames:
@@ -1654,16 +1757,6 @@ loadnames:
 	12580 CLOSE
 	RETURN
 
-'----- combine/use objects and wait for completion
-usecombine:
-	IF gr((gy + 1) + (gw * gx)) = 28 AND sel = 18 THEN LOCATE 1, 1: PRINT "You find a key hidden inside the fruit.": ob(22) = 1: done$ = "y"
-	IF ob(11) = 1 AND ob(24) = 1 AND sel = 25 THEN LOCATE 1, 1: PRINT "You decode and combine the formula": ob(24) = 0: ob(12) = 0: ob(36) = 1: done$ = "y"
-	IF gr((gy + 1) + (gw * gx)) = 29 AND sel = 34 THEN LOCATE 1, 1: PRINT "You insert the chemicals into the syringe.": ob(35) = 1: ob(29) = 0: ob(34) = 0: done$ = "y"
-	ti = TIMER
-	12800 IF done$ = "" THEN GOTO 12830
-	IF (TIMER - ti) >= tmo THEN GOTO 12830
-	GOTO 12800
-	12830 RETURN
 
 '----- trigger room4 golf event
 trigger:
@@ -1743,32 +1836,13 @@ death:
 	GOSUB loadroom
 	GOTO 14600
 
-	14700 q$ = "smart"
-	GOTO inv
-
-'----- lookmap: read notes or display the map for the current tile
-lookmap:
-	IF gr((gy + 1) + (gw * gx)) <> 16 THEN GOTO 14960
-	GOTO 15030
-
-	14960 IF gr((gy + 1) + (gw * gx)) = 3 OR gr((gy + 1) + (gw * gx)) = 21 THEN CALL NotesSub: RETURN
-	IF gr((gy + 1) + (gw * gx)) = 10 OR gr((gy + 1) + (gw * gx)) = 9 THEN CALL NotesSub: RETURN
-	IF gr((gy + 1) + (gw * gx)) = 19 THEN CALL NotesSub: RETURN
-	RETURN
-
-'----- show the map picture and wait for a keypress
-	15030 PALETTE 1, 6
-	PALETTE 2, 4
-	PALETTE 3, 8
-	DEF SEG = &HB800: BLOAD "map1.pic", 0: DEF SEG
-	KEY OFF
-	15070 a$ = INKEY$
-	IF a$ <> "" THEN GOTO 15100
-	GOTO 15070
-
-	15100 done$ = "y"
-	PALETTE 3, 6
-	RETURN
+	14700 CALL SaveLoadScreen(fontData(), mvint, msen, slvAct, 1)
+	IF slvAct = 2 THEN RUN
+	IF slvAct = 0 OR slvAct = 3 THEN GOTO 14700
+	GOSUB loadroom
+	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
+	t0 = TIMER
+	GOTO 14570
 
 '----- burn: flickering fire animation until a key is pressed
 burn:
@@ -1890,65 +1964,8 @@ SUB Credits
 	EXIT SUB
 END SUB
 
-'----- DeathMusic: play one of four random dirges
-SUB DeathMusic
-	RANDOMIZE TIMER
-	mt = INT(RND * 4)
-	IF mt <> 1 THEN GOTO 15370
-	GOTO 15440
-	GOTO 15440
-15370 IF mt <> 2 THEN GOTO 15400
-	GOTO 15460
-	GOTO 15440
-15400 IF mt <> 3 THEN GOTO 15430
-	GOTO 15490
-	GOTO 15440
-15430 GOTO 15510
+'----- DeathMusic moved to GAME2.BAS (multi-module split)
 
-15440 PLAY "<<<g-2g8a+8f+8e8d-3e4f+5f+5e-5e3>d2>>"
-	EXIT SUB
-
-15460 PLAY "<<<d+8e-8<a8g8f3b8g8f+8e3"
-	PLAY "  g-2g8a8f+8e8d-3e4f+5c8c8c3>>>"
-	EXIT SUB
-
-15490 PLAY "<<<c3c3d-5d-5c3c3<b-5a-5>c3c3d-5e-5c3c3>>>"
-	EXIT SUB
-
-15510 PLAY "<g8a8b-8b8<c8g8a8b-8a8a8b8a8>>"
-	EXIT SUB
-END SUB
-
-'----- DoorOpen: animate room3 door opening
-SUB DoorOpen
-	IF dop$ = "d" OR q$ <> "room3" OR ob(50) = 0 THEN EXIT SUB
-	IF ob(42) <> 1 THEN GOTO 10570
-	GOTO 10720
-
-	'----- play full open animation
-10570 FOR j = 1 TO 2
-		SOUND 32676, 1
-	NEXT
-	PUT (175, 109), do1, PSET
-	FOR j = 1 TO 2
-		SOUND 32676, 1
-	NEXT
-	PUT (175, 109), do2, PSET
-	FOR j = 1 TO 2
-		SOUND 32676, 1
-	NEXT
-	PUT (175, 109), do3, PSET
-	FOR j = 1 TO 2
-		SOUND 32676, 1
-	NEXT
-
-10720 PUT (175, 109), do4, PSET
-	IF ob(42) = 1 THEN GOTO 10750
-	PLAY "<<f6p20d7p20g-7p20e-7p20a5>>"
-10750 ob(42) = 1
-	dop$ = "d"
-	EXIT SUB
-END SUB
 
 '----- InitVars: set up global constants
 SUB InitVars
@@ -1970,9 +1987,7 @@ SUB Intro
 	it0 = TIMER
 	KEY 16, CHR$(0) + CHR$(1)
 	KEY(16) ON
-	PALETTE 3, 6
-	PALETTE 1, 2
-	PALETTE 2, 11
+	'----- carr black-out / 1s hold / load / reveal moved to introShowCarr (GAME3), called below
 	KEY OFF
 	KEY 16, CHR$(0) + CHR$(1)
 	KEY(16) ON
@@ -1984,7 +1999,7 @@ SUB Intro
 	DIM mr1(130) AS INTEGER
 	DIM mr2(130) AS INTEGER
 	DIM rbg(130) AS INTEGER
-	DEF SEG = &HB800: BLOAD "carr.pic", 0: DEF SEG
+	CALL introShowCarr
 	cy = 133
 	GET (8, 133)-(105, 175), ec
 	PUT (8, 133), ec, XOR
@@ -2042,9 +2057,7 @@ SUB Intro
 
 	'----- descending thunder
 	tc = 200
-	17340 SOUND tc, .1
-	SOUND f10, .1
-	SOUND 32676, 1
+	17340 SOUND tc, .1: SOUND f10, .1: SOUND 32676, 1
 	tc = tc - 10
 	IF INKEY$ = "s" THEN GOTO 18640
 	IF tc >= 50 THEN GOTO 17340
@@ -2242,266 +2255,409 @@ introlog:
 
 END SUB
 
-'----- mark inventory grid slots matching held objects
-SUB InvGrid
-	FOR gx = 2 TO 21 STEP 19
-		FOR gy = 5 TO 23
-			FOR i = 1 TO 40
-				IF gr((gy + 1) + (gw * gx)) <> gp(i) THEN GOTO 14770
-				gm = 1
-14770 NEXT
-			IF gm = 1 THEN GOTO 14810
-			LOCATE gy, gx - 1
-			PRINT "*"
-14810 gm = 0
-		NEXT
-	NEXT
 
-	'----- snapshot grid contents into gp()
-	i = 0
-	FOR gx = 2 TO 21 STEP 19
-		FOR gy = 5 TO 23
-			i = i + 1
-			gp(i) = gr((gy + 1) + (gw * gx))
-		NEXT
-	NEXT
+'----- LoadConfig moved to GAME2.BAS (multi-module split)
 
-	gy = 6
-	gx = 2
-	EXIT SUB
+
+'----- compute and print percent of game completed
+'----- (PctComplete removed: legacy % display, only the retired inv: clock used it)
+
+'----- Snd1-Snd5 moved to GAME2.BAS (multi-module split)
+
+'----- (no diagnostic tracer in release builds)
+
+
+SUB drawcur
+	GET (mx, my)-(mx + 15, my + 9), curbuf
+	FOR mi = 0 TO npix(cshp) - 1
+		PSET (mx + px(cshp, mi), my + py(cshp, mi)), pc(cshp, mi)
+	NEXT
+	cox = mx: coy = my: cdrawn = 1
 END SUB
 
-'----- create/read dark.ini settings (showfps, joystick)
-SUB LoadConfig
-	CLOSE
-	OPEN "dark.ini" FOR APPEND AS #1
-	IF LOF(1) = 0 THEN
-		PRINT #1, "; Dark Visions settings"
-		PRINT #1, "; showfps=1 shows main loop speed top right + intro pace"
-		PRINT #1, "showfps=0"
-		PRINT #1, "; joystick=1 enables joystick/gamepad control (off avoids stray input)"
-		PRINT #1, "joystick=0"
-		PRINT #1, "; mouse=1 enables mouse cursor + hardware pointer (needs a mouse driver)"
-		PRINT #1, "mouse=0"
-		PRINT #1, "; mousecursor: 0 driver default, 1 arrow, 2 crosshair, 3 box, 4 crosshair(xor)"
-		PRINT #1, "mousecursor=1"
-		PRINT #1, "; mousesnap: click pulls to nearest hotspot within N pixels (0=off/exact)"
-		PRINT #1, "mousesnap=6"
-		PRINT #1, "; exitcursor=1 changes the pointer to a direction arrow near room exits"
-		PRINT #1, "exitcursor=1"
-		PRINT #1, "; mousexy=1 shows live mouse x,y + snapped hit point bottom row (debug; needs mouse=1)"
-		PRINT #1, "mousexy=0"
-		PRINT #1, "; lookmiss=1 shows a random 'nothing to see' line after looking 3x at an empty spot"
-		PRINT #1, "lookmiss=1"
-	END IF
-	CLOSE
+SUB erasecur
+	IF cdrawn = 1 THEN PUT (cox, coy), curbuf, PSET
+	cdrawn = 0
+END SUB
 
-	snr = 6
-	exsen = 1
-	nfon = 1
-	OPEN "dark.ini" FOR INPUT AS #1
-	DO WHILE NOT EOF(1)
-		LINE INPUT #1, ln$
-		ln$ = LTRIM$(RTRIM$(ln$))
-		c$ = LEFT$(ln$, 1)
-		IF ln$ <> "" AND c$ <> ";" AND c$ <> "#" AND c$ <> "'" AND c$ <> "[" THEN
-			eq = INSTR(ln$, "=")
-			IF eq >= 2 THEN
-				k$ = LCASE$(LTRIM$(RTRIM$(LEFT$(ln$, eq - 1))))
-				v$ = LCASE$(LTRIM$(RTRIM$(MID$(ln$, eq + 1))))
-				tv = 0
-				IF v$ = "1" OR v$ = "true" OR v$ = "yes" OR v$ = "on" THEN tv = 1
-				IF k$ = "showfps" THEN sfps = tv
-				IF k$ = "joystick" THEN jsen = tv
-				IF k$ = "mouse" THEN msen = tv
-				IF k$ = "mousecursor" THEN mcur = VAL(v$)
-				IF k$ = "mousesnap" THEN snr = VAL(v$)
-				IF k$ = "exitcursor" THEN exsen = tv
-				IF k$ = "mousexy" THEN mxyon = tv
-				IF k$ = "lookmiss" THEN nfon = tv
+SUB invhi
+	SCREEN 1
+	PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
+	CLS
+	tst = 330: ist = 245
+	FOR ivi = 1 TO 30: tix(ivi) = ivi - 1: NEXT
+	tix(49) = 30: tix(36) = 31: tix(34) = 32: tix(35) = 33
+	'----- load keep-masks -> kmarr, then tiles -> tilarr (full) + iconarr (tile AND keepmask = frameless item)
+	DEF SEG = -18432
+	BLOAD "INVMSK1.PIC", 0
+	DEF SEG
+	FOR ivk = 0 TO 20
+		ivc = ivk MOD 7: ivr = ivk \ 7
+		GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 39), kmarr(ivk * ist)
+	NEXT
+	DEF SEG = -18432
+	BLOAD "INVTIL1.PIC", 0
+	DEF SEG
+	FOR ivk = 0 TO 20
+		ivc = ivk MOD 7: ivr = ivk \ 7
+		GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 53), tilarr(ivk * tst)
+		PUT (ivc * 45, ivr * 54), kmarr(ivk * ist), AND
+		GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 39), iconarr(ivk * ist)
+	NEXT
+	DEF SEG = -18432
+	BLOAD "INVMSK2.PIC", 0
+	DEF SEG
+	FOR ivk = 21 TO 35
+		ivj = ivk - 21: ivc = ivj MOD 7: ivr = ivj \ 7
+		GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 39), kmarr(ivk * ist)
+	NEXT
+	DEF SEG = -18432
+	BLOAD "INVTIL2.PIC", 0
+	DEF SEG
+	FOR ivk = 21 TO 36
+		ivj = ivk - 21: ivc = ivj MOD 7: ivr = ivj \ 7
+		GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 53), tilarr(ivk * tst)
+		IF ivk <= 35 THEN PUT (ivc * 45, ivr * 54), kmarr(ivk * ist), AND: GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 39), iconarr(ivk * ist)
+	NEXT
+	'----- derive AND-screen masks in place: kmarr = NOT keepmask (PRESET draws NOT), for the drag sprite
+	FOR ivk = 0 TO 35: PUT (0, 0), kmarr(ivk * ist), PRESET: GET (0, 0)-(44, 39), kmarr(ivk * ist): NEXT
+	'----- build the carried-item list (newest-first)
+	GOSUB cibuild
+	'----- load the single background; GET both panels, erase the Info template
+	DEF SEG = -18432
+	BLOAD "INVMAIN.PIC", 0
+	DEF SEG
+	REDIM combuf(800), infobuf(800), modalbuf(500), combtn(80), exmico(40)
+	GET (29, 129)-(85, 144), combtn
+	LINE (29, 129)-(85, 144), 0, BF
+	GET (182, 40)-(199, 58), exmico
+	LINE (182, 40)-(199, 58), 0, BF
+	GET (279, 21)-(283, 25), starr
+	LINE (279, 21)-(283, 25), 0, BF
+	GET (10, 27)-(104, 151), combuf
+	GET (108, 27)-(202, 151), infobuf
+	GET (210, 34)-(297, 73), modalbuf
+	LINE (8, 27)-(202, 151), 0, BF
+	LINE (210, 34)-(297, 73), 0, BF
+	invtab = 0
+	isel = 0: ivscr = 0: cbot = 0: cdrg = 0: crec = 0
+	ivmax = (cic + 3) \ 4 - 2: IF ivmax < 0 THEN ivmax = 0
+	mlb = 0
+	IF msen = 1 THEN cshp = 0: mx = 160: my = 100: cdrawn = 0: mreg.ax = &H11: CALL INTERRUPT(mvint, mreg, mout)
+	GOSUB invdraw
+	IF msen = 1 THEN CALL drawcur
+	PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
+	invwait:
+	IF msen = 1 THEN
+		mreg.ax = 3: CALL INTERRUPT(mvint, mreg, mout)
+		nmx = mout.cx \ 2: nmy = mout.dx: ivwh = mout.bx \ 256
+		IF nmx > 304 THEN nmx = 304 ELSE IF nmx < 0 THEN nmx = 0
+		IF nmy > 190 THEN nmy = 190 ELSE IF nmy < 0 THEN nmy = 0
+		IF nmx <> mx OR nmy <> my THEN IF cdrg = 1 THEN GOSUB dragmove ELSE CALL erasecur: mx = nmx: my = nmy: CALL drawcur
+		IF ivwh <> 0 THEN ivns = ivscr + SGN(ivwh): GOSUB invss
+		IF (mout.bx AND 1) <> 0 AND mx >= 299 AND my >= 37 AND my <= 145 THEN ivns = (my - 37 - ivth \ 2) * ivmax \ (108 - ivth): GOSUB invss
+		IF (mout.bx AND 1) <> 0 AND mlb = 0 THEN
+			IF my >= 28 AND my <= 42 AND mx >= 14 AND mx <= 52 AND invtab <> 0 THEN invtab = 0: GOSUB invredraw
+			IF my >= 28 AND my <= 42 AND mx >= 53 AND mx <= 98 AND invtab <> 1 THEN invtab = 1: GOSUB invredraw
+			IF exf = 1 AND mx >= 84 AND mx <= 101 AND my >= 43 AND my <= 58 THEN GOSUB doexam
+			IF mx >= 275 AND mx <= 312 AND my >= 164 AND my <= 183 THEN GOTO invdone
+			IF mx >= 188 AND mx <= 264 AND my >= 164 AND my <= 183 THEN GOSUB svldopen: IF slvAct <> 0 THEN GOTO invdone ELSE mlb = 1: GOTO invwait
+			IF mx >= 4 AND mx <= 96 AND my >= 164 AND my <= 183 THEN GOSUB doquit: mlb = 1: GOTO invwait
+			IF mx >= 299 AND my >= 28 AND my <= 36 THEN ivns = ivscr - 1: GOSUB invss
+			IF mx >= 299 AND my >= 146 AND my <= 154 THEN ivns = ivscr + 1: GOSUB invss
+			IF invtab = 1 AND crec > 0 AND mx >= 32 AND mx <= 81 AND my >= 129 AND my <= 143 THEN GOSUB combdo
+			IF mx >= 112 AND mx <= 297 AND my >= 31 AND my <= 140 THEN
+				nsel = ivscr * 4 + ((my - 31) \ 56) * 4 + (mx - 112) \ 47
+				IF nsel < cic THEN
+					IF invtab = 1 AND nsel <> isel THEN
+						cdi = cilist(nsel): GOSUB dragstart
+					ELSEIF invtab <> 1 THEN
+						isel = nsel: GOSUB invredraw
+					END IF
+				END IF
+			END IF
+		END IF
+		IF (mout.bx AND 1) = 0 AND mlb <> 0 AND cdrg = 1 THEN
+			cdrg = 0
+			PUT (dgx, dgy), dsav, PSET
+			IF mx <= 104 THEN
+				cbot = cdi: GOSUB invredraw
+			ELSEIF mx >= 112 AND mx <= 297 AND my >= 31 AND my <= 140 THEN
+				nsel = ivscr * 4 + ((my - 31) \ 56) * 4 + (mx - 112) \ 47
+				IF nsel < cic THEN isel = nsel: GOSUB invredraw
+			END IF
+		END IF
+		mlb = (mout.bx AND 1)
+	END IF
+	ivk$ = INKEY$
+	IF ivk$ = CHR$(27) OR ivk$ = "x" OR ivk$ = "i" THEN GOTO invdone
+	IF ivk$ = "q" OR ivk$ = "Q" THEN GOSUB doquit: mlb = 1: GOTO invwait
+	IF ivk$ = "s" OR ivk$ = "S" OR ivk$ = "l" OR ivk$ = "L" THEN GOSUB svldopen: IF slvAct <> 0 THEN GOTO invdone ELSE mlb = 1: GOTO invwait
+	nsel = isel
+	IF ivk$ = CHR$(0) + CHR$(72) THEN nsel = isel - 4
+	IF ivk$ = CHR$(0) + CHR$(80) THEN nsel = isel + 4
+	IF ivk$ = CHR$(0) + CHR$(75) THEN nsel = isel - 1
+	IF ivk$ = CHR$(0) + CHR$(77) THEN nsel = isel + 1
+	IF nsel < 0 OR nsel >= cic THEN nsel = isel
+	IF nsel <> isel THEN
+		isel = nsel
+		IF isel \ 4 < ivscr THEN ivscr = isel \ 4
+		IF isel \ 4 > ivscr + 1 THEN ivscr = isel \ 4 - 1
+		GOSUB invredraw
+	END IF
+	GOTO invwait
+	invdone:
+	IF msen = 1 THEN CALL erasecur
+	FOR ivi = 1 TO 34: nwf(iord(ivi)) = 0: NEXT
+	SCREEN 1
+	EXIT SUB
+
+	'----- lift the cursor, redraw the inventory, put the cursor back
+	invredraw:
+	IF msen = 1 THEN CALL erasecur
+	IF invtab = 1 AND cic > 0 THEN IF cilist(isel) = cbot THEN cbot = 0
+	GOSUB invdraw
+	IF msen = 1 THEN CALL drawcur
+	RETURN
+
+	'----- quit confirmation: show centered modal, wait for Yes/No (click or key)
+	doquit:
+	IF msen = 1 THEN CALL erasecur
+	CALL DrawYNBox("Quit the game?", 3, fontData())
+	IF msen = 1 THEN CALL drawcur
+	CALL QuitConfirm
+	DEF SEG = -18432: BLOAD "INVMAIN.PIC", 0: DEF SEG
+	PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
+	LINE (8, 27)-(202, 151), 0, BF: LINE (210, 34)-(297, 73), 0, BF
+	GOSUB invdraw
+	IF msen = 1 THEN CALL drawcur
+	RETURN
+
+	'----- clamp a new scroll value and apply it
+	invss:
+	IF ivns < 0 THEN ivns = 0
+	IF ivns > ivmax THEN ivns = ivmax
+	IF ivns <> ivscr THEN ivscr = ivns: GOSUB invredraw
+	RETURN
+
+	'----- draw the active panel, then the grid cells, selection ring, info icon
+	invdraw:
+	IF cic > 0 THEN nwf(cilist(isel)) = 0
+	LINE (279, 21)-(283, 25), 0, BF
+	IF invtab = 0 THEN PUT (10, 27), infobuf, PSET ELSE PUT (10, 27), combuf, PSET
+	FOR ivs = 0 TO 7
+		ivc = ivs MOD 4: ivr = ivs \ 4
+		ivpx = 112 + ivc * 47: ivpy = 31 + ivr * 56
+		ivx = ivscr * 4 + ivs
+		IF ivx < cic THEN ivtk = tix(cilist(ivx)) ELSE ivtk = 34
+		PUT (ivpx, ivpy), tilarr(ivtk * tst), PSET
+		IF ivx < cic THEN IF nwf(cilist(ivx)) = 1 THEN PUT (ivpx + 36, ivpy + 3), starr, OR
+	NEXT
+	ivss = isel - ivscr * 4
+	IF ivss >= 0 AND ivss <= 7 THEN
+		ivc = ivss MOD 4: ivr = ivss \ 4: ivpx = 112 + ivc * 47: ivpy = 31 + ivr * 56
+		PUT (ivpx, ivpy), tilarr(36 * tst), AND
+		PUT (ivpx, ivpy), tilarr(35 * tst), OR
+	END IF
+	exf = 0
+	IF invtab = 0 AND cic > 0 THEN
+		sel = cilist(isel)
+		CALL drawText(16, 46, sn$(sel), 2, fontData())
+		PUT (30, 56), kmarr(tix(sel) * ist), AND
+		PUT (30, 56), iconarr(tix(sel) * ist), OR
+		CALL drawWrap(14, 114, dn$(sel), 2, 88, 8, fontData())
+		IF INSTR("/9/10/16/19/21/25/", "/" + LTRIM$(STR$(sel)) + "/") THEN exf = 1: PUT (84, 40), exmico, PSET
+	END IF
+	IF invtab = 1 THEN
+		IF cic > 0 THEN sel = cilist(isel): PUT (35, 39), kmarr(tix(sel) * ist), AND: PUT (35, 39), iconarr(tix(sel) * ist), OR
+		IF cbot > 0 THEN PUT (35, 89), kmarr(tix(cbot) * ist), AND: PUT (35, 89), iconarr(tix(cbot) * ist), OR
+		GOSUB combchk
+	END IF
+	GOSUB invthumb
+	CALL drawStats(ob(), cl, cr, fontData())
+	IF cic > 0 THEN sel = cilist(isel)
+	RETURN
+
+	'----- scrollbar thumb
+	invthumb:
+	LINE (302, 37)-(306, 145), 0, BF
+	LINE (303, 37)-(303, 145), 3
+	LINE (305, 37)-(305, 145), 3
+	ivtot = (cic + 3) \ 4
+	IF ivtot < 1 THEN ivtot = 1
+	IF ivtot <= 2 THEN
+		LINE (302, 37)-(306, 145), 2, BF
+	ELSE
+		ivth = 218 \ ivtot
+		IF ivth < 8 THEN ivth = 8
+		ivty = 37 + (ivscr * (108 - ivth)) \ (ivtot - 2)
+		LINE (302, ivty)-(306, ivty + ivth), 2, BF
+	END IF
+	RETURN
+
+	'----- rebuild the carried-item list (newest-first), recompute scroll max
+	cibuild:
+	cic = 0
+	FOR ivi = 1 TO 34
+		ivn = iord(ivi)
+		IF ob(ivn) = 1 THEN cilist(cic) = ivn: cic = cic + 1
+	NEXT
+	FOR ivi = 0 TO cic - 2
+		FOR ivj = 0 TO cic - 2 - ivi
+			IF aqo(cilist(ivj)) < aqo(cilist(ivj + 1)) THEN SWAP cilist(ivj), cilist(ivj + 1)
+		NEXT
+	NEXT
+	ivmax = (cic + 3) \ 4 - 2: IF ivmax < 0 THEN ivmax = 0
+	RETURN
+
+	'----- combine: set crec to the recipe matched by top (sel) + bottom (cbot); hide button if none
+	combchk:
+	crec = 0
+	IF cic > 0 AND cbot > 0 THEN
+		sel = cilist(isel)
+		selx% = sel: cbx% = cbot
+		IF (selx% = 18 AND cbx% = 28) OR (selx% = 28 AND cbx% = 18) THEN crec = 1
+		IF ((selx% = 24 AND cbx% = 25) OR (selx% = 25 AND cbx% = 24)) AND ob(11) = 1 THEN crec = 2
+		IF (selx% = 29 AND cbx% = 34) OR (selx% = 34 AND cbx% = 29) THEN crec = 3
+	END IF
+	IF crec > 0 THEN PUT (29, 129), combtn, PSET
+	RETURN
+
+	'----- combine: apply the matched recipe, then refresh
+	combdo:
+	cnew% = 0
+	IF crec = 1 THEN ob(18) = 0: ob(28) = 0: ob(22) = 1: cnew% = 22
+	IF crec = 2 THEN ob(24) = 0: ob(11) = 0: ob(36) = 1: cnew% = 36
+	IF crec = 3 THEN ob(29) = 0: ob(34) = 0: ob(35) = 1: cnew% = 35
+	IF ob(32) = 1 AND ob(36) = 1 THEN ob(33) = 1
+	IF cnew% > 0 THEN aqc = aqc + 1: aqo(cnew%) = aqc
+	cbot = 0
+	invtab = 0
+	GOSUB cibuild
+	isel = 0: ivscr = 0
+	GOSUB invredraw
+	RETURN
+
+	'----- draw the held item's icon centered on the cursor (AND-mask clears, OR fills = transparent over grid)
+	dragdraw:
+	dgx = mx - 22: IF dgx < 0 THEN dgx = 0 ELSE IF dgx > 275 THEN dgx = 275
+	dgy = my - 20: IF dgy < 0 THEN dgy = 0 ELSE IF dgy > 160 THEN dgy = 160
+	GET (dgx, dgy)-(dgx + 44, dgy + 39), dsav
+	PUT (dgx, dgy), kmarr(tix(cdi) * ist), AND
+	PUT (dgx, dgy), iconarr(tix(cdi) * ist), OR
+	RETURN
+
+	'----- start dragging: hide the arrow cursor, draw the held item at the cursor
+	dragstart:
+	cdrg = 1
+	IF msen = 1 THEN CALL erasecur
+	GOSUB dragdraw
+	RETURN
+
+	'----- drag move: restore the bg under the old position, redraw the item at the new
+	dragmove:
+	PUT (dgx, dgy), dsav, PSET
+	mx = nmx: my = nmy
+	GOSUB dragdraw
+	RETURN
+
+	'----- examine: show the item's full-screen content, wait for a key/click, then restore the inventory
+	doexam:
+	IF msen = 1 THEN CALL erasecur
+	IF sel = 16 THEN bk$ = "MAP1" ELSE bk$ = "BOOK": PALETTE 1, 7: PALETTE 2, 2: PALETTE 3, 15
+	IF sel = 16 THEN PALETTE 1, 6: PALETTE 2, 4: PALETTE 3, 8
+	DEF SEG = -18432: BLOAD bk$ + ".PIC", 0
+	GOSUB exdrain
+	IF sel <> 16 THEN CALL showBook(sel, font3Data())
+	exwt:
+	ek$ = INKEY$: IF ek$ <> "" THEN GOTO exret
+	IF msen = 1 THEN mreg.ax = 3: CALL INTERRUPT(mvint, mreg, mout): IF (mout.bx AND 1) <> 0 THEN GOTO exret
+	GOTO exwt
+	exret:
+	GOSUB exdrain
+	BLOAD "INVMAIN.PIC", 0: DEF SEG
+	PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
+	LINE (8, 27)-(202, 151), 0, BF: LINE (210, 34)-(297, 73), 0, BF
+	GOSUB invdraw
+	IF msen = 1 THEN CALL drawcur
+	RETURN
+
+	'----- wait for any held mouse button to release (drains the click)
+	exdrain:
+	IF msen = 0 THEN RETURN
+	DO
+		mreg.ax = 3: CALL INTERRUPT(mvint, mreg, mout)
+	LOOP WHILE (mout.bx AND 1) <> 0
+	RETURN
+
+	'----- open the graphical Save/Load screen. Cancel (slvAct=0) restores the inventory and stays here; Load/New (slvAct<>0) leave the screen up so the caller GOTO invdone -> game.
+	svldopen:
+	CALL SaveLoadScreen(fontData(), mvint, msen, slvAct, 0)
+	IF slvAct <> 0 THEN RETURN
+	DEF SEG = -18432: BLOAD "INVMAIN.PIC", 0: DEF SEG
+	PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
+	LINE (8, 27)-(202, 151), 0, BF: LINE (210, 34)-(297, 73), 0, BF
+	GOSUB invdraw
+	IF msen = 1 THEN CALL drawcur
+	RETURN
+
+END SUB
+
+'----- QuitConfirm: wait for Yes/No on the quit modal (click a button or press Y/N)
+SUB QuitConfirm
+	'----- let the opening click release so it doesn't carry into Yes/No
+	IF msen = 1 THEN
+		DO
+			mreg.ax = 3: CALL INTERRUPT(mvint, mreg, mout)
+		LOOP WHILE (mout.bx AND 1) <> 0
+	END IF
+	DO
+		qk$ = INKEY$
+		IF qk$ = "y" OR qk$ = "Y" THEN SYSTEM
+		IF qk$ = "n" OR qk$ = "N" THEN EXIT SUB
+		IF msen = 1 THEN
+			mreg.ax = 3: CALL INTERRUPT(mvint, mreg, mout)
+			nmx = mout.cx \ 2: nmy = mout.dx
+			IF nmx > 304 THEN nmx = 304 ELSE IF nmx < 0 THEN nmx = 0
+			IF nmy > 190 THEN nmy = 190 ELSE IF nmy < 0 THEN nmy = 0
+			IF nmx <> mx OR nmy <> my THEN CALL erasecur: mx = nmx: my = nmy: CALL drawcur
+			IF (mout.bx AND 1) <> 0 THEN
+				IF mx >= 92 AND mx <= 142 AND my >= 105 AND my <= 117 THEN SYSTEM
+				IF mx >= 178 AND mx <= 228 AND my >= 105 AND my <= 117 THEN EXIT SUB
+				IF mx >= 260 AND mx <= 270 AND my >= 80 AND my <= 87 THEN EXIT SUB
 			END IF
 		END IF
 	LOOP
-	CLOSE
-
-	fpst = TIMER
-	fpsc = 0
-	mvint = &H33
 END SUB
 
-'----- display the note/journal for the object under the cursor
-SUB NotesSub
-	KEY OFF
-	PALETTE 1, 7
-	PALETTE 2, 2
-	PALETTE 3, 15
-	DEF SEG = &HB800: BLOAD "book.pic", 0: DEF SEG
-	ti = TIMER
-	cl = cl + 40
-
-	'----- pause for the timeout interval
-	12900 IF (TIMER - ti) >= tmo THEN GOTO 12920
-	GOTO 12900
-	12920 done$ = "y"
-	CLS
-	LOCATE 1, 1
-	PALETTE 3, 6
-
-	'----- dispatch to the matching note text by object id
-	IF gr((gy + 1) + (gw * gx)) <> 21 THEN GOTO 12980
-	GOTO 13070
-	12980 IF gr((gy + 1) + (gw * gx)) <> 3 THEN GOTO 13000
-	GOTO 13280
-	13000 IF gr((gy + 1) + (gw * gx)) <> 10 THEN GOTO 13020
-	GOTO 13400
-	13020 IF gr((gy + 1) + (gw * gx)) <> 9 THEN GOTO 13040
-	GOTO 13490
-	13040 IF gr((gy + 1) + (gw * gx)) <> 19 THEN GOTO 13060
-	GOTO 13710
-	13060
-
-	'----- zombie serum (MPTP) note
-	13070 PRINT "   The Zombie Syrem        "
-	PRINT "MPTP this formula harbors  "
-	PRINT "the most dangerous compound"
-	PRINT "that will render a victim  "
-	PRINT "paralyzed up to days at a  "
-	PRINT "time. The conclusive test  "
-	PRINT "on human subjects has yielded"
-	PRINT "promising results.     "
-	PRINT "    The subjects though are"
-	PRINT "heightened in strength and "
-	PRINT "reflexes making them harder"
-	PRINT "to control. We have started"
-	PRINT "the use of torture to stop "
-	PRINT "this problem. It is almost "
-	PRINT "safer to leave them on it  "
-	PRINT "permantly so they do not   "
-	PRINT "overthrow the doctors.     "
-	13240 a$ = INKEY$
-	IF a$ <> "" THEN GOTO 13270
-	GOTO 13240
-	13270 EXIT SUB
-
-	'----- hidden money note
-	13280 PRINT "The other doctors have become weary"
-	PRINT "as the research money is drying up. "
-	PRINT "I have taken the liberty to hide the"
-	PRINT "rest so they do not get gready and  "
-	PRINT "steal it. The money is now boarded up"
-	PRINT "in the headboard of my bed not even  "
-	PRINT "the servants know about it.Time is the"
-	PRINT "barrier to the place of the damned."
-	13360 a$ = INKEY$
-	IF a$ <> "" THEN GOTO 13390
-	GOTO 13360
-	13390 EXIT SUB
-
-	'----- coded notes / code book note
-	13400 PRINT "I have concluded another successful"
-	PRINT "expirement. This time though the other"
-	PRINT "doctors have become gready and want "
-	PRINT "possession of the notes. I have given"
-	PRINT "them to servants and coded the notes"
-	PRINT "the code book is now hidden so the "
-	PRINT "other doctors cannot steal my break"
-	PRINT "though."
-	GOTO 13360
-
-	'----- patient roster note
-	13490 PRINT "Patient: Naton McDaniel     "
-	PRINT "Disorder: Paranoid Schitsofrension"
-	PRINT "Notes: Naton is very nervous and "
-	PRINT "complains of voices, often talks in"
-	PRINT "gibberish."
-	PRINT "ID:12443"
-	PRINT ""
-	PRINT "Patient: Havos Lobos     "
-	PRINT "Disorder: Severe Delusions"
-	PRINT "Notes: Havos not only see's and"
-	PRINT "hears things but they become his"
-	PRINT "reality. He is very dangerous"
-	PRINT "ID:385938"
-	PRINT ""
-	PRINT "Patient: Gary Coleman     "
-	PRINT "Disorder: Phyocosis dementia"
-	PRINT "Notes: Gary has become a leader"
-	PRINT "of the other patients. He has"
-	PRINT "a fixation with knives and human"
-	PRINT "blood and sacrifice. Extremely disturbed"
-	PRINT "ID:485970"
-	GOTO 13360
-
-	'----- attic passage diary note
-	13710 PRINT "3/15"
-	PRINT "The patients have become unruly"
-	PRINT "I'm afraid they will overpower us"
-	PRINT "but the research must go on."
-	PRINT "3/17"
-	PRINT "The other doctors to have become"
-	PRINT "concerned. We all are tired from"
-	PRINT "working long hours and are making"
-	PRINT "many judmental mistakes"
-	PRINT "3/23"
-	PRINT "There must be something in the air"
-	PRINT "down there it clouds my head. I have"
-	PRINT "moved my practice to the attic and to"
-	PRINT "conceal have placed a pit of ash in "
-	PRINT "front of the passage only openable by "
-	PRINT "an electric circuit. I have put the"
-	PRINT "MPTP vials in the upper left."
-	PRINT "3/29"
-	PRINT "Doctor Edwards has been following me"
-	PRINT "I'm afraid he is becoming suspicous."
-	PRINT "(The rest of the page has been torn out)"
-	GOTO 13360
+'----- write the live game state to slot 1-10 (saver a-j.pac). Lives in GAME.BAS for DIM SHARED access; called from the GAME4 save/load screen.
+SUB SaveGame (slot AS INTEGER)
+	DIM slz AS INTEGER
+	OPEN "saver" + CHR$(slot + 96) + ".pac" FOR OUTPUT AS #1
+	WRITE #1, q$, cl, pt, done$, tt$, a$, lf$
+	FOR slz = 1 TO 65
+		WRITE #1, ob(slz)
+	NEXT
+	CLOSE #1
 END SUB
 
-'----- compute and print percent of game completed
-SUB PctComplete
-	pc = 0
-	FOR i = 1 TO 51
-		IF ob(i) <> 1 THEN GOTO 14170
-		pc = pc + 1
-	14170 NEXT
-	IF ob(36) <> 1 THEN GOTO 14200
-	pc = pc + 2
-	14200 IF ob(35) <> 1 THEN GOTO 14220
-	pc = pc + 2
-	14220 pp2 = CINT((pc * 100) / 47)
-	PRINT pp2; "% complete";
-	EXIT SUB
+'----- read game state from slot 1-10 + rebuild inventory acquire-order/new-flags (mirrors the old reload: path)
+SUB LoadGame (slot AS INTEGER)
+	DIM slz AS INTEGER
+	OPEN "saver" + CHR$(slot + 96) + ".pac" FOR INPUT AS #1
+	INPUT #1, q$, cl, pt, done$, tt$, a$, lf$
+	tt$ = "n": done$ = "": IF LEN(lf$) <> 1 OR INSTR("12346789", lf$) = 0 THEN lf$ = "2"
+	FOR slz = 1 TO 65
+		INPUT #1, ob(slz)
+	NEXT
+	CLOSE #1
+	aqc = 0
+	FOR slz = 1 TO 34
+		IF ob(iord(slz)) = 1 THEN aqc = aqc + 1: aqo(iord(slz)) = aqc ELSE aqo(iord(slz)) = 0
+		nwf(iord(slz)) = 0
+	NEXT
+	ERASE er1
+	FOR slz = 1 TO 40
+		gp(slz) = 0#
+	NEXT
 END SUB
-
-'----- sound effect 1
-SUB Snd1
-	SOUND f6, 1: SOUND f3, .5: SOUND f7, 1: SOUND f2, .1: SOUND f8, .5
-END SUB
-
-'----- sound effect 2
-SUB Snd2
-	FOR sa = 1 TO 5: SOUND f3, .2: SOUND 32676, 3: NEXT
-END SUB
-
-'----- sound effect 3
-SUB Snd3
-	SOUND f6, .1: SOUND f3, .5
-	FOR sb = 100 TO 600 STEP 100: SOUND sb, .1: NEXT
-	SOUND f8, .5: SOUND f5, .5
-END SUB
-
-'----- sound effect 4
-SUB Snd4
-	FOR sc = 50 TO 100 STEP 5: SOUND sc, .5: SOUND f9, .1: NEXT
-	FOR sc = 100 TO 50 STEP -5: SOUND sc, .5: SOUND f9, .1: NEXT
-	SOUND 32676, .5: SOUND f1, .5
-END SUB
-
-'----- sound effect 5
-SUB Snd5
-	FOR sc = 50 TO 80: SOUND f3, .1: SOUND sc, .1: NEXT
-	PLAY "p10"
-	FOR sc = 1 TO 300 STEP 20: SOUND (RND * 300) + 50, .1: NEXT
-	SOUND f3, .2: SOUND 32676, 2: SOUND f3, .2: SOUND 32676, 2
-END SUB
-

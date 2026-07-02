@@ -1,0 +1,81 @@
+        Welcome to the printed documention of the hit new interactive 
+adventure Dark Visions brought to you by ISC and Kreuzer Creations. This game
+utilizes the new point and click interface and inventory menu system in which 
+I will adress seperately. Plus at the end of this documentation you will find 
+the handy player control quick reference card. You must have a IBM computer 
+286 or faster with at least an EGA video card .6 meg of hard disk space for 
+optimum effeciency and 320k of ram. To start the game type Darkv at the Dos 
+prompt in your darkv directory. The esc key or the s key will skip by the 
+introduction. To install the game type install at the a prompt to install 
+the game to c:\darkv.
+
+        First the revolutionary new point and click interface. You may use 
+both the Winner 707 joypad or the keyboard and in some instances you are 
+required to use a keyboard command. So be sure that your computer is 
+equipped with a IBM or IBM compatible keyboard to insure that you are able
+to play our fine and outstanding product. The point and click interface
+requires you to move a grey cursor to the object or objects you want to 
+manipulate. This cursor may be moved either with the arrows on the numeric
+keypad with numlock on or the directional control of the Winner 707. Once you 
+have your cursor over the desired object you may use one of more of these keys
+  
+   l or button A = look:(gives a description of the selected location of the 
+                         cursor if there is a description)
+   g or button B = get:(moves an object into your inventory if it is used in
+                         the game)
+   a or button C = action:(moves,pushes,pulls,opens an object that will help 
+                         you on your quest)
+   u or button D = use:(uses the selected object from your inventory when the
+                        selected object works with the on screen cursor 
+                        position)
+
+        To access your inventory screen at any time during the game simply
+press the i key on your keyboard (there is no joystick function to reach the 
+inventory screen). You will see at the top the current game time which is 
+important to the location of objects and other game characters. Then there is
+a percentage of the game in which you have completed and finally the name of
+the current room you are in. Below that is the objects that you are currently
+carrying, the ones with a star next to them were not there the previous time
+in which you took an inventory. Now you will notice an arrow you may move this 
+arrow through your objects by pressing up arrow and down arrow or up and down
+on your directional pad. When the arrow is pointing at an object you may use
+the following keys to manipulate it.
+
+ l or button A = gives a description of the object which may hold clues
+                 at the top of the screen.
+
+ a or button C = reads a book or inspects any other written pages,press any 
+                 key to exit the inspection.
+
+ u or button D = uses the selected object on the object your arrow is on.
+
+ right arrow or right direction = selects an object the arrow is pointing to,
+                                  you should hear a sound that confirms the 
+                                  selection of the object as the selected
+                                  object.
+
+        Now at the bottom of the screen you see a string of commands to 
+restore,save,quit game or exit inventory with their keyboard activators.
+
+        r = restore an previously saved game, type a number from 1 to 4 of  
+            the game you wanted to restore.
+
+        s = saves the game at your current position select the number of the 
+            saved game 1 up to 4.
+
+        q = terminates your current game and returns you to DOS.
+
+        x or button B = exits your inventory screen.
+
+       Please also look at the in game instructions for further help
+
+QUICK REFERENCE      
+
+        l or button a = looks
+        g or button b = get
+        a or button c = action (click action on the arrows to move between 
+                                rooms)
+        u or button d = use
+        i = inventory
+        right arrow = select objects
+

@@ -120,7 +120,15 @@ pickfile:
 '--- read palette, hit points and object info from the .pac
 loadpac:
    OPEN basef$ + ".pac" FOR INPUT AS #1
-   INPUT #1, co, pa1, pa2, pa3
+   LINE INPUT #1, hd$
+   co = VAL(hd$): hd$ = MID$(hd$, INSTR(hd$, ",") + 1)
+   pa1 = VAL(hd$): hd$ = MID$(hd$, INSTR(hd$, ",") + 1)
+   pa2 = VAL(hd$): hd$ = MID$(hd$, INSTR(hd$, ",") + 1)
+   pa3 = VAL(hd$)
+   nopl = 0: rmName$ = ""
+   IF INSTR(hd$, ",") > 0 THEN nopl = VAL(MID$(hd$, INSTR(hd$, ",") + 1))
+   qa = INSTR(hd$, CHR$(34))
+   IF qa > 0 THEN qb = INSTR(qa + 1, hd$, CHR$(34)): IF qb > qa THEN rmName$ = MID$(hd$, qa + 1, qb - qa - 1)
    pal(0) = co: pal(1) = pa1: pal(2) = pa2: pal(3) = pa3
    nhot = 0
    FOR i = 1 TO 257
@@ -354,7 +362,13 @@ editinfo:
 '--- write the .pac back in the game's exact format
 savepac:
    OPEN basef$ + ".pac" FOR OUTPUT AS #2
-   WRITE #2, co, pa1, pa2, pa3
+   IF rmName$ <> "" THEN
+      WRITE #2, co, pa1, pa2, pa3, nopl, rmName$
+   ELSEIF nopl <> 0 THEN
+      WRITE #2, co, pa1, pa2, pa3, nopl
+   ELSE
+      WRITE #2, co, pa1, pa2, pa3
+   END IF
    FOR i = 1 TO nhot
       WRITE #2, ox(i), oy(i), oi(i)
    NEXT
