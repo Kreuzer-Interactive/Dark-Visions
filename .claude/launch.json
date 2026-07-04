@@ -6,6 +6,12 @@
       "runtimeExecutable": "powershell",
       "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "src/tools/web/serve.ps1", "-Port", "8190"],
       "port": 8190
+    },
+    {
+      "name": "haedit-alt",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "src/tools/web/serve.ps1", "-Port", "8191"],
+      "port": 8191
     }
   ]
 }

@@ -1,7 +1,7 @@
 '----- GAME2.BAS: secondary module for the multi-module split (sound effects)
 '----- gets its own 64K code segment; shares scalars with GAME.BAS via COMMON SHARED.
 '----- The COMMON SHARED line below MUST match GAME.BAS exactly (same names + order).
-COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$
+COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon
 COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
 
 '----- DeathMusic: play one of four random dirges
@@ -87,8 +87,14 @@ SUB LoadConfig
 		PRINT #1, "mousexy=0"
 		PRINT #1, "; lookmiss=1 shows a random 'nothing to see' line after looking 3x at an empty spot"
 		PRINT #1, "lookmiss=1"
+		PRINT #1, "; killers=0 turns off the roaming killers (for testing; scripted deaths still happen)"
+		PRINT #1, "killers=1"
+		PRINT #1, "; walkto=1 walks the player over to an item before get/use actions fire (0=instant, as the original)"
+		PRINT #1, "walkto=1"
 		PRINT #1, "; intro=1 plays the opening cutscene (set 0 to skip it)"
 		PRINT #1, "intro=1"
+		PRINT #1, "; quickstart=1 jumps straight into the game - no intro, title or instructions prompt (testing)"
+		PRINT #1, "quickstart=0"
 			PRINT #1, "; hit-zone debug overlay (needs mouse=1): ring hotspot click-zones, 1=show 0=hide (look=blue action=brown get/use=gray)"
 			PRINT #1, "hitzone_look=0"
 			PRINT #1, "hitzone_get=0"
@@ -101,6 +107,9 @@ SUB LoadConfig
 	exsen = 1
 	nfon = 1
 	inon = 1
+	klon = 1
+	wksen = 1
+	qkon = 0
 	hzon$ = ""
 	OPEN "dark.ini" FOR INPUT AS #1
 	DO WHILE NOT EOF(1)
@@ -122,7 +131,10 @@ SUB LoadConfig
 				IF k$ = "exitcursor" THEN exsen = tv
 				IF k$ = "mousexy" THEN mxyon = tv
 				IF k$ = "lookmiss" THEN nfon = tv
+				IF k$ = "killers" THEN klon = tv
+				IF k$ = "walkto" THEN wksen = tv
 				IF k$ = "intro" THEN inon = tv
+				IF k$ = "quickstart" THEN qkon = tv
 				IF k$ = "hitzone_look" AND tv = 1 THEN hzon$ = hzon$ + "l"
 				IF k$ = "hitzone_get" AND tv = 1 THEN hzon$ = hzon$ + "g"
 				IF k$ = "hitzone_use" AND tv = 1 THEN hzon$ = hzon$ + "u"

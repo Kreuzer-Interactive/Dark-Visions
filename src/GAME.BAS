@@ -29,6 +29,10 @@ DECLARE SUB drawMsg (s AS STRING, fontData() AS INTEGER)
 DECLARE SUB introShowCarr ()
 DECLARE SUB introFadeCredit ()
 DECLARE SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
+DECLARE SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%())
+DECLARE SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%())
+DECLARE SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
+DECLARE SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
 
 '----- assembly interrupt support (INT 33h mouse)
 TYPE RegType
@@ -67,7 +71,7 @@ DIM SHARED pt AS SINGLE
 DIM SHARED q$, a$, done$, tt$, lf$, sl$, dop$, vk$, tk$, m$, sf$, sy$
 DIM SHARED cl, h9, h10, h11, hr, mn, t1, t2, t3, cv
 DIM SHARED gw, gy, gx, sel, doc, sn, di, dn1, dn2, dn3
-COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$
+COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon
 COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
 DIM SHARED pk, jx, jy, dx2, dy2, co, co2, pa1, pa2, pa3
 DIM SHARED oh, ohs, pz, j, pc, pp2, gm, tmo, wk, js0, js1
@@ -114,13 +118,29 @@ DIM SHARED fbg(150) AS INTEGER
 DIM SHARED mwa(150) AS INTEGER
 DIM SHARED mwb(150) AS INTEGER
 DIM SHARED wbg(150) AS INTEGER
+'----- player position (top-left of the 31x31 sprite box), walkable band for
+'----- walk-to stand points (defaults, or a "-1,xmin,xmax,ymin,ymax" line after
+'----- the .pac anim placements; ymin = highest allowed sprite TOP, ymax =
+'----- lowest allowed sprite BOTTOM), and the room loadroom last loaded
+'----- (position is kept on a same-room reload like the inventory return)
+DIM SHARED pjx, pjy, wbmin, wbmax, wbymin, wbymax, lrq$
+'----- per-object authored walk-to stand points from the .pac ("-2,obj,x,y,dir"
+'----- records): feet-center x/y (spx=-1 none) + facing digit (0 = auto lookdir)
+DIM SHARED spx(25) AS INTEGER, spy(25) AS INTEGER, spd(25) AS INTEGER
+'----- startup-cached walk frames, 4 direction sets at slot d*151 (0=down/joew1, 1=up/joew2, 2=right/joew3, 3=left/joew4)
+'----- 8-direction walk cache (REDIM = dynamic -> far heap; 8 slots x 151 ints; DGROUP is nearly full)
+REDIM SHARED cwa(1207) AS INTEGER, cwb(1207) AS INTEGER, cmwa(1207) AS INTEGER, cmwb(1207) AS INTEGER
 '----- data-driven animation system: ANIMS.PAC library + per-room placements
 DIM SHARED nAnim AS INTEGER, nPlace AS INTEGER
 DIM SHARED anId(50) AS INTEGER, anRate(50) AS INTEGER
 DIM SHARED anName$(50), anType$(50), anSrc$(50), anFrames$(50), anMode$(50), anPal$(50), anSnd$(50)
 DIM SHARED plAnim(20) AS INTEGER, plX(20) AS INTEGER, plY(20) AS INTEGER, plCond(20) AS INTEGER, plSet(20) AS INTEGER
 '----- scratch buffers for the generic .pct/.msk frame loader (de-interleave + masked draw)
-DIM SHARED aflat(1600) AS INTEGER, afrm(150) AS INTEGER, amfrm(150) AS INTEGER, fsq(30) AS INTEGER
+DIM SHARED afrm(150) AS INTEGER, amfrm(150) AS INTEGER, fsq(30) AS INTEGER
+'----- anim source cache: each .pct/.msk pair parsed from disk ONCE, then reused (6 slots,
+'----- round-robin evict). REDIM = dynamic arrays in the far heap, so DGROUP is untouched.
+REDIM SHARED acPct(6, 1600) AS INTEGER, acMsk(6, 1600) AS INTEGER
+DIM SHARED acSrc$(6), acN(6) AS INTEGER, acM(6) AS INTEGER
 '----- active loop-animation instances for the current room (idle-loop tick)
 DIM SHARED nLoop AS INTEGER
 DIM SHARED liAnim(4) AS INTEGER, liX(4) AS INTEGER, liY(4) AS INTEGER, liCur(4) AS INTEGER, liRate(4) AS INTEGER
@@ -141,15 +161,15 @@ DIM SHARED bs(100)
 DIM SHARED cs(100)
 DIM SHARED st(150)
 DIM SHARED tg$(150)
-DIM SHARED dn$(50)
-DIM SHARED sn$(50)
-DIM SHARED iord(34)
+DIM SHARED dn$(65)
+DIM SHARED sn$(65)
+DIM SHARED iord(35)
 DIM SHARED gp(100)
 DIM SHARED er1(400)
 DIM SHARED d(300)
 DIM SHARED tilarr(12600) AS INTEGER
-DIM SHARED iconarr(9100) AS INTEGER
-DIM SHARED kmarr(9100) AS INTEGER
+DIM SHARED iconarr(9400) AS INTEGER
+DIM SHARED kmarr(9400) AS INTEGER
 DIM SHARED dsav(250) AS INTEGER
 DIM SHARED tix(65) AS INTEGER
 DIM SHARED cilist(40) AS INTEGER
@@ -183,7 +203,7 @@ CALL initAllFonts(fontData(), font3Data(), fontbData())
 '      bails out of the cutscene to introDone -- the intro ends early but the
 '      game runs instead of crashing to DOS.  (Throttle work restores it.)
 ON ERROR GOTO introSkip
-IF inon <> 0 THEN CALL Intro
+IF inon <> 0 AND qkon = 0 THEN CALL Intro
 introDone:
 ON ERROR GOTO 0
 KEY OFF
@@ -204,6 +224,11 @@ SCREEN 1
 CLS
 CLOSE
 GOSUB loadanims
+CALL LoadWalks(cwa(), cmwa(), cwb(), cmwb())
+
+'----- quickstart=1 (dark.ini): drop straight into the game for testing
+'----- (joeface still runs -- it LOADS the 8 standing player sprites)
+IF qkon <> 0 THEN GOSUB joeface: GOTO qstart
 
 '----- title screen
 SCREEN 1
@@ -215,8 +240,6 @@ GOSUB joeface
 a$ = INKEY$
 CALL introFadeCredit
 CLS
-b = 122
-a = 82
 
 '----- instructions prompt
 PRINT " Do you want instructions Y/N"
@@ -227,6 +250,9 @@ GOTO 400
 430 IF a$ = "Y" OR a$ = "y" THEN GOSUB rules
 
 '----- enter the game
+qstart:
+b = 122
+a = 82
 DRAW "bm1,1c1r3d3l1u2l1d2l1u2"
 GET (1, 1)-(4, 4), d
 a$ = "2"
@@ -481,8 +507,9 @@ action:
 	i = oh
 	GOTO 6130
 
-'----- Apply state change and print message
-6340 ob(CINT(st(i))) = 1
+'----- Apply state change and print message (get/use first walk the player over)
+6340 GOSUB wlkitem
+	ob(CINT(st(i))) = 1
 	'----- pickup sound now plays via the acquisition scan (mainloop) so action-gets sound too
 	IF a$ <> "u" THEN GOTO 6400
 	CALL Snd3
@@ -513,9 +540,13 @@ action:
 	wk = 1: GOSUB walkout: wk = 0
 	i = ohs
 
-'----- Face the tagged direction
+'----- Face the tagged direction. With walk-to on the direction is COMPUTED
+'----- from the player's eyes toward the click (the data's hardcoded letter
+'----- assumed a center-screen player); walkto=0 keeps the classic letter.
 	6710 IF LEFT$(tg$(i), 1) <> "f" THEN GOTO 6740
-	a$ = RIGHT$(tg$(i), 1)
+	'----- an authored stand-point facing already turned the player (wlkdd)
+	IF wlkdd = 1 THEN GOTO 6740
+	IF wksen = 1 THEN GOSUB lookdir ELSE a$ = RIGHT$(tg$(i), 1)
 	GOSUB face
 
 '----- Play follow-up sound and run any deferred action
@@ -552,7 +583,7 @@ doinv:
 
 '----- main game loop: input, movement, actions
 mainloop:
-	FOR iaq = 1 TO 34
+	FOR iaq = 1 TO 35
 		IF ob(iord(iaq)) = 1 AND aqo(iord(iaq)) = 0 THEN aqc = aqc + 1: aqo(iord(iaq)) = aqc: nwf(iord(iaq)) = 1: CALL Snd1
 	NEXT
 	IF msen <> 1 THEN PUT (b, a), d, XOR
@@ -726,7 +757,7 @@ loadmsgs:
 	nf$(24) = "Nothing reveals itself to you."
 	nf$(25) = "The shadows hide nothing here."
 	FOR ivi = 1 TO 29: iord(ivi) = ivi: NEXT
-	iord(30) = 30: iord(31) = 49: iord(32) = 35: iord(33) = 36: iord(34) = 34
+	iord(30) = 30: iord(31) = 49: iord(32) = 35: iord(33) = 36: iord(34) = 34: iord(35) = 52
 	RETURN
 
 '----- look at a truly-empty spot: after 3 looks at the same cell, show a non-repeating random line
@@ -787,27 +818,20 @@ loadanims:
 	RETURN
 
 '----- animframe: draw 1-based frame FN of sprite source SRC$ at (PX,PY); mask if .msk present, else PSET
+'----- cached: the .pct/.msk files are parsed ONCE into a slot (animload), then every frame draw
+'----- is array-copy + PUT -- was 2 full ASCII file re-parses PER FRAME (the slow door swing)
 animframe:
-	anf = 0
-	ON ERROR GOTO afeof1
-	CLOSE #3
-	OPEN SRC$ + ".pct" FOR INPUT AS #3
-	afl1:
-	IF anf >= 1600 THEN GOTO afd1
-	anf = anf + 1
-	INPUT #3, aflat(anf)
-	GOTO afl1
-	afeof1:
-	anf = anf - 1
-	RESUME afd1
-	afd1:
-	CLOSE #3
-	ON ERROR GOTO errhand
+	acs = 0
+	FOR aci = 1 TO 6
+		IF acSrc$(aci) = SRC$ THEN acs = aci
+	NEXT
+	IF acs = 0 THEN GOSUB animload
+	anf = acN(acs)
 	IF anf < 2 THEN RETURN
 	ank = 0
 	afk1:
 	IF ank >= anf THEN GOTO afk2
-	IF aflat(ank + 1) <> aflat(1) THEN GOTO afk2
+	IF acPct(acs, ank + 1) <> acPct(acs, 1) THEN GOTO afk2
 	ank = ank + 1
 	GOTO afk1
 	afk2:
@@ -816,7 +840,39 @@ animframe:
 	IF anpf > 150 THEN anpf = 150
 	IF afn < 1 THEN afn = 1
 	IF afn > ank THEN afn = ank
-	FOR aj = 0 TO anpf - 1: afrm(aj) = aflat(afn + aj * ank): NEXT
+	FOR aj = 0 TO anpf - 1: afrm(aj) = acPct(acs, afn + aj * ank): NEXT
+	IF acM(acs) >= anf THEN
+		FOR aj = 0 TO anpf - 1: amfrm(aj) = acMsk(acs, afn + aj * ank): NEXT
+		PUT (PX, PY), amfrm, AND
+		PUT (PX, PY), afrm, OR
+	ELSE
+		PUT (PX, PY), afrm, PSET
+	END IF
+	RETURN
+
+'----- animload: parse SRC$.pct + SRC$.msk from disk into cache slot acs (round-robin evict;
+'----- a missing/short file is cached as a miss so it isn't re-tried every frame)
+animload:
+	acNext = acNext + 1
+	IF acNext > 6 THEN acNext = 1
+	acs = acNext
+	acSrc$(acs) = SRC$
+	anf = 0
+	ON ERROR GOTO afeof1
+	CLOSE #3
+	OPEN SRC$ + ".pct" FOR INPUT AS #3
+	afl1:
+	IF anf >= 1600 THEN GOTO afd1
+	anf = anf + 1
+	INPUT #3, acPct(acs, anf)
+	GOTO afl1
+	afeof1:
+	anf = anf - 1
+	RESUME afd1
+	afd1:
+	CLOSE #3
+	ON ERROR GOTO errhand
+	acN(acs) = anf
 	anm = 0
 	ON ERROR GOTO afeof2
 	CLOSE #3
@@ -824,7 +880,7 @@ animframe:
 	afl2:
 	IF anm >= 1600 THEN GOTO afd2
 	anm = anm + 1
-	INPUT #3, aflat(anm)
+	INPUT #3, acMsk(acs, anm)
 	GOTO afl2
 	afeof2:
 	anm = anm - 1
@@ -832,13 +888,7 @@ animframe:
 	afd2:
 	CLOSE #3
 	ON ERROR GOTO errhand
-	IF anm >= anf THEN
-		FOR aj = 0 TO anpf - 1: amfrm(aj) = aflat(afn + aj * ank): NEXT
-		PUT (PX, PY), amfrm, AND
-		PUT (PX, PY), afrm, OR
-	ELSE
-		PUT (PX, PY), afrm, PSET
-	END IF
+	acM(acs) = anm
 	RETURN
 
 '----- animparse: parse anFrames$(aidx) like "0;1;2" into fsq(1..nfr) frame indices
@@ -1000,22 +1050,11 @@ reanim:
 '----- dooseq: room3 door entry cutscene -- walk player in from the door while it opens, face up-right
 dooseq:
 	CLOSE
-	OPEN "joew3.pct" FOR INPUT AS #1
-	FOR i = 0 TO 125: IF NOT EOF(1) THEN INPUT #1, wa(i), wb(i)
-	NEXT: CLOSE
-	OPEN "joew3.msk" FOR INPUT AS #1
-	FOR i = 0 TO 125: IF NOT EOF(1) THEN INPUT #1, mwa(i), mwb(i)
-	NEXT: CLOSE
+	'----- walk in from the door using the startup-cached right-facing set (slot 2 = offset 302)
 	FOR i = 90 TO 140 STEP 3
-		GET (i, 130)-(i + 30, 160), wbg
-		PUT (i, 130), mwa, AND: PUT (i, 130), wa, OR
-		SOUND f3, .1: FOR j = 1 TO 2: SOUND 32676, 1: NEXT
-		PUT (i, 130), wbg, PSET
+		CALL PStep(i, 130, 0, f3, 1, 302, cwa(), cmwa(), cwb(), cmwb(), wbg())
 		i = i + 3
-		GET (i, 130)-(i + 30, 160), wbg
-		PUT (i, 130), mwb, AND: PUT (i, 130), wb, OR
-		SOUND f3, .1: FOR j = 1 TO 2: SOUND 32676, 1: NEXT
-		PUT (i, 130), wbg, PSET
+		CALL PStep(i, 130, 1, f3, 1, 302, cwa(), cmwa(), cwb(), cmwb(), wbg())
 	NEXT
 	a$ = "6": GOSUB face
 	dwsec = .5: GOSUB dwait
@@ -1064,10 +1103,26 @@ loadroom:
 	objok:
 	ON ERROR GOTO errhand
 	nPlace = 0
+	wbmin = 40: wbmax = 250
+	wbymin = 138: wbymax = 176
+	FOR i = 1 TO 25: spx(i) = -1: spd(i) = 0: NEXT
 	ON ERROR GOTO placeeof
 	placeloop:
 	IF nPlace >= 20 THEN GOTO placeend
 	INPUT #1, pla, plb, plc, pld, ple
+	'----- pla=-1 sentinel = walkable-band record: x min/max, then optional
+	'----- y limits (sprite-top min, sprite-bottom max; 0 = keep default)
+	IF pla <> -1 THEN GOTO notwband
+	wbmin = plb: wbmax = plc
+	IF pld > 0 THEN wbymin = pld
+	IF ple > 0 THEN wbymax = ple
+	GOTO placeloop
+	notwband:
+	'----- pla=-2 sentinel = per-object stand point: obj, feet x, feet y, facing
+	IF pla <> -2 THEN GOTO notstand
+	IF plb >= 1 AND plb <= 25 THEN spx(plb) = plc: spy(plb) = pld: spd(plb) = ple
+	GOTO placeloop
+	notstand:
 	IF pla < 1 THEN GOTO placeend
 	nPlace = nPlace + 1
 	plAnim(nPlace) = pla: plX(nPlace) = plb: plY(nPlace) = plc: plCond(nPlace) = pld: plSet(nPlace) = ple
@@ -1093,7 +1148,9 @@ loadroom:
 	DEF SEG
 	GOSUB animdraw
 	GET (1, 8)-(9, 18), bk: GET (1, 8)-(9, 18), bk2
-	GET (140, 130)-(170, 160), fbg
+	IF q$ <> lrq$ THEN pjx = 140: pjy = 130
+	lrq$ = q$
+	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
 	GOSUB hitzones
 	IF q$ <> "title" THEN GOTO walkout
 
@@ -1115,152 +1172,103 @@ walkout:
 	RETURN
 	RETURN
 
-	8265 q$ = "joew2"
-	IF a$ <> "1" THEN GOTO 8290
-	q$ = "joew1"
-	8290 IF a$ <> "2" THEN GOTO 8310
-	q$ = "joew2"
-	8310 IF a$ <> "3" THEN GOTO 8330
-	q$ = "joew3"
-	8330 IF a$ <> "4" THEN GOTO 8350
-	q$ = "joew4"
-
-	'----- load walk sprite frames
-	8350 OPEN q$ + ".pct" FOR INPUT AS #1
-	FOR i = 0 TO 125
-		IF EOF(1) THEN GOTO 8415
-		INPUT #1, wa(i), wb(i)
-	NEXT
-	8415 CLOSE
-	OPEN q$ + ".msk" FOR INPUT AS #1
-	FOR i = 0 TO 125
-		IF EOF(1) THEN GOTO 8420
-		INPUT #1, mwa(i), mwb(i)
-	NEXT
-
-	8420 sf$ = a$
+	'----- erase the standing player, then walk out via GAME5 walkTo from
+	'----- wherever the player stands (a$ direction 1=s 2=n 3=e 4=w; the
+	'----- old per-walkout joew sprite disk loads are gone -- LoadWalks
+	'----- cached all 4 direction sets at startup)
+	8265 sf$ = a$
 	a$ = ""
 	GOSUB face
 	a$ = sf$
-	IF a$ <> "1" THEN GOTO 8490
-	GOTO 8570
-	GOTO 8570
-	8490 IF a$ <> "2" THEN GOTO 8520
-	GOTO 8730
-	GOTO 8570
-	8520 IF a$ <> "3" THEN GOTO 8550
-	GOTO 8900
-	GOTO 8570
-	8550 IF a$ <> "4" THEN GOTO 8570
-	GOTO 9060
-
-	'----- walk down animation
-	8570 FOR i = 130 TO 150 STEP 2
-		GET (140, i)-(170, i + 30), wbg
-		PUT (140, i), mwa, AND: PUT (140, i), wa, OR
-		SOUND f3, .1
-		FOR j = 1 TO 2
-			SOUND 32676, 1.2
-		NEXT
-		PUT (140, i), wbg, PSET
-		i = i + 2
-		GET (140, i)-(170, i + 30), wbg
-		PUT (140, i), mwb, AND: PUT (140, i), wb, OR
-		SOUND f3, .1
-		FOR j = 1 TO 2
-			SOUND 32676, 1.2
-		NEXT
-		PUT (140, i), wbg, PSET
-	NEXT
-	GOTO 9220
-
-	'----- walk up animation
-	8730 GOTO 8880
-	8740 GET (140, i)-(170, i + 30), wbg
-	PUT (140, i), mwa, AND: PUT (140, i), wa, OR
-	SOUND f3, .1
-	FOR j = 1 TO 2
-		SOUND 32676, 1.4
-	NEXT
-	PUT (140, i), wbg, PSET
-	i = i - 3
-	GET (140, i)-(170, i + 30), wbg
-	PUT (140, i), mwb, AND: PUT (140, i), wb, OR
-	SOUND f3, .1
-	FOR j = 1 TO 2
-		SOUND 32676, 1.4
-	NEXT
-	PUT (140, i), wbg, PSET
-	i = i + -2
-	8880 IF i >= 120 THEN GOTO 8740
-	GOTO 9220
-
-	'----- walk right animation
-	8900 FOR i = 140 TO 195 STEP 3
-		GET (i, 130)-(i + 30, 160), wbg
-		PUT (i, 130), mwa, AND: PUT (i, 130), wa, OR
-		SOUND f3, .1
-		FOR j = 1 TO 2
-			SOUND 32676, 1
-		NEXT
-		PUT (i, 130), wbg, PSET
-		i = i + 3
-		GET (i, 130)-(i + 30, 160), wbg
-		PUT (i, 130), mwb, AND: PUT (i, 130), wb, OR
-		SOUND f3, .1
-		FOR j = 1 TO 2
-			SOUND 32676, 1
-		NEXT
-		PUT (i, 130), wbg, PSET
-	NEXT
-	GOTO 9220
-
-	'----- walk left animation
-	9060 GOTO 9210
-	9070 GET (i, 130)-(i + 30, 160), wbg
-	PUT (i, 130), mwa, AND: PUT (i, 130), wa, OR
-	SOUND f3, .1
-	FOR j = 1 TO 2
-		SOUND 32676, 1
-	NEXT
-	PUT (i, 130), wbg, PSET
-	i = i - 3
-	GET (i, 130)-(i + 30, 160), wbg
-	PUT (i, 130), mwb, AND: PUT (i, 130), wb, OR
-	SOUND f3, .1
-	FOR j = 1 TO 2
-		SOUND 32676, 1
-	NEXT
-	PUT (i, 130), wbg, PSET
-	i = i + -3
-	9210 IF i >= 90 THEN GOTO 9070
-	9220 RETURN
+	wtx = pjx: wty = pjy
+	IF a$ = "1" THEN wty = 152
+	IF a$ = "2" THEN wty = 118
+	IF a$ = "3" THEN wtx = 197
+	IF a$ = "4" THEN wtx = 87
+	'----- vertical exit clicked while standing away from the door (walk-to can
+	'----- leave the player anywhere): L-walk to the door's x first, then out.
+	'----- The 12px dead zone keeps the classic centered walkout pixel-identical.
+	IF (a$ = "1" OR a$ = "2") AND ABS(b - 15 - pjx) > 12 THEN wtx = b - 15
+	CALL walkTo(wtx, wty, pjx, pjy, f3, cwa(), cmwa(), cwb(), cmwb(), wbg())
+	RETURN
 face:
 	'----- tear down the mouse cursor first: its save-under was sampled before this turn, so restoring it later would repaint the OLD player (erasecur no-ops when the cursor isn't drawn). Next mousepoll re-samples after the turn.
 	CALL erasecur
-	'----- erase the previous standing sprite by restoring the saved room background
-	PUT (140, 130), fbg, PSET
-	'----- close-up scenes (nopl flag = 5th value in the .pac header) skip the standing player
-	IF nopl = 1 THEN GOTO 9550
-	'----- draw the new facing direction: mask cuts the silhouette, sprite ORs in the colours
-	9390 IF a$ <> "4" THEN GOTO 9410
-	PUT (140, 130), mfl, AND: PUT (140, 130), fl, OR
-	9410 IF a$ <> "2" THEN GOTO 9430
-	PUT (140, 130), mfd, AND: PUT (140, 130), fd, OR
-	9430 IF a$ <> "6" THEN GOTO 9450
-	PUT (140, 130), mfr, AND: PUT (140, 130), fr, OR
-	9450 IF a$ <> "8" THEN GOTO 9470
-	PUT (140, 130), mfu, AND: PUT (140, 130), fu, OR
-	9470 IF a$ <> "1" THEN GOTO 9490
-	PUT (140, 130), mfdl, AND: PUT (140, 130), fdl, OR
-	9490 IF a$ <> "7" THEN GOTO 9510
-	PUT (140, 130), mful, AND: PUT (140, 130), ful, OR
-	9510 IF a$ <> "9" THEN GOTO 9530
-	PUT (140, 130), mfur, AND: PUT (140, 130), fur, OR
-	9530 IF a$ <> "3" THEN GOTO 9550
-	PUT (140, 130), mfdr, AND: PUT (140, 130), fdr, OR
+	'----- erase + redraw the standing player at (pjx,pjy) -- GAME5 PStand
+	'----- (erase restores fbg; nopl close-up rooms erase but skip the draw)
+	CALL PStand(a$, pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur())
+	lf$ = a$
+	RETURN
 
-	9550 lf$ = a$
+'----- walk-to-item (walkto ini, wksen): a firing get/use first walks the
+'----- player to stand under the clicked spot (b,a), clamped to the room's
+'----- walkable x-band, then re-anchors the standing save-under (fbg) there
+'----- and faces the item. ACTIONS walk too, but ONLY to an authored stand
+'----- point (no beside-the-item fallback, so walkouts + unauthored actions
+'----- stay instant); look is always instant; close-up scenes (nopl) never
+'----- walk. Called from the action fire point.
+wlkitem:
+	wlkdd = 0
+	IF wksen <> 1 OR nopl = 1 THEN RETURN
+	woi% = CINT(i)
+	IF a$ = "a" AND spx(woi%) < 0 THEN RETURN
+	IF a$ <> "g" AND a$ <> "u" AND a$ <> "a" THEN RETURN
+	IF spx(woi%) >= 0 THEN
+		'----- authored stand point (editor-placed): feet-center -> sprite top-left
+		wsx = spx(woi%) - 15
+		wsy = spy(woi%) - 30
+	ELSE
+		'----- no authored point: stand BESIDE the item (right half of the view
+		'----- -> ~20px left of it, left half -> ~20px right), head toward the
+		'----- item's height, clamped to the room's floor band
+		IF b > 160 THEN wsx = b - 35 ELSE wsx = b + 5
+		IF wsx < wbmin THEN wsx = wbmin
+		IF wsx > wbmax THEN wsx = wbmax
+		wsy = a
+		IF wsy < wbymin THEN wsy = wbymin
+		IF wsy > wbymax - 30 THEN wsy = wbymax - 30
+	END IF
+	'----- keep the 31x31 sprite box on screen whatever the data says
+	IF wsx < 0 THEN wsx = 0
+	IF wsx > 289 THEN wsx = 289
+	IF wsy < 0 THEN wsy = 0
+	IF wsy > 169 THEN wsy = 169
+	IF wsx = pjx AND wsy = pjy THEN GOTO wlkface
+	sf$ = a$
+	a$ = ""
+	GOSUB face
+	a$ = sf$
+	CALL walkTo(wsx, wsy, pjx, pjy, f3, cwa(), cmwa(), cwb(), cmwb(), wbg())
+	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
+	wlkface:
+	sf$ = a$
+	'----- authored facing wins (wlkdd suppresses the later f-tag turn); else aim the eyes
+	IF spx(woi%) >= 0 AND spd(woi%) >= 1 THEN a$ = LTRIM$(STR$(spd(woi%))): wlkdd = 1 ELSE GOSUB lookdir
+	GOSUB face
+	a$ = sf$
+	RETURN
+
+'----- lookdir: set a$ to the 8-way facing from the player's EYES (top of the
+'----- head, ~5px into the sprite) toward the click point (b,a). Replaces the
+'----- directions hardcoded in the room data, which assumed a center-screen
+'----- player. Dead zones keep small offsets from twitching into diagonals.
+lookdir:
+	ldx = b - (pjx + 15)
+	ldy = a - (pjy + 5)
+	lxs = 0
+	IF ldx < -10 THEN lxs = -1
+	IF ldx > 10 THEN lxs = 1
+	lys = 0
+	IF ldy < -8 THEN lys = -1
+	IF ldy > 8 THEN lys = 1
+	a$ = "2"
+	IF lxs = -1 AND lys = -1 THEN a$ = "7"
+	IF lxs = 0 AND lys = -1 THEN a$ = "8"
+	IF lxs = 1 AND lys = -1 THEN a$ = "9"
+	IF lxs = -1 AND lys = 0 THEN a$ = "4"
+	IF lxs = 1 AND lys = 0 THEN a$ = "6"
+	IF lxs = -1 AND lys = 1 THEN a$ = "1"
+	IF lxs = 1 AND lys = 1 THEN a$ = "3"
 	RETURN
 
 '----- joeface: load Joe face sprites, pick direction toward player
@@ -1352,19 +1360,9 @@ golf:
 	NEXT
 	10200 i = 150
 
-	10210 GET (135, i)-(165, i + 30), wbg: PUT (135, i), mwa, AND: PUT (135, i), wa, OR
-	SOUND f3, .1
-	FOR j = 1 TO 2
-		SOUND 32676, 1.2
-	NEXT
-	PUT (135, i), wbg, PSET
+	10210 CALL PStep(135, i, 0, f3, 1.2, 0, wa(), mwa(), wb(), mwb(), wbg())
 	i = i - 2
-	GET (135, i)-(165, i + 30), wbg: PUT (135, i), mwb, AND: PUT (135, i), wb, OR
-	SOUND f3, .1
-	FOR j = 1 TO 2
-		SOUND 32676, 1.2
-	NEXT
-	PUT (135, i), wbg, PSET
+	CALL PStep(135, i, 1, f3, 1.2, 0, wa(), mwa(), wb(), mwb(), wbg())
 	i = i + -2
 	IF i >= 135 THEN GOTO 10210
 	GET (135, 135)-(165, 165), wbg: PUT (135, 135), mwa, AND: PUT (135, 135), wa, OR
@@ -1388,7 +1386,8 @@ golf:
 '----- events: fire room-specific Wilbur / golf events by step count
 events:
 	IF doc <> 1 THEN GOTO 10840
-	10840 IF q$ = "room7" AND (INT(cl * cr)) > 0 AND (INT(cl * cr)) < 8 THEN GOSUB wilb
+	10840 IF klon = 0 THEN GOTO 11570
+	IF q$ = "room7" AND (INT(cl * cr)) > 0 AND (INT(cl * cr)) < 8 THEN GOSUB wilb
 	IF q$ = "room6" AND (INT(cl * cr)) > 8 AND (INT(cl * cr)) < 20 THEN GOSUB wilb
 	IF q$ = "room8" AND (INT(cl * cr)) > 20 AND (INT(cl * cr)) < 35 THEN GOSUB wilb
 	IF q$ = "room9" AND (INT(cl * cr)) > 35 AND (INT(cl * cr)) < 47 THEN GOSUB wilb
@@ -1406,7 +1405,7 @@ events:
 	IF q$ = "room9" AND (INT(cl * cr)) > t1 AND (INT(cl * cr)) < t2 THEN GOSUB golf
 	IF q$ = "room1" AND (INT(cl * cr)) > t2 AND (INT(cl * cr)) < t3 THEN GOSUB golf
 	IF q$ = "room4" AND (INT(cl * cr)) > t3 AND (INT(cl * cr)) < f3 THEN GOSUB golf
-	IF (INT(cl * cr)) <= 30 THEN GOTO 11580
+	11570 IF (INT(cl * cr)) <= 30 THEN GOTO 11580
 	ob(37) = 1
 	11580 RETURN
 
@@ -2287,6 +2286,9 @@ SUB invhi
 	tst = 330: ist = 245
 	FOR ivi = 1 TO 30: tix(ivi) = ivi - 1: NEXT
 	tix(49) = 30: tix(36) = 31: tix(34) = 32: tix(35) = 33
+	'----- the unreadable formula (52, combine step 1) has its own tile 37
+	'----- (INVTIL2/INVMSK2 slot 16; art = the complete-formula icon relabeled)
+	tix(52) = 37
 	'----- load keep-masks -> kmarr, then tiles -> tilarr (full) + iconarr (tile AND keepmask = frameless item)
 	DEF SEG = -18432
 	BLOAD "INVMSK1.PIC", 0
@@ -2307,20 +2309,22 @@ SUB invhi
 	DEF SEG = -18432
 	BLOAD "INVMSK2.PIC", 0
 	DEF SEG
-	FOR ivk = 21 TO 35
-		ivj = ivk - 21: ivc = ivj MOD 7: ivr = ivj \ 7
-		GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 39), kmarr(ivk * ist)
+	FOR ivk = 21 TO 37
+		'----- slot 15 (ivk 36) is the ring AND-mask tile, no keep-mask
+		IF ivk <> 36 THEN ivj = ivk - 21: ivc = ivj MOD 7: ivr = ivj \ 7: GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 39), kmarr(ivk * ist)
 	NEXT
 	DEF SEG = -18432
 	BLOAD "INVTIL2.PIC", 0
 	DEF SEG
-	FOR ivk = 21 TO 36
+	FOR ivk = 21 TO 37
 		ivj = ivk - 21: ivc = ivj MOD 7: ivr = ivj \ 7
 		GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 53), tilarr(ivk * tst)
-		IF ivk <= 35 THEN PUT (ivc * 45, ivr * 54), kmarr(ivk * ist), AND: GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 39), iconarr(ivk * ist)
+		IF ivk <> 36 THEN PUT (ivc * 45, ivr * 54), kmarr(ivk * ist), AND: GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 39), iconarr(ivk * ist)
 	NEXT
-	'----- derive AND-screen masks in place: kmarr = NOT keepmask (PRESET draws NOT), for the drag sprite
-	FOR ivk = 0 TO 35: PUT (0, 0), kmarr(ivk * ist), PRESET: GET (0, 0)-(44, 39), kmarr(ivk * ist): NEXT
+	'----- derive AND-screen masks in place: kmarr = NOT keepmask (PRESET draws NOT), for the drag sprite (36 = ring mask, skip)
+	FOR ivk = 0 TO 37
+		IF ivk <> 36 THEN PUT (0, 0), kmarr(ivk * ist), PRESET: GET (0, 0)-(44, 39), kmarr(ivk * ist)
+	NEXT
 	'----- build the carried-item list (newest-first)
 	GOSUB cibuild
 	'----- load the single background; GET both panels, erase the Info template
@@ -2408,7 +2412,7 @@ SUB invhi
 	GOTO invwait
 	invdone:
 	IF msen = 1 THEN CALL erasecur
-	FOR ivi = 1 TO 34: nwf(iord(ivi)) = 0: NEXT
+	FOR ivi = 1 TO 35: nwf(iord(ivi)) = 0: NEXT
 	SCREEN 1
 	EXIT SUB
 
@@ -2466,7 +2470,7 @@ SUB invhi
 		PUT (30, 56), kmarr(tix(sel) * ist), AND
 		PUT (30, 56), iconarr(tix(sel) * ist), OR
 		CALL drawWrap(14, 114, dn$(sel), 2, 88, 8, fontData())
-		IF INSTR("/9/10/16/19/21/25/", "/" + LTRIM$(STR$(sel)) + "/") THEN exf = 1: PUT (84, 40), exmico, PSET
+		IF INSTR("/3/9/10/16/19/21/25/", "/" + LTRIM$(STR$(sel)) + "/") THEN exf = 1: PUT (84, 40), exmico, PSET
 	END IF
 	IF invtab = 1 THEN
 		IF cic > 0 THEN sel = cilist(isel): PUT (35, 39), kmarr(tix(sel) * ist), AND: PUT (35, 39), iconarr(tix(sel) * ist), OR
@@ -2498,7 +2502,7 @@ SUB invhi
 	'----- rebuild the carried-item list (newest-first), recompute scroll max
 	cibuild:
 	cic = 0
-	FOR ivi = 1 TO 34
+	FOR ivi = 1 TO 35
 		ivn = iord(ivi)
 		IF ob(ivn) = 1 THEN cilist(cic) = ivn: cic = cic + 1
 	NEXT
@@ -2517,7 +2521,11 @@ SUB invhi
 		sel = cilist(isel)
 		selx% = sel: cbx% = cbot
 		IF (selx% = 18 AND cbx% = 28) OR (selx% = 28 AND cbx% = 18) THEN crec = 1
-		IF ((selx% = 24 AND cbx% = 25) OR (selx% = 25 AND cbx% = 24)) AND ob(11) = 1 THEN crec = 2
+		'----- formula step 1: the two halves (11+24, either order) tape into
+		'----- the UNREADABLE formula 52 -- no book needed yet
+		IF (selx% = 11 AND cbx% = 24) OR (selx% = 24 AND cbx% = 11) THEN crec = 2
+		'----- formula step 2: unreadable formula + deciphering book -> complete 36
+		IF (selx% = 52 AND cbx% = 25) OR (selx% = 25 AND cbx% = 52) THEN crec = 4
 		IF (selx% = 29 AND cbx% = 34) OR (selx% = 34 AND cbx% = 29) THEN crec = 3
 	END IF
 	IF crec > 0 THEN PUT (29, 129), combtn, PSET
@@ -2527,8 +2535,9 @@ SUB invhi
 	combdo:
 	cnew% = 0
 	IF crec = 1 THEN ob(18) = 0: ob(28) = 0: ob(22) = 1: cnew% = 22
-	IF crec = 2 THEN ob(24) = 0: ob(11) = 0: ob(36) = 1: cnew% = 36
+	IF crec = 2 THEN ob(24) = 0: ob(11) = 0: ob(52) = 1: cnew% = 52
 	IF crec = 3 THEN ob(29) = 0: ob(34) = 0: ob(35) = 1: cnew% = 35
+	IF crec = 4 THEN ob(52) = 0: ob(36) = 1: cnew% = 36
 	IF ob(32) = 1 AND ob(36) = 1 THEN ob(33) = 1
 	IF cnew% > 0 THEN aqc = aqc + 1: aqo(cnew%) = aqc
 	cbot = 0
@@ -2652,7 +2661,7 @@ SUB LoadGame (slot AS INTEGER)
 	NEXT
 	CLOSE #1
 	aqc = 0
-	FOR slz = 1 TO 34
+	FOR slz = 1 TO 35
 		IF ob(iord(slz)) = 1 THEN aqc = aqc + 1: aqo(iord(slz)) = aqc ELSE aqo(iord(slz)) = 0
 		nwf(iord(slz)) = 0
 	NEXT

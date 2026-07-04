@@ -1,0 +1,103 @@
+'----- GAME5.BAS: player rendering module (walk-to movement phase 1).
+'----- Fifth code module -> its own 64K code segment. Pure library like GAME4
+'----- (no COMMON SHARED): callers pass sprite/mask/save-under arrays as params.
+'-----
+'----- PStand: erase the standing player (save-under PSET) then draw facing d$
+'-----   ("2"=dn "8"=up "4"=lt "6"=rt "1"=dl "7"=ul "9"=ur "3"=dr, ""=erase only).
+'-----   nopl close-up rooms erase but never draw, matching the old face: code.
+'----- PStep: one walk half-step at (x,y): GET save-under, masked frame draw
+'-----   (fb 0=frame A, 1=frame B), footstep sound (the SOUNDs are the pacing),
+'-----   then restore the save-under so the next half-step starts clean.
+'-----   ofs = start element in the frame arrays (0 for plain wa/wb scratch,
+'-----   d*151 to pick a direction slot out of the startup-cached sets).
+'-----   (named ofs because OFF is a QB reserved word)
+'----- LoadWalks: read joew1-8 .pct/.msk once into the 8-slot cache arrays
+'-----   (slot d*151: 0=down/joew1, 1=up/joew2, 2=right/joew3, 3=left/joew4,
+'-----   4=dn-left/joew5, 5=dn-right/joew6, 6=up-left/joew7, 7=up-right/joew8)
+'-----   so walking never re-reads sprite files from disk mid-game.
+'----- walkTo: walk the player from (px,py) to (tx,ty) DIAGONAL-FIRST --
+'-----   full (3,2) steps with the matching diagonal sprite set while BOTH
+'-----   axes still have a step left, then the remainder on the classic
+'-----   straight rails (horizontal 3px, then vertical 2px), frames
+'-----   alternating, per-direction sound pacing (right/left 1, down 1.2,
+'-----   up 1.4, dn-diagonals 1.1, up-diagonals 1.2). Updates px,py by ref.
+
+'----- wfb: the walk stride phase (0=frame A, 1=frame B). Module-level so it
+'----- PERSISTS across walkTo calls -- short diagonal legs (1-3 steps) would
+'----- otherwise restart on frame A every walk and frame B would never show.
+DIM SHARED wfb%
+
+SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%())
+	PUT (px!, py!), fbg%(0), PSET
+	IF nopl! = 1 THEN EXIT SUB
+	IF d$ = "4" THEN PUT (px!, py!), mfl%(0), AND: PUT (px!, py!), fl%(0), OR
+	IF d$ = "2" THEN PUT (px!, py!), mfd%(0), AND: PUT (px!, py!), fd%(0), OR
+	IF d$ = "6" THEN PUT (px!, py!), mfr%(0), AND: PUT (px!, py!), fr%(0), OR
+	IF d$ = "8" THEN PUT (px!, py!), mfu%(0), AND: PUT (px!, py!), fu%(0), OR
+	IF d$ = "1" THEN PUT (px!, py!), mfdl%(0), AND: PUT (px!, py!), fdl%(0), OR
+	IF d$ = "7" THEN PUT (px!, py!), mful%(0), AND: PUT (px!, py!), ful%(0), OR
+	IF d$ = "9" THEN PUT (px!, py!), mfur%(0), AND: PUT (px!, py!), fur%(0), OR
+	IF d$ = "3" THEN PUT (px!, py!), mfdr%(0), AND: PUT (px!, py!), fdr%(0), OR
+END SUB
+
+SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%())
+	GET (x!, y!)-(x! + 30, y! + 30), wbg%(0)
+	IF fb% = 0 THEN
+		PUT (x!, y!), mwa%(ofs%), AND: PUT (x!, y!), wa%(ofs%), OR
+	ELSE
+		PUT (x!, y!), mwb%(ofs%), AND: PUT (x!, y!), wb%(ofs%), OR
+	END IF
+	SOUND sfrq!, .1
+	FOR j% = 1 TO 2: SOUND 32676, sdur!: NEXT
+	PUT (x!, y!), wbg%(0), PSET
+END SUB
+
+SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
+	'----- fh = file handle (fn* names are illegal in QB -- reserved for DEF FN)
+	FOR d% = 0 TO 7
+		fh% = FREEFILE
+		OPEN "joew" + CHR$(49 + d%) + ".pct" FOR INPUT AS #fh%
+		FOR i% = 0 TO 125
+			IF EOF(fh%) THEN EXIT FOR
+			INPUT #fh%, cwa%(d% * 151 + i%), cwb%(d% * 151 + i%)
+		NEXT
+		CLOSE #fh%
+		fh% = FREEFILE
+		OPEN "joew" + CHR$(49 + d%) + ".msk" FOR INPUT AS #fh%
+		FOR i% = 0 TO 125
+			IF EOF(fh%) THEN EXIT FOR
+			INPUT #fh%, cmwa%(d% * 151 + i%), cmwb%(d% * 151 + i%)
+		NEXT
+		CLOSE #fh%
+	NEXT
+END SUB
+
+SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+	'----- stride phase wfb% carries over from the previous walk (no reset)
+	'----- diagonal leg: full (3,2) steps while both axes still need one
+	WHILE ABS(tx! - px!) >= 3 AND ABS(ty! - py!) >= 2
+		IF ty! > py! THEN
+			IF tx! > px! THEN d% = 5 ELSE d% = 4
+			sd! = 1.1
+		ELSE
+			IF tx! > px! THEN d% = 7 ELSE d% = 6
+			sd! = 1.2
+		END IF
+		px! = px! + SGN(tx! - px!) * 3
+		py! = py! + SGN(ty! - py!) * 2
+		CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+		wfb% = 1 - wfb%
+	WEND
+	WHILE px! <> tx!
+		IF tx! > px! THEN d% = 2 ELSE d% = 3
+		IF ABS(tx! - px!) <= 3 THEN px! = tx! ELSE px! = px! + SGN(tx! - px!) * 3
+		CALL PStep(px!, py!, wfb%, sfrq!, 1, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+		wfb% = 1 - wfb%
+	WEND
+	WHILE py! <> ty!
+		IF ty! > py! THEN d% = 0: sd! = 1.2 ELSE d% = 1: sd! = 1.4
+		IF ABS(ty! - py!) <= 2 THEN py! = ty! ELSE py! = py! + SGN(ty! - py!) * 2
+		CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+		wfb% = 1 - wfb%
+	WEND
+END SUB

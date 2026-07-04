@@ -1,0 +1,177 @@
+                                                                      PAGE   1
+                                                                      03 Jul 26
+                                                                      14:42:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    '----- GAME5.BAS: player rendering module (walk-to movement pha
+                se 1).
+ 0030   0006    '----- Fifth code module -> its own 64K code segment. Pure libr
+                ary like GAME4
+ 0030   0006    '----- (no COMMON SHARED): callers pass sprite/mask/save-under 
+                arrays as params.
+ 0030   0006    '-----
+ 0030   0006    '----- PStand: erase the standing player (save-under PSET) then
+                 draw facing d$
+ 0030   0006    '-----   ("2"=dn "8"=up "4"=lt "6"=rt "1"=dl "7"=ul "9"=ur "3"=
+                dr, ""=erase only).
+ 0030   0006    '-----   nopl close-up rooms erase but never draw, matching the
+                 old face: code.
+ 0030   0006    '----- PStep: one walk half-step at (x,y): GET save-under, mask
+                ed frame draw
+ 0030   0006    '-----   (fb 0=frame A, 1=frame B), footstep sound (the SOUNDs 
+                are the pacing),
+ 0030   0006    '-----   then restore the save-under so the next half-step star
+                ts clean.
+ 0030   0006    '-----   ofs = start element in the frame arrays (0 for plain w
+                a/wb scratch,
+ 0030   0006    '-----   d*151 to pick a direction slot out of the startup-cach
+                ed sets).
+ 0030   0006    '-----   (named ofs because OFF is a QB reserved word)
+ 0030   0006    '----- LoadWalks: read joew1-8 .pct/.msk once into the 8-slot c
+                ache arrays
+ 0030   0006    '-----   (slot d*151: 0=down/joew1, 1=up/joew2, 2=right/joew3, 
+                3=left/joew4,
+ 0030   0006    '-----   4=dn-left/joew5, 5=dn-right/joew6, 6=up-left/joew7, 7=
+                up-right/joew8)
+ 0030   0006    '-----   so walking never re-reads sprite files from disk mid-g
+                ame.
+ 0030   0006    '----- walkTo: walk the player from (px,py) to (tx,ty) DIAGONAL
+                -FIRST --
+ 0030   0006    '-----   full (3,2) steps with the matching diagonal sprite set
+                 while BOTH
+ 0030   0006    '-----   axes still have a step left, then the remainder on the
+                 classic
+ 0030   0006    '-----   straight rails (horizontal 3px, then vertical 2px), fr
+                ames
+ 0030   0006    '-----   alternating, per-direction sound pacing (right/left 1,
+                 down 1.2,
+ 0030   0006    '-----   up 1.4, dn-diagonals 1.1, up-diagonals 1.2). Updates p
+                x,py by ref.
+ 0030   0006    
+ 0030   0006    '----- wfb: the walk stride phase (0=frame A, 1=frame B). Modul
+                e-level so it
+ 0030   0006    '----- PERSISTS across walkTo calls -- short diagonal legs (1-3
+                 steps) would
+ 0030   0006    '----- otherwise restart on frame A every walk and frame B woul
+                d never show.
+ 0030   0006    DIM SHARED wfb%
+ 0030   0006    
+ 0030   0006    SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), 
+                                                                      PAGE   2
+                                                                      03 Jul 26
+                                                                      14:42:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), 
+                mfdr%(), ful%(), mful%(), fur%(), mfur%())
+ 0040   0008            PUT (px!, py!), fbg%(0), PSET
+ 0040   0008            IF nopl! = 1 THEN EXIT SUB
+ 0083   0008            IF d$ = "4" THEN PUT (px!, py!), mfl%(0), AND: PUT (px!
+                , py!), fl%(0), OR
+ 00EA   0008            IF d$ = "2" THEN PUT (px!, py!), mfd%(0), AND: PUT (px!
+                , py!), fd%(0), OR
+ 0151   0008            IF d$ = "6" THEN PUT (px!, py!), mfr%(0), AND: PUT (px!
+                , py!), fr%(0), OR
+ 01B8   0008            IF d$ = "8" THEN PUT (px!, py!), mfu%(0), AND: PUT (px!
+                , py!), fu%(0), OR
+ 021F   0008            IF d$ = "1" THEN PUT (px!, py!), mfdl%(0), AND: PUT (px
+                !, py!), fdl%(0), OR
+ 0286   0008            IF d$ = "7" THEN PUT (px!, py!), mful%(0), AND: PUT (px
+                !, py!), ful%(0), OR
+ 02ED   0008            IF d$ = "9" THEN PUT (px!, py!), mfur%(0), AND: PUT (px
+                !, py!), fur%(0), OR
+ 0354   0008            IF d$ = "3" THEN PUT (px!, py!), mfdr%(0), AND: PUT (px
+                !, py!), fdr%(0), OR
+ 03BB   0008    END SUB
+ 03C3   0008    
+ 03C3   0008    SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(
+                ), mwb%(), wbg%())
+ 03CE   0008            GET (x!, y!)-(x! + 30, y! + 30), wbg%(0)
+ 03CE   0008            IF fb% = 0 THEN
+ 03CE   0008                    PUT (x!, y!), mwa%(ofs%), AND: PUT (x!, y!), wa
+                %(ofs%), OR
+ 03CE   0008            ELSE
+ 048D   0008                    PUT (x!, y!), mwb%(ofs%), AND: PUT (x!, y!), wb
+                %(ofs%), OR
+ 048D   0008            END IF
+ 04EE   0008            SOUND sfrq!, .1
+ 0507   0008            FOR j% = 1 TO 2: SOUND 32676, sdur!: NEXT
+ 052B   0008            PUT (x!, y!), wbg%(0), PSET
+ 052B   0008    END SUB
+ 055F   0008    
+ 055F   0008    SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
+ 056A   0008            '----- fh = file handle (fn* names are illegal in QB --
+                 reserved for DEF FN)
+ 056A   0008            FOR d% = 0 TO 7
+ 0570   0008                    fh% = FREEFILE
+ 0570   0008                    OPEN "joew" + CHR$(49 + d%) + ".pct" FOR INPUT 
+                AS #fh%
+ 0570   0008                    FOR i% = 0 TO 125
+ 05AE   0008                            IF EOF(fh%) THEN EXIT FOR
+ 05BD   0008                            INPUT #fh%, cwa%(d% * 151 + i%), cwb%(d
+                % * 151 + i%)
+ 05C5   0008                    NEXT
+ 0609   0008                    CLOSE #fh%
+ 0609   0008                    fh% = FREEFILE
+ 0609   0008                    OPEN "joew" + CHR$(49 + d%) + ".msk" FOR INPUT 
+                AS #fh%
+ 0609   0008                    FOR i% = 0 TO 125
+                                                                      PAGE   3
+                                                                      03 Jul 26
+                                                                      14:42:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0654   0008                            IF EOF(fh%) THEN EXIT FOR
+ 0663   0008                            INPUT #fh%, cmwa%(d% * 151 + i%), cmwb%
+                (d% * 151 + i%)
+ 066B   0008                    NEXT
+ 06AF   0008                    CLOSE #fh%
+ 06AF   0008            NEXT
+ 06CA   0008    END SUB
+ 06D2   0008    
+ 06D2   0008    SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(),
+                 cmwb%(), wbg%())
+ 06DD   0008            '----- stride phase wfb% carries over from the previous
+                 walk (no reset)
+ 06DD   0008            '----- diagonal leg: full (3,2) steps while both axes s
+                till need one
+ 06DD   0008            WHILE ABS(tx! - px!) >= 3 AND ABS(ty! - py!) >= 2
+ 06DE   0008                    IF ty! > py! THEN
+ 06DE   0008                            IF tx! > px! THEN d% = 5 ELSE d% = 4
+ 0762   0008                            sd! = 1.1
+ 0762   0008                    ELSE
+ 0770   0008                            IF tx! > px! THEN d% = 7 ELSE d% = 6
+ 0795   0008                            sd! = 1.2
+ 0795   0008                    END IF
+ 07A0   0008                    px! = px! + SGN(tx! - px!) * 3
+ 07A0   0008                    py! = py! + SGN(ty! - py!) * 2
+ 07A0   0008                    CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151
+                , cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+ 0812   0008                    wfb% = 1 - wfb%
+ 0812   0008            WEND
+ 0820   0008            WHILE px! <> tx!
+ 0820   0008                    IF tx! > px! THEN d% = 2 ELSE d% = 3
+ 0857   0008                    IF ABS(tx! - px!) <= 3 THEN px! = tx! ELSE px! 
+                = px! + SGN(tx! - px!) * 3
+ 08A2   0008                    CALL PStep(px!, py!, wfb%, sfrq!, 1, d% * 151, 
+                cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+ 08DF   0008                    wfb% = 1 - wfb%
+ 08DF   0008            WEND
+ 08EC   0008            WHILE py! <> ty!
+ 08EC   0008                    IF ty! > py! THEN d% = 0: sd! = 1.2 ELSE d% = 1
+                : sd! = 1.4
+ 0939   0008                    IF ABS(ty! - py!) <= 2 THEN py! = ty! ELSE py! 
+                = py! + SGN(ty! - py!) * 2
+ 0984   0008                    CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151
+                , cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+ 09B6   0008                    wfb% = 1 - wfb%
+ 09B6   0008            WEND
+ 09C4   0008    END SUB
+ 09CC   0008    
+ 09D3   0008    
+
+43949 Bytes Available
+40759 Bytes Free
+
+    0 Warning Error(s)
+    0 Severe  Error(s)

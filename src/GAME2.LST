@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME2.BAS: secondary module for the multi-module split (
@@ -11,7 +11,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                  (same names + order).
  0030   0006    COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, 
                 sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, 
-                nfon, hzon$
+                nfon, hzon$, klon, wksen, qkon
  0030   0006    COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
  0030   0006    
  0030   0006    '----- DeathMusic: play one of four random dirges
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0225   0006    SUB Snd3
  0230   0006            SOUND f6, .1: SOUND f3, .5
                                                                       PAGE   2
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0260   0006            FOR sb = 100 TO 600 STEP 100: SOUND sb, .1: NEXT
@@ -115,14 +115,24 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  04FA   0006                    PRINT #1, "; lookmiss=1 shows a random 'nothing
                  to see' line after looking 3x at an empty spot"
  04FA   0006                    PRINT #1, "lookmiss=1"
- 04FA   0006                    PRINT #1, "; intro=1 plays the opening cutscene
+ 04FA   0006                    PRINT #1, "; killers=0 turns off the roaming ki
                                                                       PAGE   3
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                llers (for testing; scripted deaths still happen)"
+ 04FA   0006                    PRINT #1, "killers=1"
+ 04FA   0006                    PRINT #1, "; walkto=1 walks the player over to 
+                an item before get/use actions fire (0=instant, as the original
+                )"
+ 04FA   0006                    PRINT #1, "walkto=1"
+ 04FA   0006                    PRINT #1, "; intro=1 plays the opening cutscene
                  (set 0 to skip it)"
  04FA   0006                    PRINT #1, "intro=1"
+ 04FA   0006                    PRINT #1, "; quickstart=1 jumps straight into t
+                he game - no intro, title or instructions prompt (testing)"
+ 04FA   0006                    PRINT #1, "quickstart=0"
  04FA   0006                            PRINT #1, "; hit-zone debug overlay (ne
                 eds mouse=1): ring hotspot click-zones, 1=show 0=hide (look=blu
                 e action=brown get/use=gray)"
@@ -131,72 +141,81 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  04FA   0006                            PRINT #1, "hitzone_use=0"
  04FA   0006                            PRINT #1, "hitzone_action=0"
  04FA   0006            END IF
- 06E1   0006            CLOSE
- 06E1   0006    
- 06E1   0006            snr = 6
- 06E1   0006            exsen = 1
- 06E1   0006            nfon = 1
- 06E1   0006            inon = 1
- 06E1   0006            hzon$ = ""
- 06E1   0006            OPEN "dark.ini" FOR INPUT AS #1
- 06E1   0006            DO WHILE NOT EOF(1)
- 073C   0006                    LINE INPUT #1, ln$
- 0757   0006                    ln$ = LTRIM$(RTRIM$(ln$))
- 0757   0006                    c$ = LEFT$(ln$, 1)
- 0757   0006                    IF ln$ <> "" AND c$ <> ";" AND c$ <> "#" AND c$
+ 074D   0006            CLOSE
+ 074D   0006    
+ 074D   0006            snr = 6
+ 074D   0006            exsen = 1
+ 074D   0006            nfon = 1
+ 074D   0006            inon = 1
+ 074D   0006            klon = 1
+ 074D   0006            wksen = 1
+ 074D   0006            qkon = 0
+ 074D   0006            hzon$ = ""
+ 074D   0006            OPEN "dark.ini" FOR INPUT AS #1
+ 074D   0006            DO WHILE NOT EOF(1)
+ 07CC   0006                    LINE INPUT #1, ln$
+ 07E7   0006                    ln$ = LTRIM$(RTRIM$(ln$))
+ 07E7   0006                    c$ = LEFT$(ln$, 1)
+ 07E7   0006                    IF ln$ <> "" AND c$ <> ";" AND c$ <> "#" AND c$
                  <> "'" AND c$ <> "[" THEN
- 0757   0006                            eq = INSTR(ln$, "=")
- 0757   0006                            IF eq >= 2 THEN
- 0757   0006                                    k$ = LCASE$(LTRIM$(RTRIM$(LEFT$
+ 07E7   0006                            eq = INSTR(ln$, "=")
+ 07E7   0006                            IF eq >= 2 THEN
+ 07E7   0006                                    k$ = LCASE$(LTRIM$(RTRIM$(LEFT$
                 (ln$, eq - 1))))
- 0757   0006                                    v$ = LCASE$(LTRIM$(RTRIM$(MID$(
+ 07E7   0006                                    v$ = LCASE$(LTRIM$(RTRIM$(MID$(
                 ln$, eq + 1))))
- 0757   0006                                    tv = 0
- 0757   0006                                    IF v$ = "1" OR v$ = "true" OR v
+ 07E7   0006                                    tv = 0
+ 07E7   0006                                    IF v$ = "1" OR v$ = "true" OR v
                 $ = "yes" OR v$ = "on" THEN tv = 1
- 093C   0006                                    IF k$ = "showfps" THEN sfps = t
+ 09CC   0006                                    IF k$ = "showfps" THEN sfps = t
                 v
- 0959   0006                                    IF k$ = "joystick" THEN jsen = 
+ 09E9   0006                                    IF k$ = "joystick" THEN jsen = 
                 tv
- 0976   0006                                    IF k$ = "mouse" THEN msen = tv
- 0993   0006                                    IF k$ = "mousecursor" THEN mcur
+ 0A06   0006                                    IF k$ = "mouse" THEN msen = tv
+ 0A23   0006                                    IF k$ = "mousecursor" THEN mcur
                  = VAL(v$)
- 09BB   0006                                    IF k$ = "mousesnap" THEN snr = 
-                VAL(v$)
- 09E2   0006                                    IF k$ = "exitcursor" THEN exsen
-                 = tv
- 09FF   0006                                    IF k$ = "mousexy" THEN mxyon = 
-                tv
- 0A1C   0006                                    IF k$ = "lookmiss" THEN nfon = 
-                tv
- 0A39   0006                                    IF k$ = "intro" THEN inon = tv
- 0A56   0006                                    IF k$ = "hitzone_look" AND tv =
-                 1 THEN hzon$ = hzon$ + "l"
- 0AA1   0006                                    IF k$ = "hitzone_get" AND tv = 
-                1 THEN hzon$ = hzon$ + "g"
- 0AEC   0006                                    IF k$ = "hitzone_use" AND tv = 
+ 0A4B   0006                                    IF k$ = "mousesnap" THEN snr = 
                                                                       PAGE   4
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                VAL(v$)
+ 0A72   0006                                    IF k$ = "exitcursor" THEN exsen
+                 = tv
+ 0A8F   0006                                    IF k$ = "mousexy" THEN mxyon = 
+                tv
+ 0AAC   0006                                    IF k$ = "lookmiss" THEN nfon = 
+                tv
+ 0AC9   0006                                    IF k$ = "killers" THEN klon = t
+                v
+ 0AE6   0006                                    IF k$ = "walkto" THEN wksen = t
+                v
+ 0B03   0006                                    IF k$ = "intro" THEN inon = tv
+ 0B20   0006                                    IF k$ = "quickstart" THEN qkon 
+                = tv
+ 0B3D   0006                                    IF k$ = "hitzone_look" AND tv =
+                 1 THEN hzon$ = hzon$ + "l"
+ 0B88   0006                                    IF k$ = "hitzone_get" AND tv = 
+                1 THEN hzon$ = hzon$ + "g"
+ 0BD3   0006                                    IF k$ = "hitzone_use" AND tv = 
                 1 THEN hzon$ = hzon$ + "u"
- 0B37   0006                                    IF k$ = "hitzone_action" AND tv
+ 0C1E   0006                                    IF k$ = "hitzone_action" AND tv
                  = 1 THEN hzon$ = hzon$ + "a"
- 0B82   0006                            END IF
- 0B82   0006                    END IF
- 0B82   0006            LOOP
- 0B86   0006            CLOSE
- 0B86   0006    
- 0B86   0006            fpst = TIMER
- 0B86   0006            fpsc = 0
- 0B86   0006            mvint = &H33
- 0B86   0006    END SUB
- 0BDD   0006    
- 0C00   0006    
+ 0C69   0006                            END IF
+ 0C69   0006                    END IF
+ 0C69   0006            LOOP
+ 0C6C   0006            CLOSE
+ 0C6C   0006    
+ 0C6C   0006            fpst = TIMER
+ 0C6C   0006            fpsc = 0
+ 0C6C   0006            mvint = &H33
+ 0C6C   0006    END SUB
+ 0CC3   0006    
+ 0CE6   0006    
 
 43949 Bytes Available
-38479 Bytes Free
+37542 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

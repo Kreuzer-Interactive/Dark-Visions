@@ -228,6 +228,7 @@
     <button data-tab="bg">Backgrounds</button>
     <button data-tab="spr">Sprites</button>
     <button data-tab="anim">Animations</button>
+    <button data-tab="walk">Walking</button>
     <button data-tab="font">Font</button>
   </nav>
   <main id="tab-hits">
@@ -236,7 +237,7 @@
       <span id="hitctrls">
         <button id="peek" title="Hold to hide markers (or hold Space)">Peek</button>
         <button id="grid" title="Show a faint grid of the action-point lattice (4px)">Grid</button>
-        <button id="zones" title="Show click zones — the mousesnap area around each hit point, tinted by which object it would click">Zones</button>
+        <button id="zones" title="Show click zones — the mousesnap area around each hit point, tinted by the object it clicks. Verb-aware like the game: each verb snaps to its own nearest point; where verbs overlap, action draws on top (filter to one verb for a single-verb map)">Zones</button>
         <label class="snapfld" title="mousesnap radius in pixels (DARK.INI mousesnap; default 6). 0 = exact clicks only.">pad<input id="snap" type="number" min="0" max="32" value="6"></label>
         <button id="zoomOut" title="Zoom out">−</button>
         <span id="zoomLbl" class="hint">3×</span>
@@ -300,6 +301,23 @@
           </div>
         </div>
         <div class="tgfoot">tg = <code id="tgVal">—</code><button id="tgClear" type="button">clear</button></div>
+        <div class="secTitle" style="padding:6px 0 2px" title="Where the player walks before a get/use fires. The point is his FEET (bottom-center); pick which way he faces there. Saved as a -2,obj,x,y,dir line after the anim placements. No point = the game auto-places him.">walk-to stand point</div>
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:0 0 4px">
+          <div class="dpad" id="standPad">
+            <button data-sp="7" title="face up-left">↖</button><button data-sp="8" title="face up">↑</button><button data-sp="9" title="face up-right">↗</button>
+            <button data-sp="4" title="face left">←</button><button data-sp="0" title="auto — the game turns him toward the click">A</button><button data-sp="6" title="face right">→</button>
+            <button data-sp="1" title="face down-left">↙</button><button data-sp="2" title="face down">↓</button><button data-sp="3" title="face down-right">↘</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+            <button id="standPlace" type="button" title="then click the room where the player's feet should land">⌖ place</button>
+            <button id="standClear" type="button">clear</button>
+            <div style="display:flex;gap:4px;align-items:center">
+              <label class="hint" style="margin:0">x</label><input id="standX" type="number" min="0" max="319" style="width:52px" title="feet x — tweak by typing or arrow keys">
+              <label class="hint" style="margin:0">y</label><input id="standY" type="number" min="0" max="199" style="width:52px" title="feet y — tweak by typing or arrow keys">
+            </div>
+            <span id="standVal" class="hint">—</span>
+          </div>
+        </div>
         <div class="fld"><label title="Action only works if flag/object #bs is ON (set). For a Use action, the inventory item you must be holding. 0 = no requirement.">needs on (bs)</label><input id="f_bs" list="invlist" autocomplete="off" placeholder="0 — none"></div>
         <div class="fld"><label title="Action only works if flag #cs is OFF (clear). Use to switch an action off after something else happens. 0 = no requirement.">needs off (cs)</label><input id="f_cs" list="invlist" autocomplete="off" placeholder="0 — none"></div>
         <div class="fld"><label title="When the action fires it turns flag #st ON, which later conditions can require. 0 = sets nothing.">sets on (st)</label><input id="f_st" list="invlist" autocomplete="off" placeholder="0 — none"></div>
@@ -359,10 +377,32 @@
       <div id="animEditor" style="flex:1;overflow:auto"></div>
     </div>
   </section>
+  <section id="tab-walk" hidden>
+    <div class="invbar">
+      <span>Walk preview — the 8 <code>joew</code> sets cycling A/B in place, the same alternation <code>walkTo</code> plays</span>
+      <label class="snapfld" title="1× = the game's real pacing, which differs per direction (right/left 115ms, down 137, up 159, diagonals 126-137)">speed<select id="wkSpd"><option value="0.5">0.5× slow</option><option value="0.75">0.75×</option><option value="1" selected>1× game</option><option value="1.5">1.5×</option></select></label>
+      <label class="snapfld">zoom<select id="wkZoom"><option>4</option><option>6</option><option selected>8</option><option>12</option></select></label>
+      <label class="snapfld">palette<select id="wkPal"></select></label>
+      <span class="spacer"></span>
+      <span id="wkInfo" class="hint"></span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:48px;height:calc(100vh - 132px)">
+      <canvas id="wkCv" width="248" height="248" style="image-rendering:pixelated;background:#141821;border:1px solid var(--line);border-radius:8px"></canvas>
+      <div style="width:190px;flex-shrink:0">
+        <div class="dpad" id="wkPad" style="max-width:156px"></div>
+        <div class="hint" style="margin-top:12px;line-height:1.5">Hold <b>arrow keys</b> to walk — hold two for a diagonal, release to stand. Or click a direction (click again or ■ to stand).</div>
+      </div>
+    </div>
+  </section>
   <section id="tab-font" hidden>
     <div class="invbar">
-      <span>Small font — <code>font.txt</code> · variable-width 7px glyphs the game prints (GAME3.BAS <code>drawText</code>)</span>
-      <button id="fontReload" title="Reload font.txt from disk/server">↻ Reload</button>
+      <span>Small fonts — variable width + height, the game loads all three (GAME3.BAS <code>drawText/drawMsg</code>)</span>
+      <select id="fontPick" title="Which font file to edit">
+        <option value="font">font.txt · 7px UI/inventory</option>
+        <option value="font3">font3.txt · 10px room messages</option>
+        <option value="fontbold">fontbold.txt · bold</option>
+      </select>
+      <button id="fontReload" title="Reload this font from disk/server">↻ Reload</button>
       <button id="fontImportBtn" title="Load a font.txt from your computer">⬆ Import</button>
       <input type="file" id="fontImportFile" accept=".txt" hidden>
       <span class="spacer"></span>
@@ -403,11 +443,12 @@
   <div id="bgModal" class="modal" hidden>
     <button id="bgPrev" class="navarrow" type="button" hidden title="Previous (←)">‹</button>
     <div class="modalCard bgcard">
-      <div class="modalHead"><span id="bgTitle">background</span><span class="mhbtns"><button id="mskToggle" type="button" hidden title="Toggle sprite / mask view">View mask</button><span id="mskPend" class="pendbadge" hidden>● unsaved mask</span><button id="mskSave" type="button" hidden>💾 Save mask</button><button id="mskImport" type="button" hidden>⬆ Import mask</button><button id="mskExport" type="button" hidden>⬇ Export mask</button><button id="mskDelete" type="button" hidden title="Delete this .MSK file from disk">🗑 Delete mask</button><span id="bgPend" class="pendbadge" hidden>● unsaved import</span><button id="bgSaveImport" type="button" hidden>💾 Save</button><button id="bgImport" type="button" hidden>⬆ Import PNG</button><button id="bgExport" type="button" hidden>⬇ Export PNG</button><button id="bgModalClose" type="button" title="Close (Esc)">✕</button></span></div>
+      <div class="modalHead"><span id="bgTitle">background</span><span class="mhbtns"><button id="mskToggle" type="button" hidden title="Toggle sprite / mask view">View mask</button><span id="mskPend" class="pendbadge" hidden>● unsaved mask</span><button id="mskSave" type="button" hidden>💾 Save mask</button><button id="mskImport" type="button" hidden>⬆ Import mask</button><button id="mskExport" type="button" hidden>⬇ Export mask</button><button id="mskDelete" type="button" hidden title="Delete this .MSK file from disk">🗑 Delete mask</button><span id="sprPend" class="pendbadge" hidden>● unsaved sprite</span><button id="sprSave" type="button" hidden>💾 Save sprite</button><button id="sprImport" type="button" hidden>⬆ Import sprite</button><button id="sprExport" type="button" hidden>⬇ Export sprite</button><span id="bgPend" class="pendbadge" hidden>● unsaved import</span><button id="bgSaveImport" type="button" hidden>💾 Save</button><button id="bgImport" type="button" hidden>⬆ Import PNG</button><button id="bgExport" type="button" hidden>⬇ Export PNG</button><button id="bgModalClose" type="button" title="Close (Esc)">✕</button></span></div>
       <div class="bgview"><canvas id="bgCanvas" width="320" height="200"></canvas></div>
       <div id="bgPalUI" class="bgpal"></div>
       <input type="file" id="bgImportFile" accept="image/png" hidden>
       <input type="file" id="mskImportFile" accept="image/png" hidden>
+      <input type="file" id="sprImportFile" accept="image/png" hidden>
     </div>
     <button id="bgNext" class="navarrow" type="button" hidden title="Next (→)">›</button>
   </div>
@@ -462,7 +503,11 @@ function parsePac(t){
   for(let h=0;h<257;h++){ const x=num(),y=num(),oi=num(); if(y===0) break; st.hotspots.push({x,y,oi}); }
   for(let o=0;o<25;o++) st.objects.push({df:str(),ms:str(),ky:str(),bs:num(),cs:num(),st:num(),tg:str()});
   st.placements=[];                                          // animation placements: animId,x,y,cond,set — read until tokens run out
-  while(i<=k.length-5){ const animId=num(),x=num(),y=num(),cond=num(),set=num(); if(animId>=1) st.placements.push({animId,x,y,cond,set}); }
+  st.stand={};                                               // walk-to stand points: -2,obj,feetX,feetY,dir (dir 0 = auto)
+  while(i<=k.length-5){ const animId=num(),x=num(),y=num(),cond=num(),set=num();
+    if(animId===-1){ st.walkband={min:x,max:y,ymin:cond,ymax:set}; }  // -1 sentinel = walk-to band: x min/max + optional y limits (sprite-top min / sprite-bottom max, 0=game defaults 138/176; x defaults 40..250 when absent)
+    else if(animId===-2){ if(x>=1&&x<=25) st.stand[x]={x:y,y:cond,d:set}; }  // -2 sentinel = per-object stand point
+    else if(animId>=1) st.placements.push({animId,x,y,cond,set}); }
   return st;
 }
 function genPac(s){
@@ -476,11 +521,13 @@ function genPac(s){
   for(let o=0;o<25;o++){ const b=s.objects[o];
     out+=[q(b.df),q(b.ms),q(b.ky),b.bs|0,b.cs|0,b.st|0,q(b.tg)].join(',')+'\r\n'; }
   for(const p of (s.placements||[])) out+=[p.animId,p.x,p.y,p.cond,p.set||0].join(',')+'\r\n';
+  if(s.walkband) out+=[-1,s.walkband.min|0,s.walkband.max|0,s.walkband.ymin|0,s.walkband.ymax|0].join(',')+'\r\n';  // walk-to walkable band sentinel
+  for(const k in (s.stand||{})){ const sp=s.stand[k]; out+=[-2,k,sp.x|0,sp.y|0,sp.d|0].join(',')+'\r\n'; }          // walk-to stand points
   return out;
 }
 
 // ---- state ----
-let pic=null, S=null, room='', curObj=1, zoom=3, peeking=false, dirty=false, showGrid=false, showZones=false, snr=6, zoneCanvas=null, zoneDirty=true, placeSel=-1, placingIdx=-1, placeFrameCache={}, dragPlace=-1, dragOffX=0, dragOffY=0, dragMoved=false;
+let pic=null, S=null, room='', curObj=1, zoom=3, peeking=false, dirty=false, showGrid=false, showZones=false, snr=6, zoneCanvas=null, zoneDirty=true, placeSel=-1, placingIdx=-1, placeFrameCache={}, dragPlace=-1, dragOffX=0, dragOffY=0, dragMoved=false, standPlacing=false, standFrames=null;
 let mode='', rooms=[], fileBlobs={};   // file-mode cache: name -> {pic:Uint8Array, pac:string}
 let painting=0, hoverX=-1, hoverY=-1;
 const undo=[];
@@ -504,23 +551,33 @@ function buildZones(){
   if(!zoneCanvas){ zoneCanvas=document.createElement('canvas'); zoneCanvas.width=W; zoneCanvas.height=H; }
   const zc=zoneCanvas.getContext('2d'), img=zc.createImageData(W,H), d=img.data;
   if(S){
-    const best=new Float64Array(W*H).fill(1e9), oid=new Int16Array(W*H).fill(-1);
-    // pass 1: each hotspot's own 4px cell (exact hit) wins over any expanded neighbour; file order breaks cell ties
+    // VERB-AWARE like the game's msnap: a click only competes with hotpoints of its OWN verb,
+    // so the zones are computed per verb group and composited (action drawn last = on top).
+    const groups={};
     for(const p of S.hotspots){
       if(objHidden(p.oi)) continue;
-      for(let dy=-2;dy<2;dy++){ const yy=p.y+dy; if(yy<0||yy>=H) continue; const base=yy*W;
-        for(let dx=-2;dx<2;dx++){ const xx=p.x+dx; if(xx<0||xx>=W) continue;
-          const i=base+xx; if(best[i]!==-1){ best[i]=-1; oid[i]=p.oi; } } }
+      const ky=(S.objects[p.oi-1]||{}).ky||'';
+      (groups[ky]=groups[ky]||[]).push(p);
     }
-    // pass 2: snap expansion fills only cells with no hotspot of their own (never overrides an exact cell)
-    for(const p of S.hotspots){
-      if(objHidden(p.oi)) continue;
-      for(let dy=-r;dy<=r;dy++){ const yy=p.y+dy; if(yy<0||yy>=H) continue; const base=yy*W;
-        for(let dx=-r;dx<=r;dx++){ const xx=p.x+dx; if(xx<0||xx>=W) continue;
-          const dd=dx*dx+dy*dy; if(dd>r2) continue;
-          const i=base+xx; if(best[i]===-1) continue; if(dd<best[i]){ best[i]=dd; oid[i]=p.oi; } } }
+    const order=Object.keys(groups).filter(v=>!['l','u','g','a'].includes(v)).concat(['l','u','g','a'].filter(v=>groups[v]));
+    for(const v of order){
+      const hs=groups[v];
+      const best=new Float64Array(W*H).fill(1e9), oid=new Int16Array(W*H).fill(-1);
+      // pass 1: each hotspot's own 4px cell (exact hit) wins over any expanded neighbour; file order breaks cell ties
+      for(const p of hs){
+        for(let dy=-2;dy<2;dy++){ const yy=p.y+dy; if(yy<0||yy>=H) continue; const base=yy*W;
+          for(let dx=-2;dx<2;dx++){ const xx=p.x+dx; if(xx<0||xx>=W) continue;
+            const i=base+xx; if(best[i]!==-1){ best[i]=-1; oid[i]=p.oi; } } }
+      }
+      // pass 2: snap expansion fills only cells with no SAME-VERB hotspot of their own
+      for(const p of hs){
+        for(let dy=-r;dy<=r;dy++){ const yy=p.y+dy; if(yy<0||yy>=H) continue; const base=yy*W;
+          for(let dx=-r;dx<=r;dx++){ const xx=p.x+dx; if(xx<0||xx>=W) continue;
+            const dd=dx*dx+dy*dy; if(dd>r2) continue;
+            const i=base+xx; if(best[i]===-1) continue; if(dd<best[i]){ best[i]=dd; oid[i]=p.oi; } } }
+      }
+      for(let i=0;i<W*H;i++){ const o=oid[i]; if(o>=0){ const c=(o>=1&&o<=25)?MRGB[o-1]:[255,255,255], q=i*4; d[q]=c[0];d[q+1]=c[1];d[q+2]=c[2];d[q+3]=115; } }
     }
-    for(let i=0;i<W*H;i++){ const o=oid[i]; if(o>=0){ const c=(o>=1&&o<=25)?MRGB[o-1]:[255,255,255], q=i*4; d[q]=c[0];d[q+1]=c[1];d[q+2]=c[2];d[q+3]=115; } }
   }
   zc.putImageData(img,0,0); zoneDirty=false;
 }
@@ -550,6 +607,16 @@ function draw(){
         ctx.strokeStyle=sel?'#ffcc00':'#33ddaa'; ctx.lineWidth=sel?2:1; ctx.strokeRect(pl.x*zoom, pl.y*zoom, fc.w*zoom, fc.h*zoom);
         ctx.fillStyle=sel?'#ffcc00':'#33ddaa'; ctx.fillText((an?an.name:'#'+pl.animId)+(pl.cond?' ['+pl.cond+']':''), pl.x*zoom, pl.y*zoom-2); });
     }
+    if(S.stand){ ctx.font='11px monospace'; ctx.textBaseline='alphabetic';
+      for(const k in S.stand){ const sp=S.stand[k], seld=(+k===curObj);
+        if(seld){ const fc=standFrames&&standFrames[sp.d||2];    // ghost player, feet on the point (auto dir previews as 'down', dimmed)
+          if(fc&&fc.canvas){ ctx.imageSmoothingEnabled=false; ctx.globalAlpha=sp.d?0.9:0.55;
+            ctx.drawImage(fc.canvas,(sp.x-15)*zoom,(sp.y-30)*zoom,31*zoom,31*zoom); ctx.globalAlpha=1; }
+          else { ctx.strokeStyle='#ffcc00'; ctx.lineWidth=1; ctx.strokeRect((sp.x-15)*zoom,(sp.y-30)*zoom,31*zoom,31*zoom); } }
+        ctx.strokeStyle=seld?'#ffcc00':'#cc66ff'; ctx.lineWidth=seld?2:1;
+        ctx.beginPath(); ctx.moveTo((sp.x-3)*zoom,sp.y*zoom); ctx.lineTo((sp.x+3)*zoom,sp.y*zoom);
+        ctx.moveTo(sp.x*zoom,(sp.y-3)*zoom); ctx.lineTo(sp.x*zoom,(sp.y+3)*zoom); ctx.stroke();
+        ctx.fillStyle=seld?'#ffcc00':'#cc66ff'; ctx.fillText('S'+k,(sp.x+4)*zoom,(sp.y-2)*zoom); } }
   }
   if(hoverX>=0){ ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1;
     ctx.strokeRect((hoverX-2)*zoom-1, (hoverY-2)*zoom-1, 4*zoom+2, 4*zoom+2); }
@@ -616,6 +683,7 @@ function fillForm(){
   document.getElementById('objno').textContent='#'+curObj;
   f_df.value=b.df; const _m=splitMsg(b.ms); f_ms1.value=_m[0]; f_ms2.value=_m[1]; renderVerb(); tgState=parseTg(b.tg); renderTg();
   f_bs.value=fmtRef(b.bs); f_cs.value=fmtRef(b.cs); f_st.value=fmtRef(b.st);
+  standPlacing=false; renderStand();
 }
 function selectObj(o){ curObj=o; buildList(); fillForm(); draw(); }
 function onFormInput(){
@@ -654,6 +722,48 @@ document.getElementById('walkPad').addEventListener('click',e=>{
   const b=e.target.closest('[data-w]'); if(!b) return; b.blur();
   tgState=(tgState.mode==='w'&&tgState.dir===b.dataset.w)?{mode:'',dir:'',close:false}:{mode:'w',dir:b.dataset.w,close:false};
   commitTg();
+});
+// ---- walk-to stand point (per object; -2,obj,feetX,feetY,dir records) ----
+const SPDIRN={0:'auto',7:'up-left',8:'up',9:'up-right',4:'left',6:'right',1:'dn-left',2:'down',3:'dn-right'};
+let standPalKey='';
+async function ensureStandFrames(){
+  const pal=[0, S?S.pa1:8, S?S.pa2:1, S?S.pa3:6];              // ghost wears the ROOM's palette (header pa1/pa2/pa3), like the game
+  const key=pal.join(',');
+  if(standFrames && standPalKey===key) return;
+  standPalKey=key;
+  standFrames={};
+  const fr=await getPctFrames('joed'); if(!fr||!fr.frames) return;
+  const map={2:0,8:1,6:2,4:3,1:4,3:5,7:6,9:7};                 // facing digit -> joed frame (fd,fu,fr,fl,fdl,fdr,ful,fur)
+  for(const d in map){ const f=fr.frames[map[d]]; if(!f) continue;
+    const c=document.createElement('canvas'); paintSprite(c,f,pal,1);
+    standFrames[d]={w:f.w,h:f.h,canvas:c}; }
+}
+function renderStand(){
+  const sp=S&&S.stand?S.stand[curObj]:null;
+  document.querySelectorAll('#standPad [data-sp]').forEach(b=>b.classList.toggle('on',!!sp&&(+b.dataset.sp)===(sp.d|0)));
+  const sx=document.getElementById('standX'), sy=document.getElementById('standY');
+  if(document.activeElement!==sx) sx.value=sp?sp.x:'';
+  if(document.activeElement!==sy) sy.value=sp?sp.y:'';
+  sx.disabled=sy.disabled=!sp;
+  const v=document.getElementById('standVal');
+  v.textContent = standPlacing?'click the room…' : sp?('feet · facing '+(SPDIRN[sp.d|0]||sp.d)) : '(none — auto)';
+}
+function standXYInput(){
+  const sp=S&&S.stand?S.stand[curObj]:null; if(!sp) return;
+  const x=parseInt(document.getElementById('standX').value,10), y=parseInt(document.getElementById('standY').value,10);
+  if(!isNaN(x)) sp.x=Math.max(0,Math.min(319,x));
+  if(!isNaN(y)) sp.y=Math.max(0,Math.min(199,y));
+  setDirty(true); ensureStandFrames().then(draw); draw();
+}
+document.getElementById('standX').addEventListener('input',standXYInput);
+document.getElementById('standY').addEventListener('input',standXYInput);
+document.getElementById('standPlace').addEventListener('click',()=>{ if(!S) return; standPlacing=true; renderStand(); });
+document.getElementById('standClear').addEventListener('click',()=>{ if(!S||!S.stand[curObj]) return; delete S.stand[curObj]; standPlacing=false; setDirty(true); renderStand(); draw(); });
+document.getElementById('standPad').addEventListener('click',e=>{
+  const b=e.target.closest('[data-sp]'); if(!b||!S) return; b.blur();
+  const sp=S.stand[curObj];
+  if(!sp){ standPlacing=true; renderStand(); return; }         // no point yet -> arm placing first
+  sp.d=+b.dataset.sp; setDirty(true); renderStand(); ensureStandFrames().then(draw); draw();
 });
 document.getElementById('facePad').addEventListener('click',e=>{
   const b=e.target.closest('[data-f]'); if(!b) return; b.blur();
@@ -742,6 +852,11 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('mousedown',e=>{
   e.preventDefault();
   const ae=document.activeElement; if(ae && (ae.tagName==='INPUT'||ae.tagName==='SELECT')) ae.blur();
+  if(standPlacing && S){ const r=cv.getBoundingClientRect();
+    const x=Math.max(0,Math.min(319,Math.floor((e.clientX-r.left)/zoom)));
+    const y=Math.max(0,Math.min(199,Math.floor((e.clientY-r.top)/zoom)));
+    const prev=S.stand[curObj]; S.stand[curObj]={x:x,y:y,d:prev?prev.d:2};
+    standPlacing=false; setDirty(true); renderStand(); ensureStandFrames().then(draw); draw(); return; }
   if(placingIdx>=0 && S&&S.placements&&S.placements[placingIdx]){ const r=cv.getBoundingClientRect();
     S.placements[placingIdx].x=Math.max(0,Math.min(319,Math.floor((e.clientX-r.left)/zoom)));
     S.placements[placingIdx].y=Math.max(0,Math.min(199,Math.floor((e.clientY-r.top)/zoom)));
@@ -831,9 +946,9 @@ async function loadRoom(name){
   renderArt(); buildList(); fillForm(); resize();
   document.getElementById('noplchk').checked=(S.nopl===1);
   document.getElementById('roomname').value=(S.name||'');
-  placeSel=-1; placingIdx=-1; placeFrameCache={};
+  placeSel=-1; placingIdx=-1; placeFrameCache={}; standPlacing=false;
   if(!anims.length) await loadAnims();
-  await ensurePlaceFrames(); renderPlacements(); draw();
+  await ensurePlaceFrames(); ensureStandFrames().then(draw); renderStand(); renderPlacements(); draw();
 }
 async function ensurePlaceFrames(){
   if(!S||!S.placements) return;
@@ -845,7 +960,7 @@ async function ensurePlaceFrames(){
     const seq=an.frames.split(';').filter(s=>s.length).map(Number);
     const f0=fr?fr.frames[seq.length?seq[0]:0]:null;
     if(!f0){ placeFrameCache[pl.animId]={w:31,h:31,canvas:null}; continue; }
-    const c=document.createElement('canvas'); paintSprite(c,f0,sprDefaultPal,1);
+    const c=document.createElement('canvas'); paintSprite(c,f0,S?[0,S.pa1,S.pa2,S.pa3]:sprDefaultPal,1);   // placements wear the loaded room's palette
     placeFrameCache[pl.animId]={w:f0.w,h:f0.h,canvas:c};
   }
 }
@@ -1220,7 +1335,7 @@ async function openBgView(name){
   bgPic=pb; bgPal=bgPalette(name);
   document.querySelector('.bgview').classList.remove('spr');
   bgName=name; clearBgPending(); document.getElementById('bgExport').hidden=false; document.getElementById('bgImport').hidden=false;
-  ['mskToggle','mskExport','mskImport','mskSave','mskPend','mskDelete'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=true; }); clearMskPending(); mskCur=null; sprMode='sprite'; mskPeek=false; mskPaintBtn=null;
+  ['mskToggle','mskExport','mskImport','mskSave','mskPend','mskDelete','sprPend','sprSave','sprImport','sprExport'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=true; }); clearMskPending(); clearSprPending(); mskCur=null; sprMode='sprite'; mskPeek=false; mskPaintBtn=null;
   document.getElementById('bgPrev').hidden=false; document.getElementById('bgNext').hidden=false;
   document.getElementById('bgTitle').textContent=name+(rooms.includes(name)?'  ·  .PAC palette':'  ·  screen — palette approximate, adjust below');
   const ui=document.getElementById('bgPalUI'); ui.innerHTML='';
@@ -1237,7 +1352,8 @@ async function openBgView(name){
 function closeBg(){
   if(bgPendingPic && !confirm('Discard the imported image? It has NOT been saved over '+bgName+'.PIC.')) return;
   if(mskPending && !confirm('Discard the imported mask? It has NOT been saved to '+sprName+'.MSK.')) return;
-  clearBgPending(); clearMskPending();
+  if(sprPending && !confirm('Discard the imported sprite pixels? They have NOT been saved to '+sprName+'.PCT.')) return;
+  clearBgPending(); clearMskPending(); clearSprPending();
   document.getElementById('bgModal').hidden=true;
 }
 document.getElementById('bgModalClose').onclick=closeBg;
@@ -1347,6 +1463,17 @@ function paletteError(d,w,h,pal,isSprite){ const pr=pal.map(n=>EGA[n]||[0,0,0]),
 function bestPalette(d,w,h,entries,isSprite){ let best=null,be=Infinity; for(const en of entries){ const er=paletteError(d,w,h,en.pal,isSprite); if(er<be){be=er;best=en;} } return { entry:best||entries[0], avgErr:be }; }
 function palDesc(en){ if(!en) return 'default palette'; const r=en.rooms||[]; return (r.length? r.slice(0,3).join(', ')+(r.length>3?' …':'') : 'colours '+en.pal.join(',')) + ' palette'; }
 async function paletteEntries(){ await loadSpritePalettes(); const es=(spritePals||[]).filter(e=>e.pal&&e.pal.length>=4); return es.length?es:[{pal:sprDefaultPal,rooms:[]}]; }
+// ---- a sprite's .pct/.msk changed on disk: drop every cache derived from it (any case, any k)
+// ---- so the Sprites grid, anim previews, the Walking tab and the stand-point ghost all refresh
+function sprCacheBust(name){
+  const N=(name||'').toUpperCase();
+  const sweep=(o,hasK)=>{ if(!o) return; for(const k of Object.keys(o)){ const base=hasK? k.split('/')[0] : k; if(base.toUpperCase()===N) delete o[k]; } };
+  sweep(typeof pctTextCache!=='undefined'?pctTextCache:null,false);
+  sweep(typeof mskTextCache!=='undefined'?mskTextCache:null,false);
+  sweep(typeof animFrameCache!=='undefined'?animFrameCache:null,false);
+  sweep(typeof wkCache!=='undefined'?wkCache:null,true);
+  if(N==='JOED' && typeof standFrames!=='undefined') standFrames=null;
+}
 async function importNewSprite(file){
   const raw=prompt('Name for the NEW sprite — a DOS name, up to 8 letters/digits (no extension):',''); if(raw==null) return;
   const name=dosName(raw); if(!name){ alert('Use A–Z and 0–9 only, max 8 characters.'); return; }
@@ -1370,7 +1497,7 @@ async function importNewSprite(file){
     await fetch('api/pct?name='+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'text/plain'},body:pct});
     await fetch('api/msk?name='+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'text/plain'},body:msk});
   } else { dlBlob(name+'.PCT',pct,'text/plain'); dlBlob(name+'.MSK',msk,'text/plain'); if(!fileBlobs[name])fileBlobs[name]={}; fileBlobs[name].pct=pct; fileBlobs[name].msk=msk; }
-  if(typeof animFrameCache!=='undefined') delete animFrameCache[name];
+  sprCacheBust(name);
   alert('Saved '+name+'.PCT ('+N+' frame'+(N>1?'s':'')+') + '+name+'.MSK, matched to the '+palDesc(m.entry)+'.\nIt now appears in the Sprites list and the Animations source dropdown.');
   if(activeTab==='spr') buildSprites();
 }
@@ -1398,8 +1525,8 @@ document.getElementById('newSprFile').onchange=e=>{ const f=e.target.files[0]; i
 document.getElementById('newBgBtn').onclick=()=>document.getElementById('newBgFile').click();
 document.getElementById('newBgFile').onchange=e=>{ const f=e.target.files[0]; if(f) importNewBg(f); e.target.value=''; };
 // ---- foreground sprites (.PCT files = interleaved CGA GET/PUT arrays) ----
-const PCT_LAYOUT={ joes:{k:1,names:['standing']}, joew1:{k:2,names:['walk A','walk B']}, joew2:{k:2,names:['walk A','walk B']}, joew3:{k:2,names:['walk A','walk B']}, joew4:{k:2,names:['walk A','walk B']}, joed:{k:8,names:['face down','face up','face right','face left','face dn-left','face dn-right','face up-left','face up-right']}, wilb:{k:1,names:['Wilbur']}, golf:{k:2,names:['swing A','swing B']}, door:{k:4,names:['frame 1','frame 2','frame 3','frame 4']} };
-let sprDefaultPal=[0,6,7,8];   // default to the ESC inventory palette (0=black, 6=brown, 7=lt gray, 8=dk gray); colour 0 = transparent
+const PCT_LAYOUT={ joes:{k:1,names:['standing']}, joew1:{k:2,names:['walk A','walk B']}, joew2:{k:2,names:['walk A','walk B']}, joew3:{k:2,names:['walk A','walk B']}, joew4:{k:2,names:['walk A','walk B']}, joew5:{k:2,names:['walk A','walk B']}, joew6:{k:2,names:['walk A','walk B']}, joew7:{k:2,names:['walk A','walk B']}, joew8:{k:2,names:['walk A','walk B']}, joed:{k:8,names:['face down','face up','face right','face left','face dn-left','face dn-right','face up-left','face up-right']}, wilb:{k:1,names:['Wilbur']}, golf:{k:2,names:['swing A','swing B']}, door:{k:4,names:['frame 1','frame 2','frame 3','frame 4']} };
+let sprDefaultPal=[0,8,1,6];   // default to the ROOM palette (halls: 8=dk gray, 1=blue, 6=brown) — game sprites live in rooms; colour 0 = transparent
 let spritePals=[];             // distinct room palettes for the picker, built dynamically from the backgrounds
 const roomPalCache={};
 function isHallRoom(n){ return /^room[123]$/i.test(n); }
@@ -1425,8 +1552,8 @@ async function loadSpritePalettes(){   // gather DISTINCT room palettes; default
   }
   list.sort((a,b)=>(b.rooms.some(isHallRoom)?1:0)-(a.rooms.some(isHallRoom)?1:0));   // halls first
   spritePals=list;
-  spritePals.unshift({key:'inv', pal:[0,6,7,8], rooms:['inventory']});   // ESC inventory palette (0,6,7,8) — first option + the default
-  sprDefaultPal=[0,6,7,8];
+  spritePals.push({key:'inv', pal:[0,6,7,8], rooms:['inventory']});   // ESC inventory palette — LAST option (game sprites live in rooms)
+  if(spritePals.length&&spritePals[0].pal) sprDefaultPal=spritePals[0].pal.slice();  // default = the halls' room palette
 }
 function palLabel(e){
   const names=e.rooms.slice(0,3).join(' ')+(e.rooms.length>3?' +'+(e.rooms.length-3):'');
@@ -1492,7 +1619,7 @@ async function buildSprites(){
   if(!grid.children.length) wrap.innerHTML='<div class="bggroup">No .PCT sprite files found.</div>';
 }
 let sprCur=null, sprPal=null, sprName='', sprIdx=0, sprK=1, sprLabel='', sprNavOrder=[], sprPreferMask=false;
-let mskFrames=null, mskCur=null, sprMode='sprite', mskPending=null, mskPeek=false, mskPaintBtn=null;
+let mskFrames=null, mskCur=null, sprMode='sprite', mskPending=null, mskPeek=false, mskPaintBtn=null, sprPending=null, sprMskPending=null;
 function sprRender(){
   const c=document.getElementById('bgCanvas');
   if(sprMode==='mask'&&!mskPeek&&mskCur) paintMask(c,mskCur,1);
@@ -1500,10 +1627,12 @@ function sprRender(){
 }
 function openSprView(spr,label,name,idx,k,preferMask){
   if(mskPending && !confirm('Discard unsaved mask edits to '+sprName+'.MSK?')) return;
+  if(sprPending && !confirm('Discard unsaved sprite edits to '+sprName+'.PCT?')) return;
   sprCur=spr; sprPal=sprDefaultPal.slice(); sprName=name||''; sprIdx=idx||0; sprK=k||1; sprLabel=label; sprPreferMask=!!preferMask;
   mskFrames=null; mskCur=null; sprMode='sprite'; clearMskPending();
   document.querySelector('.bgview').classList.add('spr');
   document.getElementById('bgExport').hidden=true; document.getElementById('bgImport').hidden=true; clearBgPending();
+  document.getElementById('sprExport').hidden=false; document.getElementById('sprImport').hidden=false; clearSprPending();
   document.getElementById('bgPrev').hidden=false; document.getElementById('bgNext').hidden=false;
   { const tog=document.getElementById('mskToggle'); tog.hidden=false; tog.disabled=true; tog.textContent='View mask'; }
   document.getElementById('mskExport').hidden=true; document.getElementById('mskImport').hidden=true; document.getElementById('mskDelete').hidden=true;
@@ -1617,6 +1746,7 @@ async function saveMaskImport(){
   const text=interleaveMskText(mskFrames);
   if(mode==='server'){ await fetch('api/msk?name='+encodeURIComponent(sprName),{method:'POST',headers:{'Content-Type':'text/plain'},body:text}); }
   else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'})); a.download=sprName+'.MSK'; a.click(); if(fileBlobs[sprName]) fileBlobs[sprName].msk=text; }
+  sprCacheBust(sprName);
   mskTextCache[sprName]=text; mskPending=null;
   document.getElementById('mskSave').hidden=true; document.getElementById('mskPend').hidden=true;
   document.getElementById('bgTitle').textContent=(sprLabel||sprName)+'  ·  mask  ✓ saved';
@@ -1633,6 +1763,7 @@ async function deleteMask(){
   if(mode==='server'){ await fetch('api/msk?name='+encodeURIComponent(sprName),{method:'DELETE'}); }
   else if(fileBlobs[sprName]){ delete fileBlobs[sprName].msk; }
   delete mskTextCache[sprName];
+  sprCacheBust(sprName);
   mskFrames=null; mskCur=null; mskPending=null; sprMode='sprite'; clearMskPending();
   document.getElementById('mskExport').hidden=true; document.getElementById('mskImport').hidden=true; document.getElementById('mskDelete').hidden=true;
   const tog=document.getElementById('mskToggle'); tog.disabled=true; tog.textContent='no .MSK';
@@ -1640,6 +1771,63 @@ async function deleteMask(){
   document.getElementById('bgTitle').textContent=(sprLabel||sprName)+'  ·  '+(sprCur?sprCur.w+'×'+sprCur.h:'')+'  ·  mask deleted — sprite drawn unmasked';
 }
 document.getElementById('mskDelete').onclick=deleteMask;
+// ---- sprite PIXELS export/import as PNG (per frame; mask-aware, parallel to the mask flow above) ----
+function exportSprPNG(){
+  if(!sprCur) return;
+  const w=sprCur.w,h=sprCur.h, ix=new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++){ const see=mskCur? (mskCur.px[i]!==0) : (sprCur.px[i]===0); ix[i]=see?0:1+sprCur.px[i]; }   // entry 0 = transparent; opaque px (incl. black-under-solid-mask) -> 1+colour
+  const pal=[[0,0,0]].concat(sprPal.map(n=>EGA[n]||[0,0,0]));
+  downloadPNG(encodeIndexedPNG(w,h,ix,pal,0), (sprName||'sprite')+(sprK>1?'-'+(sprIdx+1):'')+'.png');
+}
+async function importSprPNG(file){
+  if(!sprCur) return;
+  const w=sprCur.w,h=sprCur.h;
+  const img=await loadImgFile(file); if(!img){ alert('Could not read that PNG.'); return; }
+  if(img.width!==w||img.height!==h){ alert('This frame is '+w+'×'+h+' — the PNG is '+img.width+'×'+img.height+'.\n(Import replaces THIS frame only; to create a new multi-frame sprite use “+ New sprite (PNG)” on the Sprites tab.)'); return; }
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const g=cv.getContext('2d'); g.drawImage(img,0,0);
+  const d=g.getImageData(0,0,w,h).data, px=new Uint8Array(w*h);
+  const all=sprPal.map(n=>EGA[n]||[0,0,0]), vis=all.slice(1);
+  for(let i=0;i<w*h;i++){ const p=i*4; if(d[p+3]<128){ px[i]=0; continue; } px[i]=mskCur? nearestIndex(d[p],d[p+1],d[p+2],all) : 1+nearestIndex(d[p],d[p+1],d[p+2],vis); }   // masked sprite: opaque black stays colour 0 (the auto-mask keeps it solid); maskless: 0 = transparent so opaque maps to 1-3
+  sprMskPending=null;
+  if(mskCur){   // 2-birds: the PNG's transparency IS the mask — rebuild this frame's mask from alpha
+    const mp=new Uint8Array(w*h);
+    for(let i=0;i<w*h;i++) mp[i]=(d[i*4+3]<128)?3:0;
+    sprMskPending=mp; mskCur={w,h,px:mp};
+  }
+  sprPending=px; sprCur={w,h,px}; sprMode='sprite';
+  if(mskCur) document.getElementById('mskToggle').textContent='View mask';
+  sprRender();
+  document.getElementById('sprSave').hidden=false; document.getElementById('sprPend').hidden=false;
+  document.getElementById('bgTitle').textContent=(sprLabel||sprName)+'  ·  SPRITE PREVIEW — review, then Save sprite'+(sprMskPending?'  (mask auto-derived from the PNG transparency)':'');
+}
+async function saveSprImport(){
+  if(!sprPending||!sprName) return;
+  const txt=await getPctText(sprName); if(txt==null){ alert('Could not load '+sprName+'.PCT.'); return; }
+  const pctFrames=deinterleaveInts(txt,sprK);
+  pctFrames[sprIdx]=packMaskInts(sprPending,sprCur.w,sprCur.h, pctFrames[sprIdx]);
+  const text=interleaveMskText(pctFrames);
+  if(mode==='server'){ await fetch('api/pct?name='+encodeURIComponent(sprName),{method:'POST',headers:{'Content-Type':'text/plain'},body:text}); }
+  else { dlBlob(sprName+'.PCT',text,'text/plain'); if(!fileBlobs[sprName])fileBlobs[sprName]={}; fileBlobs[sprName].pct=text; }
+  sprCacheBust(sprName);
+  pctTextCache[sprName]=text; sprPending=null;
+  let wroteMask=false;
+  if(sprMskPending&&mskFrames){   // write the alpha-derived mask for this frame too
+    mskFrames[sprIdx]=packMaskInts(sprMskPending,sprCur.w,sprCur.h, mskFrames[sprIdx]);
+    const mtext=interleaveMskText(mskFrames);
+    if(mode==='server'){ await fetch('api/msk?name='+encodeURIComponent(sprName),{method:'POST',headers:{'Content-Type':'text/plain'},body:mtext}); }
+    else { dlBlob(sprName+'.MSK',mtext,'text/plain'); if(fileBlobs[sprName]) fileBlobs[sprName].msk=mtext; }
+    mskTextCache[sprName]=mtext; wroteMask=true;
+  }
+  sprMskPending=null;
+  document.getElementById('sprSave').hidden=true; document.getElementById('sprPend').hidden=true;
+  document.getElementById('bgTitle').textContent=(sprLabel||sprName)+'  ·  sprite'+(wroteMask?' + mask':'')+'  ✓ saved';
+  if(activeTab==='spr') buildSprites();
+}
+function clearSprPending(){ sprPending=null; sprMskPending=null; const s=document.getElementById('sprSave'), p=document.getElementById('sprPend'); if(s) s.hidden=true; if(p) p.hidden=true; }
+document.getElementById('sprExport').onclick=exportSprPNG;
+document.getElementById('sprImport').onclick=()=>document.getElementById('sprImportFile').click();
+document.getElementById('sprImportFile').onchange=e=>{ const f=e.target.files[0]; if(f) importSprPNG(f); e.target.value=''; };
+document.getElementById('sprSave').onclick=saveSprImport;
 // ---- in-app mask painting (mask mode only: left=solid/black, right=see-through/white) + hold-Space peek of the sprite ----
 (function(){
   const mc=document.getElementById('bgCanvas');
@@ -1791,6 +1979,89 @@ function startPreview(a){
 function stopPreview(){ if(animTimer){ clearTimeout(animTimer); animTimer=null; } previewFn=null; }
 document.getElementById('animNew').onclick=newAnim;
 document.getElementById('animSave').onclick=saveAnims;
+// ---- Walking preview tab: the 8 joew sets cycling A/B in place; arrows/buttons pick the direction ----
+// ms = the game's real per-half-step pacing: (0.1 + 2*sdur) SOUND ticks at 18.2Hz
+// (walkTo sdur: right/left 1, down 1.2, up 1.4, dn-diagonals 1.1, up-diagonals 1.2)
+const WKMAP={'2':{f:'JOEW1',n:'down',ms:137},'8':{f:'JOEW2',n:'up',ms:159},'6':{f:'JOEW3',n:'right',ms:115},'4':{f:'JOEW4',n:'left',ms:115},'1':{f:'JOEW5',n:'down-left',ms:126},'3':{f:'JOEW6',n:'down-right',ms:126},'7':{f:'JOEW7',n:'up-left',ms:137},'9':{f:'JOEW8',n:'up-right',ms:137}};
+const WKJOED={'2':0,'8':1,'6':2,'4':3,'1':4,'3':5,'7':6,'9':7};   // joed face frame per direction
+let wkDir='', wkLast='2', wkFrame=0, wkTimer=null, wkKeys=new Set(), wkCache={}, wkPadBtns={};
+async function wkLoad(name,k){
+  const key=name+'/'+k;
+  if(wkCache[key]) return wkCache[key];
+  const pt=await getPctText(name); if(pt==null) return null;
+  const fr=parsePct(pt,k);
+  const mt=await getMskText(name);
+  const mk=mt? deinterleaveInts(mt,k).map(decodeSprite) : fr.map(()=>null);
+  return (wkCache[key]={fr,mk});
+}
+function wkPalArr(){ const s=document.getElementById('wkPal'); const e=spritePals[+((s&&s.value)||0)]; return e? e.pal : sprDefaultPal; }
+function wkDraw(spr,msk){
+  const cv=document.getElementById('wkCv'), z=+(document.getElementById('wkZoom').value)||8;
+  cv.width=31*z; cv.height=31*z; cv.style.width=(31*z)+'px'; cv.style.height=(31*z)+'px';
+  const g=cv.getContext('2d'); g.imageSmoothingEnabled=false;
+  const tmp=document.createElement('canvas'); tmp.width=spr.w; tmp.height=spr.h;
+  const tg=tmp.getContext('2d'), img=tg.createImageData(spr.w,spr.h), d=img.data, pal=wkPalArr();
+  for(let i=0;i<spr.px.length;i++){
+    const solid = msk? (msk.px[i]===0) : (spr.px[i]!==0);   // mask decides (black stays solid); maskless: colour 0 = transparent
+    const p=i*4;
+    if(solid){ const e=EGA[pal[spr.px[i]]]||[0,0,0]; d[p]=e[0];d[p+1]=e[1];d[p+2]=e[2];d[p+3]=255; }
+  }
+  tg.putImageData(img,0,0); g.clearRect(0,0,cv.width,cv.height); g.drawImage(tmp,0,0,cv.width,cv.height);
+}
+async function wkRender(){
+  const info=document.getElementById('wkInfo'); if(!info) return;
+  if(wkDir){
+    const m=WKMAP[wkDir], set=await wkLoad(m.f,2);
+    if(!set||!set.fr[wkFrame]){ info.textContent=m.f+'.PCT missing or unreadable'; return; }
+    wkDraw(set.fr[wkFrame], set.mk[wkFrame]);
+    info.textContent='walking '+m.n+' · '+m.f+' · frame '+(wkFrame? 'B':'A')+' · '+wkMsCur+'ms/step';
+  } else {
+    const set=await wkLoad('joed',8), fi=WKJOED[wkLast]||0;
+    if(set&&set.fr[fi]) wkDraw(set.fr[fi], set.mk[fi]);
+    info.textContent='standing · facing '+(WKMAP[wkLast]||{n:'down'}).n;
+  }
+}
+function wkPadUpdate(){ for(const k in wkPadBtns) wkPadBtns[k].classList.toggle('on', wkDir===k); }
+function wkSetDir(d){ wkDir=d; if(d) wkLast=d; wkPadUpdate(); wkStart(); wkRender(); }
+function wkTick(){ if(wkDir&&activeTab==='walk'){ wkFrame=1-wkFrame; wkRender(); } }
+let wkMsCur=126;
+function wkStart(){ wkStop(); const sp=parseFloat((document.getElementById('wkSpd')||{value:1}).value)||1; const base=wkDir? WKMAP[wkDir].ms : 126; wkMsCur=Math.round(base/sp); wkTimer=setInterval(wkTick,wkMsCur); }
+function wkStop(){ if(wkTimer){ clearInterval(wkTimer); wkTimer=null; } }
+function wkFromKeys(){
+  const v=(wkKeys.has('ArrowDown')?1:0)-(wkKeys.has('ArrowUp')?1:0);
+  const h=(wkKeys.has('ArrowRight')?1:0)-(wkKeys.has('ArrowLeft')?1:0);
+  let d='';
+  if(v>0) d=(h>0)?'3':((h<0)?'1':'2'); else if(v<0) d=(h>0)?'9':((h<0)?'7':'8'); else d=(h>0)?'6':((h<0)?'4':'');
+  wkSetDir(d);
+}
+async function wkEnter(){
+  await loadSpritePalettes();
+  const ps=document.getElementById('wkPal');
+  if(ps&&!ps.options.length){ spritePals.forEach((e,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=palLabel(e); ps.appendChild(o); }); ps.onchange=()=>wkRender(); }
+  const pad=document.getElementById('wkPad');
+  if(pad&&!pad.children.length){
+    [['7','↖'],['8','↑'],['9','↗'],['4','←'],['5','■'],['6','→'],['1','↙'],['2','↓'],['3','↘']].forEach(([k,t])=>{
+      const b=document.createElement('button'); b.type='button'; b.textContent=t;
+      if(k==='5'){ b.title='stand'; b.onclick=()=>wkSetDir(''); }
+      else { wkPadBtns[k]=b; b.title=WKMAP[k].n+' — click again to stand'; b.onclick=()=>wkSetDir(wkDir===k?'':k); }
+      pad.appendChild(b);
+    });
+    document.getElementById('wkSpd').onchange=()=>wkStart();
+    document.getElementById('wkZoom').onchange=()=>wkRender();
+  }
+  wkStart(); wkRender();
+}
+window.addEventListener('keydown',e=>{
+  if(activeTab!=='walk') return;
+  if(/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName||'')) return;
+  if(!/^Arrow(Up|Down|Left|Right)$/.test(e.key)) return;
+  e.preventDefault();
+  if(!wkKeys.has(e.key)){ wkKeys.add(e.key); wkFromKeys(); }
+});
+window.addEventListener('keyup',e=>{
+  if(!/^Arrow(Up|Down|Left|Right)$/.test(e.key)) return;
+  if(wkKeys.delete(e.key) && activeTab==='walk') wkFromKeys();
+});
 function setTab(t){
   activeTab=t;
   document.getElementById('tab-hits').hidden=(t!=='hits');
@@ -1798,6 +2069,7 @@ function setTab(t){
   document.getElementById('tab-bg').hidden=(t!=='bg');
   document.getElementById('tab-spr').hidden=(t!=='spr');
   document.getElementById('tab-anim').hidden=(t!=='anim');
+  document.getElementById('tab-walk').hidden=(t!=='walk');
   document.getElementById('tab-font').hidden=(t!=='font');
   document.getElementById('hitctrls').hidden=(t!=='hits');
   document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
@@ -1805,7 +2077,8 @@ function setTab(t){
   if(t==='bg') buildBgGallery();
   if(t==='spr') buildSprites();
   if(t==='anim') buildAnims();
-  if(t==='font' && !Object.keys(fontG).length) fLoad();
+  if(t==='walk') wkEnter(); else wkStop();
+  if(t==='font' && !document.getElementById('fontDirty').textContent) fLoad();   // fresh from disk each visit (unless mid-edit)
 }
 async function showInv(){ buildInvTable(); await ensureXref(); if(activeTab==='inv') buildInvTable(); }
 document.querySelectorAll('.tabs button').forEach(x=>x.onclick=()=>setTab(x.dataset.tab));
@@ -1825,9 +2098,13 @@ setTab('hits');
   await loadInv();
 })();
 // ===== Font tab — small 3x6 bitmap font (font.txt, GAME3.BAS drawText) =====
-let fontG={}, fontSel=-1;
+let fontG={}, fontSel=-1, fontH=7, fontCur='font';
 function fParse(text){
-  const g={}, L=text.split(/\r?\n/); let i=0;
+  // the game's format (GAME3 initFontSystem): a HEIGHT line first, then per glyph:
+  // ASCII code, width, then <height> rows. Old height-less files fall back to 7.
+  const g={}, L=text.split(/\r?\n/); let i=0, h=0;
+  while(i<L.length){ const ln=L[i].trim(); if(ln===''||ln[0]==='#'){ i++; continue; } const v=parseInt(ln,10); if(!isNaN(v)&&v>=3&&v<=16){ h=v; i++; } break; }
+  fontH = h||7;
   while(i<L.length){
     let ln=L[i].trim(); i++;
     if(ln===''||ln[0]==='#') continue;
@@ -1836,17 +2113,17 @@ function fParse(text){
     while(i<L.length){ let r=L[i].trim(); i++; if(r===''||r[0]==='#') continue; w=parseInt(r,10); break; }
     if(isNaN(w)||w<1||w>16) continue;
     const rows=[];
-    while(rows.length<7 && i<L.length){
+    while(rows.length<fontH && i<L.length){
       let r=L[i].trim(); i++;
       if(r===''||r[0]==='#') continue;
       rows.push((r.replace(/[^01]/g,'0')+'0'.repeat(w)).slice(0,w));
     }
-    if(rows.length===7) g[code]={w:w,rows:rows};
+    if(rows.length===fontH) g[code]={w:w,rows:rows};
   }
   return g;
 }
 function fGen(){
-  let out='# Dark Visions small font (variable width, 7px) - edited in Room Tools\r\n# Each glyph: ASCII code, then width, then 7 rows of width-bit binary (1=pixel).\r\n\r\n';
+  let out='# Dark Visions '+fontCur+'.txt font (variable width + height) - edited in Room Tools\r\n# height line, then per glyph: ASCII code, width, then <height> rows of width-bit binary.\r\n\r\n'+fontH+'\r\n\r\n';
   for(const c of Object.keys(fontG).map(Number).sort((a,b)=>a-b)){
     const ch=(c===32)?'(space)':((c>32&&c<127)?String.fromCharCode(c):'');
     const G=fontG[c];
@@ -1855,9 +2132,9 @@ function fGen(){
   return out;
 }
 function fDraw(cv,G,sc){
-  cv.width=G.w*sc; cv.height=7*sc;
+  cv.width=G.w*sc; cv.height=fontH*sc;
   const x=cv.getContext('2d'); x.fillStyle='#000'; x.fillRect(0,0,cv.width,cv.height); x.fillStyle='#cdd3e0';
-  for(let r=0;r<7;r++)for(let c=0;c<G.w;c++) if(G.rows[r][c]==='1') x.fillRect(c*sc,r*sc,sc,sc);
+  for(let r=0;r<fontH;r++)for(let c=0;c<G.w;c++) if(G.rows[r]&&G.rows[r][c]==='1') x.fillRect(c*sc,r*sc,sc,sc);
 }
 function fGrid(){
   const g=document.getElementById('fontGrid'); g.innerHTML='';
@@ -1877,7 +2154,7 @@ function fEd(){
   const c=fontSel, G=fontG[c]; lb.textContent='Editing '+((c>32&&c<127)?'"'+String.fromCharCode(c)+'"  ':'')+'ASCII '+c;
   if(wl) wl.textContent='width '+G.w;
   eg.style.gridTemplateColumns='repeat('+G.w+',28px)'; eg.style.gridAutoRows='28px'; eg.innerHTML='';
-  for(let r=0;r<7;r++)for(let col=0;col<G.w;col++){
+  for(let r=0;r<fontH;r++)for(let col=0;col<G.w;col++){
     const b=document.createElement('button'); if(G.rows[r][col]==='1') b.className='on';
     b.onclick=()=>{ const rw=G.rows[r].split(''); rw[col]=(rw[col]==='1')?'0':'1'; G.rows[r]=rw.join(''); fDirty(); fEd(); fGrid(); fPrev(); };
     eg.appendChild(b);
@@ -1886,10 +2163,10 @@ function fEd(){
 function fPrev(){
   const t=document.getElementById('fontPrevText').value, cv=document.getElementById('fontPrevCv'), sc=4;
   let tw=sc; for(const ch of t){ const c=ch.charCodeAt(0); if(c===32) tw+=4*sc; else { const G=fontG[c]; tw+=(G?G.w+1:4)*sc; } }
-  cv.width=Math.max(4,tw); cv.height=9*sc;
+  cv.width=Math.max(4,tw); cv.height=(fontH+2)*sc;
   const x=cv.getContext('2d'); x.fillStyle='#000'; x.fillRect(0,0,cv.width,cv.height); x.fillStyle='#cdd3e0';
   let px=sc;
-  for(const ch of t){ const c=ch.charCodeAt(0); if(c===32){px+=4*sc;continue;} const G=fontG[c]; if(G){ for(let r=0;r<7;r++)for(let k=0;k<G.w;k++) if(G.rows[r][k]==='1') x.fillRect(px+k*sc,sc+r*sc,sc,sc); px+=(G.w+1)*sc; } else px+=4*sc; }
+  for(const ch of t){ const c=ch.charCodeAt(0); if(c===32){px+=4*sc;continue;} const G=fontG[c]; if(G){ for(let r=0;r<fontH;r++)for(let k=0;k<G.w;k++) if(G.rows[r]&&G.rows[r][k]==='1') x.fillRect(px+k*sc,sc+r*sc,sc,sc); px+=(G.w+1)*sc; } else px+=4*sc; }
 }
 function fSel(c){ fontSel=c; fEd(); fGrid(); }
 function fDirty(){ const b=document.getElementById('fontDirty'); b.textContent='● unsaved'; b.className='badge warn'; }
@@ -1897,22 +2174,26 @@ function fClean(){ const b=document.getElementById('fontDirty'); b.textContent='
 function fSetText(text){ fontG=fParse(text); fontSel=-1; fClean(); fGrid(); fEd(); fPrev(); }
 async function fLoad(){
   let text=null;
-  if(mode==='server'){ try{ const r=await fetch('api/font',{cache:'no-store'}); if(r.ok) text=await r.text(); }catch(_){}}
-  else if(fileBlobs['font']&&fileBlobs['font'].pac!=null) text=fileBlobs['font'].pac;
+  if(mode==='server'){ try{ const r=await fetch('api/fontfile?name='+fontCur,{cache:'no-store'}); if(r.ok) text=await r.text(); }catch(_){}}
+  else if(fileBlobs['font_'+fontCur]&&fileBlobs['font_'+fontCur].pac!=null) text=fileBlobs['font_'+fontCur].pac;
   if(text!=null) fSetText(text);
-  else document.getElementById('fontEdLabel').textContent='No font.txt loaded — use Import (or open the src folder).';
+  else document.getElementById('fontEdLabel').textContent='Could not load '+fontCur+'.txt — if the editor server has been running a while, restart serve.ps1 (it needs the new font endpoint).';
 }
 async function fSave(){
   const text=fGen();
-  if(mode==='server'){ try{ const r=await fetch('api/font',{method:'POST',body:text}); if(r.ok) fClean(); else alert('Save failed ('+r.status+')'); }catch(e){ alert('Save failed: '+e); } }
-  else { dlBlob('font.txt',text,'text/plain'); fileBlobs['font']=fileBlobs['font']||{}; fileBlobs['font'].pac=text; fClean(); }
+  if(mode==='server'){ try{ const r=await fetch('api/fontfile?name='+fontCur,{method:'POST',body:text}); if(r.ok) fClean(); else alert('Save failed ('+r.status+')'+(r.status===404?' — restart serve.ps1: the running server predates the per-font endpoint':'')); }catch(e){ alert('Save failed: '+e); } }
+  else { dlBlob(fontCur+'.txt',text,'text/plain'); fileBlobs['font_'+fontCur]=fileBlobs['font_'+fontCur]||{}; fileBlobs['font_'+fontCur].pac=text; fClean(); }
 }
 document.getElementById('fontSave').onclick=fSave;
 document.getElementById('fontReload').onclick=fLoad;
+document.getElementById('fontPick').onchange=e=>{
+  if(document.getElementById('fontDirty').textContent && !confirm('Discard unsaved edits to '+fontCur+'.txt?')){ e.target.value=fontCur; return; }
+  fontCur=e.target.value; fLoad();
+};
 document.getElementById('fontImportBtn').onclick=()=>document.getElementById('fontImportFile').click();
 document.getElementById('fontImportFile').onchange=async e=>{ const f=e.target.files[0]; if(f){ fSetText(await f.text()); fDirty(); } e.target.value=''; };
 document.getElementById('fontPrevText').oninput=fPrev;
-document.getElementById('fontEdClear').onclick=()=>{ if(fontSel<0||!fontG[fontSel])return; const w=fontG[fontSel].w; fontG[fontSel].rows=Array.from({length:7},()=>'0'.repeat(w)); fDirty(); fEd(); fGrid(); fPrev(); };
+document.getElementById('fontEdClear').onclick=()=>{ if(fontSel<0||!fontG[fontSel])return; const w=fontG[fontSel].w; fontG[fontSel].rows=Array.from({length:fontH},()=>'0'.repeat(w)); fDirty(); fEd(); fGrid(); fPrev(); };
 document.getElementById('fontEdDelete').onclick=()=>{ if(fontSel<0)return; delete fontG[fontSel]; fontSel=-1; fDirty(); fEd(); fGrid(); fPrev(); };
 document.getElementById('fontEdNarrow').onclick=()=>{ if(fontSel<0||!fontG[fontSel])return; const G=fontG[fontSel]; if(G.w<=1)return; G.w--; G.rows=G.rows.map(r=>r.slice(0,G.w)); fDirty(); fEd(); fGrid(); fPrev(); };
 document.getElementById('fontEdWiden').onclick=()=>{ if(fontSel<0||!fontG[fontSel])return; const G=fontG[fontSel]; if(G.w>=12)return; G.w++; G.rows=G.rows.map(r=>r+'0'); fDirty(); fEd(); fGrid(); fPrev(); };
@@ -1920,7 +2201,7 @@ document.getElementById('fontAddBtn').onclick=()=>{
   const chv=document.getElementById('fontAddChar').value, cdv=document.getElementById('fontAddCode').value;
   let code = chv ? chv.charCodeAt(0) : (cdv!==''?parseInt(cdv,10):-1);
   if(isNaN(code)||code<0||code>255){ alert('Enter a character, or a code 0-255'); return; }
-  if(!fontG[code]) fontG[code]={w:3,rows:Array.from({length:7},()=>'000')};
+  if(!fontG[code]) fontG[code]={w:3,rows:Array.from({length:fontH},()=>'000')};
   document.getElementById('fontAddChar').value=''; document.getElementById('fontAddCode').value='';
   fDirty(); fSel(code); fGrid(); fPrev();
 };

@@ -114,3 +114,8 @@
 "room6","You leave the room","a",0,0,0,"wn"
 "room3","You leave the room.","a",0,0,0,"we"
 "room8","You leave the room","a",0,0,0,"ww"
+-2,12,166,148,8
+-2,13,166,148,8
+-2,15,222,172,6
+-2,18,137,146,4
+-2,21,202,146,7

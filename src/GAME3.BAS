@@ -220,6 +220,14 @@ SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
 	LOOP WHILE d9 < 1.5
 	bt = ""
 	SELECT CASE sel
+	CASE 3
+		bt = "The other doctors have become weary as the"
+		bt = bt + " research money is drying up. I have taken the"
+		bt = bt + " liberty of hiding the rest so they do not get"
+		bt = bt + " greedy and steal it. The money is now boarded up"
+		bt = bt + " in the headboard of my bed; not even the"
+		bt = bt + " servants know about it.\\Time is the barrier to"
+		bt = bt + " the place of the damned."
 	CASE 9
 		bt = "Patient: Naton McDaniel\Disorder: Paranoid"
 		bt = bt + " Schizophrenia\Notes: Nervous, complains of"

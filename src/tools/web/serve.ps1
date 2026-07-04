@@ -155,15 +155,30 @@ while ($listener.IsListening) {
       elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
       else { $res.StatusCode = 404 }
     }
+    elseif ($path -eq '/api/fontfile') {
+      $name = ('' + $req.QueryString['name']).ToLower()
+      if (@('font', 'font3', 'fontbold') -notcontains $name) { $res.StatusCode = 400 }
+      else {
+        $f = Join-Path $data ($name + '.txt')
+        if ($req.HttpMethod -eq 'POST') {
+          $reader = New-Object IO.StreamReader($req.InputStream, $req.ContentEncoding)
+          $body = $reader.ReadToEnd(); $reader.Close()
+          $body = ($body -replace "`r`n", "`n") -replace "`n", "`r`n"
+          [IO.File]::WriteAllText($f, $body)
+          Write-Host ("  saved {0}.txt  ({1} bytes)" -f $name, $body.Length) -ForegroundColor Green
+          Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+        }
+        elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
+        else { $res.StatusCode = 404 }
+      }
+    }
     elseif ($path -eq '/api/font') {
+      # legacy endpoint: reads OK; SAVES REFUSED - old editor pages predate the height-header
+      # font format and would write a file the game misreads. Refresh the editor page instead.
       $f = Join-Path $data 'font.txt'
       if ($req.HttpMethod -eq 'POST') {
-        $reader = New-Object IO.StreamReader($req.InputStream, $req.ContentEncoding)
-        $body = $reader.ReadToEnd(); $reader.Close()
-        $body = ($body -replace "`r`n", "`n") -replace "`n", "`r`n"
-        [IO.File]::WriteAllText($f, $body)
-        Write-Host ("  saved font.txt  ({0} bytes)" -f $body.Length) -ForegroundColor Green
-        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+        $res.StatusCode = 410
+        Write-Host '  REFUSED legacy font save (410) - refresh the editor page in the browser' -ForegroundColor Yellow
       }
       elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
       else { $res.StatusCode = 404 }

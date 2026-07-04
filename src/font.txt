@@ -1,4 +1,4 @@
-# Dark Visions font2 font (variable width + height) from ART/font2.png
+# Dark Visions font.txt font (variable width + height) - edited in Room Tools
 # height line, then per glyph: ASCII code, width, then <height> rows of width-bit binary.
 
 7
@@ -965,11 +965,11 @@
 3
 000
 000
-011
+000
+101
+010
 101
 101
-011
-001
 
 # y (ASCII 121)
 121

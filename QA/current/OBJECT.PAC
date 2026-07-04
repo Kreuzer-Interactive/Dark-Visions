@@ -33,3 +33,4 @@
 34,"Drug","The chemicals bubbles in the vial."
 35,"Loaded syringe","The syringe is now full of the bubbling chemicals."
 0,"","Chris says that you're a little girl."
+52,"Unreadable formula","The rejoined page is unreadable. Its content looks intentionally obscured."

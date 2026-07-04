@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME3.BAS: variable-width small-font renderer (from ART/
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  02CF   0026                            FOR i = 1 TO LEN(lineText)
  0300   0026                                    IF MID$(lineText, i, 1) = "1" T
                                                                       PAGE   2
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 HEN pat = pat + pw2(LEN(lineText) - i)
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  054A   0026            NEXT ux
  055F   0026    END SUB
                                                                       PAGE   3
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0567   0026    
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  07A2   0026                    END IF
  07AC   0026            NEXT i
                                                                       PAGE   4
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  07BB   0026            textWidth = tot
@@ -235,8 +235,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0A30   0026            FOR i = 1 TO 51
  0A72   0026                    IF ob(i) = 1 THEN pcnt = pcnt + 1
                                                                       PAGE   5
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0A99   0026            NEXT i
@@ -294,8 +294,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0E26   0026            t9 = TIMER
  0E26   0026            DO
                                                                       PAGE   6
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0E3C   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
@@ -314,117 +314,131 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0EE6   0026            LOOP WHILE d9 < 1.5
  0EE6   0026            bt = ""
  0EE6   0026            SELECT CASE sel
+ 0EE6   0026            CASE 3
+ 0EE6   0026                    bt = "The other doctors have become weary as th
+                e"
+ 0EE6   0026                    bt = bt + " research money is drying up. I have
+                 taken the"
+ 0EE6   0026                    bt = bt + " liberty of hiding the rest so they 
+                do not get"
+ 0EE6   0026                    bt = bt + " greedy and steal it. The money is n
+                ow boarded up"
+ 0EE6   0026                    bt = bt + " in the headboard of my bed; not eve
+                n the"
+ 0EE6   0026                    bt = bt + " servants know about it.\\Time is th
+                e barrier to"
+ 0EE6   0026                    bt = bt + " the place of the damned."
  0EE6   0026            CASE 9
- 0EE6   0026                    bt = "Patient: Naton McDaniel\Disorder: Paranoi
+ 0FC0   0026                    bt = "Patient: Naton McDaniel\Disorder: Paranoi
                 d"
- 0EE6   0026                    bt = bt + " Schizophrenia\Notes: Nervous, compl
+ 0FC0   0026                    bt = bt + " Schizophrenia\Notes: Nervous, compl
                 ains of"
- 0EE6   0026                    bt = bt + " voices, often talks in gibberish.\I
+ 0FC0   0026                    bt = bt + " voices, often talks in gibberish.\I
                 D: 12443"
- 0EE6   0026                    bt = bt + "\\Patient: Havos Lobos\Disorder: Sev
+ 0FC0   0026                    bt = bt + "\\Patient: Havos Lobos\Disorder: Sev
                 ere"
- 0EE6   0026                    bt = bt + " Delusions\Notes: What he sees and h
+ 0FC0   0026                    bt = bt + " Delusions\Notes: What he sees and h
                 ears becomes"
- 0EE6   0026                    bt = bt + " his reality. Very dangerous.\ID: 38
+ 0FC0   0026                    bt = bt + " his reality. Very dangerous.\ID: 38
                 5938"
- 0EE6   0026                    bt = bt + "\\Patient: Gary Coleman\Disorder: Ps
+ 0FC0   0026                    bt = bt + "\\Patient: Gary Coleman\Disorder: Ps
                 ychotic"
- 0EE6   0026                    bt = bt + " dementia\Notes: A leader among the 
+ 0FC0   0026                    bt = bt + " dementia\Notes: A leader among the 
                 patients,"
- 0EE6   0026                    bt = bt + " fixated on knives, blood and sacrif
+ 0FC0   0026                    bt = bt + " fixated on knives, blood and sacrif
                 ice."
- 0EE6   0026                    bt = bt + " Extremely disturbed.\ID: 485970"
- 0EE6   0026            CASE 10
- 1005   0026                    bt = "I have concluded another successful exper
+ 0FC0   0026                    bt = bt + " Extremely disturbed.\ID: 485970"
+ 0FC0   0026            CASE 10
+ 10B4   0026                    bt = "I have concluded another successful exper
                 iment."
- 1005   0026                    bt = bt + "  This time the other doctors have g
-                rown greedy"
- 1005   0026                    bt = bt + " and want the notes for themselves. 
-                 So I gave"
- 1005   0026                    bt = bt + " them to the servants and coded them
-                 -- and the"
- 1005   0026                    bt = bt + " code book is hidden, where they wil
-                l never find"
- 1005   0026                    bt = bt + " it nor steal my breakthrough."
- 1005   0026            CASE 19
- 109D   0026                    bt = "3/15\The patients have become unruly. I f
-                ear they"
- 109D   0026                    bt = bt + " will overpower us, but the research
-                 must go on."
- 109D   0026                    bt = bt + "\\3/17\The other doctors too are con
+ 10B4   0026                    bt = bt + "  This time the other doctors have g
                                                                       PAGE   7
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                rown greedy"
+ 10B4   0026                    bt = bt + " and want the notes for themselves. 
+                 So I gave"
+ 10B4   0026                    bt = bt + " them to the servants and coded them
+                 -- and the"
+ 10B4   0026                    bt = bt + " code book is hidden, where they wil
+                l never find"
+ 10B4   0026                    bt = bt + " it nor steal my breakthrough."
+ 10B4   0026            CASE 19
+ 114C   0026                    bt = "3/15\The patients have become unruly. I f
+                ear they"
+ 114C   0026                    bt = bt + " will overpower us, but the research
+                 must go on."
+ 114C   0026                    bt = bt + "\\3/17\The other doctors too are con
                 cerned. We"
- 109D   0026                    bt = bt + " are tired from the long hours and m
+ 114C   0026                    bt = bt + " are tired from the long hours and m
                 ake many"
- 109D   0026                    bt = bt + " errors of judgment.\\3/23\Something
+ 114C   0026                    bt = bt + " errors of judgment.\\3/23\Something
                  in the air"
- 109D   0026                    bt = bt + " down there clouds my head. I have m
+ 114C   0026                    bt = bt + " down there clouds my head. I have m
                 oved my"
- 109D   0026                    bt = bt + " practice to the attic, hidden behin
+ 114C   0026                    bt = bt + " practice to the attic, hidden behin
                 d a pit of"
- 109D   0026                    bt = bt + " ash that only an electric circuit w
+ 114C   0026                    bt = bt + " ash that only an electric circuit w
                 ill open."
- 109D   0026                    bt = bt + " The MPTP vials are upper left.\\3/2
+ 114C   0026                    bt = bt + " The MPTP vials are upper left.\\3/2
                 9\Edwards has"
- 109D   0026                    bt = bt + " been following me. I fear he grows 
+ 114C   0026                    bt = bt + " been following me. I fear he grows 
                 suspicious."
- 109D   0026                    bt = bt + " (The rest of the page is torn away.
+ 114C   0026                    bt = bt + " (The rest of the page is torn away.
                 )"
- 109D   0026            CASE 21
- 11A8   0026                    bt = "The Zombie Syrem\\MPTP -- this formula ha
+ 114C   0026            CASE 21
+ 1257   0026                    bt = "The Zombie Syrem\\MPTP -- this formula ha
                 rbors the"
- 11A8   0026                    bt = bt + " most dangerous compound known, one 
+ 1257   0026                    bt = bt + " most dangerous compound known, one 
                 that leaves a"
- 11A8   0026                    bt = bt + " victim paralyzed for days at a time
+ 1257   0026                    bt = bt + " victim paralyzed for days at a time
                 . The"
- 11A8   0026                    bt = bt + " conclusive test on human subjects h
+ 1257   0026                    bt = bt + " conclusive test on human subjects h
                 as yielded"
- 11A8   0026                    bt = bt + " promising results.\\The subjects, t
+ 1257   0026                    bt = bt + " promising results.\\The subjects, t
                 hough, gain in"
- 11A8   0026                    bt = bt + " strength and reflex, growing harder
+ 1257   0026                    bt = bt + " strength and reflex, growing harder
                  to control."
- 11A8   0026                    bt = bt + " We have begun using torture to curb
+ 1257   0026                    bt = bt + " We have begun using torture to curb
                  them; it is"
- 11A8   0026                    bt = bt + " almost safer to keep them on it per
+ 1257   0026                    bt = bt + " almost safer to keep them on it per
                 manently, lest"
- 11A8   0026                    bt = bt + " they overthrow the doctors."
- 11A8   0026            CASE 25
- 1285   0026                    bt = "A Cipher Key\\A slim codex of symbols, ea
+ 1257   0026                    bt = bt + " they overthrow the doctors."
+ 1257   0026            CASE 25
+ 1334   0026                    bt = "A Cipher Key\\A slim codex of symbols, ea
                 ch set"
- 1285   0026                    bt = bt + " beside its true letter. The doctor 
+ 1334   0026                    bt = bt + " beside its true letter. The doctor 
                 coded his"
- 1285   0026                    bt = bt + " notes to keep them from greedy hand
-                s -- but with"
- 1285   0026                    bt = bt + " this key the cipher gives way. Lay 
-                it against the"
- 1285   0026                    bt = bt + " torn halves of the formula and the 
-                scattered"
- 1285   0026                    bt = bt + " notations resolve into a single, co
-                mplete"
- 1285   0026                    bt = bt + " working."
- 1285   0026            CASE ELSE
- 1334   0026                    bt = "The pages are water-stained and illegible
-                ."
- 1334   0026            END SELECT
- 1341   0026            LINE (0, 0)-(319, 199), 0, BF
                                                                       PAGE   8
-                                                                      30 Jun 26
-                                                                      18:25:52
+                                                                      03 Jul 26
+                                                                      14:42:49
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 1341   0026            PALETTE 3, 6
- 1341   0026            lh = fontData(0) + 1
- 1341   0026            CALL drawWrap(6, 2, bt, 3, 308, lh, fontData())
- 13BA   0026    END SUB
- 13CB   0026    
- 13D2   0026    
+ 1334   0026                    bt = bt + " notes to keep them from greedy hand
+                s -- but with"
+ 1334   0026                    bt = bt + " this key the cipher gives way. Lay 
+                it against the"
+ 1334   0026                    bt = bt + " torn halves of the formula and the 
+                scattered"
+ 1334   0026                    bt = bt + " notations resolve into a single, co
+                mplete"
+ 1334   0026                    bt = bt + " working."
+ 1334   0026            CASE ELSE
+ 13E3   0026                    bt = "The pages are water-stained and illegible
+                ."
+ 13E3   0026            END SELECT
+ 13F0   0026            LINE (0, 0)-(319, 199), 0, BF
+ 13F0   0026            PALETTE 3, 6
+ 13F0   0026            lh = fontData(0) + 1
+ 13F0   0026            CALL drawWrap(6, 2, bt, 3, 308, lh, fontData())
+ 1469   0026    END SUB
+ 147A   0026    
+ 1481   0026    
 
 43949 Bytes Available
-36373 Bytes Free
+36148 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)
