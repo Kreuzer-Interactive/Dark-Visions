@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:14
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME3.BAS: variable-width small-font renderer (from ART/
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  02CF   0026                            FOR i = 1 TO LEN(lineText)
  0300   0026                                    IF MID$(lineText, i, 1) = "1" T
                                                                       PAGE   2
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:14
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 HEN pat = pat + pw2(LEN(lineText) - i)
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  054A   0026            NEXT ux
  055F   0026    END SUB
                                                                       PAGE   3
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:14
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0567   0026    
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  07A2   0026                    END IF
  07AC   0026            NEXT i
                                                                       PAGE   4
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:14
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  07BB   0026            textWidth = tot
@@ -235,8 +235,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0A30   0026            FOR i = 1 TO 51
  0A72   0026                    IF ob(i) = 1 THEN pcnt = pcnt + 1
                                                                       PAGE   5
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:14
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0A99   0026            NEXT i
@@ -294,8 +294,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0E26   0026            t9 = TIMER
  0E26   0026            DO
                                                                       PAGE   6
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:14
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0E3C   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
@@ -353,8 +353,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 iment."
  10B4   0026                    bt = bt + "  This time the other doctors have g
                                                                       PAGE   7
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:14
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 rown greedy"
@@ -412,8 +412,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1334   0026                    bt = bt + " beside its true letter. The doctor 
                 coded his"
                                                                       PAGE   8
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:14
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1334   0026                    bt = bt + " notes to keep them from greedy hand

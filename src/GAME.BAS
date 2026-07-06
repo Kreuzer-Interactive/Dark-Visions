@@ -1154,13 +1154,14 @@ loadroom:
 	GOSUB hitzones
 	IF q$ <> "title" THEN GOTO walkout
 
-	'----- title screen music
-	PLAY "<d5f5g+5A+5d5f5G+5A+5e5g5a+5b5a5>c+5d5c+5"
-	PLAY "<a>c+dc+<gaa+>d<gaa+.>d<g5g+5g 5g+5g5G+5"
-	PLAY "g05d04b-08g02g08f04g08a-08b-08c03a-04"
-	PLAY "<g05d04b-08g02g08f04g08a-08b-08c03a-04"
-	PLAY ">g05d04b-08g02g08f04g08a-08b-08c03a-04"
-	PLAY "e-04d08c04d08e-04g03d02<<g08b-08g08g"
+	'----- title screen music: "Dark Visions" ostinato (original composition,
+	'----- replaced Gounod's Funeral March of a Marionette / Hitchcock theme).
+	'----- Trailing o0 leaves the octave state the old block left, since later
+	'----- jingles use relative <>'s from wherever the title music ended.
+	PLAY "t120mno1l8de-de-de-de-de-de-de-de-"
+	PLAY "o1l8fg-fg-fg-fg-g+ag+ag+ag+a"
+	PLAY "o2l8de-de-de-de-dc+dc+dc+dc+"
+	PLAY "o2d4p8o1a4p8d2o0"
 
 '----- walk-out: dispatch to walking animation
 walkout:
@@ -2166,22 +2167,25 @@ SUB Intro
 	SCREEN 0
 	SYSTEM
 
-	'----- title music
+	'----- title music: "Dark Visions Theme" (original composition, D minor;
+	'----- replaced Gounod's Funeral March of a Marionette / Hitchcock theme).
+	'----- Trailing o0 restores the octave state the old block left, since later
+	'----- jingles use relative <>'s from wherever the title music ended.
 	18200 KEY 16, CHR$(0) + CHR$(1)
 	KEY(16) ON
-	PLAY "<d4d8d8c+8<b8>c+4d8e4<<a8d4"
+	PLAY "t120o2d4f8a8g+2g4f8e8c+4d4"
 	IF INKEY$ = "s" THEN GOTO 18640
-	PLAY ">>d8d8c+8<b8>c+4d8e4<<a8d4"
+	PLAY "o2d4f8a8b-2a4g8f8e4c+4"
 	IF INKEY$ = "s" THEN GOTO 18640
-	PLAY "f8a4g8f4a8>c4<b-8a4>c8e4d8c+8<b8a8g8f8e8"
+	PLAY "o3d4f8a8g+2g4f8e8c+4d4"
 	IF INKEY$ = "s" THEN GOTO 18640
-	PLAY "d4d8d8c+8<b8>c+4d8e4<<a8d4"
+	PLAY "o3d4f8a8b-2a4g8f8e8d8c+4"
 	IF INKEY$ = "s" THEN GOTO 18640
-	PLAY ">>d8d8c+8<b8>c+4d8e4<<a8d4"
+	PLAY "o3b-2a4g4f2e4d4"
 	IF INKEY$ = "s" THEN GOTO 18640
-	PLAY "f8a4g8f4a8>c4<b-8a4>c8e4d8c+8<b8a8g8f8e8"
+	PLAY "o3c+4e4g4b-4a2g+2"
 	IF INKEY$ = "s" THEN GOTO 18640
-	PLAY "<d8c+8d8e4f8c+4d4"
+	PLAY "o2d4f8e8e-8d8c+8d8o1a2o2d1o0"
 	RETURN
 
 	'----- animate Joe walking + dialogue

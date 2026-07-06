@@ -109,6 +109,16 @@
 218,142,12
 230,158,19
 234,162,19
+226,118,20
+226,122,20
+226,126,20
+226,130,20
+226,134,20
+226,138,20
+226,142,20
+226,146,20
+226,150,20
+226,114,20
 0,0,0
 "","The flowers are almost dead.","l",0,0,0,"f8"
 "","It is a picture of a table full of      vials.","l",0,0,0,"f4"
@@ -129,7 +139,7 @@
 "","You open the window.","a",0,40,40,"f7"
 "end","You tie the rope then rappel down the side of the house.","u",14,0,0,"f7"
 "","This drawer is now empty.","l",12,0,0,"f3"
-"","","",0,0,0,""
+"","This wire looks out of place","l",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""

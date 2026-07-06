@@ -129,8 +129,8 @@
   .tabs button.active{color:var(--txt);border-bottom-color:var(--accent)}
   #hitctrls{display:flex;gap:10px;align-items:center}
   #hitctrls[hidden]{display:none}
-  #tab-inv{flex:1;min-height:0;display:flex;flex-direction:column}
-  #tab-inv[hidden]{display:none}
+  #tab-inv,#tab-flags{flex:1;min-height:0;display:flex;flex-direction:column}
+  #tab-inv[hidden],#tab-flags[hidden]{display:none}
   .invbar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
   .placecard{border:1px solid var(--line);border-radius:6px;padding:7px 8px;margin:0 0 7px;background:rgba(255,255,255,.025)}
   .placecard.sel{outline:2px solid #ffcc00;outline-offset:-1px}
@@ -144,7 +144,7 @@
   .pc-field .pc-flag{width:58px;flex-shrink:0}
   .pc-sum{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.3;font-style:italic;border-top:1px dashed var(--line);padding-top:4px}
   .invbar code{color:var(--txt)}
-  #objWrap{flex:1;overflow:auto}
+  #objWrap,#flagWrap{flex:1;overflow:auto}
   table.objtbl{border-collapse:collapse;width:100%;table-layout:fixed;font-size:12px}
   table.objtbl th{position:sticky;top:0;background:var(--panel);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);color:var(--muted);font-weight:500;white-space:nowrap;z-index:1}
   table.objtbl td{padding:2px 6px;border-bottom:1px solid var(--line);vertical-align:middle;overflow:hidden}
@@ -168,7 +168,7 @@
   .bgthumb .tlabel{font-size:11px;padding:4px 6px;color:var(--txt);background:var(--panel);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .bgcard{width:auto;max-width:96vw}
   .bgview{display:flex;justify-content:center;padding:10px;background:#000}
-  .bgview canvas{image-rendering:pixelated;width:min(880px,calc(92vw - 120px),90vh);height:auto;display:block}
+  .bgview canvas{image-rendering:pixelated;display:block}   /* sized by fitModalCanvas() to the image's own ratio */
   #bgModal{gap:16px}
   .navarrow{flex:0 0 auto;align-self:center;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.28);font-size:30px;line-height:1;width:46px;height:72px;border-radius:9px;cursor:pointer;opacity:.75;transition:opacity .1s,background .1s}
   .navarrow:hover{opacity:1;background:rgba(255,255,255,.22)}
@@ -218,13 +218,14 @@
 <body>
 <div id="app">
   <header>
-    <h1>Dark Visions · Room Tools <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:0">v40</span></h1>
+    <h1>Dark Visions · Room Tools <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:0">v41</span></h1>
     <span class="spacer"></span>
     <span id="mode" class="badge">…</span>
   </header>
   <nav class="tabs">
     <button data-tab="hits" class="active">Hit Areas</button>
     <button data-tab="inv">Inventory</button>
+    <button data-tab="flags">Flags</button>
     <button data-tab="bg">Backgrounds</button>
     <button data-tab="spr">Sprites</button>
     <button data-tab="anim">Animations</button>
@@ -346,6 +347,24 @@
       </table>
     </div>
   </section>
+  <section id="tab-flags" hidden>
+    <div class="invbar">
+      <span>Game flags — the <code>ob()</code> state numbers · names &amp; notes saved to <code>FLAGS.PAC</code> (editor notes only, the game never reads it)</span>
+      <span id="flagCount" class="badge"></span>
+      <span class="spacer"></span>
+      <span id="flagsDirty" class="badge"></span>
+      <button id="flagAdd" title="Claim the lowest unused flag number and write a note for it">+ Add flag</button>
+      <button id="flagsRescan" title="Re-scan every room's .pac for where each flag is set / needed">↻ Rescan</button>
+      <button id="flagsSave" class="primary">Save notes</button>
+    </div>
+    <div id="flagWrap">
+      <table class="objtbl invtbl">
+        <colgroup><col style="width:48px"><col style="width:190px"><col style="width:360px"><col><col></colgroup>
+        <thead><tr><th>id</th><th>name</th><th>note — what it is / how it's triggered</th><th>turned ON by</th><th>needed by</th></tr></thead>
+        <tbody id="flagsTbody"></tbody>
+      </table>
+    </div>
+  </section>
   <section id="tab-bg" hidden>
     <div class="invbar">
       <span>Room &amp; screen backgrounds — every <code>.PIC</code>. Rooms use their <code>.PAC</code> palette; cutscene/intro screens have no stored palette (the game sets it in code), so colours are approximate — click one to enlarge and adjust the 4 colours.</span>
@@ -443,7 +462,7 @@
   <div id="bgModal" class="modal" hidden>
     <button id="bgPrev" class="navarrow" type="button" hidden title="Previous (←)">‹</button>
     <div class="modalCard bgcard">
-      <div class="modalHead"><span id="bgTitle">background</span><span class="mhbtns"><button id="mskToggle" type="button" hidden title="Toggle sprite / mask view">View mask</button><span id="mskPend" class="pendbadge" hidden>● unsaved mask</span><button id="mskSave" type="button" hidden>💾 Save mask</button><button id="mskImport" type="button" hidden>⬆ Import mask</button><button id="mskExport" type="button" hidden>⬇ Export mask</button><button id="mskDelete" type="button" hidden title="Delete this .MSK file from disk">🗑 Delete mask</button><span id="sprPend" class="pendbadge" hidden>● unsaved sprite</span><button id="sprSave" type="button" hidden>💾 Save sprite</button><button id="sprImport" type="button" hidden>⬆ Import sprite</button><button id="sprExport" type="button" hidden>⬇ Export sprite</button><span id="bgPend" class="pendbadge" hidden>● unsaved import</span><button id="bgSaveImport" type="button" hidden>💾 Save</button><button id="bgImport" type="button" hidden>⬆ Import PNG</button><button id="bgExport" type="button" hidden>⬇ Export PNG</button><button id="bgModalClose" type="button" title="Close (Esc)">✕</button></span></div>
+      <div class="modalHead"><span id="bgTitle">background</span><span class="mhbtns"><button id="mskToggle" type="button" hidden title="Toggle sprite / mask view">View mask</button><span id="mskPend" class="pendbadge" hidden>● unsaved mask</span><button id="mskSave" type="button" hidden>💾 Save mask</button><button id="mskImport" type="button" hidden>⬆ Import mask</button><button id="mskExport" type="button" hidden>⬇ Export mask</button><button id="mskDelete" type="button" hidden title="Delete this .MSK file from disk">🗑 Delete mask</button><span id="sprPend" class="pendbadge" hidden>● unsaved sprite</span><button id="sprSave" type="button" hidden>💾 Save sprite</button><button id="sprImport" type="button" hidden>⬆ Import sprite</button><button id="sprExport" type="button" hidden>⬇ Export sprite</button><button id="sprDelete" type="button" hidden title="Delete this sprite's .PCT and .MSK from disk">🗑 Delete sprite</button><span id="bgPend" class="pendbadge" hidden>● unsaved import</span><button id="bgSaveImport" type="button" hidden>💾 Save</button><button id="bgImport" type="button" hidden>⬆ Import PNG</button><button id="bgExport" type="button" hidden>⬇ Export PNG</button><button id="bgModalClose" type="button" title="Close (Esc)">✕</button></span></div>
       <div class="bgview"><canvas id="bgCanvas" width="320" height="200"></canvas></div>
       <div id="bgPalUI" class="bgpal"></div>
       <input type="file" id="bgImportFile" accept="image/png" hidden>
@@ -1135,7 +1154,10 @@ async function scanFlags(){
   };
   for(const rm of rooms){
     if(rm===room && S){ scan(S,rm); continue; }
-    try{ const t=await (await fetch('api/pac?name='+encodeURIComponent(rm),{cache:'no-store'})).text(); scan(parsePac(t),rm); }catch(_){}
+    let t=null;
+    if(mode==='server'){ try{ t=await (await fetch('api/pac?name='+encodeURIComponent(rm),{cache:'no-store'})).text(); }catch(_){} }
+    else if(fileBlobs[rm]) t=fileBlobs[rm].pac;
+    if(t!=null){ try{ scan(parsePac(t),rm); }catch(_){} }
   }
   return info;
 }
@@ -1145,20 +1167,24 @@ async function openFlagPicker(forLabel,onPick){
   const body=document.getElementById('flagBody'); body.innerHTML='<div class="hint" style="padding:8px">Scanning rooms…</div>';
   flagModal.hidden=false;
   const info=await scanFlags();
-  const used=Object.keys(info).map(Number).sort((a,b)=>a-b);
+  const usedSet=new Set(Object.keys(info).map(Number));
+  flags.forEach(f=>{ if(fsan(f.name)||fsan(f.note)) usedSet.add(f.num); });   // noted in FLAGS.PAC = claimed
+  const used=[...usedSet].sort((a,b)=>a-b);
   let html='';
   if(used.length){
     html+='<div class="flagsec">Used flags — click to reuse</div>';
-    used.forEach(n=>{ const f=info[n]; const parts=[];
+    used.forEach(n=>{ const f=info[n]||{on:[],off:[],set:[],show:[]}; const fg=flagByNum[n], it=invByNum[n]; const parts=[];
+      const nm=(fg&&fg.name)||(it&&it.short?'item: '+it.short:'');
+      if(fg&&fg.note) parts.push('<i>'+fesc(fg.note)+'</i>');
       if(f.set.length) parts.push('<b>Set by:</b> '+fesc(f.set.join('; ')));
       else if(f.on.length||f.show.length) parts.push('<i>Set by game code (not in the scene data)</i>');
       if(f.show.length) parts.push('<b>Shows animation when ON:</b> '+fesc(f.show.join('; ')));
       if(f.on.length) parts.push('<b>Action needs it ON:</b> '+fesc(f.on.join('; ')));
       if(f.off.length) parts.push('<b>Action needs it OFF:</b> '+fesc(f.off.join('; ')));
-      html+='<button class="flagrow" data-n="'+n+'"><span class="flagnum">'+n+'</span><span class="flagdet">'+parts.join('<br>')+'</span></button>';
+      html+='<button class="flagrow" data-n="'+n+'"><span class="flagnum">'+n+'</span><span class="flagdet">'+(nm?'<b>'+fesc(nm)+'</b><br>':'')+parts.join('<br>')+'</span></button>';
     });
   } else html+='<div class="hint">No flags used yet anywhere.</div>';
-  const free=[]; for(let n=1;n<=99;n++) if(!info[n]) free.push(n);
+  const free=[]; for(let n=1;n<=99;n++) if(!usedSet.has(n) && !invByNum[n]) free.push(n);   // item numbers are never claimable
   html+='<div class="flagsec">Free flags — not used anywhere (safe to claim)</div><div class="flagfree">'+free.map(n=>'<button class="flagchip" data-n="'+n+'">'+n+'</button>').join('')+'</div>';
   body.innerHTML=html;
   body.querySelectorAll('[data-n]').forEach(b=>{ b.onclick=()=>{ const n=parseInt(b.dataset.n,10); const cb=flagPickCb; closeFlag(); if(cb) cb(n); }; });
@@ -1183,7 +1209,7 @@ document.getElementById('picker').addEventListener('change',async e=>{
   list.sort();
   if(!list.length){ alert('No matching .PIC + .PAC pairs found in that folder.'); return; }
   document.getElementById('drop').hidden=true; cv.style.display='';
-  setRooms(list); loadRoom(list[0]); loadInv();
+  setRooms(list); loadRoom(list[0]); loadInv(); loadFlags();
 });
 
 // ---- tabs + object table ----
@@ -1210,9 +1236,10 @@ async function loadInv(){
 }
 function buildInvDatalist(){
   const dl=document.getElementById('invlist'); if(!dl) return;
-  dl.innerHTML=inv.filter(it=>it.num>0).sort((a,b)=>a.num-b.num).map(it=>`<option value="${it.num} — ${ea(it.short)}">`).join('');
+  dl.innerHTML=inv.filter(it=>it.num>0).sort((a,b)=>a.num-b.num).map(it=>`<option value="${it.num} — ${ea(it.short)}">`).join('')
+    +flags.filter(f=>f.name&&!invByNum[f.num]).sort((a,b)=>a.num-b.num).map(f=>`<option value="${f.num} — ${ea(f.name)} (flag)">`).join('');
 }
-function fmtRef(n){ n=n|0; if(!n) return ''; const it=invByNum[n]; return it&&it.short ? n+' — '+it.short : n+' — flag'; }
+function fmtRef(n){ n=n|0; if(!n) return ''; const it=invByNum[n]; if(it&&it.short) return n+' — '+it.short; const fg=flagByNum[n]; return fg&&fg.name ? n+' — '+fg.name : n+' — flag'; }
 // ---- item cross-reference: scan every room for where each item is picked up (st=item#) and used (verb u, bs=item#) ----
 let itemXref=null, xrefBuilding=false;
 const roomObjCache={};
@@ -1276,6 +1303,85 @@ async function saveInv(){
   else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'})); a.download='OBJECT.PAC'; a.click(); setInvDirty(false); }
 }
 document.getElementById('invSave').onclick=saveInv;
+// ---- flags registry (FLAGS.PAC): an editable name + note per ob() flag, merged with a live scan
+//      of every room's .pac (set-by / needed-by). FLAGS.PAC is editor documentation only — the
+//      game never reads it. Inventory item numbers share the ob() space (ON = carried), so item
+//      ids show up here too, labelled with their OBJECT.PAC name.
+let flags=[], flagByNum={}, flagsDirty=false, flagScan=null, flagScanBusy=false;
+function parseFlags(text){
+  const k=tokenize(text), out=[];
+  for(let i=0;i+2<k.length;i+=3){ const num=parseInt(k[i],10); if(isNaN(num)||num<1) continue; out.push({num, name:k[i+1]||'', note:k[i+2]||''}); }
+  return out;
+}
+function reindexFlags(){ flagByNum={}; for(const f of flags) flagByNum[f.num]=f; }
+async function loadFlags(){
+  let txt=null;
+  if(mode==='server'){ try{ const r=await fetch('api/pac?name=FLAGS',{cache:'no-store'}); if(r.ok) txt=await r.text(); }catch(_){}}
+  else if(fileBlobs['FLAGS']) txt=fileBlobs['FLAGS'].pac;
+  flags=txt?parseFlags(txt):[]; reindexFlags(); buildInvDatalist();
+  if(activeTab==='flags') buildFlagTable();
+}
+function fsan(s){ return String(s||'').replace(/["\r\n]/g,'').trim(); }
+function genFlags(){ return flags.filter(f=>fsan(f.name)||fsan(f.note)).sort((a,b)=>a.num-b.num).map(f=>f.num+',"'+fsan(f.name)+'","'+fsan(f.note)+'"').join('\r\n')+'\r\n'; }
+function setFlagsDirty(v){ flagsDirty=v; const d=document.getElementById('flagsDirty'); d.textContent=v?'● unsaved':''; d.className=v?'badge warn':'badge'; }
+async function saveFlags(){
+  const txt=genFlags();
+  if(mode==='server'){ await fetch('api/pac?name=FLAGS',{method:'POST',headers:{'Content-Type':'text/plain'},body:txt}); setFlagsDirty(false); flash('Saved FLAGS.PAC to disk'); }
+  else { dlBlob('FLAGS.PAC',txt,'text/plain'); fileBlobs['FLAGS']=fileBlobs['FLAGS']||{}; fileBlobs['FLAGS'].pac=txt; setFlagsDirty(false); }
+  buildInvDatalist();
+}
+function flagEntry(n){ let f=flagByNum[n]; if(!f){ f={num:n,name:'',note:''}; flags.push(f); flagByNum[n]=f; } return f; }
+function fxcell(list){ if(!list.length) return '<span class="xr-none">—</span>'; return list.map(e=>'<div class="xr">'+(e.i?'<i>'+ea(e.t)+'</i>':ea(e.t))+'</div>').join(''); }
+function buildFlagTable(){
+  const tb=document.getElementById('flagsTbody'); if(!tb) return;
+  const ids=new Set(flags.map(f=>f.num));
+  if(flagScan) Object.keys(flagScan).forEach(n=>ids.add(+n));
+  const order=[...ids].sort((a,b)=>a-b);
+  tb.innerHTML='';
+  order.forEach(n=>{
+    const f=flagByNum[n], sc=flagScan&&flagScan[n], it=invByNum[n];
+    const set=[], need=[];
+    if(sc){
+      sc.set.forEach(s=>set.push({t:s}));
+      if(!sc.set.length&&(sc.on.length||sc.off.length||sc.show.length)) set.push({t:'game code (not in the scene data)',i:1});
+      sc.on.forEach(s=>need.push({t:'needs ON: '+s}));
+      sc.off.forEach(s=>need.push({t:'needs OFF: '+s}));
+      sc.show.forEach(s=>need.push({t:'shows anim: '+s}));
+    }
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td class="otpts" style="font-weight:700">'+n+'</td>'
+      +'<td><input data-n="'+n+'" data-f="name" value="'+ea(f?f.name:'')+'" placeholder="'+(it?'item: '+ea(it.short):'unnamed')+'">'
+        +(it?'<div class="hint" style="margin:2px 2px 0;font-size:10px">inventory item &ldquo;'+ea(it.short)+'&rdquo; — ON = carried</div>':'')+'</td>'
+      +'<td><input data-n="'+n+'" data-f="note" value="'+ea(f?f.note:'')+'" placeholder="what it is / how it’s triggered"></td>'
+      +'<td>'+(flagScan?fxcell(set):'<span class="xr-none">scanning…</span>')+'</td>'
+      +'<td>'+(flagScan?fxcell(need):'<span class="xr-none">scanning…</span>')+'</td>';
+    tb.appendChild(tr);
+  });
+  document.getElementById('flagCount').textContent=order.length+' flags';
+  tb.querySelectorAll('input').forEach(el=>{
+    el.addEventListener('input',()=>{ const f=flagEntry(+el.dataset.n); f[el.dataset.f]=el.value; setFlagsDirty(true); });
+    el.addEventListener('change',()=>{ buildInvDatalist(); if(S) fillForm(); });
+  });
+}
+async function showFlags(){
+  buildFlagTable();
+  if(!flagScan && !flagScanBusy){
+    flagScanBusy=true;
+    try{ flagScan=await scanFlags(); } finally{ flagScanBusy=false; }
+    if(activeTab==='flags') buildFlagTable();
+  }
+}
+document.getElementById('flagsSave').onclick=saveFlags;
+document.getElementById('flagsRescan').onclick=()=>{ flagScan=null; showFlags(); };
+document.getElementById('flagAdd').onclick=()=>{
+  const taken=new Set(flags.map(f=>f.num));
+  if(flagScan) Object.keys(flagScan).forEach(n=>taken.add(+n));
+  inv.forEach(it=>{ if(it.num>0) taken.add(it.num); });
+  let n=1; while(taken.has(n)&&n<100) n++;
+  flagEntry(n); buildFlagTable();
+  const el=document.querySelector('#flagsTbody input[data-n="'+n+'"][data-f="name"]');
+  if(el){ el.scrollIntoView({block:'center'}); el.focus(); }
+};
 // ---- backgrounds gallery: view every .PIC (rooms + cutscene/intro screens) ----
 // cutscene .PICs have no .pac; the game sets these palettes in code (some animate). Best-guess defaults; adjustable in the viewer.
 const CUTSCENE_PAL={ title:[0,11,9,1], book:[0,7,2,15], map1:[0,6,4,8], burn:[0,14,12,4], end:[0,8,4,14], end1:[0,8,4,14], end2:[0,8,2,6], carr:[0,2,11,6], hill:[0,2,11,3], enter:[0,8,1,6], talk:[0,12,6,8], invtil1:[0,6,7,8], invtil2:[0,6,7,8] };
@@ -1323,19 +1429,32 @@ async function buildBgGallery(){
   section('Cutscene / intro screens', scr);
 }
 let bgPic=null, bgPal=null;
+// fit the modal canvas to the viewport, preserving the IMAGE's own ratio:
+// integer upscale for crisp pixels (capped 20x), fractional downscale when it wouldn't fit
+function fitModalCanvas(){
+  const cv=document.getElementById('bgCanvas'); if(!cv||!cv.width||!cv.height) return;
+  const availW=Math.max(200, window.innerWidth*0.92-60);
+  const availH=Math.max(160, window.innerHeight-230);   // room for the modal head + palette row
+  const s=Math.min(availW/cv.width, availH/cv.height);
+  const scale=(s>=1)? Math.min(Math.floor(s),20) : s;
+  cv.style.width=Math.round(cv.width*scale)+'px';
+  cv.style.height=Math.round(cv.height*scale)+'px';
+}
+window.addEventListener('resize',()=>{ const m=document.getElementById('bgModal'); if(m&&!m.hidden) fitModalCanvas(); });
 function bgRender(){
   if(!bgPic) return;
   const c=document.getElementById('bgCanvas'); c.width=320; c.height=200;
   const g=c.getContext('2d'), img=g.createImageData(320,200), d=img.data;
   for(let y=0;y<200;y++) for(let x=0;x<320;x++){ const e=EGA[bgPal[cgapix(bgPic,x,y)]]||[0,0,0], p=(y*320+x)*4; d[p]=e[0];d[p+1]=e[1];d[p+2]=e[2];d[p+3]=255; }
   g.putImageData(img,0,0);
+  fitModalCanvas();
 }
 async function openBgView(name){
   const pb=await getPicBytes(name); if(!pb) return;
   bgPic=pb; bgPal=bgPalette(name);
   document.querySelector('.bgview').classList.remove('spr');
   bgName=name; clearBgPending(); document.getElementById('bgExport').hidden=false; document.getElementById('bgImport').hidden=false;
-  ['mskToggle','mskExport','mskImport','mskSave','mskPend','mskDelete','sprPend','sprSave','sprImport','sprExport'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=true; }); clearMskPending(); clearSprPending(); mskCur=null; sprMode='sprite'; mskPeek=false; mskPaintBtn=null;
+  ['mskToggle','mskExport','mskImport','mskSave','mskPend','mskDelete','sprPend','sprSave','sprImport','sprExport','sprDelete'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=true; }); clearMskPending(); clearSprPending(); mskCur=null; sprMode='sprite'; mskPeek=false; mskPaintBtn=null;
   document.getElementById('bgPrev').hidden=false; document.getElementById('bgNext').hidden=false;
   document.getElementById('bgTitle').textContent=name+(rooms.includes(name)?'  ·  .PAC palette':'  ·  screen — palette approximate, adjust below');
   const ui=document.getElementById('bgPalUI'); ui.innerHTML='';
@@ -1475,22 +1594,58 @@ function sprCacheBust(name){
   if(N==='JOED' && typeof standFrames!=='undefined') standFrames=null;
 }
 async function importNewSprite(file){
-  const raw=prompt('Name for the NEW sprite — a DOS name, up to 8 letters/digits (no extension):',''); if(raw==null) return;
-  const name=dosName(raw); if(!name){ alert('Use A–Z and 0–9 only, max 8 characters.'); return; }
-  if((allPcts||[]).some(n=>n.toUpperCase()===name) && !confirm(name+'.PCT already exists — overwrite it?')) return;
+  const raw=prompt('Name for the NEW sprite — a DOS name, up to 8 letters/digits (no extension):', dosName((file.name||'').replace(/\.[^.]*$/,''))); if(raw==null) return;
+  let name=dosName(raw); if(!name){ alert('Use A–Z and 0–9 only, max 8 characters.'); return; }
+  allPcts=await getAllPcts();   // fresh list — the conflict check must not miss sprites added elsewhere
+  const taken=n2=>(allPcts||[]).some(x=>x.toUpperCase()===n2);
+  if(taken(name)){
+    let cand='';
+    for(let n=2;n<100;n++){ const c=name.slice(0,8-String(n).length)+n; if(!taken(c)){ cand=c; break; } }
+    const pick=prompt(name+'.PCT already exists.\nImport under the suggested free name — or type '+name+' again to OVERWRITE it.', cand||name);
+    if(pick==null) return;
+    const p2=dosName(pick); if(!p2){ alert('Use A–Z and 0–9 only, max 8 characters.'); return; }
+    if(p2===name){ if(!confirm('Overwrite '+name+'.PCT (and its .MSK)?')) return; }
+    else if(taken(p2)){ alert(p2+'.PCT also exists — run the import again and pick another name.'); return; }
+    name=p2;
+  }
   const img=await loadImgFile(file); if(!img){ alert('Could not read that PNG.'); return; }
-  if(img.height!==31||img.width<31||img.width%31!==0){ alert('A sprite (sheet) must be 31 px tall and a multiple of 31 px wide — each 31×31 block is one frame.\nThis PNG is '+img.width+'×'+img.height+'.\n(Fully-transparent pixels become see-through.)'); return; }
-  const N=img.width/31, W=img.width;
-  const cv=document.createElement('canvas'); cv.width=W; cv.height=31; const g=cv.getContext('2d'); g.drawImage(img,0,0);
-  const d=g.getImageData(0,0,W,31).data;
-  const m=bestPalette(d,W,31,await paletteEntries(),true);
-  if(m.avgErr>PAL_WARN && !confirm('Closest existing palette is the '+palDesc(m.entry)+', but the sprite colours are ~'+Math.round(Math.sqrt(m.avgErr))+'/255 off — it may look wrong in-game. Import anyway?')) return;
-  const vis=m.entry.pal.slice(1).map(n=>EGA[n]||[0,0,0]);
+  const nRaw=prompt('How many frames are in this sheet? (frames sit side-by-side, all the same width)','1'); if(nRaw==null) return;
+  const N=Math.max(1,parseInt(nRaw,10)||1);
+  if(img.width%N!==0){ alert('The sheet is '+img.width+' px wide — that does not divide into '+N+' equal frames.'); return; }
+  const FW=img.width/N, FH=img.height, TW=img.width;
+  // engine limit: a frame is 2 header ints + ceil(w*2/8)*h bytes packed 2/int; the anim
+  // buffers hold 150 ints/frame and the source cache 1600 ints/file
+  const fInts=2+Math.ceil(Math.ceil(FW*2/8)*FH/2);
+  if(FW<1||FH<1||fInts>150){ alert('Frame size '+FW+'×'+FH+' is too big for the game\'s anim buffers.\nKeep ceil(width/4) × height ≤ 296 — e.g. 31×31, 24×48, 62×18, 16×74.'); return; }
+  if(N*fInts>1600){ alert(N+' frames of '+FW+'×'+FH+' ('+(N*fInts)+' ints) exceed the 1600-int anim source cache — use fewer/smaller frames.'); return; }
+  if((FW>31||FH>31) && !confirm(FW+'×'+FH+' frames are fine for hold/static scene animations, but ONCE and LOOP modes (and the player) only save-under 31×31 — bigger frames can leave pixels behind in those modes. Continue?')) return;
+  const cv=document.createElement('canvas'); cv.width=TW; cv.height=FH; const g=cv.getContext('2d'); g.drawImage(img,0,0);
+  const d=g.getImageData(0,0,TW,FH).data;
+  // colours are matched BY RGB VALUE and stored as the TARGET palette's attribute numbers —
+  // naming the room pins the mapping to that room (an auto-match can tie with another palette
+  // whose attribute ORDER differs, which would recolour the sprite in-game)
+  const rmRaw=prompt('Match colours to which ROOM’s palette? (e.g. ROOM4 — blank = auto-pick the closest)',''); if(rmRaw==null) return;
+  let m=null;
+  if(rmRaw.trim()!==''){
+    const rn=rmRaw.trim().toUpperCase();
+    await loadSpritePalettes();
+    const entry=spritePals.find(e2=>(e2.rooms||[]).some(x=>x.toUpperCase()===rn));
+    if(!entry){ alert('No room called '+rn+' (or it has no palette). Rooms: '+rooms.slice(0,12).join(', ')+'…'); return; }
+    m={entry:entry, avgErr:paletteError(d,TW,FH,entry.pal,true)};
+  } else {
+    let ents=await paletteEntries();
+    ents=ents.filter(e2=>!(e2.rooms||[]).includes('inventory')).concat(ents.filter(e2=>(e2.rooms||[]).includes('inventory')));
+    m=bestPalette(d,TW,FH,ents,true);
+  }
+  if(m.avgErr>PAL_WARN && !confirm('Closest match is the '+palDesc(m.entry)+', but the sprite colours are ~'+Math.round(Math.sqrt(m.avgErr))+'/255 off — it may look wrong in-game. Import anyway?')) return;
+  // opaque pixels match over ALL FOUR palette colours (incl. attr 0 = black/background) —
+  // the mask comes from the PNG's ALPHA, so opaque black stays solid black in-game
+  const all4=m.entry.pal.map(n=>EGA[n]||[0,0,0]);
   const frames=[], maskFrames=[];
   for(let f=0;f<N;f++){
-    const px=new Uint8Array(31*31), mp=new Uint8Array(31*31);
-    for(let y=0;y<31;y++) for(let x=0;x<31;x++){ const p=(y*W+f*31+x)*4, i=y*31+x; const v=(d[p+3]<128)?0:1+nearestIndex(d[p],d[p+1],d[p+2],vis); px[i]=v; mp[i]=(v===0)?3:0; }
-    frames.push(packSpriteInts(px,31,31)); maskFrames.push(packSpriteInts(mp,31,31));
+    const px=new Uint8Array(FW*FH), mp=new Uint8Array(FW*FH);
+    for(let y=0;y<FH;y++) for(let x=0;x<FW;x++){ const p=(y*TW+f*FW+x)*4, i=y*FW+x; if(d[p+3]<128){ px[i]=0; mp[i]=3; } else { px[i]=nearestIndex(d[p],d[p+1],d[p+2],all4); mp[i]=0; } }
+    frames.push(packSpriteInts(px,FW,FH)); maskFrames.push(packSpriteInts(mp,FW,FH));
   }
   const pct=interleaveMskText(frames), msk=interleaveMskText(maskFrames);
   if(mode==='server'){
@@ -1587,12 +1742,15 @@ function parsePct(text,k){
   for(let s=0;s<k;s++){ const ints=[]; for(let i=s;i<all.length;i+=k) ints.push(all[i]); out.push(decodeSprite(ints)); }
   return out;
 }
-function paintSprite(canvas,spr,pal,scale){
+function paintSprite(canvas,spr,pal,scale,msk){
+  // msk optional: when given, IT decides solidity (mask 0 = solid, so attr-0 black draws);
+  // without it, colour 0 = transparent (the classic PSET view)
   canvas.width=spr.w*scale; canvas.height=spr.h*scale;
   const g=canvas.getContext('2d'); g.imageSmoothingEnabled=false;
   const tmp=document.createElement('canvas'); tmp.width=spr.w; tmp.height=spr.h;
   const tg=tmp.getContext('2d'), img=tg.createImageData(spr.w,spr.h), d=img.data;
-  for(let i=0;i<spr.px.length;i++){ const v=spr.px[i], p=i*4; if(!v){ d[p+3]=0; } else { const e=EGA[pal[v]]||[255,0,255]; d[p]=e[0];d[p+1]=e[1];d[p+2]=e[2];d[p+3]=255; } }
+  const useM=msk&&msk.px&&msk.w===spr.w&&msk.h===spr.h;
+  for(let i=0;i<spr.px.length;i++){ const v=spr.px[i], p=i*4, solid=useM? (msk.px[i]===0) : (v!==0); if(!solid){ d[p+3]=0; } else { const e=EGA[pal[v]]||[255,0,255]; d[p]=e[0];d[p+1]=e[1];d[p+2]=e[2];d[p+3]=255; } }
   tg.putImageData(img,0,0); g.clearRect(0,0,canvas.width,canvas.height); g.drawImage(tmp,0,0,canvas.width,canvas.height);
 }
 async function buildSprites(){
@@ -1605,12 +1763,14 @@ async function buildSprites(){
   for(const name of allPcts){
     const txt=await getPctText(name); if(txt==null) continue;
     const lay=pctLayout(name,txt);
+    const mtxt=await getMskText(name);
+    const mks=mtxt? deinterleaveInts(mtxt,lay.k).map(decodeSprite) : null;
     parsePct(txt,lay.k).forEach((spr,idx)=>{
       if(!spr) return;
       const lbl=name+(lay.k>1?' · '+(lay.names[idx]||('#'+(idx+1))):'');
       const t=document.createElement('div'); t.className='sprthumb'; t.title='Click to enlarge';
       const c=document.createElement('canvas');
-      paintSprite(c,spr,sprDefaultPal,Math.max(2,Math.floor(92/Math.max(spr.w,spr.h))));
+      paintSprite(c,spr,sprDefaultPal,Math.max(2,Math.floor(92/Math.max(spr.w,spr.h))), mks&&mks[idx]);
       const la=document.createElement('div'); la.className='tlabel'; la.textContent=lbl+'  ('+spr.w+'×'+spr.h+')';
       sprNavOrder.push({spr:spr,label:lbl,name:name,idx:idx,k:lay.k});
       t.appendChild(c); t.appendChild(la); t.onclick=()=>openSprView(spr,lbl,name,idx,lay.k); grid.appendChild(t);
@@ -1623,7 +1783,8 @@ let mskFrames=null, mskCur=null, sprMode='sprite', mskPending=null, mskPeek=fals
 function sprRender(){
   const c=document.getElementById('bgCanvas');
   if(sprMode==='mask'&&!mskPeek&&mskCur) paintMask(c,mskCur,1);
-  else if(sprCur) paintSprite(c,sprCur,sprPal,1);
+  else if(sprCur) paintSprite(c,sprCur,sprPal,1,mskCur);   // mask-aware: solid black draws, like the game
+  fitModalCanvas();
 }
 function openSprView(spr,label,name,idx,k,preferMask){
   if(mskPending && !confirm('Discard unsaved mask edits to '+sprName+'.MSK?')) return;
@@ -1632,7 +1793,7 @@ function openSprView(spr,label,name,idx,k,preferMask){
   mskFrames=null; mskCur=null; sprMode='sprite'; clearMskPending();
   document.querySelector('.bgview').classList.add('spr');
   document.getElementById('bgExport').hidden=true; document.getElementById('bgImport').hidden=true; clearBgPending();
-  document.getElementById('sprExport').hidden=false; document.getElementById('sprImport').hidden=false; clearSprPending();
+  document.getElementById('sprExport').hidden=false; document.getElementById('sprImport').hidden=false; document.getElementById('sprDelete').hidden=false; clearSprPending();
   document.getElementById('bgPrev').hidden=false; document.getElementById('bgNext').hidden=false;
   { const tog=document.getElementById('mskToggle'); tog.hidden=false; tog.disabled=true; tog.textContent='View mask'; }
   document.getElementById('mskExport').hidden=true; document.getElementById('mskImport').hidden=true; document.getElementById('mskDelete').hidden=true;
@@ -1828,6 +1989,26 @@ document.getElementById('sprExport').onclick=exportSprPNG;
 document.getElementById('sprImport').onclick=()=>document.getElementById('sprImportFile').click();
 document.getElementById('sprImportFile').onchange=e=>{ const f=e.target.files[0]; if(f) importSprPNG(f); e.target.value=''; };
 document.getElementById('sprSave').onclick=saveSprImport;
+// ---- delete a whole sprite (.PCT + .MSK), with guard rails for engine-loaded art ----
+const ENGINE_SPRITES=['JOED','JOES','JOEW1','JOEW2','JOEW3','JOEW4','JOEW5','JOEW6','JOEW7','JOEW8','WILB','GOLF','DOOR'];
+async function deleteSprite(){
+  if(!sprName) return;
+  try{ if(!anims.length) await loadAnims(); }catch(_){}
+  let warn='Delete '+sprName+'.PCT and '+sprName+'.MSK from disk?';
+  if(ENGINE_SPRITES.includes(sprName.toUpperCase())) warn+='\n\n⚠ THE GAME LOADS THIS SPRITE (player / walk / scene art) — deleting it will CRASH the game with file-not-found!';
+  const used=(anims||[]).filter(a=>(a.source||'').toUpperCase()===sprName.toUpperCase());
+  if(used.length) warn+='\n\nUsed by animation'+(used.length>1?'s':'')+': '+used.map(a=>a.name||('#'+a.id)).join(', ')+' — those will stop drawing.';
+  if(!confirm(warn)) return;
+  if(mode==='server'){
+    await fetch('api/pct?name='+encodeURIComponent(sprName),{method:'DELETE'});
+    await fetch('api/msk?name='+encodeURIComponent(sprName),{method:'DELETE'});
+  } else if(fileBlobs[sprName]){ delete fileBlobs[sprName].pct; delete fileBlobs[sprName].msk; }
+  sprCacheBust(sprName);
+  clearSprPending(); clearMskPending(); mskFrames=null; mskCur=null;
+  document.getElementById('bgModal').hidden=true;
+  buildSprites();
+}
+document.getElementById('sprDelete').onclick=deleteSprite;
 // ---- in-app mask painting (mask mode only: left=solid/black, right=see-through/white) + hold-Space peek of the sprite ----
 (function(){
   const mc=document.getElementById('bgCanvas');
@@ -2066,6 +2247,7 @@ function setTab(t){
   activeTab=t;
   document.getElementById('tab-hits').hidden=(t!=='hits');
   document.getElementById('tab-inv').hidden=(t!=='inv');
+  document.getElementById('tab-flags').hidden=(t!=='flags');
   document.getElementById('tab-bg').hidden=(t!=='bg');
   document.getElementById('tab-spr').hidden=(t!=='spr');
   document.getElementById('tab-anim').hidden=(t!=='anim');
@@ -2074,6 +2256,7 @@ function setTab(t){
   document.getElementById('hitctrls').hidden=(t!=='hits');
   document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
   if(t==='inv') showInv();
+  if(t==='flags') showFlags();
   if(t==='bg') buildBgGallery();
   if(t==='spr') buildSprites();
   if(t==='anim') buildAnims();
@@ -2096,6 +2279,7 @@ setTab('hits');
     cv.style.display='none'; document.getElementById('drop').hidden=false;
   }
   await loadInv();
+  await loadFlags();
 })();
 // ===== Font tab — small 3x6 bitmap font (font.txt, GAME3.BAS drawText) =====
 let fontG={}, fontSel=-1, fontH=7, fontCur='font';

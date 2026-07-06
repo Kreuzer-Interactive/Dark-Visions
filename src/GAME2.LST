@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:13
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME2.BAS: secondary module for the multi-module split (
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0225   0006    SUB Snd3
  0230   0006            SOUND f6, .1: SOUND f3, .5
                                                                       PAGE   2
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:13
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0260   0006            FOR sb = 100 TO 600 STEP 100: SOUND sb, .1: NEXT
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  04FA   0006                    PRINT #1, "lookmiss=1"
  04FA   0006                    PRINT #1, "; killers=0 turns off the roaming ki
                                                                       PAGE   3
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:13
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 llers (for testing; scripted deaths still happen)"
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                  = VAL(v$)
  0A4B   0006                                    IF k$ = "mousesnap" THEN snr = 
                                                                       PAGE   4
-                                                                      03 Jul 26
-                                                                      14:42:49
+                                                                      06 Jul 26
+                                                                      11:32:13
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 VAL(v$)
