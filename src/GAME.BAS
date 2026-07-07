@@ -145,6 +145,14 @@ DIM SHARED acSrc$(6), acN(6) AS INTEGER, acM(6) AS INTEGER
 DIM SHARED nLoop AS INTEGER
 DIM SHARED liAnim(4) AS INTEGER, liX(4) AS INTEGER, liY(4) AS INTEGER, liCur(4) AS INTEGER, liRate(4) AS INTEGER
 DIM SHARED liLast(4) AS SINGLE, liSaveAll(640) AS INTEGER
+'----- random mode: liWait = seconds until the next frame advance; liMin/liMax = the random
+'----- per-frame hold (seconds) -- every frame shows min..max s ("random min max" in ANIMS.PAC)
+DIM SHARED liWait(4) AS SINGLE, liMin(4) AS SINGLE, liMax(4) AS SINGLE
+'----- liW/liH = instance frame size (= its save-under GET size, from animdims)
+DIM SHARED liW(4) AS INTEGER, liH(4) AS INTEGER
+'----- plStat = per-placement "static frame is on screen" -- lets reanim composite a
+'----- flag-gated static sprite the moment its flag trips, exactly once
+DIM SHARED plStat(20) AS INTEGER
 
 '----- shared world and inventory arrays
 DIM SHARED bk(100)
@@ -553,6 +561,10 @@ action:
 	6740 IF st(i) = 47 OR st(i) = 41 THEN CALL Snd4
 	IF st(i) = 19 THEN CALL Snd5
 	IF df$(i) = "" THEN RETURN
+	'----- the flag this action just set may trigger a scene animation: play it BEFORE
+	'----- leaving (unlock -> the door swings open -> THEN the close-up loads);
+	'----- reanim is play-once (plSet-marked) so it won't replay on later visits
+	GOSUB reanim
 	FOR pz = 1 TO 500
 	NEXT
 	CALL Snd2
@@ -915,7 +927,42 @@ animwait:
 	IF TIMER < awt! + awrate * .05 THEN GOTO awd
 	RETURN
 
-'----- animdraw: composite scene-animation placements onto the room (static / hold / once; loop = Phase 1b3)
+'----- animdims: measure SRC$'s frame size in pixels -> adw, adh (from the anim cache
+'----- headers; k frames interleave word0 x k, then height x k). Capped at 31 so a
+'----- save-under always fits its 150-int slot; oversized frames keep the old 31x31.
+animdims:
+	acs = 0
+	FOR aci = 1 TO 6
+		IF acSrc$(aci) = SRC$ THEN acs = aci
+	NEXT
+	IF acs = 0 THEN GOSUB animload
+	adw = 31: adh = 31
+	anf = acN(acs)
+	IF anf < 2 THEN RETURN
+	ank = 0
+	adk1:
+	IF ank >= anf THEN GOTO adk2
+	IF acPct(acs, ank + 1) <> acPct(acs, 1) THEN GOTO adk2
+	ank = ank + 1
+	GOTO adk1
+	adk2:
+	IF ank < 1 THEN ank = 1
+	adw = acPct(acs, 1) \ 2
+	adh = acPct(acs, ank + 1)
+	IF adw < 1 OR adw > 31 THEN adw = 31
+	IF adh < 1 OR adh > 31 THEN adh = 31
+	RETURN
+
+'----- rmpal: set the current room's palette (co,pa1..pa3); idempotent -- loadroom blacks
+'----- the palette out while compositing overlays, this lights the finished room up
+rmpal:
+	COLOR co
+	PALETTE 1, pa1
+	PALETTE 2, pa2
+	PALETTE 3, pa3
+	RETURN
+
+'----- animdraw: composite scene-animation placements onto the room (static / hold / once / loop / random)
 animdraw:
 	nLoop = 0
 	IF nPlace < 1 THEN RETURN
@@ -955,6 +1002,7 @@ animdraw:
 		IF anMode$(aidx) = "static" THEN
 			afn = fsq(nfr) + 1
 			GOSUB animframe
+			plStat(pp) = 1
 		ELSEIF anMode$(aidx) = "hold" OR anMode$(aidx) = "once" THEN
 			adplayed = 0
 			IF plSet(pp) > 0 THEN IF ob(plSet(pp)) = 1 THEN adplayed = 1
@@ -962,6 +1010,9 @@ animdraw:
 				IF anMode$(aidx) = "hold" THEN afn = fsq(nfr) + 1: GOSUB animframe
 			ELSE
 				IF q$ = "room3" THEN GOTO adnext
+				'----- an on-entry full play must be SEEN: light the palette up first
+				'----- (loadroom may still be holding it black for the composite pass)
+				GOSUB rmpal
 				GET (PX, PY)-(PX + 30, PY + 30), wbg
 				FOR adf = 1 TO nfr
 					afn = fsq(adf) + 1
@@ -972,7 +1023,7 @@ animdraw:
 				IF anMode$(aidx) = "once" THEN PUT (PX, PY), wbg, PSET
 				IF plSet(pp) > 0 THEN ob(plSet(pp)) = 1
 			END IF
-		ELSEIF anMode$(aidx) = "loop" THEN
+		ELSEIF anMode$(aidx) = "loop" OR LEFT$(anMode$(aidx), 6) = "random" THEN
 			IF nLoop < 4 THEN
 				nLoop = nLoop + 1
 				liAnim(nLoop) = aidx
@@ -981,7 +1032,27 @@ animdraw:
 				liCur(nLoop) = 1
 				liRate(nLoop) = awrate
 				liLast(nLoop) = TIMER
-				GET (PX, PY)-(PX + 30, PY + 30), liSaveAll((nLoop - 1) * 150)
+				liMin(nLoop) = 0: liMax(nLoop) = 0
+				liWait(nLoop) = awrate * .05
+				IF LEFT$(anMode$(aidx), 6) = "random" THEN
+					'----- "random min max" (seconds): every frame holds a random min..max s
+					'----- (curtain in the breeze); each placement rolls its own waits
+					IF nfseed = 0 THEN RANDOMIZE TIMER: nfseed = 1
+					ars$ = MID$(anMode$(aidx), 8)
+					liMin(nLoop) = VAL(ars$)
+					arp = INSTR(ars$, " ")
+					IF arp > 0 THEN liMax(nLoop) = VAL(MID$(ars$, arp + 1))
+					IF liMax(nLoop) < liMin(nLoop) THEN liMax(nLoop) = liMin(nLoop)
+					liWait(nLoop) = liMin(nLoop) + RND * (liMax(nLoop) - liMin(nLoop))
+				END IF
+				'----- save-under sized to the FRAME, not a blanket 31x31 (which stomped
+				'----- sprites near small anims); the tick's restore PUT reads dims from
+				'----- the GET header, so it needs no change
+				GOSUB animdims
+				IF PX + adw > 320 THEN adw = 320 - PX
+				IF PY + adh > 200 THEN adh = 200 - PY
+				liW(nLoop) = adw: liH(nLoop) = adh
+				GET (PX, PY)-(PX + adw - 1, PY + adh - 1), liSaveAll((nLoop - 1) * 150)
 				afn = fsq(1) + 1
 				GOSUB animframe
 			END IF
@@ -990,13 +1061,29 @@ animdraw:
 	NEXT
 	RETURN
 
-'----- animtick: advance active loop animations (idle-loop tick, TIMER-delta gated)
+'----- animtick: advance active loop/random animations (idle-loop tick, TIMER-delta gated);
+'----- loop waits rate*.05 every frame; random holds each frame a random min..max seconds
 animtick:
 	IF nLoop < 1 THEN RETURN
 	FOR li = 1 TO nLoop
 		IF TIMER < liLast(li) THEN liLast(li) = TIMER
-		IF TIMER >= liLast(li) + liRate(li) * .05 THEN
+		IF TIMER >= liLast(li) + liWait(li) THEN
+			'----- hold the tick while the player's 31x31 box overlaps this instance --
+			'----- no z-order exists, advancing would stamp background over him; the
+			'----- anim freezes and resumes as soon as he moves away (skip in nopl views)
+			IF nopl = 0 THEN
+				IF liX(li) < pjx + 31 AND liX(li) + liW(li) > pjx AND liY(li) < pjy + 31 AND liY(li) + liH(li) > pjy THEN GOTO atnext
+			END IF
 			liLast(li) = TIMER
+			'----- lift the XOR mouse cursor while redrawing under it, else the restore
+			'----- eats half the cursor and the next XOR-off leaves garbage pixels
+			mcur = 0
+			IF msen <> 1 THEN
+				IF liX(li) < b + 12 AND liX(li) + liW(li) > b AND liY(li) < a + 12 AND liY(li) + liH(li) > a THEN
+					PUT (b, a), d, XOR
+					mcur = 1
+				END IF
+			END IF
 			aidx = liAnim(li)
 			GOSUB animparse
 			IF nfr >= 1 THEN
@@ -1008,8 +1095,15 @@ animtick:
 				PY = liY(li)
 				afn = fsq(liCur(li)) + 1
 				GOSUB animframe
+				IF liMax(li) > 0 THEN
+					liWait(li) = liMin(li) + RND * (liMax(li) - liMin(li))
+				ELSE
+					liWait(li) = liRate(li) * .05
+				END IF
 			END IF
+			IF mcur = 1 THEN PUT (b, a), d, XOR
 		END IF
+		atnext:
 	NEXT
 	RETURN
 
@@ -1023,6 +1117,22 @@ reanim:
 		NEXT
 		IF aidx = 0 THEN GOTO ranext
 		IF anType$(aidx) = "bg" THEN GOTO ranext
+		'----- flag-gated STATIC sprite whose flag just tripped: composite it now,
+		'----- once (plStat) -- no need to leave and re-enter the room to see it
+		IF anMode$(aidx) <> "static" THEN GOTO ranotstat
+		IF plCond(pp) = 0 THEN GOTO ranext
+		IF ob(plCond(pp)) <> 1 THEN GOTO ranext
+		IF plStat(pp) = 1 THEN GOTO ranext
+		GOSUB animparse
+		IF nfr < 1 THEN GOTO ranext
+		SRC$ = anSrc$(aidx)
+		PX = plX(pp)
+		PY = plY(pp)
+		afn = fsq(nfr) + 1
+		GOSUB animframe
+		plStat(pp) = 1
+		GOTO ranext
+		ranotstat:
 		IF anMode$(aidx) <> "hold" AND anMode$(aidx) <> "once" THEN GOTO ranext
 		IF plCond(pp) = 0 THEN GOTO ranext
 		IF ob(plCond(pp)) <> 1 THEN GOTO ranext
@@ -1106,6 +1216,7 @@ loadroom:
 	wbmin = 40: wbmax = 250
 	wbymin = 138: wbymax = 176
 	FOR i = 1 TO 25: spx(i) = -1: spd(i) = 0: NEXT
+	FOR i = 1 TO 20: plStat(i) = 0: NEXT
 	ON ERROR GOTO placeeof
 	placeloop:
 	IF nPlace >= 20 THEN GOTO placeend
@@ -1138,15 +1249,21 @@ loadroom:
 	placeend:
 	ON ERROR GOTO errhand
 	CLS
-	COLOR co
-	PALETTE 1, pa1
-	PALETTE 2, pa2
-	PALETTE 3, pa3
+	'----- rooms with overlays load behind a black palette so the base .pic (e.g. the
+	'----- closed door) never flashes before animdraw composites the state frames on it;
+	'----- rmpal (below / inside animdraw before any full play) then lights the room up
+	IF nPlace > 0 THEN
+		COLOR 0
+		PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
+	ELSE
+		GOSUB rmpal
+	END IF
 	DEF SEG = -18432
 	BLOAD q$ + ".pic", 0
 	KEY OFF
 	DEF SEG
 	GOSUB animdraw
+	GOSUB rmpal
 	GET (1, 8)-(9, 18), bk: GET (1, 8)-(9, 18), bk2
 	IF q$ <> lrq$ THEN pjx = 140: pjy = 130
 	lrq$ = q$

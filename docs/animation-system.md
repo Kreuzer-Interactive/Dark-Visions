@@ -55,6 +55,10 @@ id, "name", "type", "source", "frames", rate, "mode", "pal", "snd"
 - `once`   — play through once on activation, then hide.
 - `hold`   — play once on activation, freeze on the last frame (door → stays open).
 - `static` — no animation; show frame[last] while active (a state overlay — lamp on).
+- `random min max` — cycle forever like `loop`, but every frame holds for a random `min..max`
+  **seconds** instead of the fixed `rate` (`rate` is ignored) — a curtain stirring in a breeze.
+  The two numbers ride inside the mode field (e.g. `"random 0.2 1"`) so the record stays
+  9 fields; each wait is rolled separately, so several placements never move in step.
 
 Examples:
 ```
@@ -130,6 +134,12 @@ That's the **door** exactly: `cond=ob(unlocked)`, `mode=hold`, `set=ob(door_play
 
 **On flag flip during play** (an interaction's `st` sets `ob(cond)` while you're standing in the room) → the same check runs, so a not-yet-played `once`/`hold` placement **plays once** then marks `set`. So unlocking the door *while you're there* plays it too — entirely from data, replacing the bespoke `DoorOpen`.
 
+**Animation + room change on one interaction:** when the interaction *also* has a target
+(`df` — a close-up or room), the engine runs the `reanim` pass **before** leaving, so a
+placement triggered by the just-set flag plays first, then the target loads (use key →
+door swings open → the closet close-up appears). Because it's play-once-marked, it won't
+replay when you come back out.
+
 ---
 
 ## Engine changes (GAME.BAS)
@@ -169,6 +179,8 @@ That's the **door** exactly: `cond=ob(unlocked)`, `mode=hold`, `set=ob(door_play
 ### Hit Areas tab — place into a scene
 - A **"Place animation"** tool: pick a library animation → click/drag onto the room (marker
   like a hotspot) → set **cond** via the existing flag dropdown (full-bg/palette ignore x/y).
+- **"+ Sprite"** — show a single sprite frame in the scene (usually flag-gated), no animation:
+  the editor finds or creates the 1-frame `static` library entry itself and places it.
 - Preview on the scene (composite static/hold end-state, or play loops).
 - Save → placements write into the room `.pac` (extend `genPac`/`parsePac`; keep the
   round-trip byte-faithful — old `.pac`s gain nothing after the objects).

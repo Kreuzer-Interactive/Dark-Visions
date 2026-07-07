@@ -1,1 +1,4 @@
 1,"Door","spr","door","0;1;2;3",2,"hold","","<<f6p20d7p20g-7p20e-7p20a5>>"
+2,"RM4 Curtains","spr","RM4CUR","0;1;2",6,"random 0.5 1.6","",""
+3,"RM4 - Door open","spr","RM4DOOR","0;1;2",6,"hold","",""
+4,"RM4DRAWE frame 0","spr","RM4DRAWE","0",0,"static","",""

@@ -2,6 +2,8 @@
 32,"Acid neutralized","Set by pouring the baking soda on the spilled acid at the lab table. With the Complete formula (36) in inventory, game code then turns flag 33 ON."
 33,"Ready to mix the drug","Set by game code (inventory combine check) once the acid is neutralized (32) and the Complete formula (36) is held. The lab table follow-the-formula action needs it."
 37,"Game clock past 30","Early-game timer flag: game code turns it ON once the game clock passes 30 (the clock advances about 30 per room change). The room5 wrench stays hidden until then."
+38,"Room4 closet unlocked","Set by using Uncle's key (13) on the room4 closet door. Shows the door-open animation placement (anim 3); clicking OR looking at the open door then goes inside (openclos)."
+39,"Room4 closet door played","Play-once marker: the engine sets it after the door-open animation first plays. From then on the placement just shows the final open frame - the door stays open for the rest of the game."
 40,"Room4 window opened","Set by opening the window in room4."
 41,"Fuse fixed","Set by placing the copper penny (12) in the broken fuse (fuse-box close-up). Reveals the passage behind the room7 fireplace."
 42,"Uncle cutscene done","Set by game code at the end of the room3 door cutscene (dooseq - the walk-in that reveals your dead uncle). Stops the cutscene replaying and lets you search the body."

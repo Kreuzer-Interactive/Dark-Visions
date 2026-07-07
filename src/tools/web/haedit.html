@@ -39,7 +39,16 @@
   canvas{image-rendering:pixelated;image-rendering:crisp-edges;box-shadow:0 6px 30px rgba(0,0,0,.5);
     cursor:crosshair;background:#000}
   aside{width:466px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);
-    display:flex;flex-direction:column;min-height:0}
+    display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+  /* small screens: the panel scrolls as a whole (the form is taller than a short window) and
+     narrows so the room canvas keeps space; every section stays reachable */
+  /* sections keep their natural height — the panel scrolls instead of squashing them
+     (scrollable children like #placeList would otherwise collapse to 0 on short windows) */
+  aside>*{flex-shrink:0}
+  #placeList{max-height:340px}
+  @media (max-width:1280px){ aside{width:400px} }
+  @media (max-width:1000px){ aside{width:340px} }
+  @media (max-height:820px){ #placeList{max-height:200px} }
   .secTitle{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);
     padding:10px 12px 4px}
   .ohdr{display:flex;justify-content:space-between;align-items:baseline}
@@ -179,8 +188,10 @@
   #tab-spr[hidden]{display:none}
   #sprWrap{flex:1;overflow:auto;padding:12px 14px}
   .sprgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px}
-  .sprthumb{cursor:pointer;border:1px solid var(--line);border-radius:6px;background:#161a22;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:8px 6px;min-height:120px}
+  .sprthumb{position:relative;cursor:pointer;border:1px solid var(--line);border-radius:6px;background:#161a22;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:8px 6px;min-height:120px}
   .sprthumb:hover{border-color:var(--accent)}
+  .sprthumb .combadge{position:absolute;top:4px;right:4px;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:50%;background:var(--accent);color:#0b1220;font-size:11px;font-weight:700;padding:0 3px}
+  .sprthumb.comsel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
   .sprthumb canvas{image-rendering:pixelated;display:block;margin:auto 0}
   .sprthumb .tlabel{font-size:10px;margin-top:7px;color:var(--txt);text-align:center;line-height:1.3}
   .bgpal label.palpick{flex-basis:100%;flex-direction:row;align-items:center;justify-content:center;gap:8px;margin-bottom:2px}
@@ -264,8 +275,8 @@
       <label style="display:flex;align-items:center;gap:6px;margin:0 0 8px;padding:2px 12px 0;font-size:12px" title="Location name shown in the game's Save/Load slots (e.g. Foyer, Kitchen). Stored as a quoted field in the .pac header; leave blank for sub-views like safe/desk."><span style="white-space:nowrap">Room name</span> <input id="roomname" maxlength="20" placeholder="e.g. Foyer" style="flex:1;min-width:0"></label>
       <label id="noplrow" title="ON = the standing player (Joe) is NOT drawn in this scene — for close-ups like safe/window/table/rack. Saved as a 5th value (nopl) in the .pac header." style="display:flex;align-items:center;gap:6px;margin:0 0 10px;padding:2px 12px 0;cursor:pointer;font-size:12px"><input id="noplchk" type="checkbox" style="margin:0"> Hide standing player <span class="hint">· close-up</span></label>
       <div class="secTitle">Scene animations</div>
-      <div style="display:flex;gap:6px;padding:0 12px 6px;align-items:center"><button id="placeAdd">+ Add</button><span id="placeHint" class="hint"></span></div>
-      <div id="placeList" style="max-height:340px;overflow:auto;padding:0 12px 8px"></div>
+      <div style="display:flex;gap:6px;padding:0 12px 6px;align-items:center"><button id="placeAdd" title="Place an animation from the library">+ Add</button><button id="placeAddSpr" title="Show a single sprite frame in the scene (usually gated on a flag) — no animation needed; the 1-frame static library entry is created for you">+ Sprite</button><span id="placeHint" class="hint"></span></div>
+      <div id="placeList" style="overflow:auto;padding:0 12px 8px"></div>
       <div class="secTitle ohdr"><span>Objects (1–25)</span><span id="objTotal">0/256</span></div>
       <div id="verbFilter" class="vfilter"></div>
       <div id="objlist"></div>
@@ -378,8 +389,12 @@
     <div class="invbar">
       <span>Foreground sprites — the player (Joe walk/face frames), Wilbur, doors, golf, decoded from the <code>.PCT</code> GET/PUT files. Value&nbsp;0 is transparent; click a sprite to enlarge and adjust colours 1–3.</span>
       <span class="spacer"></span>
-      <button id="newSprBtn" title="Import a 31×31 PNG as a brand-new .PCT sprite (transparent pixels become see-through)">+ New sprite (PNG)</button>
-      <input type="file" id="newSprFile" accept="image/png" hidden>
+      <span id="combineInfo" class="badge" hidden></span>
+      <button id="combineSave" class="primary" hidden>Save sheet…</button>
+      <button id="combineCancel" hidden>✕ Cancel</button>
+      <button id="combineBtn" title="Build a NEW multi-frame .PCT sheet from existing sprites — click frames in play order, then Save. Use the sheet as an animation source in the Animations tab.">⧉ Combine into sheet</button>
+      <button id="newSprBtn" title="Import PNG(s) as a brand-new .PCT sprite. One file = a single frame or a side-by-side strip; SELECT SEVERAL files and each becomes one frame of the sheet (transparent pixels become see-through).">+ New sprite (PNG)</button>
+      <input type="file" id="newSprFile" accept="image/png" multiple hidden>
     </div>
     <div id="sprWrap"></div>
   </section>
@@ -481,6 +496,12 @@
     <div class="modalCard">
       <div class="modalHead"><span>Pick target room (df)</span><button id="dfModalClose" type="button" title="Close (Esc)">✕</button></div>
       <div id="dfGrid" class="thumbGrid"></div>
+    </div>
+  </div>
+  <div id="sprPickModal" class="modal" hidden>
+    <div class="modalCard">
+      <div class="modalHead"><span>Place a sprite — click the frame to show in this scene</span><button id="sprPickClose" type="button" title="Close">✕</button></div>
+      <div id="sprPickBody" class="flagbody"></div>
     </div>
   </div>
 </div>
@@ -1058,6 +1079,52 @@ function renderPlacements(){
     el.appendChild(card);
   });
 }
+// ---- "+ Sprite": show one sprite frame in the scene (no animation) -- the 1-frame
+// ---- static ANIMS.PAC entry is found or created automatically, then placed as usual
+const sprPickModal=document.getElementById('sprPickModal');
+function closeSprPick(){ sprPickModal.hidden=true; }
+document.getElementById('sprPickClose').onclick=closeSprPick;
+sprPickModal.onclick=e=>{ if(e.target===sprPickModal) closeSprPick(); };
+async function openSpritePick(){
+  if(!S) return;
+  const body=document.getElementById('sprPickBody');
+  body.innerHTML='<div class="hint">loading sprites…</div>';
+  sprPickModal.hidden=false;
+  if(!anims.length) await loadAnims();
+  const pcts=await getAllPcts();
+  body.innerHTML='';
+  const pal=[0,S.pa1,S.pa2,S.pa3];   // room palette, like the game will draw it
+  for(const name of pcts){
+    const fr=await getPctFrames(name); if(!fr) continue;
+    const sec=document.createElement('div'); sec.className='flagsec'; sec.textContent=name;
+    const row=document.createElement('div'); row.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px';
+    fr.frames.forEach((spr,idx)=>{ if(!spr) return;
+      const c=document.createElement('canvas');
+      c.style.cssText='width:46px;height:46px;image-rendering:pixelated;border:1px solid var(--line);border-radius:4px;cursor:pointer;background:#14161c';
+      c.title=name+' frame '+idx+' ('+spr.w+'×'+spr.h+') — click to place';
+      paintSprite(c,spr,pal,2);
+      c.onclick=()=>{ closeSprPick(); placeStaticSprite(name,idx); };
+      row.appendChild(c);
+    });
+    if(row.children.length){ body.appendChild(sec); body.appendChild(row); }
+  }
+  if(!body.children.length) body.innerHTML='<div class="hint">No .PCT sprites found.</div>';
+}
+async function placeStaticSprite(name,idx){
+  let an=anims.find(a=>a.type==='spr'&&a.source===name&&a.mode==='static'&&a.frames===String(idx));
+  if(!an){
+    const id=anims.reduce((m,x)=>Math.max(m,x.id),0)+1;
+    an={id,name:name+' frame '+idx,type:'spr',source:name,frames:String(idx),rate:0,mode:'static',pal:'',snd:''};
+    anims.push(an);
+    await saveAnims();   // additive; saved right away so the room placement can reference it
+  }
+  S.placements=S.placements||[];
+  pushUndo('p');
+  S.placements.push({animId:an.id,x:144,y:84,cond:0,set:0});
+  placeSel=S.placements.length-1;
+  setDirty(true); await ensurePlaceFrames(); renderPlacements(); draw();
+}
+document.getElementById('placeAddSpr').onclick=openSpritePick;
 function addPlacement(){
   if(!S) return;
   if(!anims.length){ alert('No animations yet — build one in the Animations tab first.'); return; }
@@ -1593,33 +1660,59 @@ function sprCacheBust(name){
   sweep(typeof wkCache!=='undefined'?wkCache:null,true);
   if(N==='JOED' && typeof standFrames!=='undefined') standFrames=null;
 }
-async function importNewSprite(file){
-  const raw=prompt('Name for the NEW sprite — a DOS name, up to 8 letters/digits (no extension):', dosName((file.name||'').replace(/\.[^.]*$/,''))); if(raw==null) return;
-  let name=dosName(raw); if(!name){ alert('Use A–Z and 0–9 only, max 8 characters.'); return; }
+async function pickFreePctName(suggest){   // prompt for a DOS name; steer around existing .PCTs (typing the taken name again = overwrite)
+  const raw=prompt('Name for the NEW sprite — a DOS name, up to 8 letters/digits (no extension):', dosName(suggest||'')); if(raw==null) return null;
+  let name=dosName(raw); if(!name){ alert('Use A–Z and 0–9 only, max 8 characters.'); return null; }
   allPcts=await getAllPcts();   // fresh list — the conflict check must not miss sprites added elsewhere
   const taken=n2=>(allPcts||[]).some(x=>x.toUpperCase()===n2);
   if(taken(name)){
     let cand='';
     for(let n=2;n<100;n++){ const c=name.slice(0,8-String(n).length)+n; if(!taken(c)){ cand=c; break; } }
-    const pick=prompt(name+'.PCT already exists.\nImport under the suggested free name — or type '+name+' again to OVERWRITE it.', cand||name);
-    if(pick==null) return;
-    const p2=dosName(pick); if(!p2){ alert('Use A–Z and 0–9 only, max 8 characters.'); return; }
-    if(p2===name){ if(!confirm('Overwrite '+name+'.PCT (and its .MSK)?')) return; }
-    else if(taken(p2)){ alert(p2+'.PCT also exists — run the import again and pick another name.'); return; }
+    const pick=prompt(name+'.PCT already exists.\nSave under the suggested free name — or type '+name+' again to OVERWRITE it.', cand||name);
+    if(pick==null) return null;
+    const p2=dosName(pick); if(!p2){ alert('Use A–Z and 0–9 only, max 8 characters.'); return null; }
+    if(p2===name){ if(!confirm('Overwrite '+name+'.PCT (and its .MSK)?')) return null; }
+    else if(taken(p2)){ alert(p2+'.PCT also exists — try again and pick another name.'); return null; }
     name=p2;
   }
-  const img=await loadImgFile(file); if(!img){ alert('Could not read that PNG.'); return; }
-  const nRaw=prompt('How many frames are in this sheet? (frames sit side-by-side, all the same width)','1'); if(nRaw==null) return;
-  const N=Math.max(1,parseInt(nRaw,10)||1);
-  if(img.width%N!==0){ alert('The sheet is '+img.width+' px wide — that does not divide into '+N+' equal frames.'); return; }
-  const FW=img.width/N, FH=img.height, TW=img.width;
+  return name;
+}
+async function savePctPair(name,pct,msk){   // write .PCT + .MSK (server POST, or download in file mode) and drop stale caches
+  if(mode==='server'){
+    await fetch('api/pct?name='+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'text/plain'},body:pct});
+    await fetch('api/msk?name='+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'text/plain'},body:msk});
+  } else { dlBlob(name+'.PCT',pct,'text/plain'); dlBlob(name+'.MSK',msk,'text/plain'); if(!fileBlobs[name])fileBlobs[name]={}; fileBlobs[name].pct=pct; fileBlobs[name].msk=msk; }
+  sprCacheBust(name);
+}
+async function importNewSprite(files){
+  files=Array.from(files||[]); if(!files.length) return;
+  const multi=files.length>1;
+  if(multi) files.sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{numeric:true,sensitivity:'base'}));   // frame order = filename order (numeric-aware: f2 < f10)
+  const name=await pickFreePctName((files[0].name||'').replace(/\.[^.]*$/,'')); if(!name) return;
+  const imgs=[];
+  for(const f of files){ const im=await loadImgFile(f); if(!im){ alert('Could not read '+(f.name||'that PNG')+'.'); return; } imgs.push(im); }
+  let N,FW,FH;
+  if(multi){   // several files: each PNG is ONE frame; all must be the same size
+    N=files.length; FW=imgs[0].width; FH=imgs[0].height;
+    const bi=imgs.findIndex(im=>im.width!==FW||im.height!==FH);
+    if(bi>=0){ alert('Every frame must be the same size — '+files[0].name+' is '+FW+'×'+FH+' but '+files[bi].name+' is '+imgs[bi].width+'×'+imgs[bi].height+'.'); return; }
+  } else {
+    const img=imgs[0];
+    const nRaw=prompt('How many frames are in this sheet? (frames sit side-by-side, all the same width)','1'); if(nRaw==null) return;
+    N=Math.max(1,parseInt(nRaw,10)||1);
+    if(img.width%N!==0){ alert('The sheet is '+img.width+' px wide — that does not divide into '+N+' equal frames.'); return; }
+    FW=img.width/N; FH=img.height;
+  }
+  const TW=FW*N;
   // engine limit: a frame is 2 header ints + ceil(w*2/8)*h bytes packed 2/int; the anim
   // buffers hold 150 ints/frame and the source cache 1600 ints/file
   const fInts=2+Math.ceil(Math.ceil(FW*2/8)*FH/2);
   if(FW<1||FH<1||fInts>150){ alert('Frame size '+FW+'×'+FH+' is too big for the game\'s anim buffers.\nKeep ceil(width/4) × height ≤ 296 — e.g. 31×31, 24×48, 62×18, 16×74.'); return; }
   if(N*fInts>1600){ alert(N+' frames of '+FW+'×'+FH+' ('+(N*fInts)+' ints) exceed the 1600-int anim source cache — use fewer/smaller frames.'); return; }
   if((FW>31||FH>31) && !confirm(FW+'×'+FH+' frames are fine for hold/static scene animations, but ONCE and LOOP modes (and the player) only save-under 31×31 — bigger frames can leave pixels behind in those modes. Continue?')) return;
-  const cv=document.createElement('canvas'); cv.width=TW; cv.height=FH; const g=cv.getContext('2d'); g.drawImage(img,0,0);
+  // lay the frames out as one internal strip (multi: one file per slot) — the rest of the import is strip-shaped
+  const cv=document.createElement('canvas'); cv.width=TW; cv.height=FH; const g=cv.getContext('2d');
+  imgs.forEach((im,i)=>g.drawImage(im,multi?i*FW:0,0));
   const d=g.getImageData(0,0,TW,FH).data;
   // colours are matched BY RGB VALUE and stored as the TARGET palette's attribute numbers —
   // naming the room pins the mapping to that room (an auto-match can tie with another palette
@@ -1647,12 +1740,7 @@ async function importNewSprite(file){
     for(let y=0;y<FH;y++) for(let x=0;x<FW;x++){ const p=(y*TW+f*FW+x)*4, i=y*FW+x; if(d[p+3]<128){ px[i]=0; mp[i]=3; } else { px[i]=nearestIndex(d[p],d[p+1],d[p+2],all4); mp[i]=0; } }
     frames.push(packSpriteInts(px,FW,FH)); maskFrames.push(packSpriteInts(mp,FW,FH));
   }
-  const pct=interleaveMskText(frames), msk=interleaveMskText(maskFrames);
-  if(mode==='server'){
-    await fetch('api/pct?name='+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'text/plain'},body:pct});
-    await fetch('api/msk?name='+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'text/plain'},body:msk});
-  } else { dlBlob(name+'.PCT',pct,'text/plain'); dlBlob(name+'.MSK',msk,'text/plain'); if(!fileBlobs[name])fileBlobs[name]={}; fileBlobs[name].pct=pct; fileBlobs[name].msk=msk; }
-  sprCacheBust(name);
+  await savePctPair(name, interleaveMskText(frames), interleaveMskText(maskFrames));
   alert('Saved '+name+'.PCT ('+N+' frame'+(N>1?'s':'')+') + '+name+'.MSK, matched to the '+palDesc(m.entry)+'.\nIt now appears in the Sprites list and the Animations source dropdown.');
   if(activeTab==='spr') buildSprites();
 }
@@ -1676,7 +1764,7 @@ async function importNewBg(file){
   if(activeTab==='bg') buildBgGallery();
 }
 document.getElementById('newSprBtn').onclick=()=>document.getElementById('newSprFile').click();
-document.getElementById('newSprFile').onchange=e=>{ const f=e.target.files[0]; if(f) importNewSprite(f); e.target.value=''; };
+document.getElementById('newSprFile').onchange=e=>{ if(e.target.files.length) importNewSprite(e.target.files); e.target.value=''; };
 document.getElementById('newBgBtn').onclick=()=>document.getElementById('newBgFile').click();
 document.getElementById('newBgFile').onchange=e=>{ const f=e.target.files[0]; if(f) importNewBg(f); e.target.value=''; };
 // ---- foreground sprites (.PCT files = interleaved CGA GET/PUT arrays) ----
@@ -1773,11 +1861,65 @@ async function buildSprites(){
       paintSprite(c,spr,sprDefaultPal,Math.max(2,Math.floor(92/Math.max(spr.w,spr.h))), mks&&mks[idx]);
       const la=document.createElement('div'); la.className='tlabel'; la.textContent=lbl+'  ('+spr.w+'×'+spr.h+')';
       sprNavOrder.push({spr:spr,label:lbl,name:name,idx:idx,k:lay.k});
-      t.appendChild(c); t.appendChild(la); t.onclick=()=>openSprView(spr,lbl,name,idx,lay.k); grid.appendChild(t);
+      t.dataset.comkey=name+'/'+idx;
+      t.appendChild(c); t.appendChild(la);
+      t.onclick=()=>{ if(combineMode) toggleCombineFrame({spr,label:lbl,name,idx,k:lay.k}); else openSprView(spr,lbl,name,idx,lay.k); };
+      grid.appendChild(t);
     });
   }
   if(!grid.children.length) wrap.innerHTML='<div class="bggroup">No .PCT sprite files found.</div>';
+  refreshCombineBadges();
 }
+// ---- combine EXISTING sprite frames into a NEW multi-frame .PCT sheet (an animation source) ----
+let combineMode=false, combineSel=[];   // combineSel: [{spr,label,name,idx,k}] in play order
+function setCombineMode(on){
+  combineMode=on; if(!on) combineSel=[];
+  const show=(id,v)=>{ const el=document.getElementById(id); if(el) el.hidden=!v; };
+  show('combineSave',on); show('combineCancel',on); show('combineInfo',on); show('combineBtn',!on); show('newSprBtn',!on);
+  refreshCombineBadges();
+}
+function refreshCombineBadges(){
+  const info=document.getElementById('combineInfo');
+  if(info) info.textContent=combineMode? (combineSel.length? combineSel.length+' frame'+(combineSel.length>1?'s':'')+' — click in play order' : 'click frames in play order') : '';
+  document.querySelectorAll('#sprWrap .sprthumb').forEach(t=>{
+    const pos=combineSel.findIndex(s=>s.name+'/'+s.idx===t.dataset.comkey);
+    t.classList.toggle('comsel',pos>=0);
+    let b=t.querySelector('.combadge');
+    if(pos<0){ if(b) b.remove(); return; }
+    if(!b){ b=document.createElement('span'); b.className='combadge'; t.appendChild(b); }
+    b.textContent=pos+1;
+  });
+}
+function toggleCombineFrame(entry){
+  const key=entry.name+'/'+entry.idx, at=combineSel.findIndex(s=>s.name+'/'+s.idx===key);
+  if(at>=0) combineSel.splice(at,1); else combineSel.push(entry);
+  refreshCombineBadges();
+}
+async function saveCombinedSheet(){
+  if(!combineSel.length){ alert('Click some sprite frames first — they join the sheet in the order you click them.'); return; }
+  const FW=combineSel[0].spr.w, FH=combineSel[0].spr.h;
+  const bad=combineSel.find(s=>s.spr.w!==FW||s.spr.h!==FH);
+  if(bad){ alert('Every frame in a sheet must be the same size — '+combineSel[0].label+' is '+FW+'×'+FH+' but '+bad.label+' is '+bad.spr.w+'×'+bad.spr.h+'.\nDeselect the odd one out (click it again).'); return; }
+  const N=combineSel.length, fInts=2+Math.ceil(Math.ceil(FW*2/8)*FH/2);
+  if(N*fInts>1600){ alert(N+' frames of '+FW+'×'+FH+' ('+(N*fInts)+' ints) exceed the 1600-int anim source cache — use fewer/smaller frames.'); return; }
+  const name=await pickFreePctName(combineSel[0].name); if(!name) return;
+  const frames=[], maskFrames=[];
+  for(const s of combineSel){
+    frames.push(packSpriteInts(s.spr.px,FW,FH));
+    let mp=null;   // carry the source's mask when it has one (so opaque black stays solid); else colour 0 = see-through
+    const mtxt=await getMskText(s.name);
+    if(mtxt){ const mk=deinterleaveInts(mtxt,s.k).map(decodeSprite)[s.idx]; if(mk&&mk.w===FW&&mk.h===FH) mp=mk.px; }
+    if(!mp){ mp=new Uint8Array(FW*FH); for(let i=0;i<mp.length;i++) mp[i]=s.spr.px[i]===0?3:0; }
+    maskFrames.push(packSpriteInts(mp,FW,FH));
+  }
+  await savePctPair(name, interleaveMskText(frames), interleaveMskText(maskFrames));
+  setCombineMode(false);
+  alert('Saved '+name+'.PCT ('+N+' frame'+(N>1?'s':'')+') + '+name+'.MSK.\nPick it as the sprite source in the Animations tab to build the animation.');
+  buildSprites();
+}
+document.getElementById('combineBtn').onclick=()=>setCombineMode(true);
+document.getElementById('combineCancel').onclick=()=>setCombineMode(false);
+document.getElementById('combineSave').onclick=saveCombinedSheet;
 let sprCur=null, sprPal=null, sprName='', sprIdx=0, sprK=1, sprLabel='', sprNavOrder=[], sprPreferMask=false;
 let mskFrames=null, mskCur=null, sprMode='sprite', mskPending=null, mskPeek=false, mskPaintBtn=null, sprPending=null, sprMskPending=null;
 function sprRender(){
@@ -2033,10 +2175,14 @@ let anims=[], curAnimId=null, animDirty=false, animTimer=null, animFrameCache={}
 function parseAnims(text){
   const k=tokenize(text), out=[];
   for(let i=0;i+8<k.length;i+=9){ const id=parseInt(k[i],10); if(isNaN(id)) continue;
-    out.push({id,name:k[i+1]||'',type:k[i+2]||'spr',source:k[i+3]||'',frames:k[i+4]||'',rate:parseInt(k[i+5],10)||0,mode:k[i+6]||'loop',pal:k[i+7]||'',snd:k[i+8]||''}); }
+    // mode "random <min> <max>" = cycle forever, each frame holding a random min..max seconds
+    let mode=k[i+6]||'loop', rndMin=.2, rndMax=1;
+    if(/^random/i.test(mode)){ const p=mode.split(/\s+/); mode='random'; if(isFinite(parseFloat(p[1]))) rndMin=parseFloat(p[1]); rndMax=isFinite(parseFloat(p[2]))?parseFloat(p[2]):rndMin; }
+    out.push({id,name:k[i+1]||'',type:k[i+2]||'spr',source:k[i+3]||'',frames:k[i+4]||'',rate:parseInt(k[i+5],10)||0,mode,rndMin,rndMax,pal:k[i+7]||'',snd:k[i+8]||''}); }
   return out;
 }
-function genAnims(){ return anims.map(a=>[a.id,'"'+a.name+'"','"'+a.type+'"','"'+a.source+'"','"'+a.frames+'"',(a.rate|0),'"'+a.mode+'"','"'+a.pal+'"','"'+(a.snd||'')+'"'].join(',')).join('\r\n')+(anims.length?'\r\n':''); }
+function genMode(a){ if(a.mode!=='random') return a.mode; let mn=+a.rndMin,mx=+a.rndMax; if(!isFinite(mn)||mn<0)mn=0; if(!isFinite(mx)||mx<mn)mx=mn; return 'random '+mn+' '+mx; }
+function genAnims(){ return anims.map(a=>[a.id,'"'+a.name+'"','"'+a.type+'"','"'+a.source+'"','"'+a.frames+'"',(a.rate|0),'"'+genMode(a)+'"','"'+a.pal+'"','"'+(a.snd||'')+'"'].join(',')).join('\r\n')+(anims.length?'\r\n':''); }
 async function loadAnims(){
   let txt=null;
   if(mode==='server'){ try{ const r=await fetch('api/anims',{cache:'no-store'}); if(r.ok) txt=await r.text(); }catch(_){} }
@@ -2051,7 +2197,8 @@ async function saveAnims(){
 }
 function setAnimDirty(v){ animDirty=v; const b=document.getElementById('animDirty'); if(b) b.textContent=v?'● unsaved':''; }
 async function buildAnims(){
-  await loadAnims(); await loadSpritePalettes();
+  if(!animDirty) await loadAnims();   // keep unsaved edits when bouncing between tabs — reload from disk only when clean
+  await loadSpritePalettes();
   if(!anims.length) curAnimId=null;
   else if(curAnimId==null || !anims.find(a=>a.id===curAnimId)) curAnimId=anims[0].id;
   renderAnimList(); await renderAnimEditor();
@@ -2071,7 +2218,7 @@ function renderAnimList(){
 }
 function newAnim(){
   const id=anims.reduce((m,a)=>Math.max(m,a.id),0)+1;
-  anims.push({id,name:'anim'+id,type:'spr',source:'',frames:'',rate:6,mode:'loop',pal:'',snd:''});
+  anims.push({id,name:'anim'+id,type:'spr',source:'',frames:'',rate:6,mode:'loop',rndMin:.2,rndMax:1,pal:'',snd:''});
   curAnimId=id; setAnimDirty(true); renderAnimList(); renderAnimEditor();
 }
 function delAnim(){
@@ -2098,17 +2245,22 @@ async function renderAnimEditor(){
     '<div '+fld+'><label '+lab+'>Sprite (.pct)</label><select id="aSrc"><option value="">— pick a sprite —</option>'+pcts.map(n=>'<option value="'+n+'"'+(n===a.source?' selected':'')+'>'+n+'</option>').join('')+'</select></div>'+
     '<div '+fld+'><label '+lab+'>Frames</label><div style="flex:1"><div class="hint" style="margin:0 0 3px">Frames in this sprite — click one to add it to the sequence:</div><div id="aFrames" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:10px"></div><div class="hint" style="margin:0 0 3px">Sequence — the order the frames play (✕ to remove):</div><div id="aSeq" style="display:flex;flex-wrap:wrap;gap:7px;align-items:center"></div></div></div>'+
     '<div '+fld+'><label '+lab+'>Rate (ticks/frame)</label><input id="aRate" type="number" min="1" max="60" style="width:70px"></div>'+
-    '<div '+fld+'><label '+lab+'>Mode</label><select id="aMode">'+['loop','once','hold','static'].map(m=>'<option'+(m===a.mode?' selected':'')+'>'+m+'</option>').join('')+'</select></div>'+
+    '<div '+fld+'><label '+lab+'>Mode</label><select id="aMode" title="loop = cycle forever · once = play then hide · hold = play then freeze on the last frame · static = just show the last frame · random = cycle forever, but each frame holds a random min–max time (curtain in a breeze)">'+['loop','once','hold','static','random'].map(m=>'<option'+(m===a.mode?' selected':'')+'>'+m+'</option>').join('')+'</select></div>'+
+    '<div id="aRndRow" '+fld.slice(0,-1)+';align-items:center"'+(a.mode==='random'?'':' hidden')+'><label '+lab+'>Frame time (s)</label>min <input id="aRndMin" type="number" min="0" step="0.1" style="width:70px"> max <input id="aRndMax" type="number" min="0" step="0.1" style="width:70px"> <span class="hint">every frame shows for a random time in this range (Rate is ignored)</span></div>'+
     '<div '+fld+'><label '+lab+'>Sound (PLAY)</label><input id="aSnd" style="flex:1;max-width:280px" placeholder="QB PLAY string, plays on once/hold (optional)"></div>'+
     '<div '+fld+'><label '+lab+'>Preview</label><div><canvas id="aPrev" width="64" height="64" style="background:#1a1f2b;image-rendering:pixelated;width:128px;height:128px;border:1px solid var(--line);border-radius:4px"></canvas><div style="margin-top:6px"><button id="aPlay">▶ Play</button> <button id="aStop">■ Stop</button></div></div></div>'+
     '<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:10px"><button id="aDel">🗑 Delete animation</button></div>';
   document.getElementById('aName').value=a.name;
   document.getElementById('aRate').value=a.rate|0;
+  document.getElementById('aRndMin').value=(a.rndMin!=null?a.rndMin:.2);
+  document.getElementById('aRndMax').value=(a.rndMax!=null?a.rndMax:1);
   document.getElementById('aSnd').value=a.snd||'';
+  document.getElementById('aRndMin').oninput=e=>{ a.rndMin=parseFloat(e.target.value)||0; setAnimDirty(true); };
+  document.getElementById('aRndMax').oninput=e=>{ a.rndMax=parseFloat(e.target.value)||0; setAnimDirty(true); };
   document.getElementById('aName').oninput=e=>{ a.name=e.target.value; setAnimDirty(true); renderAnimList(); };
   document.getElementById('aSrc').onchange=e=>{ a.source=e.target.value; a.frames=''; setAnimDirty(true); renderFrames(a); renderSeq(a); };
   document.getElementById('aRate').oninput=e=>{ a.rate=parseInt(e.target.value,10)||1; setAnimDirty(true); if(animTimer&&previewFn){ clearTimeout(animTimer); animTimer=setTimeout(previewFn, previewDelay(a)); } };
-  document.getElementById('aMode').onchange=e=>{ a.mode=e.target.value; setAnimDirty(true); renderAnimList(); };
+  document.getElementById('aMode').onchange=e=>{ a.mode=e.target.value; if(a.mode==='random'){ if(a.rndMin==null)a.rndMin=.2; if(a.rndMax==null)a.rndMax=1; } document.getElementById('aRndRow').hidden=(a.mode!=='random'); setAnimDirty(true); renderAnimList(); };
   document.getElementById('aSnd').oninput=e=>{ a.snd=e.target.value; setAnimDirty(true); };
   document.getElementById('aPlay').onclick=()=>startPreview(a);
   document.getElementById('aStop').onclick=stopPreview;
@@ -2154,7 +2306,12 @@ function startPreview(a){
   const fr=animFrameCache[a.source]; const seq=a.frames.split(';').filter(s=>s.length).map(Number);
   if(!fr||!seq.length) return;
   let idx=0;
-  previewFn=()=>{ const spr=fr.frames[seq[idx]]; if(spr){ const sc=Math.max(1,Math.floor(64/Math.max(spr.w,spr.h))); paintSprite(c,spr,sprDefaultPal,sc); } idx=(idx+1)%seq.length; animTimer=setTimeout(previewFn, previewDelay(a)); };
+  previewFn=()=>{ const spr=fr.frames[seq[idx]]; if(spr){ const sc=Math.max(1,Math.floor(64/Math.max(spr.w,spr.h))); paintSprite(c,spr,sprDefaultPal,sc); }
+    idx=(idx+1)%seq.length;
+    let d=previewDelay(a);
+    // random mode (like the game): EVERY frame holds a random min..max seconds
+    if(a.mode==='random'){ const mn=Math.max(0,+a.rndMin||0), mx=Math.max(mn,+a.rndMax||0); d=(mn+Math.random()*(mx-mn))*1000; }
+    animTimer=setTimeout(previewFn, d); };
   previewFn();   // self-scheduling: each frame re-reads a.rate, so the rate can change mid-playback
 }
 function stopPreview(){ if(animTimer){ clearTimeout(animTimer); animTimer=null; } previewFn=null; }
@@ -2255,6 +2412,7 @@ function setTab(t){
   document.getElementById('tab-font').hidden=(t!=='font');
   document.getElementById('hitctrls').hidden=(t!=='hits');
   document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
+  if(t==='hits' && S){ placeFrameCache={}; ensurePlaceFrames().then(()=>{ renderPlacements(); draw(); }); }   // anims may have changed in the Animations tab (mode/frames/source) — rebuild the placement cards + markers
   if(t==='inv') showInv();
   if(t==='flags') showFlags();
   if(t==='bg') buildBgGallery();
