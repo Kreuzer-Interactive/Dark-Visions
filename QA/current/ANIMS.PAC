@@ -2,3 +2,6 @@
 2,"RM4 Curtains","spr","RM4CUR","0;1;2",6,"random 0.5 1.6","",""
 3,"RM4 - Door open","spr","RM4DOOR","0;1;2",6,"hold","",""
 4,"RM4DRAWE frame 0","spr","RM4DRAWE","0",0,"static","",""
+5,"RM5DRAW frame 0","spr","RM5DRAW","0",0,"static","",""
+6,"RM5BOOK frame 0","spr","RM5BOOK","0",0,"static","",""
+7,"RKKNIFE frame 0","spr","RKKNIFE","0",0,"static","",""
