@@ -1108,6 +1108,21 @@ animtick:
 	RETURN
 
 '----- reanim: mainloop check -- play any placement that just became active+unplayed (hold/once); data-driven DoorOpen
+'----- overlay guard for MID-ROOM anim plays (reanim): the standing player's
+'----- fbg and the cursor's save-under were sampled BEFORE the overlay draws,
+'----- so restoring them later would stamp stale (closed-drawer) pixels over
+'----- the new art. Erase both first (ovpre), play, then re-anchor fbg from
+'----- the updated screen and redraw the player (ovpost).
+ovpre:
+	CALL erasecur
+	CALL PStand("", pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur())
+	RETURN
+ovpost:
+	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
+	IF lf$ = "" THEN lf$ = "2"
+	CALL PStand(lf$, pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur())
+	RETURN
+
 reanim:
 	IF nPlace < 1 THEN RETURN
 	FOR pp = 1 TO nPlace
@@ -1128,9 +1143,11 @@ reanim:
 		SRC$ = anSrc$(aidx)
 		PX = plX(pp)
 		PY = plY(pp)
+		GOSUB ovpre
 		afn = fsq(nfr) + 1
 		GOSUB animframe
 		plStat(pp) = 1
+		GOSUB ovpost
 		GOTO ranext
 		ranotstat:
 		IF anMode$(aidx) <> "hold" AND anMode$(aidx) <> "once" THEN GOTO ranext
@@ -1144,6 +1161,7 @@ reanim:
 		PX = plX(pp)
 		PY = plY(pp)
 		awrate = anRate(aidx)
+		GOSUB ovpre
 		GET (PX, PY)-(PX + 30, PY + 30), wbg
 		FOR adf = 1 TO nfr
 			afn = fsq(adf) + 1
@@ -1153,6 +1171,7 @@ reanim:
 		IF anSnd$(aidx) <> "" THEN PLAY anSnd$(aidx)
 		IF anMode$(aidx) = "once" THEN PUT (PX, PY), wbg, PSET
 		ob(plSet(pp)) = 1
+		GOSUB ovpost
 		ranext:
 	NEXT
 	RETURN

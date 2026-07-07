@@ -1,6 +1,6 @@
                                                                       PAGE   1
                                                                       07 Jul 26
-                                                                      01:03:56
+                                                                      01:34:19
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME5.BAS: player rendering module (walk-to movement pha
@@ -59,7 +59,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), 
                                                                       PAGE   2
                                                                       07 Jul 26
-                                                                      01:03:56
+                                                                      01:34:19
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), 
@@ -118,7 +118,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0609   0008                    FOR i% = 0 TO 125
                                                                       PAGE   3
                                                                       07 Jul 26
-                                                                      01:03:56
+                                                                      01:34:19
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0654   0008                            IF EOF(fh%) THEN EXIT FOR

@@ -85,6 +85,10 @@
 214,134,13
 214,134,14
 214,130,14
+214,130,21
+214,134,21
+214,130,22
+214,134,22
 106,126,14
 110,126,14
 114,126,14
@@ -109,6 +113,26 @@
 218,142,12
 230,158,19
 234,162,19
+226,118,20
+226,122,20
+226,126,20
+226,130,20
+226,134,20
+226,138,20
+226,142,20
+226,146,20
+226,150,20
+226,114,20
+214,126,23
+214,130,23
+214,134,23
+214,138,23
+218,126,23
+218,130,23
+218,134,23
+218,138,23
+218,142,23
+278,130,1
 0,0,0
 "","The flowers are almost dead.","l",0,0,0,"f8"
 "","It is a picture of a table full of      vials.","l",0,0,0,"f4"
@@ -121,20 +145,23 @@
 "","This drawer is empty.","l",0,0,0,"f3"
 "","It is a canopy bed.","l",0,0,0,"f9"
 "","You remove a |copper penny| from the        drawer.","g",0,12,12,"f6"
-"","It is a closet.","l",0,0,0,"f6"
-"","The closet is locked.","a",0,0,0,"f6"
-"openclos","You unlock the closet and open  the oak door.","u",13,0,0,"fc6"
+"","It is a closet.","l",0,38,0,"f6"
+"","The closet is locked.","a",0,38,0,"f6"
+"openclos","You unlock the closet and open  the oak door.","u",13,38,38,"fc6"
 "","The window is cracked open.","l",0,0,0,"f7"
 "room3","You leave the room.","a",0,0,0,"ws"
 "","You open the window.","a",0,40,40,"f7"
 "end","You tie the rope then rappel down the side of the house.","u",14,0,0,"f7"
 "","This drawer is now empty.","l",12,0,0,"f3"
+"","This wire looks out of place","l",0,0,0,""
+"openclos","You look inside the closet.","a",38,0,0,"fc6"
+"","The closet door is already open.","u",13,0,0,"f6"
+"openclos","You look inside the closet.","l",38,0,0,"fc6"
 "","","",0,0,0,""
 "","","",0,0,0,""
-"","","",0,0,0,""
-"","","",0,0,0,""
-"","","",0,0,0,""
-"","","",0,0,0,""
+3,213,121,38,39
+2,120,115,0,0
+4,228,157,12,0
 -1,40,250,0,0
 -2,11,218,175,6
 -2,13,209,160,9
