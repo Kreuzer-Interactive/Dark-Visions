@@ -89,9 +89,10 @@ SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
 		wfb% = 1 - wfb%
 	WEND
 	WHILE px! <> tx!
+		'----- 4px stride at down-walk cadence = same speed, step sound in rhythm
 		IF tx! > px! THEN d% = 2 ELSE d% = 3
-		IF ABS(tx! - px!) <= 3 THEN px! = tx! ELSE px! = px! + SGN(tx! - px!) * 3
-		CALL PStep(px!, py!, wfb%, sfrq!, 1, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+		IF ABS(tx! - px!) <= 3 THEN px! = tx! ELSE px! = px! + SGN(tx! - px!) * 4
+		CALL PStep(px!, py!, wfb%, sfrq!, 1.12, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
 		wfb% = 1 - wfb%
 	WEND
 	WHILE py! <> ty!

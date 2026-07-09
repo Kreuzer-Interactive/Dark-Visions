@@ -418,7 +418,7 @@
   <section id="tab-walk" hidden>
     <div class="invbar">
       <span>Walk preview — the 8 <code>joew</code> sets cycling A/B in place, the same alternation <code>walkTo</code> plays</span>
-      <label class="snapfld" title="1× = the game's real pacing, which differs per direction (right/left 115ms, down 137, up 159, diagonals 126-137)">speed<select id="wkSpd"><option value="0.5">0.5× slow</option><option value="0.75">0.75×</option><option value="1" selected>1× game</option><option value="1.5">1.5×</option></select></label>
+      <label class="snapfld" title="1× = the game's real pacing, which differs per direction (right/left 128ms, down 137, up 159, diagonals 126-137)">speed<select id="wkSpd"><option value="0.5">0.5× slow</option><option value="0.75">0.75×</option><option value="1" selected>1× game</option><option value="1.5">1.5×</option></select></label>
       <label class="snapfld">zoom<select id="wkZoom"><option>4</option><option>6</option><option selected>8</option><option>12</option></select></label>
       <label class="snapfld">palette<select id="wkPal"></select></label>
       <span class="spacer"></span>
@@ -2419,7 +2419,7 @@ document.getElementById('animSave').onclick=saveAnims;
 // ---- Walking preview tab: the 8 joew sets cycling A/B in place; arrows/buttons pick the direction ----
 // ms = the game's real per-half-step pacing: (0.1 + 2*sdur) SOUND ticks at 18.2Hz
 // (walkTo sdur: right/left 1, down 1.2, up 1.4, dn-diagonals 1.1, up-diagonals 1.2)
-const WKMAP={'2':{f:'JOEW1',n:'down',ms:137},'8':{f:'JOEW2',n:'up',ms:159},'6':{f:'JOEW3',n:'right',ms:115},'4':{f:'JOEW4',n:'left',ms:115},'1':{f:'JOEW5',n:'down-left',ms:126},'3':{f:'JOEW6',n:'down-right',ms:126},'7':{f:'JOEW7',n:'up-left',ms:137},'9':{f:'JOEW8',n:'up-right',ms:137}};
+const WKMAP={'2':{f:'JOEW1',n:'down',ms:137},'8':{f:'JOEW2',n:'up',ms:159},'6':{f:'JOEW3',n:'right',ms:128},'4':{f:'JOEW4',n:'left',ms:128},'1':{f:'JOEW5',n:'down-left',ms:126},'3':{f:'JOEW6',n:'down-right',ms:126},'7':{f:'JOEW7',n:'up-left',ms:137},'9':{f:'JOEW8',n:'up-right',ms:137}};
 const WKJOED={'2':0,'8':1,'6':2,'4':3,'1':4,'3':5,'7':6,'9':7};   // joed face frame per direction
 let wkDir='', wkLast='2', wkFrame=0, wkTimer=null, wkKeys=new Set(), wkCache={}, wkPadBtns={};
 async function wkLoad(name,k){

@@ -107,6 +107,25 @@
 62,158,12
 62,166,13
 66,166,13
+78,166,14
+78,170,14
+74,166,14
+70,166,14
+70,170,14
+70,174,14
+74,174,14
+78,174,14
+58,170,15
+58,166,15
+58,162,15
+62,162,15
+62,166,15
+66,162,15
+66,158,15
+66,154,15
+62,170,15
+66,166,15
+62,158,15
 0,0,0
 "","The torch provides meager light.","l",0,0,0,"f7"
 "","The urn is full of blood.","l",0,0,0,"f9"
@@ -119,9 +138,10 @@
 "","They are too high for you to reach.","g",0,14,0,"f9"
 "","You hook the poker onto the rope and    meticulously remove a |length|.","u",2,14,14,"f9"
 "room10","You enter another cell block.","a",0,0,0,"ws"
-"","It is a small door in the wall.","l",0,0,0,"f1"
-"","The small door is closed with a rather  crude padlock.","a",0,0,0,"f1"
+"","It is a small door in the wall.","l",0,48,0,"f1"
+"","The small door is closed with a rather  crude padlock.","a",0,48,0,"f1"
 "","You pick the lock on the door only to   find a stack of dead bodies with their  flesh scraped off and blood drained.","u",27,0,48,"f1"
+"","The open door reveals the stack of dead bodies, flesh scraped off and blood      drained.","l",48,0,0,"f1"
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
@@ -132,8 +152,11 @@
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
-"","","",0,0,0,""
+22,58,138,48,56
+20,102,111,0,0
+23,186,111,14,0
+24,238,128,0,0
 -2,9,188,146,8
 -2,10,187,146,8
--2,13,79,167,1
--2,14,78,167,1
+-2,13,85,167,1
+-2,14,85,167,1

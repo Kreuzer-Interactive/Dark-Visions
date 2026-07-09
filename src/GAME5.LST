@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      08 Jul 26
-                                                                      16:16:35
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME5.BAS: player rendering module (walk-to movement pha
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    
  0030   0006    SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), 
                                                                       PAGE   2
-                                                                      08 Jul 26
-                                                                      16:16:35
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), 
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 AS #fh%
  0609   0008                    FOR i% = 0 TO 125
                                                                       PAGE   3
-                                                                      08 Jul 26
-                                                                      16:16:35
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0654   0008                            IF EOF(fh%) THEN EXIT FOR
@@ -150,11 +150,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0812   0008                    wfb% = 1 - wfb%
  0812   0008            WEND
  0820   0008            WHILE px! <> tx!
+ 0820   0008                    '----- 4px stride at down-walk cadence = same s
+                peed, step sound in rhythm
  0820   0008                    IF tx! > px! THEN d% = 2 ELSE d% = 3
  0857   0008                    IF ABS(tx! - px!) <= 3 THEN px! = tx! ELSE px! 
-                = px! + SGN(tx! - px!) * 3
- 08A2   0008                    CALL PStep(px!, py!, wfb%, sfrq!, 1, d% * 151, 
-                cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+                = px! + SGN(tx! - px!) * 4
+ 08A2   0008                    CALL PStep(px!, py!, wfb%, sfrq!, 1.12, d% * 15
+                1, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
  08DF   0008                    wfb% = 1 - wfb%
  08DF   0008            WEND
  08EC   0008            WHILE py! <> ty!
@@ -169,9 +171,14 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  09C4   0008    END SUB
  09CC   0008    
  09D3   0008    
+                                                                      PAGE   4
+                                                                      09 Jul 26
+                                                                      14:34:10
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
 
 43949 Bytes Available
-40759 Bytes Free
+40735 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

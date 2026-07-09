@@ -112,7 +112,7 @@
 "","There is a bar lying on the floor.","l",0,6,0,"f8"
 "","You take the |metal bar| off the floor.","g",0,6,6,"f8"
 "","It is a tray of half-eaten food.","l",0,0,0,"f3"
-"","You rummage through the food and find an apple.","a",0,28,0,"f3"
+"","You rummage through the food and find an apple.","a",0,28,55,"f3"
 "","You get the |apple|.","g",0,28,28,"f3"
 "","","",0,0,0,""
 "","","",0,0,0,""
@@ -124,6 +124,12 @@
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
+17,159,137,6,0
+18,191,157,55,0
+19,201,163,55,0
+18,191,157,28,0
+20,102,111,0,0
+21,194,110,0,0
 -2,12,173,143,4
 -2,14,184,166,6
 -2,15,184,167,6

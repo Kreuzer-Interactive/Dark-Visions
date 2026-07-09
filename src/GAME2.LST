@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME2.BAS: secondary module for the multi-module split (
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0225   0006    SUB Snd3
  0230   0006            SOUND f6, .1: SOUND f3, .5
                                                                       PAGE   2
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0260   0006            FOR sb = 100 TO 600 STEP 100: SOUND sb, .1: NEXT
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                  + dot its hit point
  06D0   0006    SUB HitZones (hz$, snr2, ox%(), oy%(), oi%(), ky$())
                                                                       PAGE   3
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  06DB   0006            IF hz$ = "" OR snr2 <= 0 THEN EXIT SUB
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                  = not a direction)
  0A47   0006    SUB DirDigit (l$, d$)
                                                                       PAGE   4
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0A52   0006            d$ = ""
@@ -235,8 +235,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                  word0 x k then
  0D72   0018    '----- height x k -- but when width*2 = height the leading-equa
                                                                       PAGE   5
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 l count OVERSHOOTS
@@ -294,8 +294,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 eps).
  1106   0018    '----- Tokens split on ";": letters u/d/l/r combine into a dire
                                                                       PAGE   6
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 ction (ul = up-left),
@@ -353,8 +353,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  13CF   0018    SUB LoadMsgs (nf$())
  13DA   0018            nf$(1) = "There is nothing to see here."
                                                                       PAGE   7
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  13DA   0018            nf$(2) = "Nothing catches your eye."
@@ -412,8 +412,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 ."
  15C8   0080                    km$(1) = "The key doesn't fit the lock."
                                                                       PAGE   8
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  15C8   0080                    km$(2) = "The key goes in but refuses to turn."
@@ -471,8 +471,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1AF4   00AC    SUB LoadConfig
  1AFF   00AC            CLOSE
                                                                       PAGE   9
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1AFF   00AC            OPEN "dark.ini" FOR APPEND AS #1
@@ -530,8 +530,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1D64   00AC            snr = 6
  1D64   00AC            exsen = 1
                                                                       PAGE  10
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1D64   00AC            nfon = 1
@@ -589,8 +589,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  227F   00AC                            END IF
  227F   00AC                    END IF
                                                                       PAGE  11
-                                                                      08 Jul 26
-                                                                      16:16:34
+                                                                      09 Jul 26
+                                                                      14:34:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  227F   00AC            LOOP
