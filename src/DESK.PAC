@@ -211,6 +211,27 @@
 90,142,8
 90,138,8
 86,142,8
+98,94,1
+124,166,15
+132,166,15
+140,166,15
+148,166,15
+156,166,15
+124,166,16
+132,166,16
+140,166,16
+148,166,16
+156,166,16
+124,166,17
+132,166,17
+140,166,17
+148,166,17
+156,166,17
+124,166,9
+132,166,9
+140,166,9
+148,166,9
+156,166,9
 0,0,0
 "room7","You leave the study area.","a",0,0,0,""
 "","The drawers are a mess of unwanted      papers.","a",0,0,0,""
@@ -221,11 +242,14 @@
 "","You remove the |paper clip|.","g",0,27,27,""
 "","The paper contains scribbled notes about psychiatry far beyond your comprehension.","l",0,0,0,""
 "","It is a desk drawer.","l",0,0,0,""
-"","The desk drawer is locked.","a",0,0,0,""
-"","You unlock the drawer and seize the     |syringe| inside.","u",5,29,29,""
+"","The desk drawer is locked.","a",0,51,0,""
+"","You unlock the drawer. It slides open.","u",5,51,51,""
 "","The lamp is very shiny.","l",0,0,0,""
 "","You decide not to turn off the lamp.","a",0,0,0,""
 "","That is the switch for the lamp.","l",0,0,0,""
+"","A glass syringe rests in the drawer.","l",51,29,0,""
+"","You take the |syringe|.","g",51,29,29,""
+"","The drawer is empty now.","l",29,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
@@ -234,6 +258,7 @@
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
-"","","",0,0,0,""
-"","","",0,0,0,""
-"","","",0,0,0,""
+8,68,128,27,0
+9,85,160,51,0
+10,122,164,51,0
+9,85,160,29,0

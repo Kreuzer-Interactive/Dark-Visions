@@ -82,13 +82,15 @@
 226,162,9
 226,166,9
 226,170,9
+82,162,5
+78,162,5
 0,0,0
 "","The drawer is empty.","l",0,0,0,"f9"
 "","The mirror protrudes out slightly from   the wall.","l",0,0,0,"f9"
 "","The mirror slides.","",46,0,0,""
 "","You push in the mirror releasing a trigger and the clock slides across the wall.","a",46,0,47,"f9"
-"room9","You open the concealed door.","a",47,0,0,"ww"
-"","You place the clockhand back on the     clock and set it to the correct time.","u",23,46,46,"f4"
+"room9","You open the concealed door.","a",47,0,0,"ew"
+"","You set the clock. A faint mechanical   click answers from across the room.","u",23,46,46,"f4x"
 "","The clock is missing a hand.","l",0,46,0,"f4"
 "","The candle cast eerie shadows.","l",0,0,0,"f6"
 "","The table contains nothing.","l",0,0,0,"f3"
@@ -108,7 +110,12 @@
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
+12,76,125,47,53
+13,73,128,53,54
+15,81,146,-53,0
+16,78,159,54,0
 -2,4,184,143,8
+-2,5,82,165,8
 -2,6,100,158,4
 -2,13,102,147,8
 -2,14,102,147,8

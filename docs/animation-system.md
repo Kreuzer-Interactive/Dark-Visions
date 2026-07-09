@@ -59,6 +59,18 @@ id, "name", "type", "source", "frames", rate, "mode", "pal", "snd"
   **seconds** instead of the fixed `rate` (`rate` is ignored) — a curtain stirring in a breeze.
   The two numbers ride inside the mode field (e.g. `"random 0.2 1"`) so the record stays
   9 fields; each wait is rolled separately, so several placements never move in step.
+- `move` — the sprite itself **travels**: the frames field holds a 1px-step script instead of
+  frame indices — `;`-separated tokens of `u/d/l/r` (combined for diagonals: `ul`, `dr`) with
+  an optional repeat count (`ul5`); `p` = pause in place (`p6` = hold 6 steps — any token
+  with no direction letters is a zero-move step). Each step lasts `rate` ticks; frame 0 is
+  drawn. **Before the trigger fires, the placement shows frame 0 at its start spot** (cond is
+  the travel trigger, not visibility — so a clock is on the wall from the first visit and the
+  background art needn't contain it); the engine keeps the background under the idle frame
+  and lifts it cleanly when the travel starts. After playing, the sprite
+  settles wherever the script ends (and re-entering the room shows it at that end spot).
+  Plays once via the placement's cond/set flags, exactly like `hold` — the player stays drawn
+  while it moves. Max 60 steps. Example — a clock that shudders then slides up-left and eases
+  back: `"u;d;u;d;u;d;ul5;dr2"`.
 
 Examples:
 ```
@@ -81,7 +93,7 @@ animId, x, y, cond, set
 |--------|---------|
 | animId | references a library animation (>= 1) |
 | x, y   | position (ignored for `bg`/`pal` — full-screen) |
-| cond   | `ob()` flag that must be ON for this placement to be active; 0 = always |
+| cond   | `ob()` flag that must be ON for this placement to be active; 0 = always; **negative** = active while `ob(-cond)` is **OFF** (a tick-tock pendulum until the clock slides) — a running loop freezes the moment the flag turns on, and negative conds never trigger mid-room plays |
 | set    | "played" flag — after a `once`/`hold` animation plays its first time, the engine sets `ob(set)=1`; thereafter the placement skips the animation and shows only the end frame. 0 = no marker (replays on each activation). **This makes "door opens once, then stays open forever" work.** |
 
 Example (ROOM3.PAC, after the objects):

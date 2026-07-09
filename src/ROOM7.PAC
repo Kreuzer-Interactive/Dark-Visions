@@ -134,6 +134,11 @@
 118,166,6
 114,166,6
 114,162,6
+174,126,19
+174,122,19
+174,118,19
+174,114,19
+170,126,19
 0,0,0
 "room6","You leave the room.","a",0,0,0,"we"
 "","The vent is just like all the other     vents.","l",0,0,0,"f6"
@@ -153,7 +158,7 @@
 "","A passage has opened up behind the fire.","l",41,0,0,"f8"
 "","You stoke out the fire.","u",2,50,50,"f8"
 "room11","You crawl through the confined passage.","a",41,0,31,"wn"
-"","","",0,0,0,""
+"","You've never seen a wire connected to a fireplace before.","l",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""

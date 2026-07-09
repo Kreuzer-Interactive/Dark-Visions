@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      07 Jul 26
-                                                                      01:34:19
+                                                                      08 Jul 26
+                                                                      16:16:34
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME2.BAS: secondary module for the multi-module split (
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0225   0006    SUB Snd3
  0230   0006            SOUND f6, .1: SOUND f3, .5
                                                                       PAGE   2
-                                                                      07 Jul 26
-                                                                      01:34:19
+                                                                      08 Jul 26
+                                                                      16:16:34
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0260   0006            FOR sb = 100 TO 600 STEP 100: SOUND sb, .1: NEXT
@@ -85,137 +85,526 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 , 2
  04E7   0006    END SUB
  04EF   0006    
- 04EF   0006    '----- create/read dark.ini settings (showfps, joystick)
- 04EF   0006    SUB LoadConfig
- 04FA   0006            CLOSE
- 04FA   0006            OPEN "dark.ini" FOR APPEND AS #1
- 04FA   0006            IF LOF(1) = 0 THEN
- 04FA   0006                    PRINT #1, "; Dark Visions settings"
- 04FA   0006                    PRINT #1, "; showfps=1 shows main loop speed to
-                p right + intro pace"
- 04FA   0006                    PRINT #1, "showfps=0"
- 04FA   0006                    PRINT #1, "; joystick=1 enables joystick/gamepa
-                d control (off avoids stray input)"
- 04FA   0006                    PRINT #1, "joystick=0"
- 04FA   0006                    PRINT #1, "; mouse=1 enables mouse cursor + har
-                dware pointer (needs a mouse driver)"
- 04FA   0006                    PRINT #1, "mouse=0"
- 04FA   0006                    PRINT #1, "; mousecursor: 0 driver default, 1 a
-                rrow, 2 crosshair, 3 box, 4 crosshair(xor)"
- 04FA   0006                    PRINT #1, "mousecursor=1"
- 04FA   0006                    PRINT #1, "; mousesnap: click pulls to nearest 
-                hotspot within N pixels (0=off/exact)"
- 04FA   0006                    PRINT #1, "mousesnap=6"
- 04FA   0006                    PRINT #1, "; exitcursor=1 changes the pointer t
-                o a direction arrow near room exits"
- 04FA   0006                    PRINT #1, "exitcursor=1"
- 04FA   0006                    PRINT #1, "; mousexy=1 shows live mouse x,y + s
-                napped hit point bottom row (debug; needs mouse=1)"
- 04FA   0006                    PRINT #1, "mousexy=0"
- 04FA   0006                    PRINT #1, "; lookmiss=1 shows a random 'nothing
-                 to see' line after looking 3x at an empty spot"
- 04FA   0006                    PRINT #1, "lookmiss=1"
- 04FA   0006                    PRINT #1, "; killers=0 turns off the roaming ki
+ 04EF   0006    '----- debug readout (moved from GAME.BAS -- 64K ceiling): raw 
+                mouse xy, snapped hit
+ 04EF   0006    '----- point, and the object+verb a click here resolves to
+ 04EF   0006    SUB MxyTick (mx%, my%, bx, ay, snr2, ox%(), oy%(), oi%(), ky$()
+                )
+ 04FA   0006            oi2% = 0
+ 04FA   0006            mind% = snr2 * snr2 + 1
+ 04FA   0006            FOR i% = 1 TO 257
+ 051C   0006                    IF oy%(i%) = 0 THEN EXIT FOR
+ 0534   0006                    dx% = mx% - ox%(i%)
+ 0534   0006                    dy% = my% - oy%(i%)
+ 0534   0006                    IF ABS(dx%) <= snr2 AND ABS(dy%) <= snr2 THEN
+ 0534   0006                            dd% = dx% * dx% + dy% * dy%
+ 0534   0006                            IF dd% < mind% THEN mind% = dd%: oi2% =
+                 oi%(i%)
+ 05E4   0006                    END IF
+ 05E4   0006            NEXT
+ 05F3   0006            v$ = "-"
+ 05F3   0006            IF oi2% >= 1 AND oi2% <= 25 THEN v$ = ky$(oi2%)
+ 0634   0006            IF v$ = "" THEN v$ = "-"
+ 0653   0006            LOCATE 24, 1
+ 0653   0006            PRINT USING "mxy ### ### hit ### ### obj ## v="; mx%; m
+                y%; bx; ay; oi2%;
+ 0653   0006            PRINT v$; "  ";
+ 0653   0006    END SUB
+ 06D0   0006    
+ 06D0   0006    '----- hit-zone debug overlay (moved from GAME.BAS): ring each 
+                hotspot's snr click-zone
+ 06D0   0006    '----- coloured by verb (look=blue, action=brown, get/use=gray)
+                 + dot its hit point
+ 06D0   0006    SUB HitZones (hz$, snr2, ox%(), oy%(), oi%(), ky$())
                                                                       PAGE   3
-                                                                      07 Jul 26
-                                                                      01:34:19
+                                                                      08 Jul 26
+                                                                      16:16:34
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 06DB   0006            IF hz$ = "" OR snr2 <= 0 THEN EXIT SUB
+ 0710   0006            FOR i% = 1 TO 257
+ 0716   0006                    IF oy%(i%) = 0 THEN EXIT FOR
+ 072E   0006                    v$ = ky$(oi%(i%))
+ 072E   0006                    IF v$ <> "" AND INSTR(hz$, v$) > 0 THEN
+ 072E   0006                            c% = 2
+ 072E   0006                            IF v$ = "a" THEN c% = 3
+ 07A7   0006                            IF v$ = "g" THEN c% = 1
+ 07BE   0006                            IF v$ = "u" THEN c% = 1
+ 07D5   0006                            CIRCLE (ox%(i%), oy%(i%)), snr2, c%
+ 080B   0006                            PSET (ox%(i%), oy%(i%)), c%
+ 080B   0006                    END IF
+ 0839   0006            NEXT
+ 0848   0006    END SUB
+ 0859   0006    
+ 0859   0006    '----- parse an anim frames field like "0;1;2" into fsq(1..nfr2
+                ) frame indices
+ 0859   0006    SUB AnimParse (s$, fsq%(), nfr2%)
+ 0864   0006            nfr2% = 0
+ 0864   0006            t$ = s$ + ";"
+ 0864   0006            sp% = 1
+ 0864   0006            FOR i% = 1 TO LEN(t$)
+ 0898   0006                    IF MID$(t$, i%, 1) = ";" THEN
+ 0898   0006                            IF i% > sp% AND nfr2% < 30 THEN
+ 0898   0006                                    nfr2% = nfr2% + 1
+ 0898   0006                                    fsq%(nfr2%) = VAL(MID$(t$, sp%,
+                 i% - sp%))
+ 0898   0006                            END IF
+ 090D   0006                            sp% = i% + 1
+ 090D   0006                    END IF
+ 0914   0006            NEXT
+ 0923   0006    END SUB
+ 0934   0006    
+ 0934   0006    '----- pause rate2*0.05s between animation frames (TIMER-based,
+                 midnight-safe)
+ 0934   0006    SUB AnimWait (rate2)
+ 093F   0006            t! = TIMER
+ 093F   0006            DO
+ 0950   0006                    IF TIMER < t! THEN EXIT SUB
+ 096A   0006            LOOP WHILE TIMER < t! + rate2 * .05
+ 096A   0006    END SUB
+ 0994   0006    
+ 0994   0006    '----- does the player's 31x31 box intersect rect x1..x2 / y1..
+                y2? (np = nopl close-up)
+ 0994   0006    SUB OvPlayer (x1, y1, x2, y2, pjx2, pjy2, np, ov%)
+ 099F   0006            ov% = 0
+ 099F   0006            IF np = 1 THEN EXIT SUB
+ 09BD   0006            IF x1 < pjx2 + 31 AND x2 >= pjx2 AND y1 < pjy2 + 31 AND
+                 y2 >= pjy2 THEN ov% = 1
+ 0A3F   0006    END SUB
+ 0A47   0006    
+ 0A47   0006    '----- walkout/exit direction letter -> numpad facing digit (""
+                 = not a direction)
+ 0A47   0006    SUB DirDigit (l$, d$)
+                                                                      PAGE   4
+                                                                      08 Jul 26
+                                                                      16:16:34
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0A52   0006            d$ = ""
+ 0A52   0006            IF l$ = "s" THEN d$ = "1"
+ 0A7B   0006            IF l$ = "n" THEN d$ = "2"
+ 0A98   0006            IF l$ = "e" THEN d$ = "3"
+ 0AB5   0006            IF l$ = "w" THEN d$ = "4"
+ 0AD2   0006    END SUB
+ 0ADA   0006    
+ 0ADA   0006    '----- fps counter (moved from GAME.BAS -- 64K ceiling): fpsc/f
+                pst ride in COMMON
+ 0ADA   0006    SUB FpsTick
+ 0AE5   0006            fpsc = fpsc + 1
+ 0AE5   0006            fd! = TIMER - fpst
+ 0AE5   0006            IF fd! < 0 OR fd! >= 2 THEN
+ 0AE5   0006                    fpst = TIMER
+ 0AE5   0006                    fpsc = 0
+ 0AE5   0006            ELSEIF fd! >= 1 THEN
+ 0B62   0006                    fv! = fpsc / fd!
+ 0B62   0006                    IF fv! > 99999 THEN fv! = 99999
+ 0BA6   0006                    LOCATE 1, 35
+ 0BA6   0006                    PRINT USING "#####"; fv!;
+ 0BA6   0006                    fpst = TIMER
+ 0BA6   0006                    fpsc = 0
+ 0BA6   0006            END IF
+ 0BEF   0006    END SUB
+ 0BF7   0006    
+ 0BF7   0006    '----- lookmiss brain (moved from GAME.BAS -- 64K ceiling): out
+                $ = "" when there's
+ 0BF7   0006    '----- nothing to say. A click on any hit point resets; 3 looks
+                 at the same empty
+ 0BF7   0006    '----- cell picks a random, non-repeating "nothing to see" line
+ 0BF7   0006    SUB LookMissLine (bx%, ay%, ox%(), oy%(), nf$(), out$) STATIC
+ 0C02   0006            out$ = ""
+ 0C02   0006            FOR i% = 1 TO 257
+ 0C14   0006                    IF oy%(i%) = 0 THEN EXIT FOR
+ 0C2C   0006                    IF ox%(i%) = bx% AND oy%(i%) = ay% THEN lc% = 0
+                : EXIT SUB
+ 0C76   000A            NEXT
+ 0C82   000A            IF bx% = lx% AND ay% = ly% THEN
+ 0C82   000A                    lc% = lc% + 1
+ 0C82   000A            ELSE
+ 0CB0   000E                    lc% = 1: lx% = bx%: ly% = ay%
+ 0CB0   000E            END IF
+ 0CC6   000E            IF lc% < 3 THEN EXIT SUB
+ 0CD0   000E            IF lsd% = 0 THEN RANDOMIZE TIMER: lsd% = 1
+ 0CF9   0010            DO
+ 0CFA   0010                    p% = INT(RND * 25) + 1
+ 0CFA   0010            LOOP WHILE p% = h1% OR p% = h2% OR p% = h3%
+ 0CFA   0010            h3% = h2%: h2% = h1%: h1% = p%
+ 0CFA   0010            out$ = nf$(p%)
+ 0CFA   0010    END SUB
+ 0D72   0018    
+ 0D72   0018    '----- derive cache slot acs's frame count. k frames interleave
+                 word0 x k then
+ 0D72   0018    '----- height x k -- but when width*2 = height the leading-equa
+                                                                      PAGE   5
+                                                                      08 Jul 26
+                                                                      16:16:34
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                l count OVERSHOOTS
+ 0D72   0018    '----- (a 3x6 frame reads 6,6,6,6...). Validate candidates down
+                ward: the k whose
+ 0D72   0018    '----- frame geometry exactly tiles the file wins; fall back to
+                 the raw count.
+ 0D72   0018    SUB AnimK (acPct%(), acN%(), acs, kk%)
+ 0D7D   0018            kk% = 1
+ 0D7D   0018            anf% = acN%(acs)
+ 0D7D   0018            IF anf% < 2 THEN EXIT SUB
+ 0DAA   0018            ld% = 0
+ 0DAA   0018            DO WHILE ld% < anf%
+ 0DB0   0018                    IF acPct%(acs, ld% + 1) <> acPct%(acs, 1) THEN 
+                EXIT DO
+ 0E11   0018                    ld% = ld% + 1
+ 0E11   0018            LOOP
+ 0E16   0018            IF ld% < 1 THEN ld% = 1
+ 0E24   0018            w0& = acPct%(acs, 1)
+ 0E24   0018            IF w0& < 0 THEN w0& = w0& + 65536
+ 0E79   0018            FOR k% = ld% TO 1 STEP -1
+ 0E80   0018                    IF (anf% MOD k%) = 0 THEN
+ 0E80   0018                            h& = acPct%(acs, k% + 1)
+ 0E80   0018                            IF h& < 0 THEN h& = h& + 65536
+ 0EE9   0018                            IF h& >= 1 AND h& <= 140 AND w0& >= 2 A
+                ND w0& <= 280 THEN
+ 0EE9   0018                                    per& = 2 + INT((INT((w0& + 7) /
+                 8) * h& + 1) / 2)
+ 0EE9   0018                                    IF per& * k% = anf% THEN kk% = 
+                k%: EXIT SUB
+ 0FD8   0018                            END IF
+ 0FD8   0018                    END IF
+ 0FD8   0018            NEXT
+ 0FE7   0018            kk% = ld%
+ 0FE7   0018    END SUB
+ 0FF7   0018    
+ 0FF7   0018    '----- measure cache slot acs's frame size in pixels (moved fro
+                m GAME.BAS): frame
+ 0FF7   0018    '----- count via AnimK; capped so the region fits a 150-int sav
+                e-under slot
+ 0FF7   0018    SUB AnimDims (acPct%(), acN%(), acs, adw, adh)
+ 1002   0018            adw = 31: adh = 31
+ 1002   0018            IF acN%(acs) < 2 THEN EXIT SUB
+ 103F   0018            CALL AnimK(acPct%(), acN%(), acs, kk%)
+ 1051   0018            w% = acPct%(acs, 1) \ 2
+ 1051   0018            h% = acPct%(acs, kk% + 1)
+ 1051   0018            IF w% < 1 OR h% < 1 THEN EXIT SUB
+ 10C5   0018            '----- any shape is fine as long as the region fits a 1
+                50-int save-under slot
+ 10C5   0018            IF ((w% * 2 + 7) \ 8) * h% > 296 THEN EXIT SUB
+ 10DE   0018            adw = w%: adh = h%
+ 10DE   0018    END SUB
+ 1106   0018    
+ 1106   0018    '----- parse a move-anim script into 1px step arrays (max 60 st
+                eps).
+ 1106   0018    '----- Tokens split on ";": letters u/d/l/r combine into a dire
+                                                                      PAGE   6
+                                                                      08 Jul 26
+                                                                      16:16:34
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                ction (ul = up-left),
+ 1106   0018    '----- a trailing number repeats it ("ul5"); "p" (no direction 
+                letters) = a pause
+ 1106   0018    '----- step in place ("p6" holds 6 steps). Example: "u;d;u;d;u;
+                d;p6;ul5;dr2"
+ 1106   0018    SUB MovParse (s$, mdx%(), mdy%(), mn%, bx1%, by1%, bx2%, by2%)
+ 1111   0018            mn% = 0
+ 1111   0018            t$ = LCASE$(s$) + ";"
+ 1111   0018            sp% = 1
+ 1111   0018            FOR i% = 1 TO LEN(t$)
+ 114C   0018                    IF MID$(t$, i%, 1) = ";" THEN
+ 114C   0018                            w$ = MID$(t$, sp%, i% - sp%)
+ 114C   0018                            sp% = i% + 1
+ 114C   0018                            IF w$ <> "" THEN
+ 114C   0018                                    dx% = 0: dy% = 0: rp% = 0
+ 114C   0018                                    FOR j% = 1 TO LEN(w$)
+ 11C2   0018                                            c$ = MID$(w$, j%, 1)
+ 11C2   0018                                            IF c$ = "u" THEN dy% = 
+                dy% - 1
+ 11F1   0018                                            IF c$ = "d" THEN dy% = 
+                dy% + 1
+ 1206   0018                                            IF c$ = "l" THEN dx% = 
+                dx% - 1
+ 121B   0018                                            IF c$ = "r" THEN dx% = 
+                dx% + 1
+ 1230   0018                                            IF c$ >= "0" AND c$ <= 
+                "9" THEN rp% = rp% * 10 + VAL(c$)
+ 1286   0018                                    NEXT
+ 1295   0018                                    IF rp% < 1 THEN rp% = 1
+ 12A3   0018                                    FOR j% = 1 TO rp%
+ 12B0   0018                                            IF mn% < 60 THEN mn% = 
+                mn% + 1: mdx%(mn%) = dx%: mdy%(mn%) = dy%
+ 12E3   0018                                    NEXT
+ 12EF   0018                            END IF
+ 12EF   0018                    END IF
+ 12EF   0018            NEXT
+ 12FE   0018            '----- path bounds (cumulative offsets) for player-over
+                lap tests during the travel
+ 12FE   0018            bx1% = 0: by1% = 0: bx2% = 0: by2% = 0
+ 12FE   0018            cx% = 0: cy% = 0
+ 12FE   0018            FOR i% = 1 TO mn%
+ 1332   0018                    cx% = cx% + mdx%(i%): cy% = cy% + mdy%(i%)
+ 1332   0018                    IF cx% < bx1% THEN bx1% = cx%
+ 136A   0018                    IF cx% > bx2% THEN bx2% = cx%
+ 137C   0018                    IF cy% < by1% THEN by1% = cy%
+ 138E   0018                    IF cy% > by2% THEN by2% = cy%
+ 13A0   0018            NEXT
+ 13AC   0018    END SUB
+ 13CF   0018    
+ 13CF   0018    '----- fill the lookmiss "nothing to see" lines (25); lives her
+                e because GAME.BAS
+ 13CF   0018    '----- is at its 64K code-segment ceiling
+ 13CF   0018    SUB LoadMsgs (nf$())
+ 13DA   0018            nf$(1) = "There is nothing to see here."
+                                                                      PAGE   7
+                                                                      08 Jul 26
+                                                                      16:16:34
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 13DA   0018            nf$(2) = "Nothing catches your eye."
+ 13DA   0018            nf$(3) = "You see nothing unusual."
+ 13DA   0018            nf$(4) = "Nothing worth a closer look."
+ 13DA   0018            nf$(5) = "You find nothing of interest."
+ 13DA   0018            nf$(6) = "Nothing remarkable here."
+ 13DA   0018            nf$(7) = "You look closer, but find nothing."
+ 13DA   0018            nf$(8) = "There's nothing special about it."
+ 13DA   0018            nf$(9) = "You see only the ordinary."
+ 13DA   0018            nf$(10) = "Nothing stands out to you."
+ 13DA   0018            nf$(11) = "There's nothing here to examine."
+ 13DA   0018            nf$(12) = "It holds no secrets for you."
+ 13DA   0018            nf$(13) = "Nothing draws your attention."
+ 13DA   0018            nf$(14) = "You don't see anything useful."
+ 13DA   0018            nf$(15) = "Nothing of note here."
+ 13DA   0018            nf$(16) = "Whatever you sought, it isn't here."
+ 13DA   0018            nf$(17) = "Nothing worth mentioning."
+ 13DA   0018            nf$(18) = "There's nothing here for you."
+ 13DA   0018            nf$(19) = "Just as it looks - nothing more."
+ 13DA   0018            nf$(20) = "Your eyes find nothing of value."
+ 13DA   0018            nf$(21) = "Nothing but dust and shadow."
+ 13DA   0018            nf$(22) = "There's nothing here to help you."
+ 13DA   0018            nf$(23) = "You peer closer. Still nothing."
+ 13DA   0018            nf$(24) = "Nothing reveals itself to you."
+ 13DA   0018            nf$(25) = "The shadows hide nothing here."
+ 13DA   0018    END SUB
+ 15BD   0018    
+ 15BD   0018    '----- pick a random, non-repeating reply for a use that did no
+                thing. sel = the item
+ 15BD   0018    '----- being used; wantbs = an item some hit use point wanted i
+                nstead (0 = none).
+ 15BD   0018    '----- Specials: a key on a lock wanting a DIFFERENT key -> key
+                 lines; the paper
+ 15BD   0018    '----- clip (27) on a keyed lock -> too-tough-to-pick lines; th
+                e bar (6) where the
+ 15BD   0018    '----- poker's (2) reach is needed -> too-short lines. Keys: 5,
+                 8, 13, 22.
+ 15BD   0018    SUB UseMissLine (sel, wantbs, out$) STATIC
+ 15C8   0018            DIM us$(12), km$(6), pc$(2), rc$(2)
+ 15C8   0080            IF umini = 0 THEN
+ 15C8   0080                    umini = 1
+ 15C8   0080                    us$(1) = "That doesn't work."
+ 15C8   0080                    us$(2) = "You can't use that there."
+ 15C8   0080                    us$(3) = "Nothing happens."
+ 15C8   0080                    us$(4) = "That's not going to work."
+ 15C8   0080                    us$(5) = "You try, but it does nothing."
+ 15C8   0080                    us$(6) = "That has no effect."
+ 15C8   0080                    us$(7) = "It doesn't seem to fit."
+ 15C8   0080                    us$(8) = "You can't find a way to use it here."
+ 15C8   0080                    us$(9) = "That won't help here."
+ 15C8   0080                    us$(10) = "Try as you might, nothing happens."
+ 15C8   0080                    us$(11) = "That accomplishes nothing."
+ 15C8   0080                    us$(12) = "No matter how you try, it won't work
+                ."
+ 15C8   0080                    km$(1) = "The key doesn't fit the lock."
+                                                                      PAGE   8
+                                                                      08 Jul 26
+                                                                      16:16:34
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 15C8   0080                    km$(2) = "The key goes in but refuses to turn."
+ 15C8   0080                    km$(3) = "It's the wrong key for this lock."
+ 15C8   0080                    km$(4) = "The key rattles but will not turn."
+ 15C8   0080                    km$(5) = "That's not the key for this lock."
+ 15C8   0080                    km$(6) = "No use - this key will never turn it.
+                "
+ 15C8   0080                    pc$(1) = "The lock is too tough to pick. You'll
+                   need the key."
+ 15C8   0080                    pc$(2) = "Too sturdy to pick - this one needs i
+                ts key."
+ 15C8   0080                    rc$(1) = "You need something a little longer to
+                   reach it."
+ 15C8   0080                    rc$(2) = "You can't quite reach it with that."
+ 15C8   0080                    RANDOMIZE TIMER
+ 15C8   0080            END IF
+ 1721   0084            kk = 0
+ 1721   0084            IF wantbs > 0 AND wantbs <> sel THEN
+ 1721   0084                    wk = 0
+ 1721   0084                    IF wantbs = 5 OR wantbs = 8 OR wantbs = 13 OR w
+                antbs = 22 THEN wk = 1
+ 17E5   008C                    IF wk = 1 THEN
+ 17E5   008C                            IF sel = 5 OR sel = 8 OR sel = 13 OR se
+                l = 22 THEN kk = 1
+ 1871   008C                            IF sel = 27 THEN kk = 2
+ 1894   008C                    END IF
+ 1894   008C                    IF sel = 6 AND wantbs = 2 THEN kk = 3
+ 18DB   008C            END IF
+ 18DB   008C            IF kk = 2 THEN
+ 18DB   008C                    pch = (pch MOD 2) + 1
+ 18DB   008C                    out$ = pc$(pch)
+ 18DB   008C            ELSEIF kk = 3 THEN
+ 1938   0090                    rch = (rch MOD 2) + 1
+ 1938   0090                    out$ = rc$(rch)
+ 1938   0090            ELSEIF kk = 1 THEN
+ 1995   0094                    DO
+ 19AC   0094                            ump = INT(RND * 6) + 1
+ 19AC   0094                    LOOP WHILE ump = kh1 OR ump = kh2
+ 19AC   0094                    kh2 = kh1
+ 19AC   0094                    kh1 = ump
+ 19AC   0094                    out$ = km$(ump)
+ 19AC   0094            ELSE
+ 1A3A   00A0                    DO
+ 1A3A   00A0                            ump = INT(RND * 12) + 1
+ 1A3A   00A0                    LOOP WHILE ump = uh1 OR ump = uh2 OR ump = uh3
+ 1A3A   00A0                    uh3 = uh2
+ 1A3A   00A0                    uh2 = uh1
+ 1A3A   00A0                    uh1 = ump
+ 1A3A   00A0                    out$ = us$(ump)
+ 1A3A   00A0            END IF
+ 1AEC   00AC    END SUB
+ 1AF4   00AC    
+ 1AF4   00AC    '----- create/read dark.ini settings (showfps, joystick)
+ 1AF4   00AC    SUB LoadConfig
+ 1AFF   00AC            CLOSE
+                                                                      PAGE   9
+                                                                      08 Jul 26
+                                                                      16:16:34
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 1AFF   00AC            OPEN "dark.ini" FOR APPEND AS #1
+ 1AFF   00AC            IF LOF(1) = 0 THEN
+ 1AFF   00AC                    PRINT #1, "; Dark Visions settings"
+ 1AFF   00AC                    PRINT #1, "; showfps=1 shows main loop speed to
+                p right + intro pace"
+ 1AFF   00AC                    PRINT #1, "showfps=0"
+ 1AFF   00AC                    PRINT #1, "; joystick=1 enables joystick/gamepa
+                d control (off avoids stray input)"
+ 1AFF   00AC                    PRINT #1, "joystick=0"
+ 1AFF   00AC                    PRINT #1, "; mouse=1 enables mouse cursor + har
+                dware pointer (needs a mouse driver)"
+ 1AFF   00AC                    PRINT #1, "mouse=0"
+ 1AFF   00AC                    PRINT #1, "; mousecursor: 0 driver default, 1 a
+                rrow, 2 crosshair, 3 box, 4 crosshair(xor)"
+ 1AFF   00AC                    PRINT #1, "mousecursor=1"
+ 1AFF   00AC                    PRINT #1, "; mousesnap: click pulls to nearest 
+                hotspot within N pixels (0=off/exact)"
+ 1AFF   00AC                    PRINT #1, "mousesnap=6"
+ 1AFF   00AC                    PRINT #1, "; exitcursor=1 changes the pointer t
+                o a direction arrow near room exits"
+ 1AFF   00AC                    PRINT #1, "exitcursor=1"
+ 1AFF   00AC                    PRINT #1, "; mousexy=1 shows live mouse x,y + s
+                napped hit point bottom row (debug; needs mouse=1)"
+ 1AFF   00AC                    PRINT #1, "mousexy=0"
+ 1AFF   00AC                    PRINT #1, "; lookmiss=1 shows a random 'nothing
+                 to see' line after looking 3x at an empty"
+ 1AFF   00AC                    PRINT #1, "; spot, and a random 'that doesn't w
+                ork' line when a use action does nothing"
+ 1AFF   00AC                    PRINT #1, "lookmiss=1"
+ 1AFF   00AC                    PRINT #1, "; killers=0 turns off the roaming ki
                 llers (for testing; scripted deaths still happen)"
- 04FA   0006                    PRINT #1, "killers=1"
- 04FA   0006                    PRINT #1, "; walkto=1 walks the player over to 
+ 1AFF   00AC                    PRINT #1, "killers=1"
+ 1AFF   00AC                    PRINT #1, "; walkto=1 walks the player over to 
                 an item before get/use actions fire (0=instant, as the original
                 )"
- 04FA   0006                    PRINT #1, "walkto=1"
- 04FA   0006                    PRINT #1, "; intro=1 plays the opening cutscene
+ 1AFF   00AC                    PRINT #1, "walkto=1"
+ 1AFF   00AC                    PRINT #1, "; intro=1 plays the opening cutscene
                  (set 0 to skip it)"
- 04FA   0006                    PRINT #1, "intro=1"
- 04FA   0006                    PRINT #1, "; quickstart=1 jumps straight into t
+ 1AFF   00AC                    PRINT #1, "intro=1"
+ 1AFF   00AC                    PRINT #1, "; quickstart=1 jumps straight into t
                 he game - no intro, title or instructions prompt (testing)"
- 04FA   0006                    PRINT #1, "quickstart=0"
- 04FA   0006                            PRINT #1, "; hit-zone debug overlay (ne
+ 1AFF   00AC                    PRINT #1, "quickstart=0"
+ 1AFF   00AC                            PRINT #1, "; hit-zone debug overlay (ne
                 eds mouse=1): ring hotspot click-zones, 1=show 0=hide (look=blu
                 e action=brown get/use=gray)"
- 04FA   0006                            PRINT #1, "hitzone_look=0"
- 04FA   0006                            PRINT #1, "hitzone_get=0"
- 04FA   0006                            PRINT #1, "hitzone_use=0"
- 04FA   0006                            PRINT #1, "hitzone_action=0"
- 04FA   0006            END IF
- 074D   0006            CLOSE
- 074D   0006    
- 074D   0006            snr = 6
- 074D   0006            exsen = 1
- 074D   0006            nfon = 1
- 074D   0006            inon = 1
- 074D   0006            klon = 1
- 074D   0006            wksen = 1
- 074D   0006            qkon = 0
- 074D   0006            hzon$ = ""
- 074D   0006            OPEN "dark.ini" FOR INPUT AS #1
- 074D   0006            DO WHILE NOT EOF(1)
- 07CC   0006                    LINE INPUT #1, ln$
- 07E7   0006                    ln$ = LTRIM$(RTRIM$(ln$))
- 07E7   0006                    c$ = LEFT$(ln$, 1)
- 07E7   0006                    IF ln$ <> "" AND c$ <> ";" AND c$ <> "#" AND c$
-                 <> "'" AND c$ <> "[" THEN
- 07E7   0006                            eq = INSTR(ln$, "=")
- 07E7   0006                            IF eq >= 2 THEN
- 07E7   0006                                    k$ = LCASE$(LTRIM$(RTRIM$(LEFT$
-                (ln$, eq - 1))))
- 07E7   0006                                    v$ = LCASE$(LTRIM$(RTRIM$(MID$(
-                ln$, eq + 1))))
- 07E7   0006                                    tv = 0
- 07E7   0006                                    IF v$ = "1" OR v$ = "true" OR v
-                $ = "yes" OR v$ = "on" THEN tv = 1
- 09CC   0006                                    IF k$ = "showfps" THEN sfps = t
-                v
- 09E9   0006                                    IF k$ = "joystick" THEN jsen = 
-                tv
- 0A06   0006                                    IF k$ = "mouse" THEN msen = tv
- 0A23   0006                                    IF k$ = "mousecursor" THEN mcur
-                 = VAL(v$)
- 0A4B   0006                                    IF k$ = "mousesnap" THEN snr = 
-                                                                      PAGE   4
-                                                                      07 Jul 26
-                                                                      01:34:19
+ 1AFF   00AC                            PRINT #1, "hitzone_look=0"
+ 1AFF   00AC                            PRINT #1, "hitzone_get=0"
+ 1AFF   00AC                            PRINT #1, "hitzone_use=0"
+ 1AFF   00AC                            PRINT #1, "hitzone_action=0"
+ 1AFF   00AC            END IF
+ 1D64   00AC            CLOSE
+ 1D64   00AC    
+ 1D64   00AC            snr = 6
+ 1D64   00AC            exsen = 1
+                                                                      PAGE  10
+                                                                      08 Jul 26
+                                                                      16:16:34
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 1D64   00AC            nfon = 1
+ 1D64   00AC            inon = 1
+ 1D64   00AC            klon = 1
+ 1D64   00AC            wksen = 1
+ 1D64   00AC            qkon = 0
+ 1D64   00AC            hzon$ = ""
+ 1D64   00AC            OPEN "dark.ini" FOR INPUT AS #1
+ 1D64   00AC            DO WHILE NOT EOF(1)
+ 1DE2   00AC                    LINE INPUT #1, ln$
+ 1DFD   00AC                    ln$ = LTRIM$(RTRIM$(ln$))
+ 1DFD   00AC                    c$ = LEFT$(ln$, 1)
+ 1DFD   00AC                    IF ln$ <> "" AND c$ <> ";" AND c$ <> "#" AND c$
+                 <> "'" AND c$ <> "[" THEN
+ 1DFD   00AC                            eq = INSTR(ln$, "=")
+ 1DFD   00AC                            IF eq >= 2 THEN
+ 1DFD   00AC                                    k$ = LCASE$(LTRIM$(RTRIM$(LEFT$
+                (ln$, eq - 1))))
+ 1DFD   00AC                                    v$ = LCASE$(LTRIM$(RTRIM$(MID$(
+                ln$, eq + 1))))
+ 1DFD   00AC                                    tv = 0
+ 1DFD   00AC                                    IF v$ = "1" OR v$ = "true" OR v
+                $ = "yes" OR v$ = "on" THEN tv = 1
+ 1FE2   00AC                                    IF k$ = "showfps" THEN sfps = t
+                v
+ 1FFF   00AC                                    IF k$ = "joystick" THEN jsen = 
+                tv
+ 201C   00AC                                    IF k$ = "mouse" THEN msen = tv
+ 2039   00AC                                    IF k$ = "mousecursor" THEN mcur
+                 = VAL(v$)
+ 2061   00AC                                    IF k$ = "mousesnap" THEN snr = 
                 VAL(v$)
- 0A72   0006                                    IF k$ = "exitcursor" THEN exsen
+ 2088   00AC                                    IF k$ = "exitcursor" THEN exsen
                  = tv
- 0A8F   0006                                    IF k$ = "mousexy" THEN mxyon = 
+ 20A5   00AC                                    IF k$ = "mousexy" THEN mxyon = 
                 tv
- 0AAC   0006                                    IF k$ = "lookmiss" THEN nfon = 
+ 20C2   00AC                                    IF k$ = "lookmiss" THEN nfon = 
                 tv
- 0AC9   0006                                    IF k$ = "killers" THEN klon = t
+ 20DF   00AC                                    IF k$ = "killers" THEN klon = t
                 v
- 0AE6   0006                                    IF k$ = "walkto" THEN wksen = t
+ 20FC   00AC                                    IF k$ = "walkto" THEN wksen = t
                 v
- 0B03   0006                                    IF k$ = "intro" THEN inon = tv
- 0B20   0006                                    IF k$ = "quickstart" THEN qkon 
+ 2119   00AC                                    IF k$ = "intro" THEN inon = tv
+ 2136   00AC                                    IF k$ = "quickstart" THEN qkon 
                 = tv
- 0B3D   0006                                    IF k$ = "hitzone_look" AND tv =
+ 2153   00AC                                    IF k$ = "hitzone_look" AND tv =
                  1 THEN hzon$ = hzon$ + "l"
- 0B88   0006                                    IF k$ = "hitzone_get" AND tv = 
+ 219E   00AC                                    IF k$ = "hitzone_get" AND tv = 
                 1 THEN hzon$ = hzon$ + "g"
- 0BD3   0006                                    IF k$ = "hitzone_use" AND tv = 
+ 21E9   00AC                                    IF k$ = "hitzone_use" AND tv = 
                 1 THEN hzon$ = hzon$ + "u"
- 0C1E   0006                                    IF k$ = "hitzone_action" AND tv
+ 2234   00AC                                    IF k$ = "hitzone_action" AND tv
                  = 1 THEN hzon$ = hzon$ + "a"
- 0C69   0006                            END IF
- 0C69   0006                    END IF
- 0C69   0006            LOOP
- 0C6C   0006            CLOSE
- 0C6C   0006    
- 0C6C   0006            fpst = TIMER
- 0C6C   0006            fpsc = 0
- 0C6C   0006            mvint = &H33
- 0C6C   0006    END SUB
- 0CC3   0006    
- 0CE6   0006    
+ 227F   00AC                            END IF
+ 227F   00AC                    END IF
+                                                                      PAGE  11
+                                                                      08 Jul 26
+                                                                      16:16:34
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 227F   00AC            LOOP
+ 2282   00AC            CLOSE
+ 2282   00AC    
+ 2282   00AC            fpst = TIMER
+ 2282   00AC            fpsc = 0
+ 2282   00AC            mvint = &H33
+ 2282   00AC    END SUB
+ 22D9   00AC    
+ 22FC   00AC    
 
 43949 Bytes Available
-37542 Bytes Free
+31532 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

@@ -132,6 +132,7 @@
   #drop input{display:none}
   .hint{color:var(--muted);font-size:12px}
   main[hidden]{display:none}
+  [hidden]{display:none !important}
   .tabs{display:flex;gap:2px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0}
   .tabs button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 16px;color:var(--muted);cursor:pointer;font-size:13px}
   .tabs button:hover{color:var(--txt)}
@@ -250,6 +251,7 @@
         <button id="peek" title="Hold to hide markers (or hold Space)">Peek</button>
         <button id="grid" title="Show a faint grid of the action-point lattice (4px)">Grid</button>
         <button id="zones" title="Show click zones — the mousesnap area around each hit point, tinted by the object it clicks. Verb-aware like the game: each verb snaps to its own nearest point; where verbs overlap, action draws on top (filter to one verb for a single-verb map)">Zones</button>
+        <button id="animLock" title="Lock scene animations: they draw faded and become click-through, so you can paint hit points underneath them (drag-to-move is disabled while locked; the ⌖ place tool still works)">🔒 Anims</button>
         <label class="snapfld" title="mousesnap radius in pixels (DARK.INI mousesnap; default 6). 0 = exact clicks only.">pad<input id="snap" type="number" min="0" max="32" value="6"></label>
         <button id="zoomOut" title="Zoom out">−</button>
         <span id="zoomLbl" class="hint">3×</span>
@@ -301,6 +303,7 @@
               <button data-w="w" title="walk west (left)">←</button><button class="bk"></button><button data-w="e" title="walk east (right)">→</button>
               <button class="bk"></button><button data-w="s" title="walk south (down)">↓</button><button class="bk"></button>
             </div>
+            <button id="tgExitOnly" type="button" class="cubtn" title="Exit-arrow only (the e in en/es/..): the cursor still becomes a direction arrow near this exit, but the player does NOT walk to the screen edge — use with a walk-to stand point so he walks to the door itself">arrow only</button>
           </div>
           <div id="tgFace" class="tgblk">
             <div class="tgsub">face / look</div>
@@ -333,6 +336,7 @@
         <div class="fld"><label title="Action only works if flag/object #bs is ON (set). For a Use action, the inventory item you must be holding. 0 = no requirement.">needs on (bs)</label><input id="f_bs" list="invlist" autocomplete="off" placeholder="0 — none"></div>
         <div class="fld"><label title="Action only works if flag #cs is OFF (clear). Use to switch an action off after something else happens. 0 = no requirement.">needs off (cs)</label><input id="f_cs" list="invlist" autocomplete="off" placeholder="0 — none"></div>
         <div class="fld"><label title="When the action fires it turns flag #st ON, which later conditions can require. 0 = sets nothing.">sets on (st)</label><input id="f_st" list="invlist" autocomplete="off" placeholder="0 — none"></div>
+        <div class="fld"><label title="A firing USE removes the used item from the inventory (clockhand onto the clock, rock under the table leg). Saved as a trailing x on the tg field.">use consumes</label><label style="display:flex;align-items:center;gap:6px;flex:1;color:var(--muted);font-size:12px;cursor:pointer"><input id="f_xu" type="checkbox" style="margin:0"> the used item is spent — removed from the inventory</label></div>
         <datalist id="invlist"></datalist>
       </div>
       <div id="help">
@@ -541,7 +545,9 @@ function parsePac(t){
   const num=()=>{ const v=parseInt(k[i++],10); return isNaN(v)?0:v; };
   const str=()=> (k[i++] ?? '');
   for(let h=0;h<257;h++){ const x=num(),y=num(),oi=num(); if(y===0) break; st.hotspots.push({x,y,oi}); }
-  for(let o=0;o<25;o++) st.objects.push({df:str(),ms:str(),ky:str(),bs:num(),cs:num(),st:num(),tg:str()});
+  for(let o=0;o<25;o++){ const b={df:str(),ms:str(),ky:str(),bs:num(),cs:num(),st:num(),tg:str(),xu:0};
+    if(/x$/.test(b.tg)){ b.xu=1; b.tg=b.tg.slice(0,-1); }   // trailing x = use consumes the item
+    st.objects.push(b); }
   st.placements=[];                                          // animation placements: animId,x,y,cond,set — read until tokens run out
   st.stand={};                                               // walk-to stand points: -2,obj,feetX,feetY,dir (dir 0 = auto)
   while(i<=k.length-5){ const animId=num(),x=num(),y=num(),cond=num(),set=num();
@@ -559,7 +565,7 @@ function genPac(s){
   for(const p of s.hotspots){ out+=p.x+','+p.y+','+p.oi+'\r\n'; }
   out+='0,0,0\r\n';
   for(let o=0;o<25;o++){ const b=s.objects[o];
-    out+=[q(b.df),q(b.ms),q(b.ky),b.bs|0,b.cs|0,b.st|0,q(b.tg)].join(',')+'\r\n'; }
+    out+=[q(b.df),q(b.ms),q(b.ky),b.bs|0,b.cs|0,b.st|0,q(b.tg+(b.xu?'x':''))].join(',')+'\r\n'; }
   for(const p of (s.placements||[])) out+=[p.animId,p.x,p.y,p.cond,p.set||0].join(',')+'\r\n';
   if(s.walkband) out+=[-1,s.walkband.min|0,s.walkband.max|0,s.walkband.ymin|0,s.walkband.ymax|0].join(',')+'\r\n';  // walk-to walkable band sentinel
   for(const k in (s.stand||{})){ const sp=s.stand[k]; out+=[-2,k,sp.x|0,sp.y|0,sp.d|0].join(',')+'\r\n'; }          // walk-to stand points
@@ -567,7 +573,7 @@ function genPac(s){
 }
 
 // ---- state ----
-let pic=null, S=null, room='', curObj=1, zoom=3, peeking=false, dirty=false, showGrid=false, showZones=false, snr=6, zoneCanvas=null, zoneDirty=true, placeSel=-1, placingIdx=-1, placeFrameCache={}, dragPlace=-1, dragOffX=0, dragOffY=0, dragMoved=false, standPlacing=false, standFrames=null;
+let pic=null, S=null, room='', curObj=1, zoom=3, peeking=false, dirty=false, showGrid=false, showZones=false, snr=6, zoneCanvas=null, zoneDirty=true, placeSel=-1, placingIdx=-1, placeFrameCache={}, dragPlace=-1, dragOffX=0, dragOffY=0, dragMoved=false, standPlacing=false, standFrames=null, animLocked=false;
 let mode='', rooms=[], fileBlobs={};   // file-mode cache: name -> {pic:Uint8Array, pac:string}
 let painting=0, hoverX=-1, hoverY=-1;
 const undo=[];
@@ -642,10 +648,12 @@ function draw(){
         ctx.strokeRect((p.x-2)*zoom-1, (p.y-2)*zoom-1, 4*zoom+2, 4*zoom+2); }
     }
     if(S.placements){ ctx.font='11px monospace'; ctx.textBaseline='alphabetic';
+      if(animLocked) ctx.globalAlpha=.3;   // locked: faded + click-through so points can be painted beneath
       S.placements.forEach((pl,pi)=>{ const fc=placeFrameCache[pl.animId]||{w:31,h:31}, an=anims.find(a=>a.id===pl.animId), sel=(pi===placeSel);
         if(fc.canvas) ctx.drawImage(fc.canvas, pl.x*zoom, pl.y*zoom, fc.w*zoom, fc.h*zoom);
         ctx.strokeStyle=sel?'#ffcc00':'#33ddaa'; ctx.lineWidth=sel?2:1; ctx.strokeRect(pl.x*zoom, pl.y*zoom, fc.w*zoom, fc.h*zoom);
-        ctx.fillStyle=sel?'#ffcc00':'#33ddaa'; ctx.fillText((an?an.name:'#'+pl.animId)+(pl.cond?' ['+pl.cond+']':''), pl.x*zoom, pl.y*zoom-2); });
+        if(!animLocked){ ctx.fillStyle=sel?'#ffcc00':'#33ddaa'; ctx.fillText((an?an.name:'#'+pl.animId)+(pl.cond?' ['+pl.cond+']':''), pl.x*zoom, pl.y*zoom-2); } });
+      ctx.globalAlpha=1;
     }
     if(S.stand){ ctx.font='11px monospace'; ctx.textBaseline='alphabetic';
       for(const k in S.stand){ const sp=S.stand[k], seld=(+k===curObj);
@@ -723,6 +731,7 @@ function fillForm(){
   document.getElementById('objno').textContent='#'+curObj;
   f_df.value=b.df; const _m=splitMsg(b.ms); f_ms1.value=_m[0]; f_ms2.value=_m[1]; renderVerb(); tgState=parseTg(b.tg); renderTg();
   f_bs.value=fmtRef(b.bs); f_cs.value=fmtRef(b.cs); f_st.value=fmtRef(b.st);
+  f_xu.checked=!!b.xu;
   standPlacing=false; renderStand();
 }
 function selectObj(o){ curObj=o; buildList(); fillForm(); draw(); }
@@ -730,21 +739,24 @@ function onFormInput(){
   const b=S.objects[curObj-1];
   b.df=f_df.value; b.ms=joinMsg(f_ms1.value,f_ms2.value);
   b.bs=parseInt(f_bs.value)||0; b.cs=parseInt(f_cs.value)||0; b.st=parseInt(f_st.value)||0;
+  b.xu=f_xu.checked?1:0;
   setDirty(true); buildList(); renderVerb();
 }
 for(const id of ['f_df','f_ms1','f_ms2','f_bs','f_cs','f_st'])
   document.getElementById(id).addEventListener('input',onFormInput);
+document.getElementById('f_xu').addEventListener('change',onFormInput);
 
 // ---- tg walk/face picker ----
 let tgState={mode:'',dir:'',close:false};
 function parseTg(t){
   if(!t) return {mode:'',dir:'',close:false};
   if(t[0]==='w') return {mode:'w',dir:t.slice(-1),close:false};
+  if(t[0]==='e') return {mode:'w',dir:t.slice(-1),close:false,exitOnly:true};   // arrow only, no edge walkout
   if(t[0]==='f'){ const c=t[1]==='c'; return {mode:'f',dir:c?(t[2]||''):(t[1]||''),close:c}; }
   return {mode:'?',dir:'',close:false,raw:t};
 }
 function buildTg(s){
-  if(s.mode==='w') return 'w'+s.dir;
+  if(s.mode==='w') return (s.exitOnly?'e':'w')+s.dir;
   if(s.mode==='f') return 'f'+(s.close?'c':'')+s.dir;
   if(s.mode==='?') return s.raw||'';
   return '';
@@ -752,6 +764,7 @@ function buildTg(s){
 function renderTg(){
   document.querySelectorAll('#walkPad [data-w]').forEach(b=>b.classList.toggle('on',tgState.mode==='w'&&b.dataset.w===tgState.dir));
   document.querySelectorAll('#facePad [data-f]').forEach(b=>b.classList.toggle('on',tgState.mode==='f'&&b.dataset.f===tgState.dir));
+  document.getElementById('tgExitOnly').classList.toggle('on',tgState.mode==='w'&&!!tgState.exitOnly);
   document.getElementById('tgClose').classList.toggle('on',tgState.close);
   document.getElementById('tgWalk').classList.toggle('dim',tgState.mode==='f');
   document.getElementById('tgFace').classList.toggle('dim',tgState.mode==='w');
@@ -760,7 +773,12 @@ function renderTg(){
 function commitTg(){ if(S){ S.objects[curObj-1].tg=buildTg(tgState); setDirty(true); buildList(); } renderTg(); }
 document.getElementById('walkPad').addEventListener('click',e=>{
   const b=e.target.closest('[data-w]'); if(!b) return; b.blur();
-  tgState=(tgState.mode==='w'&&tgState.dir===b.dataset.w)?{mode:'',dir:'',close:false}:{mode:'w',dir:b.dataset.w,close:false};
+  tgState=(tgState.mode==='w'&&tgState.dir===b.dataset.w)?{mode:'',dir:'',close:false}:{mode:'w',dir:b.dataset.w,close:false,exitOnly:!!tgState.exitOnly};
+  commitTg();
+});
+document.getElementById('tgExitOnly').addEventListener('click',e=>{ e.target.blur();
+  tgState.exitOnly=!tgState.exitOnly;
+  if(tgState.mode!=='w'&&tgState.exitOnly){ renderTg(); return; }   // armed — takes effect when a direction is picked
   commitTg();
 });
 // ---- walk-to stand point (per object; -2,obj,feetX,feetY,dir records) ----
@@ -901,7 +919,7 @@ cv.addEventListener('mousedown',e=>{
     S.placements[placingIdx].x=Math.max(0,Math.min(319,Math.floor((e.clientX-r.left)/zoom)));
     S.placements[placingIdx].y=Math.max(0,Math.min(199,Math.floor((e.clientY-r.top)/zoom)));
     placingIdx=-1; const ph=document.getElementById('placeHint'); if(ph)ph.textContent=''; setDirty(true); renderPlacements(); draw(); return; }
-  const hit=hitPlacement(e);
+  const hit=animLocked?-1:hitPlacement(e);   // locked anims are click-through
   if(hit>=0){ const r=cv.getBoundingClientRect();
     dragPlace=hit; dragMoved=false; dragOffX=(e.clientX-r.left)/zoom-S.placements[hit].x; dragOffY=(e.clientY-r.top)/zoom-S.placements[hit].y;
     placeSel=hit; cv.style.cursor='grabbing'; renderPlacements(); draw(); return; }
@@ -954,8 +972,21 @@ window.addEventListener('keyup',e=>{if(e.code==='Space')isSpaceHeld=false;});
 
 document.getElementById('zoomIn').onclick=()=>{ zoom=Math.min(8,zoom+1); zoomLbl.textContent=zoom+'×'; resize(); };
 document.getElementById('zoomOut').onclick=()=>{ zoom=Math.max(1,zoom-1); zoomLbl.textContent=zoom+'×'; resize(); };
+// mouse-wheel zoom over the room, anchored on the pixel under the cursor
+document.getElementById('stage').addEventListener('wheel',e=>{
+  e.preventDefault();
+  const nz=Math.max(1,Math.min(8,zoom+(e.deltaY<0?1:-1)));
+  if(nz===zoom) return;
+  const st=document.getElementById('stage'), r=cv.getBoundingClientRect();
+  const px=(e.clientX-r.left)/zoom, py=(e.clientY-r.top)/zoom;   // room coords under the cursor
+  zoom=nz; zoomLbl.textContent=zoom+'×'; resize();
+  const r2=cv.getBoundingClientRect();
+  st.scrollLeft+=(r2.left+px*zoom)-e.clientX;
+  st.scrollTop+=(r2.top+py*zoom)-e.clientY;
+},{passive:false});
 document.getElementById('grid').onclick=function(){ showGrid=!showGrid; this.classList.toggle('active',showGrid); draw(); };
 document.getElementById('zones').onclick=function(){ showZones=!showZones; this.classList.toggle('active',showZones); draw(); };
+document.getElementById('animLock').onclick=function(){ animLocked=!animLocked; this.classList.toggle('active',animLocked); if(animLocked&&dragPlace>=0){ dragPlace=-1; cv.style.cursor=''; } draw(); };
 document.getElementById('snap').oninput=function(){ snr=Math.max(0,Math.min(32,parseInt(this.value)||0)); zoneDirty=true; draw(); };
 
 // ---- dirty / save ----
@@ -997,7 +1028,8 @@ async function ensurePlaceFrames(){
     const an=anims.find(a=>a.id===pl.animId);
     if(!an||an.type!=='spr'||!an.source){ placeFrameCache[pl.animId]={w:31,h:31,canvas:null}; continue; }
     const fr=await getPctFrames(an.source);
-    const seq=an.frames.split(';').filter(s=>s.length).map(Number);
+    // move mode: frames holds a step script, not indices — it always draws frame 0
+    const seq=an.mode==='move'?[0]:an.frames.split(';').filter(s=>s.length).map(Number).filter(isFinite);
     const f0=fr?fr.frames[seq.length?seq[0]:0]:null;
     if(!f0){ placeFrameCache[pl.animId]={w:31,h:31,canvas:null}; continue; }
     const c=document.createElement('canvas'); paintSprite(c,f0,S?[0,S.pa1,S.pa2,S.pa3]:sprDefaultPal,1);   // placements wear the loaded room's palette
@@ -1006,7 +1038,9 @@ async function ensurePlaceFrames(){
 }
 function placeSummary(pl, an){
   const m = an ? an.mode : '';
-  const when = pl.cond > 0 ? 'When flag ' + pl.cond + ' is on, ' : 'Always ';
+  if(m === 'move') return (pl.cond > 0 ? 'Sits here (frame 0) until flag ' + pl.cond + ' trips, then travels its move script' : 'Travels its move script from here')
+    + (pl.set > 0 ? ' once — rests at the end (remembered by flag ' + pl.set + ').' : '.');
+  const when = pl.cond > 0 ? 'When flag ' + pl.cond + ' is on, ' : (pl.cond < 0 ? 'While flag ' + (-pl.cond) + ' is OFF, ' : 'Always ');
   let what;
   if(m === 'loop') what = 'loops here';
   else if(m === 'static') what = 'shown here';
@@ -1048,18 +1082,21 @@ function renderPlacements(){
     const showRow=document.createElement('div'); showRow.className='pc-field';
     const showLab=document.createElement('label'); showLab.textContent='Show';
     const showSel=document.createElement('select'); showSel.className='pc-show';
-    showSel.innerHTML='<option value="0">Always</option><option value="1">Only when a flag is on</option>';
-    showSel.value=pl.cond>0?'1':'0';
-    const condIn=document.createElement('input'); condIn.type='number'; condIn.min=1; condIn.className='pc-flag'; condIn.value=pl.cond||''; condIn.placeholder='flag #'; condIn.title='the ob() flag that must be ON';
+    showSel.innerHTML='<option value="0">Always</option><option value="1">Only when a flag is on</option><option value="-1">While a flag is OFF</option>';
+    showSel.value=pl.cond>0?'1':(pl.cond<0?'-1':'0');
+    const condIn=document.createElement('input'); condIn.type='number'; condIn.min=1; condIn.className='pc-flag'; condIn.value=Math.abs(pl.cond)||''; condIn.placeholder='flag #'; condIn.title='the ob() flag (ON gates showing; OFF mode: loops freeze the moment it turns on)';
     const condBrowse=document.createElement('button'); condBrowse.className='pc-btn'; condBrowse.textContent='…'; condBrowse.title='browse / pick a flag';
-    condIn.style.display=pl.cond>0?'':'none'; condBrowse.style.display=pl.cond>0?'':'none';
-    showSel.onchange=()=>{ const on=showSel.value!=='0'; if(!on){ pl.cond=0; } else if(!(pl.cond>0)){ pl.cond=1; condIn.value=1; } condIn.style.display=on?'':'none'; condBrowse.style.display=on?'':'none'; if(on)condIn.focus(); setDirty(true); updateSum(); draw(); };
-    condIn.oninput=()=>{ pl.cond=parseInt(condIn.value,10)||0; setDirty(true); updateSum(); draw(); };
-    condBrowse.onclick=()=>openFlagPicker('Show — appears when this flag is ON', n=>{ pl.cond=n; condIn.value=n; setDirty(true); updateSum(); draw(); });
+    condIn.style.display=pl.cond!==0?'':'none'; condBrowse.style.display=pl.cond!==0?'':'none';
+    const condSign=()=>showSel.value==='-1'?-1:1;
+    showSel.onchange=()=>{ const on=showSel.value!=='0';
+      if(!on){ pl.cond=0; } else { const n=Math.abs(pl.cond)||1; pl.cond=condSign()*n; condIn.value=n; }
+      condIn.style.display=on?'':'none'; condBrowse.style.display=on?'':'none'; if(on)condIn.focus(); setDirty(true); updateSum(); draw(); };
+    condIn.oninput=()=>{ pl.cond=condSign()*(Math.abs(parseInt(condIn.value,10))||0); setDirty(true); updateSum(); draw(); };
+    condBrowse.onclick=()=>openFlagPicker(showSel.value==='-1'?'Show — visible while this flag is OFF':'Show — appears when this flag is ON', n=>{ pl.cond=condSign()*n; condIn.value=n; setDirty(true); updateSum(); draw(); });
     showRow.append(showLab,showSel,condIn,condBrowse);
     card.append(showRow);
-    // replay: only meaningful for once/hold animations
-    if(mode==='once'||mode==='hold'){
+    // replay: only meaningful for once/hold/move animations
+    if(mode==='once'||mode==='hold'||mode==='move'){
       const rRow=document.createElement('div'); rRow.className='pc-field';
       const rLab=document.createElement('label'); rLab.textContent='Replay';
       const rSel=document.createElement('select'); rSel.className='pc-show';
@@ -1217,7 +1254,9 @@ async function scanFlags(){
     (st.objects||[]).forEach(o=>{ const m=flagObjMsg(o)||o.df||'object'; const lbl=rm+' "'+m.slice(0,40)+'"';
       if(o.bs>0) touch(o.bs).on.push(lbl); if(o.cs>0) touch(o.cs).off.push(lbl); if(o.st>0) touch(o.st).set.push(lbl); });
     (st.placements||[]).forEach(p=>{ const an=anims.find(a=>a.id===p.animId), nm=an?an.name:('anim '+p.animId);
-      if(p.cond>0) touch(p.cond).show.push(rm+' · '+nm); if(p.set>0) touch(p.set).set.push(rm+' · '+nm+' (anim plays-once)'); });
+      if(p.cond>0) touch(p.cond).show.push(rm+' · '+nm);
+      else if(p.cond<0) touch(-p.cond).show.push(rm+' · '+nm+' (until this turns ON)');
+      if(p.set>0) touch(p.set).set.push(rm+' · '+nm+' (anim plays-once)'); });
   };
   for(const rm of rooms){
     if(rm===room && S){ scan(S,rm); continue; }
@@ -1643,7 +1682,23 @@ function packSpriteInts(px,w,h){   // build a fresh CGA GET/PUT array: word0=w*2
 function dlBlob(name,data,type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:type})); a.download=name; a.click(); }
 async function loadImgFile(file){ const img=new Image(); const ok=await new Promise(r=>{ img.onload=()=>r(true); img.onerror=()=>r(false); img.src=URL.createObjectURL(file); }); return ok?img:null; }
 const PAL_WARN=2500;   // mean-squared RGB error above which we warn that no existing palette matches well
-function deriveK(text){ const a=text.split(/[\s,]+/).filter(s=>s.length).map(Number); if(!a.length) return 1; let k=0; for(const v of a){ if(v===a[0]) k++; else break; } return Math.max(1,k); }
+function deriveK(text){
+  // k frames interleave word0 ×k then height ×k — but when width*2 == height the
+  // leading-equal count overshoots (a 3×6 frame reads 6,6,6,6…). Validate candidates
+  // downward: the k whose frame geometry exactly tiles the file wins.
+  const a=text.split(/[\s,]+/).filter(s=>s.length).map(Number); if(!a.length) return 1;
+  let lead=0; for(const v of a){ if(v===a[0]) lead++; else break; }
+  lead=Math.max(1,lead);
+  const u16=v=>((v%65536)+65536)%65536;
+  for(let k=lead;k>=1;k--){
+    if(a.length%k) continue;
+    const w0=u16(a[0]), h=u16(a[k]??0);
+    if(w0<2||w0>280||h<1||h>140) continue;
+    const per=2+Math.ceil(Math.ceil(w0/8)*h/2);
+    if(per*k===a.length) return k;
+  }
+  return lead;
+}
 function pctLayout(name,text){ const lay=PCT_LAYOUT[name.toLowerCase()]; if(lay) return lay; const k=deriveK(text); return { k, names:Array.from({length:k},(_,i)=>'frame '+(i+1)) }; }
 function paletteError(d,w,h,pal,isSprite){ const pr=pal.map(n=>EGA[n]||[0,0,0]), lo=isSprite?1:0; let e=0,n=0; for(let i=0;i<w*h;i++){ const p=i*4; if(isSprite&&d[p+3]<128) continue; let bd=Infinity; for(let k=lo;k<4;k++){ const c=pr[k], dr=d[p]-c[0],dg=d[p+1]-c[1],db=d[p+2]-c[2], dd=dr*dr+dg*dg+db*db; if(dd<bd)bd=dd; } e+=bd; n++; } return n? e/n : Infinity; }
 function bestPalette(d,w,h,entries,isSprite){ let best=null,be=Infinity; for(const en of entries){ const er=paletteError(d,w,h,en.pal,isSprite); if(er<be){be=er;best=en;} } return { entry:best||entries[0], avgErr:be }; }
@@ -1705,9 +1760,9 @@ async function importNewSprite(files){
   }
   const TW=FW*N;
   // engine limit: a frame is 2 header ints + ceil(w*2/8)*h bytes packed 2/int; the anim
-  // buffers hold 150 ints/frame and the source cache 1600 ints/file
+  // buffers hold 460 ints/frame and the source cache 1600 ints/file
   const fInts=2+Math.ceil(Math.ceil(FW*2/8)*FH/2);
-  if(FW<1||FH<1||fInts>150){ alert('Frame size '+FW+'×'+FH+' is too big for the game\'s anim buffers.\nKeep ceil(width/4) × height ≤ 296 — e.g. 31×31, 24×48, 62×18, 16×74.'); return; }
+  if(FW<1||FH<1||fInts>460){ alert('Frame size '+FW+'×'+FH+' is too big for the game\'s anim buffers.\nKeep ceil(width/4) × height ≤ 916 — e.g. 110×32, 60×60, 31×31.'); return; }
   if(N*fInts>1600){ alert(N+' frames of '+FW+'×'+FH+' ('+(N*fInts)+' ints) exceed the 1600-int anim source cache — use fewer/smaller frames.'); return; }
   if((FW>31||FH>31) && !confirm(FW+'×'+FH+' frames are fine for hold/static scene animations, but ONCE and LOOP modes (and the player) only save-under 31×31 — bigger frames can leave pixels behind in those modes. Continue?')) return;
   // lay the frames out as one internal strip (multi: one file per slot) — the rest of the import is strip-shaped
@@ -2243,9 +2298,10 @@ async function renderAnimEditor(){
   el.innerHTML=
     '<div '+fld+'><label '+lab+'>Name</label><input id="aName" style="flex:1;max-width:280px"></div>'+
     '<div '+fld+'><label '+lab+'>Sprite (.pct)</label><select id="aSrc"><option value="">— pick a sprite —</option>'+pcts.map(n=>'<option value="'+n+'"'+(n===a.source?' selected':'')+'>'+n+'</option>').join('')+'</select></div>'+
-    '<div '+fld+'><label '+lab+'>Frames</label><div style="flex:1"><div class="hint" style="margin:0 0 3px">Frames in this sprite — click one to add it to the sequence:</div><div id="aFrames" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:10px"></div><div class="hint" style="margin:0 0 3px">Sequence — the order the frames play (✕ to remove):</div><div id="aSeq" style="display:flex;flex-wrap:wrap;gap:7px;align-items:center"></div></div></div>'+
+    '<div id="aFrRow" '+fld+(a.mode==='move'?' hidden':'')+'><label '+lab+'>Frames</label><div style="flex:1"><div class="hint" style="margin:0 0 3px">Frames in this sprite — click one to add it to the sequence:</div><div id="aFrames" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:10px"></div><div class="hint" style="margin:0 0 3px">Sequence — the order the frames play (✕ to remove):</div><div id="aSeq" style="display:flex;flex-wrap:wrap;gap:7px;align-items:center"></div></div></div>'+
     '<div '+fld+'><label '+lab+'>Rate (ticks/frame)</label><input id="aRate" type="number" min="1" max="60" style="width:70px"></div>'+
-    '<div '+fld+'><label '+lab+'>Mode</label><select id="aMode" title="loop = cycle forever · once = play then hide · hold = play then freeze on the last frame · static = just show the last frame · random = cycle forever, but each frame holds a random min–max time (curtain in a breeze)">'+['loop','once','hold','static','random'].map(m=>'<option'+(m===a.mode?' selected':'')+'>'+m+'</option>').join('')+'</select></div>'+
+    '<div '+fld+'><label '+lab+'>Mode</label><select id="aMode" title="loop = cycle forever · once = play then hide · hold = play then freeze on the last frame · static = just show the last frame · random = cycle forever, but each frame holds a random min–max time (curtain in a breeze) · move = the sprite itself travels a 1px-step script once, then stays put (shake, slide)">'+['loop','once','hold','static','random','move'].map(m=>'<option'+(m===a.mode?' selected':'')+'>'+m+'</option>').join('')+'</select></div>'+
+    '<div id="aMovRow" '+fld+(a.mode==='move'?'':' hidden')+'><label '+lab+'>Move script</label><div style="flex:1"><input id="aMov" style="width:100%;max-width:420px" placeholder="u;d;u;d;u;d;ul5;dr2"><div class="hint">1px steps, ; separated — u/d/l/r (combine for diagonals: ul, dr), a number repeats (ul5 = 5 steps up-left), p = pause in place (p6 = hold 6 steps). Each step lasts Rate ticks; the sprite settles wherever the script ends. Frame 0 is drawn.</div></div></div>'+
     '<div id="aRndRow" '+fld.slice(0,-1)+';align-items:center"'+(a.mode==='random'?'':' hidden')+'><label '+lab+'>Frame time (s)</label>min <input id="aRndMin" type="number" min="0" step="0.1" style="width:70px"> max <input id="aRndMax" type="number" min="0" step="0.1" style="width:70px"> <span class="hint">every frame shows for a random time in this range (Rate is ignored)</span></div>'+
     '<div '+fld+'><label '+lab+'>Sound (PLAY)</label><input id="aSnd" style="flex:1;max-width:280px" placeholder="QB PLAY string, plays on once/hold (optional)"></div>'+
     '<div '+fld+'><label '+lab+'>Preview</label><div><canvas id="aPrev" width="64" height="64" style="background:#1a1f2b;image-rendering:pixelated;width:128px;height:128px;border:1px solid var(--line);border-radius:4px"></canvas><div style="margin-top:6px"><button id="aPlay">▶ Play</button> <button id="aStop">■ Stop</button></div></div></div>'+
@@ -2260,7 +2316,18 @@ async function renderAnimEditor(){
   document.getElementById('aName').oninput=e=>{ a.name=e.target.value; setAnimDirty(true); renderAnimList(); };
   document.getElementById('aSrc').onchange=e=>{ a.source=e.target.value; a.frames=''; setAnimDirty(true); renderFrames(a); renderSeq(a); };
   document.getElementById('aRate').oninput=e=>{ a.rate=parseInt(e.target.value,10)||1; setAnimDirty(true); if(animTimer&&previewFn){ clearTimeout(animTimer); animTimer=setTimeout(previewFn, previewDelay(a)); } };
-  document.getElementById('aMode').onchange=e=>{ a.mode=e.target.value; if(a.mode==='random'){ if(a.rndMin==null)a.rndMin=.2; if(a.rndMax==null)a.rndMax=1; } document.getElementById('aRndRow').hidden=(a.mode!=='random'); setAnimDirty(true); renderAnimList(); };
+  document.getElementById('aMode').onchange=e=>{ stopPreview(); a.mode=e.target.value;
+    if(a.mode==='random'){ if(a.rndMin==null)a.rndMin=.2; if(a.rndMax==null)a.rndMax=1; }
+    // frames doubles as the move script — wipe it when it holds the other kind of data
+    if(a.mode==='move' && /^[\d;\s]*$/.test(a.frames)) a.frames='';
+    if(a.mode!=='move' && /[a-z]/i.test(a.frames)) a.frames='';
+    document.getElementById('aRndRow').hidden=(a.mode!=='random');
+    document.getElementById('aMovRow').hidden=(a.mode!=='move');
+    document.getElementById('aFrRow').hidden=(a.mode==='move');
+    document.getElementById('aMov').value=(a.mode==='move'?a.frames:'');
+    renderSeq(a); setAnimDirty(true); renderAnimList(); };
+  document.getElementById('aMov').value=(a.mode==='move'?a.frames:'');
+  document.getElementById('aMov').oninput=e=>{ a.frames=e.target.value; setAnimDirty(true); renderAnimList(); };
   document.getElementById('aSnd').oninput=e=>{ a.snd=e.target.value; setAnimDirty(true); };
   document.getElementById('aPlay').onclick=()=>startPreview(a);
   document.getElementById('aStop').onclick=stopPreview;
@@ -2300,10 +2367,42 @@ function renderSeq(a){
   });
 }
 function previewDelay(a){ return Math.max(60,(a.rate||6)*55); }   // ms per frame from the rate
+function parseMove(s){ // JS mirror of the engine's MovParse (GAME2)
+  const steps=[];
+  for(const tok of String(s||'').toLowerCase().split(';')){
+    const w=tok.trim(); if(!w) continue;
+    let dx=0,dy=0,rp=0;
+    for(const ch of w){ if(ch==='u')dy--; else if(ch==='d')dy++; else if(ch==='l')dx--; else if(ch==='r')dx++; else if(ch>='0'&&ch<='9')rp=rp*10+(+ch); }
+    rp=rp||1;
+    for(let i=0;i<rp&&steps.length<60;i++) steps.push([dx,dy]);
+  }
+  return steps;
+}
 function startPreview(a){
   stopPreview();
   const c=document.getElementById('aPrev'); if(!c) return;
-  const fr=animFrameCache[a.source]; const seq=a.frames.split(';').filter(s=>s.length).map(Number);
+  const fr=animFrameCache[a.source];
+  if(a.mode==='move'){   // the sprite travels: play the step script, settle, replay
+    const spr=fr&&fr.frames[0]; if(!spr) return;
+    const steps=parseMove(a.frames); if(!steps.length) return;
+    let x=0,y=0,minx=0,miny=0,maxx=0,maxy=0;
+    for(const s of steps){ x+=s[0]; y+=s[1]; minx=Math.min(minx,x); miny=Math.min(miny,y); maxx=Math.max(maxx,x); maxy=Math.max(maxy,y); }
+    const W=spr.w+(maxx-minx), H=spr.h+(maxy-miny);
+    const t=document.createElement('canvas'); paintSprite(t,spr,sprDefaultPal,1);
+    let idx=0, cx=-minx, cy=-miny;
+    previewFn=()=>{
+      c.width=W; c.height=H;
+      const g=c.getContext('2d'); g.imageSmoothingEnabled=false;
+      g.clearRect(0,0,W,H); g.drawImage(t,cx,cy);
+      let d=previewDelay(a);
+      if(idx<steps.length){ cx+=steps[idx][0]; cy+=steps[idx][1]; idx++; }
+      else { d=900; idx=0; cx=-minx; cy=-miny; }
+      animTimer=setTimeout(previewFn,d);
+    };
+    previewFn();
+    return;
+  }
+  const seq=a.frames.split(';').filter(s=>s.length).map(Number);
   if(!fr||!seq.length) return;
   let idx=0;
   previewFn=()=>{ const spr=fr.frames[seq[idx]]; if(spr){ const sc=Math.max(1,Math.floor(64/Math.max(spr.w,spr.h))); paintSprite(c,spr,sprDefaultPal,sc); }

@@ -19,6 +19,19 @@ DECLARE SUB QuitConfirm ()
 DECLARE SUB DrawYNBox (msg AS STRING, dk AS INTEGER, fontData() AS INTEGER)
 DECLARE SUB DeathMusic ()
 DECLARE SUB LoadConfig ()
+DECLARE SUB LoadMsgs (nf$())
+DECLARE SUB UseMissLine (sel, wantbs, out$)
+DECLARE SUB MovParse (s$, mdx%(), mdy%(), mn%, bx1%, by1%, bx2%, by2%)
+DECLARE SUB OvPlayer (x1, y1, x2, y2, pjx2, pjy2, np, ov%)
+DECLARE SUB LookMissLine (bx%, ay%, ox%(), oy%(), nf$(), out$)
+DECLARE SUB AnimDims (acPct%(), acN%(), acs, adw, adh)
+DECLARE SUB AnimK (acPct%(), acN%(), acs, kk%)
+DECLARE SUB FpsTick ()
+DECLARE SUB MxyTick (mx%, my%, bx, ay, snr2, ox%(), oy%(), oi%(), ky$())
+DECLARE SUB HitZones (hz$, snr2, ox%(), oy%(), oi%(), ky$())
+DECLARE SUB DirDigit (l$, d$)
+DECLARE SUB AnimParse (s$, fsq%(), nfr2%)
+DECLARE SUB AnimWait (rate2)
 DECLARE SUB initAllFonts (fontData() AS INTEGER, font3Data() AS INTEGER, fontbData() AS INTEGER)
 DECLARE SUB drawChar (x AS INTEGER, y AS INTEGER, char AS STRING, textColor AS INTEGER, fontData() AS INTEGER)
 DECLARE SUB drawText (x AS INTEGER, y AS INTEGER, text AS STRING, textColor AS INTEGER, fontData() AS INTEGER)
@@ -79,6 +92,10 @@ DIM SHARED fpsv, fpsd
 DIM SHARED ifc, it0, itt
 DIM SHARED mlb, mrb, mshown, cshp, hovr
 DIM SHARED nf$(25), nfseed, lcount, lastlx, lastly, lh1, lh2, lh3
+'----- usemiss: acthit = the last action call fired an object (0 = the click/use
+'----- resolved to nothing); wantbs = a use point hit whose bs wanted a DIFFERENT
+'----- item (0 = none) -- lets UseMissLine (GAME2) answer key-on-wrong-lock specially
+DIM SHARED acthit, wantbs
 DIM SHARED mreg AS RegType, mout AS RegType
 DIM SHARED mhsx AS INTEGER, mhsy AS INTEGER, mxor, mraw
 DIM SHARED mregx AS RegTypeX, moutx AS RegTypeX
@@ -136,7 +153,9 @@ DIM SHARED anId(50) AS INTEGER, anRate(50) AS INTEGER
 DIM SHARED anName$(50), anType$(50), anSrc$(50), anFrames$(50), anMode$(50), anPal$(50), anSnd$(50)
 DIM SHARED plAnim(20) AS INTEGER, plX(20) AS INTEGER, plY(20) AS INTEGER, plCond(20) AS INTEGER, plSet(20) AS INTEGER
 '----- scratch buffers for the generic .pct/.msk frame loader (de-interleave + masked draw)
-DIM SHARED afrm(150) AS INTEGER, amfrm(150) AS INTEGER, fsq(30) AS INTEGER
+'----- anim frame buffers: 460 ints = frames up to ~110x32 for static/hold composites;
+'----- loop/random/once stay <=31x31 (their save-under slots are 150 ints)
+DIM SHARED afrm(460) AS INTEGER, amfrm(460) AS INTEGER, fsq(30) AS INTEGER
 '----- anim source cache: each .pct/.msk pair parsed from disk ONCE, then reused (6 slots,
 '----- round-robin evict). REDIM = dynamic arrays in the far heap, so DGROUP is untouched.
 REDIM SHARED acPct(6, 1600) AS INTEGER, acMsk(6, 1600) AS INTEGER
@@ -150,9 +169,19 @@ DIM SHARED liLast(4) AS SINGLE, liSaveAll(640) AS INTEGER
 DIM SHARED liWait(4) AS SINGLE, liMin(4) AS SINGLE, liMax(4) AS SINGLE
 '----- liW/liH = instance frame size (= its save-under GET size, from animdims)
 DIM SHARED liW(4) AS INTEGER, liH(4) AS INTEGER
+'----- liCond = the instance's placement cond; negative = "while flag OFF" -- the
+'----- loop freezes the moment ob(-cond) turns ON (tick-tock until the clock slides)
+DIM SHARED liCond(4) AS INTEGER
 '----- plStat = per-placement "static frame is on screen" -- lets reanim composite a
 '----- flag-gated static sprite the moment its flag trips, exactly once
 DIM SHARED plStat(20) AS INTEGER
+'----- move-mode anims: per-step 1px deltas parsed from the script (GAME2 MovParse)
+DIM SHARED mdx(60) AS INTEGER, mdy(60) AS INTEGER
+'----- an unplayed move placement SHOWS frame 0 at its start spot; mvSave holds the
+'----- background under that idle frame so the travel can lift it cleanly (mvSp = owner)
+DIM SHARED mvSave(150) AS INTEGER, mvSp AS INTEGER
+'----- xus = per-object "use consumes the item" (tg suffix "x" in the .pac)
+DIM SHARED xus(25) AS INTEGER
 
 '----- shared world and inventory arrays
 DIM SHARED bk(100)
@@ -490,6 +519,7 @@ clrtxt:
 action:
 	GOSUB strigoff
 	GOSUB clrtxt: txr = 0
+	acthit = 0: wantbs = 0
 	cl = cl + 8
 	FOR i = 1 TO 257
 		IF b = ox(i) AND a = oy(i) THEN GOTO 6170
@@ -507,6 +537,7 @@ action:
 	GOTO 6130
 	6230 IF ky$(i) <> "u" THEN GOTO 6260
 	IF bs(i) = sel THEN GOTO 6260
+	wantbs = bs(i)
 	GOTO 6280
 	6260 IF bs(i) = 0 OR ob(bs(i)) = 1 THEN GOTO 6300
 	6280 i = oh
@@ -516,8 +547,11 @@ action:
 	GOTO 6130
 
 '----- Apply state change and print message (get/use first walk the player over)
-6340 GOSUB wlkitem
+6340 acthit = 1
+	GOSUB wlkitem
 	ob(CINT(st(i))) = 1
+	'----- a consuming use takes the item out of the inventory (ob flag off)
+	IF a$ = "u" AND xus(i) = 1 THEN ob(sel) = 0
 	'----- pickup sound now plays via the acquisition scan (mainloop) so action-gets sound too
 	IF a$ <> "u" THEN GOTO 6400
 	CALL Snd3
@@ -526,27 +560,14 @@ action:
 	IF MID$(tg$(i), 2, 1) = "c" THEN sl$ = "s": tt$ = "y"
 	IF LEFT$(tg$(i), 1) <> "w" THEN GOTO 6710
 
-'----- Trigger a walkout in the tagged direction
-	IF RIGHT$(tg$(i), 1) <> "s" THEN GOTO 6560
-	ohs = i
-	a$ = "1"
-	wk = 1: GOSUB walkout: wk = 0
-	i = ohs
-	6560 IF RIGHT$(tg$(i), 1) <> "n" THEN GOTO 6610
-	ohs = i
-	a$ = "2"
-	wk = 1: GOSUB walkout: wk = 0
-	i = ohs
-	6610 IF RIGHT$(tg$(i), 1) <> "e" THEN GOTO 6660
-	ohs = i
-	a$ = "3"
-	wk = 1: GOSUB walkout: wk = 0
-	i = ohs
-	6660 IF RIGHT$(tg$(i), 1) <> "w" THEN GOTO 6710
-	ohs = i
-	a$ = "4"
-	wk = 1: GOSUB walkout: wk = 0
-	i = ohs
+'----- Trigger a walkout in the tagged direction (letter -> digit via GAME2 DirDigit)
+	CALL DirDigit(RIGHT$(tg$(i), 1), exd$)
+	IF exd$ <> "" THEN
+		ohs = i
+		a$ = exd$
+		wk = 1: GOSUB walkout: wk = 0
+		i = ohs
+	END IF
 
 '----- Face the tagged direction. With walk-to on the direction is COMPUTED
 '----- from the player's eyes toward the click (the data's hardcoded letter
@@ -561,6 +582,12 @@ action:
 	6740 IF st(i) = 47 OR st(i) = 41 THEN CALL Snd4
 	IF st(i) = 19 THEN CALL Snd5
 	IF df$(i) = "" THEN RETURN
+	'----- "e"+dir exit (arrow-only, stand-point walk): arrive in the next room
+	'----- facing the exit's direction, exactly like a real walkout would
+	IF LEFT$(tg$(i), 1) = "e" THEN
+		CALL DirDigit(RIGHT$(tg$(i), 1), exd$)
+		IF exd$ <> "" THEN a$ = exd$
+	END IF
 	'----- the flag this action just set may trigger a scene animation: play it BEFORE
 	'----- leaving (unlock -> the door swings open -> THEN the close-up loads);
 	'----- reanim is play-once (plSet-marked) so it won't replay on later visits
@@ -579,6 +606,12 @@ gotoroom:
 	IF tt$ = "y" AND sl$ = "z" THEN a$ = lf$: lf$ = "": GOSUB face: tt$ = "n"
 	sl$ = "z"
 	cl = cl + 30
+	'----- a stand-point exit (no walkout tag) arrives with a$ = the verb letter,
+	'----- which face would draw as NOTHING -- fall back to the last real facing
+	IF LEN(a$) <> 1 OR INSTR("12346789", a$) = 0 THEN
+		a$ = lf$
+		IF LEN(a$) <> 1 OR INSTR("12346789", a$) = 0 THEN a$ = "2"
+	END IF
 	IF q$ = "room3" AND ob(50) = 1 AND ob(42) = 0 THEN GOSUB dooseq ELSE GOSUB face
 	RETURN
 
@@ -595,6 +628,13 @@ doinv:
 
 '----- main game loop: input, movement, actions
 mainloop:
+	'----- derived flag: 33 (ready to mix) = acid neutralized (32) + complete formula
+	'----- (36). Re-derived every pass so it lands no matter which prerequisite came
+	'----- last (the combine-only check missed soda-after-formula) and heals old saves
+	IF ob(32) = 1 AND ob(36) = 1 THEN ob(33) = 1
+	'----- reveal first, sound second: a get that trips a scene sprite (open drawer)
+	'----- draws it BEFORE the acquisition scan plays the pickup sound
+	GOSUB reanim
 	FOR iaq = 1 TO 35
 		IF ob(iord(iaq)) = 1 AND aqo(iord(iaq)) = 0 THEN aqc = aqc + 1: aqo(iord(iaq)) = aqc: nwf(iord(iaq)) = 1: CALL Snd1
 	NEXT
@@ -603,8 +643,7 @@ mainloop:
 	t0 = TIMER
 	IF (INT(cl * cr)) <= 35 THEN GOTO 7100
 	'CALL DoorOpen   ' door migrated to data-driven animation (ANIMS.PAC id 1 + room3.pac placement)
-	7100 GOSUB reanim
-	IF doc <> 1 THEN GOTO 7180
+	7100 IF doc <> 1 THEN GOTO 7180
 	IF (TIMER - ti) <= tmo THEN GOTO 7180
 	LOCATE 1, 1
 	PRINT "You should have been ready"
@@ -616,7 +655,7 @@ mainloop:
 '----- idle poll: wait for keypress, tick fps, check timers
 	7180 DEF SEG = 0
 	POKE pk, 32
-	IF sfps = 1 THEN GOSUB fpstick
+	IF sfps = 1 THEN CALL FpsTick
 	a$ = INKEY$
 	GOSUB joy
 	GOSUB mousepoll
@@ -680,121 +719,46 @@ mainloop:
 		GOSUB events
 		GOSUB trigger
 		IF a$ = "l" AND nfon = 1 THEN GOSUB lookmiss
+		IF a$ = "u" AND acthit = 0 AND nfon = 1 THEN GOSUB usemiss
 		IF msen = 1 THEN GOSUB synchit
 	END IF
 	GOTO mainloop
 	SYSTEM
 
-'----- fps counter: update on-screen frame rate
-fpstick:
-	fpsc = fpsc + 1
-	fpsd = TIMER - fpst
-	IF fpsd < 0 OR fpsd >= 2 THEN
-		fpst = TIMER
-		fpsc = 0
-	ELSEIF fpsd >= 1 THEN
-		fpsv = fpsc / fpsd
-		IF fpsv > 99999 THEN fpsv = 99999
-		LOCATE 1, 35
-		PRINT USING "#####"; fpsv;
-		fpst = TIMER
-		fpsc = 0
-	END IF
-	RETURN
+'----- fps counter: moved to GAME2 (FpsTick) -- GAME.BAS is at the 64K code ceiling
 
-'----- debug readout: raw mouse xy, snapped hit point, and the object+verb a click here resolves to
+'----- debug readout + hit-zone overlay: moved to GAME2 (MxyTick / HitZones) -- 64K ceiling
 mxytick:
-	dbgoi = 0
-	dbgmin = snr * snr + 1
-	FOR dbgsi = 1 TO 257
-		IF oy(dbgsi) = 0# THEN EXIT FOR
-		dbgx = mx - ox(dbgsi)
-		dbgy = my - oy(dbgsi)
-		IF ABS(dbgx) <= snr AND ABS(dbgy) <= snr THEN
-			dbgdd = dbgx * dbgx + dbgy * dbgy
-			IF dbgdd < dbgmin THEN dbgmin = dbgdd: dbgoi = CINT(oi(dbgsi))
-		END IF
-	NEXT
-	dbgv$ = "-"
-	IF dbgoi >= 1 AND dbgoi <= 25 THEN dbgv$ = ky$(dbgoi)
-	IF dbgv$ = "" THEN dbgv$ = "-"
-	LOCATE 24, 1
-	PRINT USING "mxy ### ### hit ### ### obj ## v="; mx; my; b; a; dbgoi;
-	PRINT dbgv$; "  ";
+	CALL MxyTick(mx, my, b, a, snr, ox(), oy(), oi(), ky$())
 	RETURN
-
-'----- debug overlay, config dark.ini hitzones=<verbs> (e.g. l): ring each hotspot's snr click-zone COLORED
-'----- BY VERB (look=blue, action=brown, get/use=gray) + dot its hit point. A click registers only INSIDE a circle.
 hitzones:
-	IF hzon$ = "" OR snr <= 0 THEN RETURN
-	FOR hzi = 1 TO 257
-		IF oy(hzi) = 0 THEN EXIT FOR
-		hzv$ = ky$(CINT(oi(hzi)))
-		IF hzv$ <> "" AND INSTR(hzon$, hzv$) > 0 THEN
-			hzc = 2
-			IF hzv$ = "a" THEN hzc = 3
-			IF hzv$ = "g" THEN hzc = 1
-			IF hzv$ = "u" THEN hzc = 1
-			CIRCLE (ox(hzi), oy(hzi)), snr, hzc
-			PSET (ox(hzi), oy(hzi)), hzc
-		END IF
-	NEXT
+	CALL HitZones(hzon$, snr, ox(), oy(), oi(), ky$())
 	RETURN
 
-'----- 25 generic"nothing to see" lines (used by lookmiss)
+'----- lookmiss/usemiss message text lives in GAME2 (LoadMsgs) -- this module is at
+'----- the 64K code-segment ceiling, so the 37 string assignments moved out
 loadmsgs:
-	nf$(1) = "There is nothing to see here."
-	nf$(2) = "Nothing catches your eye."
-	nf$(3) = "You see nothing unusual."
-	nf$(4) = "Nothing worth a closer look."
-	nf$(5) = "You find nothing of interest."
-	nf$(6) = "Nothing remarkable here."
-	nf$(7) = "You look closer, but find nothing."
-	nf$(8) = "There's nothing special about it."
-	nf$(9) = "You see only the ordinary."
-	nf$(10) = "Nothing stands out to you."
-	nf$(11) = "There's nothing here to examine."
-	nf$(12) = "It holds no secrets for you."
-	nf$(13) = "Nothing draws your attention."
-	nf$(14) = "You don't see anything useful."
-	nf$(15) = "Nothing of note here."
-	nf$(16) = "Whatever you sought, it isn't here."
-	nf$(17) = "Nothing worth mentioning."
-	nf$(18) = "There's nothing here for you."
-	nf$(19) = "Just as it looks - nothing more."
-	nf$(20) = "Your eyes find nothing of value."
-	nf$(21) = "Nothing but dust and shadow."
-	nf$(22) = "There's nothing here to help you."
-	nf$(23) = "You peer closer. Still nothing."
-	nf$(24) = "Nothing reveals itself to you."
-	nf$(25) = "The shadows hide nothing here."
+	CALL LoadMsgs(nf$())
 	FOR ivi = 1 TO 29: iord(ivi) = ivi: NEXT
 	iord(30) = 30: iord(31) = 49: iord(32) = 35: iord(33) = 36: iord(34) = 34: iord(35) = 52
 	RETURN
 
-'----- look at a truly-empty spot: after 3 looks at the same cell, show a non-repeating random line
+'----- look at a truly-empty spot: after 3 looks at the same cell, show a non-repeating
+'----- random line (the counting + picking lives in GAME2 LookMissLine)
 lookmiss:
-	FOR lmi = 1 TO 257
-		IF oy(lmi) = 0# THEN EXIT FOR
-		IF ox(lmi) = b AND oy(lmi) = a THEN lcount = 0: RETURN
-	NEXT
-	IF b = lastlx AND a = lastly THEN
-		lcount = lcount + 1
-	ELSE
-		lcount = 1
-		lastlx = b
-		lastly = a
-	END IF
-	IF lcount < 3 THEN RETURN
-	IF nfseed = 0 THEN RANDOMIZE TIMER: nfseed = 1
-	DO
-		nfp = INT(RND * 25) + 1
-	LOOP WHILE nfp = lh1 OR nfp = lh2 OR nfp = lh3
-	lh3 = lh2
-	lh2 = lh1
-	lh1 = nfp
+	CALL LookMissLine(CINT(b), CINT(a), ox(), oy(), nf$(), ums$)
+	IF ums$ = "" THEN RETURN
 	GOSUB clrtxt
-	CALL drawMsg(nf$(nfp), font3Data()): txr = 1
+	CALL drawMsg(ums$, font3Data()): txr = 1
+	RETURN
+
+'----- usemiss: a use that resolved to NOTHING (empty spot, or the wrong item on a
+'----- use point) -- answer right away; UseMissLine (GAME2) picks a random line and
+'----- answers a key-on-the-wrong-lock with key lines (doesn't fit / won't turn)
+usemiss:
+	CALL UseMissLine(sel, wantbs, ums$)
+	GOSUB clrtxt
+	CALL drawMsg(ums$, font3Data()): txr = 1
 	RETURN
 '----- load palette/color config from .pac
 loadpac:
@@ -840,16 +804,12 @@ animframe:
 	IF acs = 0 THEN GOSUB animload
 	anf = acN(acs)
 	IF anf < 2 THEN RETURN
-	ank = 0
-	afk1:
-	IF ank >= anf THEN GOTO afk2
-	IF acPct(acs, ank + 1) <> acPct(acs, 1) THEN GOTO afk2
-	ank = ank + 1
-	GOTO afk1
-	afk2:
-	IF ank < 1 THEN ank = 1
+	'----- frame count via GAME2 AnimK (validated -- a leading-equal count alone
+	'----- overshoots when width*2 = height, e.g. a 3x6 tick-tock frame)
+	CALL AnimK(acPct(), acN(), acs, ank%)
+	ank = ank%
 	anpf = anf \ ank
-	IF anpf > 150 THEN anpf = 150
+	IF anpf > 460 THEN anpf = 460
 	IF afn < 1 THEN afn = 1
 	IF afn > ank THEN afn = ank
 	FOR aj = 0 TO anpf - 1: afrm(aj) = acPct(acs, afn + aj * ank): NEXT
@@ -903,54 +863,25 @@ animload:
 	acM(acs) = anm
 	RETURN
 
-'----- animparse: parse anFrames$(aidx) like "0;1;2" into fsq(1..nfr) frame indices
+'----- animparse/animwait: bodies live in GAME2 (AnimParse/AnimWait) -- 64K ceiling
 animparse:
-	nfr = 0
-	aps$ = anFrames$(aidx) + ";"
-	apst = 1
-	FOR apc = 1 TO LEN(aps$)
-		IF MID$(aps$, apc, 1) = ";" THEN
-			IF apc > apst AND nfr < 30 THEN
-				nfr = nfr + 1
-				fsq(nfr) = VAL(MID$(aps$, apst, apc - apst))
-			END IF
-			apst = apc + 1
-		END IF
-	NEXT
+	CALL AnimParse(anFrames$(aidx), fsq(), nft%)
+	nfr = nft%
 	RETURN
 
-'----- animwait: pause awrate*0.05s between animation frames (TIMER-based, midnight-safe)
 animwait:
-	awt! = TIMER
-	awd:
-	IF TIMER < awt! THEN RETURN
-	IF TIMER < awt! + awrate * .05 THEN GOTO awd
+	CALL AnimWait(awrate)
 	RETURN
 
-'----- animdims: measure SRC$'s frame size in pixels -> adw, adh (from the anim cache
-'----- headers; k frames interleave word0 x k, then height x k). Capped at 31 so a
-'----- save-under always fits its 150-int slot; oversized frames keep the old 31x31.
+'----- animdims: measure SRC$'s frame size -> adw, adh (GAME2 AnimDims; ensures the
+'----- .pct is cached first). Capped at 31 so a save-under always fits its slot.
 animdims:
 	acs = 0
 	FOR aci = 1 TO 6
 		IF acSrc$(aci) = SRC$ THEN acs = aci
 	NEXT
 	IF acs = 0 THEN GOSUB animload
-	adw = 31: adh = 31
-	anf = acN(acs)
-	IF anf < 2 THEN RETURN
-	ank = 0
-	adk1:
-	IF ank >= anf THEN GOTO adk2
-	IF acPct(acs, ank + 1) <> acPct(acs, 1) THEN GOTO adk2
-	ank = ank + 1
-	GOTO adk1
-	adk2:
-	IF ank < 1 THEN ank = 1
-	adw = acPct(acs, 1) \ 2
-	adh = acPct(acs, ank + 1)
-	IF adw < 1 OR adw > 31 THEN adw = 31
-	IF adh < 1 OR adh > 31 THEN adh = 31
+	CALL AnimDims(acPct(), acN(), acs, adw, adh)
 	RETURN
 
 '----- rmpal: set the current room's palette (co,pa1..pa3); idempotent -- loadroom blacks
@@ -974,7 +905,8 @@ animdraw:
 		NEXT
 		IF bgi = 0 THEN GOTO bgnext
 		IF anType$(bgi) <> "bg" THEN GOTO bgnext
-		IF plCond(pp) <> 0 THEN IF ob(plCond(pp)) <> 1 THEN GOTO bgnext
+		IF plCond(pp) > 0 THEN IF ob(plCond(pp)) <> 1 THEN GOTO bgnext
+		IF plCond(pp) < 0 THEN IF ob(-plCond(pp)) = 1 THEN GOTO bgnext
 		bgf$ = anFrames$(bgi)
 		bgp = 0
 		FOR bgc = 1 TO LEN(bgf$)
@@ -992,14 +924,39 @@ animdraw:
 		NEXT
 		IF aidx = 0 THEN GOTO adnext
 		IF anType$(aidx) = "bg" THEN GOTO adnext
-		IF plCond(pp) <> 0 THEN IF ob(plCond(pp)) <> 1 THEN GOTO adnext
+		'----- move placements bypass the cond gate: cond is their TRIGGER, not their
+		'----- visibility -- unplayed they sit at the start spot (the idle clock).
+		'----- negative cond = show WHILE the flag is OFF (tick-tock until the slide)
+		IF anMode$(aidx) = "move" THEN GOTO adcondok
+		IF plCond(pp) > 0 THEN IF ob(plCond(pp)) <> 1 THEN GOTO adnext
+		IF plCond(pp) < 0 THEN IF ob(-plCond(pp)) = 1 THEN GOTO adnext
+		adcondok:
 		GOSUB animparse
 		IF nfr < 1 THEN GOTO adnext
 		SRC$ = anSrc$(aidx)
 		PX = plX(pp)
 		PY = plY(pp)
 		awrate = anRate(aidx)
-		IF anMode$(aidx) = "static" THEN
+		IF anMode$(aidx) = "move" THEN
+			adplayed = 0
+			IF plSet(pp) > 0 THEN IF ob(plSet(pp)) = 1 THEN adplayed = 1
+			IF adplayed = 1 THEN
+				'----- already travelled: rest at the END spot
+				CALL MovParse(anFrames$(aidx), mdx(), mdy(), mvn%, bx1%, by1%, bx2%, by2%)
+				FOR adf = 1 TO mvn%
+					PX = PX + mdx(adf)
+					PY = PY + mdy(adf)
+				NEXT
+			ELSE
+				'----- idle at the START spot; keep the background under the frame so
+				'----- the travel (reanim) can lift it without leaving a ghost
+				GOSUB animdims
+				GET (PX, PY)-(PX + adw - 1, PY + adh - 1), mvSave
+				mvSp = pp
+			END IF
+			afn = 1
+			GOSUB animframe
+		ELSEIF anMode$(aidx) = "static" THEN
 			afn = fsq(nfr) + 1
 			GOSUB animframe
 			plStat(pp) = 1
@@ -1032,6 +989,7 @@ animdraw:
 				liCur(nLoop) = 1
 				liRate(nLoop) = awrate
 				liLast(nLoop) = TIMER
+				liCond(nLoop) = plCond(pp)
 				liMin(nLoop) = 0: liMax(nLoop) = 0
 				liWait(nLoop) = awrate * .05
 				IF LEFT$(anMode$(aidx), 6) = "random" THEN
@@ -1068,6 +1026,9 @@ animtick:
 	FOR li = 1 TO nLoop
 		IF TIMER < liLast(li) THEN liLast(li) = TIMER
 		IF TIMER >= liLast(li) + liWait(li) THEN
+			'----- "while flag OFF" instance whose flag turned ON mid-room: freeze it
+			'----- (no restore -- whatever replaced the area, e.g. the slide, stays)
+			IF liCond(li) < 0 THEN IF ob(-liCond(li)) = 1 THEN GOTO atnext
 			'----- hold the tick while the player's 31x31 box overlaps this instance --
 			'----- no z-order exists, advancing would stamp background over him; the
 			'----- anim freezes and resumes as soon as he moves away (skip in nopl views)
@@ -1077,11 +1038,11 @@ animtick:
 			liLast(li) = TIMER
 			'----- lift the XOR mouse cursor while redrawing under it, else the restore
 			'----- eats half the cursor and the next XOR-off leaves garbage pixels
-			mcur = 0
+			atcur = 0
 			IF msen <> 1 THEN
 				IF liX(li) < b + 12 AND liX(li) + liW(li) > b AND liY(li) < a + 12 AND liY(li) + liH(li) > a THEN
 					PUT (b, a), d, XOR
-					mcur = 1
+					atcur = 1
 				END IF
 			END IF
 			aidx = liAnim(li)
@@ -1101,7 +1062,7 @@ animtick:
 					liWait(li) = liRate(li) * .05
 				END IF
 			END IF
-			IF mcur = 1 THEN PUT (b, a), d, XOR
+			IF atcur = 1 THEN PUT (b, a), d, XOR
 		END IF
 		atnext:
 	NEXT
@@ -1113,8 +1074,27 @@ animtick:
 '----- so restoring them later would stamp stale (closed-drawer) pixels over
 '----- the new art. Erase both first (ovpre), play, then re-anchor fbg from
 '----- the updated screen and redraw the player (ovpost).
+'----- ovprep: decide the player handling for a play over rect ovx1..ovx2/ovy1..ovy2.
+'----- Overlapping (ovl%=1): lift him now, re-draw per frame (the old behaviour).
+'----- Clear of it (ovl%=0): leave him alone -- NO per-frame redraw (no flicker) --
+'----- and turn him to WATCH the animation (lookdir toward its centre).
+ovprep:
+	CALL OvPlayer(ovx1, ovy1, ovx2, ovy2, pjx, pjy, nopl, ovl%)
+	CALL erasecur
+	IF nopl = 1 THEN RETURN
+	IF ovl% = 1 THEN GOTO ovlift
+	obb = b: oaa = a
+	b = (ovx1 + ovx2) \ 2: a = (ovy1 + ovy2) \ 2
+	GOSUB lookdir
+	GOSUB face
+	b = obb: a = oaa
+	RETURN
+
 ovpre:
 	CALL erasecur
+'----- ovlift: erase-only (no cursor teardown) -- used between frames of a play so
+'----- the player can be re-drawn over every frame instead of vanishing for the swing
+ovlift:
 	CALL PStand("", pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur())
 	RETURN
 ovpost:
@@ -1135,7 +1115,7 @@ reanim:
 		'----- flag-gated STATIC sprite whose flag just tripped: composite it now,
 		'----- once (plStat) -- no need to leave and re-enter the room to see it
 		IF anMode$(aidx) <> "static" THEN GOTO ranotstat
-		IF plCond(pp) = 0 THEN GOTO ranext
+		IF plCond(pp) <= 0 THEN GOTO ranext
 		IF ob(plCond(pp)) <> 1 THEN GOTO ranext
 		IF plStat(pp) = 1 THEN GOTO ranext
 		GOSUB animparse
@@ -1150,8 +1130,49 @@ reanim:
 		GOSUB ovpost
 		GOTO ranext
 		ranotstat:
+		'----- move-mode: the sprite itself travels -- play its 1px step script once
+		'----- (save-under follows it, the player stays drawn), settle at the end
+		IF anMode$(aidx) <> "move" THEN GOTO ranotmove
+		IF plCond(pp) <= 0 THEN GOTO ranext
+		IF ob(plCond(pp)) <> 1 THEN GOTO ranext
+		IF plSet(pp) < 1 THEN GOTO ranext
+		IF ob(plSet(pp)) = 1 THEN GOTO ranext
+		CALL MovParse(anFrames$(aidx), mdx(), mdy(), mvn%, bx1%, by1%, bx2%, by2%)
+		IF mvn% < 1 THEN GOTO ranext
+		SRC$ = anSrc$(aidx)
+		mvx = plX(pp)
+		mvy = plY(pp)
+		awrate = anRate(aidx)
+		GOSUB animdims
+		ovx1 = mvx + bx1%: ovy1 = mvy + by1%
+		ovx2 = mvx + bx2% + adw - 1: ovy2 = mvy + by2% + adh - 1
+		GOSUB ovprep
+		'----- lift the idle frame animdraw showed at the start spot: put the clean
+		'----- background back so the travel's save-unders never capture the sprite
+		IF mvSp = pp THEN
+			PUT (mvx, mvy), mvSave, PSET
+			mvSp = 0
+		END IF
+		FOR adf = 1 TO mvn%
+			GET (mvx, mvy)-(mvx + adw - 1, mvy + adh - 1), wbg
+			PX = mvx: PY = mvy: afn = 1
+			GOSUB animframe
+			IF ovl% = 1 THEN GOSUB ovpost
+			GOSUB animwait
+			IF ovl% = 1 THEN GOSUB ovlift
+			PUT (mvx, mvy), wbg, PSET
+			mvx = mvx + mdx(adf)
+			mvy = mvy + mdy(adf)
+		NEXT
+		PX = mvx: PY = mvy: afn = 1
+		GOSUB animframe
+		IF ovl% = 1 THEN GOSUB ovpost
+		IF anSnd$(aidx) <> "" THEN PLAY anSnd$(aidx)
+		ob(plSet(pp)) = 1
+		GOTO ranext
+		ranotmove:
 		IF anMode$(aidx) <> "hold" AND anMode$(aidx) <> "once" THEN GOTO ranext
-		IF plCond(pp) = 0 THEN GOTO ranext
+		IF plCond(pp) <= 0 THEN GOTO ranext
 		IF ob(plCond(pp)) <> 1 THEN GOTO ranext
 		IF plSet(pp) < 1 THEN GOTO ranext
 		IF ob(plSet(pp)) = 1 THEN GOTO ranext
@@ -1161,17 +1182,27 @@ reanim:
 		PX = plX(pp)
 		PY = plY(pp)
 		awrate = anRate(aidx)
-		GOSUB ovpre
+		GOSUB animdims
+		ovx1 = PX: ovy1 = PY: ovx2 = PX + adw - 1: ovy2 = PY + adh - 1
+		GOSUB ovprep
 		GET (PX, PY)-(PX + 30, PY + 30), wbg
+		'----- overlapping player stays VISIBLE through the play: re-drawn over each
+		'----- frame (ovpost re-anchors fbg), lifted again before the next. A clear
+		'----- player is left entirely alone (no flicker) -- he just turned to watch
 		FOR adf = 1 TO nfr
+			IF adf > 1 AND ovl% = 1 THEN GOSUB ovlift
 			afn = fsq(adf) + 1
 			GOSUB animframe
+			IF ovl% = 1 THEN GOSUB ovpost
 			GOSUB animwait
 		NEXT
 		IF anSnd$(aidx) <> "" THEN PLAY anSnd$(aidx)
-		IF anMode$(aidx) = "once" THEN PUT (PX, PY), wbg, PSET
+		IF anMode$(aidx) = "once" THEN
+			IF ovl% = 1 THEN GOSUB ovlift
+			PUT (PX, PY), wbg, PSET
+			IF ovl% = 1 THEN GOSUB ovpost
+		END IF
 		ob(plSet(pp)) = 1
-		GOSUB ovpost
 		ranext:
 	NEXT
 	RETURN
@@ -1228,6 +1259,10 @@ loadroom:
 	FOR i = 1 TO 25
 		INPUT #1, df$(i), ms$(i), ky$(i)
 		INPUT #1, bs(i), cs(i), st(i), tg$(i)
+		'----- trailing "x" on tg = using this object CONSUMES the item (clockhand,
+		'----- rock); stripped here so the walkout/face tag parsing never sees it
+		xus(i) = 0
+		IF RIGHT$(tg$(i), 1) = "x" THEN xus(i) = 1: tg$(i) = LEFT$(tg$(i), LEN(tg$(i)) - 1)
 	NEXT
 	objok:
 	ON ERROR GOTO errhand
@@ -1236,6 +1271,7 @@ loadroom:
 	wbymin = 138: wbymax = 176
 	FOR i = 1 TO 25: spx(i) = -1: spd(i) = 0: NEXT
 	FOR i = 1 TO 20: plStat(i) = 0: NEXT
+	mvSp = 0
 	ON ERROR GOTO placeeof
 	placeloop:
 	IF nPlace >= 20 THEN GOTO placeend
@@ -1851,7 +1887,8 @@ msnap:
 	RETURN
 
 '----- near a walkout exit? morph cursor to point the way the player leaves (exitcursor)
-'----- reads tg$ direction (wn=up ws=down we=right ww=left); reverts to NW arrow otherwise
+'----- reads tg$ direction (wn=up ws=down we=right ww=left); "e"+dir = arrow WITHOUT the
+'----- edge walkout (stand-point exits, e.g. the room8 concealed door); else NW arrow
 hovexit:
 	IF exsen <> 1 THEN RETURN
 	newshp = 0
@@ -1860,7 +1897,7 @@ hovexit:
 	FOR hvi = 1 TO 257
 		IF oy(hvi) = 0# THEN EXIT FOR
 		hvo = CINT(oi(hvi))
-		IF LEFT$(tg$(hvo), 1) = "w" AND (bs(hvo) = 0 OR ob(bs(hvo)) = 1) AND (cs(hvo) = 0 OR ob(cs(hvo)) = 0) THEN
+		IF (LEFT$(tg$(hvo), 1) = "w" OR LEFT$(tg$(hvo), 1) = "e") AND (bs(hvo) = 0 OR ob(bs(hvo)) = 1) AND (cs(hvo) = 0 OR ob(cs(hvo)) = 0) THEN
 			hvx = mx - ox(hvi)
 			hvy = my - oy(hvi)
 			IF ABS(hvx) <= hovr AND ABS(hvy) <= hovr THEN

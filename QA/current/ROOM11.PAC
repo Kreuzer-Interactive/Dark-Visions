@@ -122,7 +122,7 @@
 "table","You look at the laboratory table.","l",0,0,0,"fc6"
 "","You see a piece of paper wedged under   one leg to keep the table flat.","l",0,24,0,"f6"
 "","If you get it the table would tip over","g",0,0,0,"f6"
-"","You place the rock under the leg and    remove the |piece of paper| so as not to  disrupt the balance of the table.","u",15,24,24,"f6"
+"","You place the rock under the leg and    remove the |piece of paper| so as not to  disrupt the balance of the table.","u",15,24,24,"f6x"
 "","These odds and ends do not interest you.","l",0,0,0,"f8"
 "room7","You walk back through the secret passage.","a",0,0,0,"ws"
 "","","",0,0,0,""
