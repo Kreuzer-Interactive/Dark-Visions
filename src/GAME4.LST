@@ -1,6 +1,6 @@
                                                                       PAGE   1
                                                                       09 Jul 26
-                                                                      14:34:10
+                                                                      15:44:05
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME4.BAS: graphical Save / Load screen (10 slots). Own 
@@ -59,7 +59,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    
                                                                       PAGE   2
                                                                       09 Jul 26
-                                                                      14:34:10
+                                                                      15:44:05
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- map a saved room tag (q$) to a short location name shown
@@ -118,7 +118,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  03C0   0574                    IF j = 36 AND sob = 1 THEN pc = pc + 2
                                                                       PAGE   3
                                                                       09 Jul 26
-                                                                      14:34:10
+                                                                      15:44:05
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  03E1   0574            NEXT j
@@ -177,7 +177,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  060A   0574            IF slLast >= 1 AND slLast <= 10 THEN sel = slLast
                                                                       PAGE   4
                                                                       09 Jul 26
-                                                                      14:34:10
+                                                                      15:44:05
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  064A   0574            SCREEN 1
@@ -236,7 +236,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  09C1   0574            IF my >= 80 AND my <= 100 THEN r = 3
                                                                       PAGE   5
                                                                       09 Jul 26
-                                                                      14:34:10
+                                                                      15:44:05
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  09E3   0574            IF my >= 101 AND my <= 121 THEN r = 4
@@ -295,7 +295,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0EEE   0574            CALL SaveGame(sel)
                                                                       PAGE   6
                                                                       09 Jul 26
-                                                                      14:34:10
+                                                                      15:44:05
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0EF7   0574            slLast = sel
@@ -354,7 +354,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 8 AND mx <= 228 THEN cyes = 0
                                                                       PAGE   7
                                                                       09 Jul 26
-                                                                      14:34:10
+                                                                      15:44:05
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  120A   0574                            IF my >= 80 AND my <= 87 AND mx >= 260 
@@ -413,7 +413,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  161C   0574            LINE (44, 76)-(276, 124), 0, B
                                                                       PAGE   8
                                                                       09 Jul 26
-                                                                      14:34:10
+                                                                      15:44:05
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  161C   0574            LINE (46, 78)-(274, 122), dk, B

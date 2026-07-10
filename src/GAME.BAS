@@ -32,6 +32,12 @@ DECLARE SUB HitZones (hz$, snr2, ox%(), oy%(), oi%(), ky$())
 DECLARE SUB DirDigit (l$, d$)
 DECLARE SUB AnimParse (s$, fsq%(), nfr2%)
 DECLARE SUB AnimWait (rate2)
+DECLARE SUB InvReSel (cilist%(), cic2, lv%, is2, iv2, ivm)
+DECLARE SUB RmPal (co2, p1, p2, p3)
+DECLARE SUB InvNav (k$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, mx2%, my2%, act%)
+DECLARE SUB JoyNav (d$)
+DECLARE SUB CombChk (s%, c%, r%)
+DECLARE SUB CombDo2 (r%, ob(), cn%)
 DECLARE SUB initAllFonts (fontData() AS INTEGER, font3Data() AS INTEGER, fontbData() AS INTEGER)
 DECLARE SUB drawChar (x AS INTEGER, y AS INTEGER, char AS STRING, textColor AS INTEGER, fontData() AS INTEGER)
 DECLARE SUB drawText (x AS INTEGER, y AS INTEGER, text AS STRING, textColor AS INTEGER, fontData() AS INTEGER)
@@ -182,6 +188,9 @@ DIM SHARED mdx(60) AS INTEGER, mdy(60) AS INTEGER
 DIM SHARED mvSave(150) AS INTEGER, mvSp AS INTEGER
 '----- xus = per-object "use consumes the item" (tg suffix "x" in the .pac)
 DIM SHARED xus(25) AS INTEGER
+'----- lvsel = the ITEM selected when the inventory was last closed (0 = none);
+'----- reselected on reopen (by item number -- the grid order can shift)
+DIM SHARED lvsel AS INTEGER
 
 '----- shared world and inventory arrays
 DIM SHARED bk(100)
@@ -884,13 +893,9 @@ animdims:
 	CALL AnimDims(acPct(), acN(), acs, adw, adh)
 	RETURN
 
-'----- rmpal: set the current room's palette (co,pa1..pa3); idempotent -- loadroom blacks
-'----- the palette out while compositing overlays, this lights the finished room up
+'----- rmpal: set the current room's palette (body in GAME2 -- 64K ceiling)
 rmpal:
-	COLOR co
-	PALETTE 1, pa1
-	PALETTE 2, pa2
-	PALETTE 3, pa3
+	CALL RmPal(co, pa1, pa2, pa3)
 	RETURN
 
 '----- animdraw: composite scene-animation placements onto the room (static / hold / once / loop / random)
@@ -2522,7 +2527,10 @@ SUB invhi
 	LINE (210, 34)-(297, 73), 0, BF
 	invtab = 0
 	isel = 0: ivscr = 0: cbot = 0: cdrg = 0: crec = 0
+	nvz = 0: nvb = 2
 	ivmax = (cic + 3) \ 4 - 2: IF ivmax < 0 THEN ivmax = 0
+	'----- reselect the item picked last time (GAME2 InvReSel; the grid can shift)
+	CALL InvReSel(cilist(), cic, lvsel, isel, ivscr, ivmax)
 	mlb = 0
 	IF msen = 1 THEN cshp = 0: mx = 160: my = 100: cdrawn = 0: mreg.ax = &H11: CALL INTERRUPT(mvint, mreg, mout)
 	GOSUB invdraw
@@ -2574,20 +2582,38 @@ SUB invhi
 	IF ivk$ = CHR$(27) OR ivk$ = "x" OR ivk$ = "i" THEN GOTO invdone
 	IF ivk$ = "q" OR ivk$ = "Q" THEN GOSUB doquit: mlb = 1: GOTO invwait
 	IF ivk$ = "s" OR ivk$ = "S" OR ivk$ = "l" OR ivk$ = "L" THEN GOSUB svldopen: IF slvAct <> 0 THEN GOTO invdone ELSE mlb = 1: GOTO invwait
-	nsel = isel
-	IF ivk$ = CHR$(0) + CHR$(72) THEN nsel = isel - 4
-	IF ivk$ = CHR$(0) + CHR$(80) THEN nsel = isel + 4
-	IF ivk$ = CHR$(0) + CHR$(75) THEN nsel = isel - 1
-	IF ivk$ = CHR$(0) + CHR$(77) THEN nsel = isel + 1
-	IF nsel < 0 OR nsel >= cic THEN nsel = isel
-	IF nsel <> isel THEN
-		isel = nsel
-		IF isel \ 4 < ivscr THEN ivscr = isel \ 4
-		IF isel \ 4 > ivscr + 1 THEN ivscr = isel \ 4 - 1
-		GOSUB invredraw
+	'----- mouseless navigation (arrows / joystick, Enter or Space = activate):
+	'----- the zone state machine + cursor parking live in GAME2 InvNav
+	nvk$ = ""
+	IF ivk$ = CHR$(0) + CHR$(72) THEN nvk$ = "U"
+	IF ivk$ = CHR$(0) + CHR$(80) THEN nvk$ = "D"
+	IF ivk$ = CHR$(0) + CHR$(75) THEN nvk$ = "L"
+	IF ivk$ = CHR$(0) + CHR$(77) THEN nvk$ = "R"
+	IF ivk$ = CHR$(13) OR ivk$ = " " THEN nvk$ = "E"
+	IF nvk$ = "" AND jsen = 1 THEN CALL JoyNav(nvk$)
+	IF nvk$ <> "" THEN
+		CALL InvNav(nvk$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, nvx%, nvy%, act%)
+		IF act% = 4 THEN GOSUB doquit: mlb = 1: GOTO invwait
+		IF act% = 5 THEN GOSUB svldopen: IF slvAct <> 0 THEN GOTO invdone ELSE mlb = 1: GOTO invwait
+		IF act% = 6 THEN GOTO invdone
+		IF act% = 7 THEN IF invtab = 1 AND crec > 0 THEN GOSUB combdo
+		IF act% = 8 THEN IF exf = 1 THEN GOSUB doexam
+		IF act% = 1 OR act% = 2 THEN GOSUB invredraw
+		IF msen = 1 THEN
+			'----- park the arrow on the focused element AND warp the hardware mouse
+			'----- there (INT 33h fn 4) -- else the next poll sees the physical mouse
+			'----- position differ from mx/my and instantly snaps the cursor back
+			CALL erasecur
+			mx = nvx%: my = nvy%
+			mreg.ax = 4: mreg.cx = mx * 2: mreg.dx = my
+			CALL INTERRUPT(mvint, mreg, mout)
+			CALL drawcur
+		END IF
 	END IF
 	GOTO invwait
 	invdone:
+	lvsel = 0
+	IF cic > 0 THEN lvsel = cilist(isel)
 	IF msen = 1 THEN CALL erasecur
 	FOR ivi = 1 TO 35: nwf(iord(ivi)) = 0: NEXT
 	SCREEN 1
@@ -2691,31 +2717,21 @@ SUB invhi
 	ivmax = (cic + 3) \ 4 - 2: IF ivmax < 0 THEN ivmax = 0
 	RETURN
 
-	'----- combine: set crec to the recipe matched by top (sel) + bottom (cbot); hide button if none
+	'----- combine: recipe matching + application live in GAME2 (CombChk / CombDo2)
 	combchk:
 	crec = 0
 	IF cic > 0 AND cbot > 0 THEN
 		sel = cilist(isel)
-		selx% = sel: cbx% = cbot
-		IF (selx% = 18 AND cbx% = 28) OR (selx% = 28 AND cbx% = 18) THEN crec = 1
-		'----- formula step 1: the two halves (11+24, either order) tape into
-		'----- the UNREADABLE formula 52 -- no book needed yet
-		IF (selx% = 11 AND cbx% = 24) OR (selx% = 24 AND cbx% = 11) THEN crec = 2
-		'----- formula step 2: unreadable formula + deciphering book -> complete 36
-		IF (selx% = 52 AND cbx% = 25) OR (selx% = 25 AND cbx% = 52) THEN crec = 4
-		IF (selx% = 29 AND cbx% = 34) OR (selx% = 34 AND cbx% = 29) THEN crec = 3
+		CALL CombChk(CINT(sel), CINT(cbot), crr%)
+		crec = crr%
 	END IF
 	IF crec > 0 THEN PUT (29, 129), combtn, PSET
 	RETURN
 
 	'----- combine: apply the matched recipe, then refresh
 	combdo:
-	cnew% = 0
-	IF crec = 1 THEN ob(18) = 0: ob(28) = 0: ob(22) = 1: cnew% = 22
-	IF crec = 2 THEN ob(24) = 0: ob(11) = 0: ob(52) = 1: cnew% = 52
-	IF crec = 3 THEN ob(29) = 0: ob(34) = 0: ob(35) = 1: cnew% = 35
-	IF crec = 4 THEN ob(52) = 0: ob(36) = 1: cnew% = 36
-	IF ob(32) = 1 AND ob(36) = 1 THEN ob(33) = 1
+	CALL CombDo2(CINT(crec), ob(), cnw%)
+	cnew% = cnw%
 	IF cnew% > 0 THEN aqc = aqc + 1: aqo(cnew%) = aqc
 	cbot = 0
 	invtab = 0

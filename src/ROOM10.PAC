@@ -38,6 +38,7 @@
 162,138,12
 158,138,12
 194,162,13
+198,162,16
 198,162,13
 202,162,13
 206,162,13
@@ -98,6 +99,9 @@
 218,130,10
 218,130,0
 218,134,10
+202,165,16
+202,165,13
+202,165,15
 0,0,0
 "","The torch illuminates the western wall.","l",0,0,0,"f7"
 "","The torch provides just a glimmer of    light.","l",0,0,0,"f6"
@@ -113,8 +117,8 @@
 "","You take the |metal bar| off the floor.","g",0,6,6,"f8"
 "","It is a tray of half-eaten food.","l",0,0,0,"f3"
 "","You rummage through the food and find an apple.","a",0,28,55,"f3"
-"","You get the |apple|.","g",0,28,28,"f3"
-"","","",0,0,0,""
+"","You get the |apple|.","g",55,28,28,"f3"
+"","A red apple sits among the picked-over  scraps.","l",55,28,0,"f3"
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
