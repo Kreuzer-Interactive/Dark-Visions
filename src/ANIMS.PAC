@@ -22,3 +22,5 @@
 22,"Room9 Open","spr","RM9F","0;1;2;3;4;5;6",3,"hold","",""
 23,"RM9ROPE frame 0","spr","RM9ROPE","0",0,"static","",""
 24,"RM9 Flame","spr","RM9FLAME","0;1;2",5,"random 0.75 1.5","",""
+25,"RM8 Cabinet opens","spr","RM8OPEN2","0;1;2",4,"hold","",""
+26,"RM8DRAW frame 0","spr","RM8DRAW","0",0,"static","",""

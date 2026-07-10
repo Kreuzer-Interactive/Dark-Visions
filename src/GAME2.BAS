@@ -129,6 +129,126 @@ SUB AnimWait (rate2)
 	LOOP WHILE TIMER < t! + rate2 * .05
 END SUB
 
+'----- inventory combine: which recipe do items s% (top) + c% (bottom) match? 0 = none.
+'----- 1: 18+28 -> 22 · 2: formula halves 11+24 -> unreadable 52 · 4: 52 + book 25 ->
+'----- complete formula 36 · 3: syringe 29 + drug 34 -> loaded syringe 35
+SUB CombChk (s%, c%, r%)
+	r% = 0
+	IF (s% = 18 AND c% = 28) OR (s% = 28 AND c% = 18) THEN r% = 1
+	IF (s% = 11 AND c% = 24) OR (s% = 24 AND c% = 11) THEN r% = 2
+	IF (s% = 52 AND c% = 25) OR (s% = 25 AND c% = 52) THEN r% = 4
+	IF (s% = 29 AND c% = 34) OR (s% = 34 AND c% = 29) THEN r% = 3
+END SUB
+
+'----- apply combine recipe r%: swap the ingredient ob() flags for the result, and
+'----- re-derive 33 (ready to mix) since 36 may just have appeared
+SUB CombDo2 (r%, ob(), cn%)
+	cn% = 0
+	IF r% = 1 THEN ob(18) = 0: ob(28) = 0: ob(22) = 1: cn% = 22
+	IF r% = 2 THEN ob(24) = 0: ob(11) = 0: ob(52) = 1: cn% = 52
+	IF r% = 3 THEN ob(29) = 0: ob(34) = 0: ob(35) = 1: cn% = 35
+	IF r% = 4 THEN ob(52) = 0: ob(36) = 1: cn% = 36
+	IF ob(32) = 1 AND ob(36) = 1 THEN ob(33) = 1
+END SUB
+
+'----- keyboard/joystick navigation for the inventory screen. Zones: 0 = item grid,
+'----- 1 = tabs (left pane), 2 = bottom buttons. k$ = U/D/L/R move, E = activate.
+'----- Grid: left off column 0 -> tabs (active tab first); moving toward the inactive
+'----- tab ACTIVATES it; down off the grid (or from the tabs) -> the buttons.
+'----- Returns the cursor park spot for the focus in mx2%/my2% and act%:
+'----- 1 selection changed | 2 tab switched | 3 focus moved | 4 quit | 5 save/load |
+'----- 6 exit | 7 combine (grid E on combine tab) | 8 examine (grid E on info tab)
+SUB InvNav (k$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, mx2%, my2%, act%)
+	act% = 3
+	IF nvz = 0 THEN
+		IF k$ = "L" THEN
+			IF cic = 0 OR (INT(isel) MOD 4) = 0 THEN nvz = 1 ELSE isel = isel - 1: act% = 1
+		ELSEIF k$ = "R" THEN
+			IF (INT(isel) MOD 4) < 3 AND isel + 1 < cic THEN isel = isel + 1: act% = 1
+		ELSEIF k$ = "U" THEN
+			IF isel - 4 >= 0 THEN isel = isel - 4: act% = 1 ELSE nvz = 1
+		ELSEIF k$ = "D" THEN
+			IF isel + 4 < cic THEN isel = isel + 4: act% = 1 ELSE nvz = 2
+		ELSEIF k$ = "E" THEN
+			IF invtab = 1 THEN act% = 7 ELSE act% = 8
+		END IF
+	ELSEIF nvz = 1 THEN
+		IF k$ = "L" THEN
+			IF invtab = 1 THEN invtab = 0: act% = 2
+		ELSEIF k$ = "R" THEN
+			IF invtab = 0 THEN invtab = 1: act% = 2 ELSE nvz = 0
+		ELSEIF k$ = "D" THEN
+			nvz = 2
+		END IF
+	ELSE
+		IF k$ = "L" THEN
+			IF nvb > 0 THEN nvb = nvb - 1
+		ELSEIF k$ = "R" THEN
+			IF nvb < 2 THEN nvb = nvb + 1
+		ELSEIF k$ = "U" THEN
+			IF cic > 0 THEN nvz = 0 ELSE nvz = 1
+		ELSEIF k$ = "E" THEN
+			act% = 4 + nvb
+		END IF
+	END IF
+	'----- scroll the selected row into view, then park the cursor on the focus:
+	'----- items get it at their lower-right, tabs/buttons near their right edge
+	IF nvz = 0 THEN
+		IF INT(isel / 4) < ivscr THEN ivscr = INT(isel / 4)
+		IF INT(isel / 4) > ivscr + 1 THEN ivscr = INT(isel / 4) - 1
+		'----- arrow TIP just inside the 45x54 icon's lower-right quadrant
+		mx2% = 112 + (INT(isel) MOD 4) * 47 + 36
+		my2% = 31 + (INT(isel / 4) - ivscr) * 56 + 44
+		IF cic = 0 THEN mx2% = 150: my2% = 85
+	ELSEIF nvz = 1 THEN
+		'----- tab art: Info 14-52, Combine 53-98, both y28-42
+		IF invtab = 0 THEN mx2% = 46 ELSE mx2% = 92
+		my2% = 39
+	ELSE
+		'----- button art: QUIT ~20-78, Save/load ~193-260, Close ~268-306, y169-181
+		IF nvb = 0 THEN mx2% = 72
+		IF nvb = 1 THEN mx2% = 254
+		IF nvb = 2 THEN mx2% = 300
+		my2% = 178
+	END IF
+END SUB
+
+'----- joystick -> inventory nav letter (same 40/120 thresholds as the game's joy
+'----- poll); the latch releases-to-repeat so holding the stick doesn't flood
+SUB JoyNav (d$) STATIC
+	d$ = ""
+	nd$ = ""
+	js0% = STICK(0)
+	js1% = STICK(1)
+	IF js0% < 40 THEN nd$ = "L"
+	IF js0% > 120 THEN nd$ = "R"
+	IF js1% < 40 THEN nd$ = "U"
+	IF js1% > 120 THEN nd$ = "D"
+	IF STRIG(1) <> 0 THEN nd$ = "E"
+	IF nd$ = ld$ THEN EXIT SUB
+	ld$ = nd$
+	d$ = nd$
+END SUB
+
+'----- reselect the inventory item picked last time (lv%); the grid order can shift
+'----- between opens, so match by ITEM NUMBER and scroll its row into view
+SUB InvReSel (cilist%(), cic2, lv%, is2, iv2, ivm)
+	IF lv% <= 0 THEN EXIT SUB
+	FOR i% = 0 TO cic2 - 1
+		IF cilist%(i%) = lv% THEN is2 = i%
+	NEXT
+	iv2 = INT(is2 / 4)
+	IF iv2 > ivm THEN iv2 = ivm
+END SUB
+
+'----- set a room palette (COLOR + the 3 attribute maps); idempotent
+SUB RmPal (co2, p1, p2, p3)
+	COLOR co2
+	PALETTE 1, p1
+	PALETTE 2, p2
+	PALETTE 3, p3
+END SUB
+
 '----- does the player's 31x31 box intersect rect x1..x2 / y1..y2? (np = nopl close-up)
 SUB OvPlayer (x1, y1, x2, y2, pjx2, pjy2, np, ov%)
 	ov% = 0
