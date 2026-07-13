@@ -181,14 +181,15 @@ SUB InvNav (k$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, mx2%, my2%, act%)
 			nvz = 2
 		END IF
 	ELSE
+		'----- bottom row is just QUIT and Close now (save/load moved to the ESC menu)
 		IF k$ = "L" THEN
 			IF nvb > 0 THEN nvb = nvb - 1
 		ELSEIF k$ = "R" THEN
-			IF nvb < 2 THEN nvb = nvb + 1
+			IF nvb < 1 THEN nvb = nvb + 1
 		ELSEIF k$ = "U" THEN
 			IF cic > 0 THEN nvz = 0 ELSE nvz = 1
 		ELSEIF k$ = "E" THEN
-			act% = 4 + nvb
+			act% = 4 + nvb * 2
 		END IF
 	END IF
 	'----- scroll the selected row into view, then park the cursor on the focus:
@@ -205,10 +206,9 @@ SUB InvNav (k$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, mx2%, my2%, act%)
 		IF invtab = 0 THEN mx2% = 46 ELSE mx2% = 92
 		my2% = 39
 	ELSE
-		'----- button art: QUIT ~20-78, Save/load ~193-260, Close ~268-306, y169-181
+		'----- button art: QUIT ~20-78, Close ~268-306, y169-181
 		IF nvb = 0 THEN mx2% = 72
-		IF nvb = 1 THEN mx2% = 254
-		IF nvb = 2 THEN mx2% = 300
+		IF nvb = 1 THEN mx2% = 300
 		my2% = 178
 	END IF
 END SUB

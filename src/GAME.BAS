@@ -6,7 +6,8 @@ REM $DYNAMIC
 DECLARE SUB Intro ()
 DECLARE SUB Credits ()
 DECLARE SUB invhi ()
-DECLARE SUB SaveLoadScreen (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS INTEGER, dead AS INTEGER)
+DECLARE SUB SlotScreen (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, mode AS INTEGER, dead AS INTEGER, act AS INTEGER)
+DECLARE SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS INTEGER, dead AS INTEGER)
 DECLARE SUB drawcur ()
 DECLARE SUB erasecur ()
 DECLARE SUB InitVars ()
@@ -17,6 +18,7 @@ DECLARE SUB Snd4 ()
 DECLARE SUB Snd5 ()
 DECLARE SUB QuitConfirm ()
 DECLARE SUB DrawYNBox (msg AS STRING, dk AS INTEGER, fontData() AS INTEGER)
+DECLARE SUB YNWait (mvint AS INTEGER, msen AS SINGLE, dk AS INTEGER, res AS INTEGER)
 DECLARE SUB DeathMusic ()
 DECLARE SUB LoadConfig ()
 DECLARE SUB LoadMsgs (nf$())
@@ -629,6 +631,17 @@ gotoroom:
 '      carried items into a 7-col grid with a movable selection ring.
 doinv:
 	CALL invhi
+	GOSUB loadroom
+	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
+	t0 = TIMER
+	RETURN
+
+'----- ESC main menu (GAME4 MainMenu): dims the live screen and draws the menu box
+'----- over it; same return contract as the inventory (2 = New Game -> RUN, else
+'----- reload the room -- also repaints after a Load or a plain resume)
+domenu:
+	IF msen = 1 THEN CALL erasecur
+	CALL MainMenu(fontData(), mvint, msen, slvAct, 0)
 	IF slvAct = 2 THEN RUN
 	GOSUB loadroom
 	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
@@ -716,7 +729,7 @@ mainloop:
 
 '----- handle inventory, fight, and action keys
 	7610 IF msen = 1 AND INSTR("82467139", a$) > 0 THEN GOSUB ksync
-	IF a$ = CHR$(27) THEN GOSUB doinv: GOTO mainloop
+	IF a$ = CHR$(27) THEN GOSUB domenu: GOTO mainloop
 	IF a$ <> "i" THEN GOTO 7630
 	GOSUB doinv: GOTO mainloop
 	7630 IF doc <> 1 THEN GOTO 7660
@@ -2014,9 +2027,12 @@ death:
 	GOSUB loadroom
 	GOTO 14600
 
-	14700 CALL SaveLoadScreen(fontData(), mvint, msen, slvAct, 1)
+	'----- death: the LOAD screen first; Back opens the main menu (Save locked,
+	'----- no resume) so New Game / Quit stay reachable
+	14700 CALL SlotScreen(fontData(), mvint, msen, 2, 1, slvAct)
+	IF slvAct <> 1 THEN CALL MainMenu(fontData(), mvint, msen, slvAct, 1)
 	IF slvAct = 2 THEN RUN
-	IF slvAct = 0 OR slvAct = 3 THEN GOTO 14700
+	IF slvAct <> 1 THEN GOTO 14700
 	GOSUB loadroom
 	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
 	t0 = TIMER
@@ -2513,6 +2529,8 @@ SUB invhi
 	DEF SEG = -18432
 	BLOAD "INVMAIN.PIC", 0
 	DEF SEG
+	'----- save/load moved to the ESC menu -- blank the old Save/Load button
+	LINE (186, 162)-(266, 185), 0, BF
 	REDIM combuf(800), infobuf(800), modalbuf(500), combtn(80), exmico(40)
 	GET (29, 129)-(85, 144), combtn
 	LINE (29, 129)-(85, 144), 0, BF
@@ -2527,7 +2545,7 @@ SUB invhi
 	LINE (210, 34)-(297, 73), 0, BF
 	invtab = 0
 	isel = 0: ivscr = 0: cbot = 0: cdrg = 0: crec = 0
-	nvz = 0: nvb = 2
+	nvz = 0: nvb = 1
 	ivmax = (cic + 3) \ 4 - 2: IF ivmax < 0 THEN ivmax = 0
 	'----- reselect the item picked last time (GAME2 InvReSel; the grid can shift)
 	CALL InvReSel(cilist(), cic, lvsel, isel, ivscr, ivmax)
@@ -2550,7 +2568,6 @@ SUB invhi
 			IF my >= 28 AND my <= 42 AND mx >= 53 AND mx <= 98 AND invtab <> 1 THEN invtab = 1: GOSUB invredraw
 			IF exf = 1 AND mx >= 84 AND mx <= 101 AND my >= 43 AND my <= 58 THEN GOSUB doexam
 			IF mx >= 275 AND mx <= 312 AND my >= 164 AND my <= 183 THEN GOTO invdone
-			IF mx >= 188 AND mx <= 264 AND my >= 164 AND my <= 183 THEN GOSUB svldopen: IF slvAct <> 0 THEN GOTO invdone ELSE mlb = 1: GOTO invwait
 			IF mx >= 4 AND mx <= 96 AND my >= 164 AND my <= 183 THEN GOSUB doquit: mlb = 1: GOTO invwait
 			IF mx >= 299 AND my >= 28 AND my <= 36 THEN ivns = ivscr - 1: GOSUB invss
 			IF mx >= 299 AND my >= 146 AND my <= 154 THEN ivns = ivscr + 1: GOSUB invss
@@ -2581,7 +2598,6 @@ SUB invhi
 	ivk$ = INKEY$
 	IF ivk$ = CHR$(27) OR ivk$ = "x" OR ivk$ = "i" THEN GOTO invdone
 	IF ivk$ = "q" OR ivk$ = "Q" THEN GOSUB doquit: mlb = 1: GOTO invwait
-	IF ivk$ = "s" OR ivk$ = "S" OR ivk$ = "l" OR ivk$ = "L" THEN GOSUB svldopen: IF slvAct <> 0 THEN GOTO invdone ELSE mlb = 1: GOTO invwait
 	'----- mouseless navigation (arrows / joystick, Enter or Space = activate):
 	'----- the zone state machine + cursor parking live in GAME2 InvNav
 	nvk$ = ""
@@ -2594,7 +2610,6 @@ SUB invhi
 	IF nvk$ <> "" THEN
 		CALL InvNav(nvk$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, nvx%, nvy%, act%)
 		IF act% = 4 THEN GOSUB doquit: mlb = 1: GOTO invwait
-		IF act% = 5 THEN GOSUB svldopen: IF slvAct <> 0 THEN GOTO invdone ELSE mlb = 1: GOTO invwait
 		IF act% = 6 THEN GOTO invdone
 		IF act% = 7 THEN IF invtab = 1 AND crec > 0 THEN GOSUB combdo
 		IF act% = 8 THEN IF exf = 1 THEN GOSUB doexam
@@ -2631,9 +2646,9 @@ SUB invhi
 	doquit:
 	IF msen = 1 THEN CALL erasecur
 	CALL DrawYNBox("Quit the game?", 3, fontData())
-	IF msen = 1 THEN CALL drawcur
 	CALL QuitConfirm
 	DEF SEG = -18432: BLOAD "INVMAIN.PIC", 0: DEF SEG
+	LINE (186, 162)-(266, 185), 0, BF
 	PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
 	LINE (8, 27)-(202, 151), 0, BF: LINE (210, 34)-(297, 73), 0, BF
 	GOSUB invdraw
@@ -2792,44 +2807,13 @@ SUB invhi
 	LOOP WHILE (mout.bx AND 1) <> 0
 	RETURN
 
-	'----- open the graphical Save/Load screen. Cancel (slvAct=0) restores the inventory and stays here; Load/New (slvAct<>0) leave the screen up so the caller GOTO invdone -> game.
-	svldopen:
-	CALL SaveLoadScreen(fontData(), mvint, msen, slvAct, 0)
-	IF slvAct <> 0 THEN RETURN
-	DEF SEG = -18432: BLOAD "INVMAIN.PIC", 0: DEF SEG
-	PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
-	LINE (8, 27)-(202, 151), 0, BF: LINE (210, 34)-(297, 73), 0, BF
-	GOSUB invdraw
-	IF msen = 1 THEN CALL drawcur
-	RETURN
-
 END SUB
 
-'----- QuitConfirm: wait for Yes/No on the quit modal (click a button or press Y/N)
+'----- QuitConfirm: wait for Yes/No on the quit modal -- the interactive loop
+'----- lives in GAME4 (YNWait) to stay under GAME.BAS's 64K code ceiling
 SUB QuitConfirm
-	'----- let the opening click release so it doesn't carry into Yes/No
-	IF msen = 1 THEN
-		DO
-			mreg.ax = 3: CALL INTERRUPT(mvint, mreg, mout)
-		LOOP WHILE (mout.bx AND 1) <> 0
-	END IF
-	DO
-		qk$ = INKEY$
-		IF qk$ = "y" OR qk$ = "Y" THEN SYSTEM
-		IF qk$ = "n" OR qk$ = "N" THEN EXIT SUB
-		IF msen = 1 THEN
-			mreg.ax = 3: CALL INTERRUPT(mvint, mreg, mout)
-			nmx = mout.cx \ 2: nmy = mout.dx
-			IF nmx > 304 THEN nmx = 304 ELSE IF nmx < 0 THEN nmx = 0
-			IF nmy > 190 THEN nmy = 190 ELSE IF nmy < 0 THEN nmy = 0
-			IF nmx <> mx OR nmy <> my THEN CALL erasecur: mx = nmx: my = nmy: CALL drawcur
-			IF (mout.bx AND 1) <> 0 THEN
-				IF mx >= 92 AND mx <= 142 AND my >= 105 AND my <= 117 THEN SYSTEM
-				IF mx >= 178 AND mx <= 228 AND my >= 105 AND my <= 117 THEN EXIT SUB
-				IF mx >= 260 AND mx <= 270 AND my >= 80 AND my <= 87 THEN EXIT SUB
-			END IF
-		END IF
-	LOOP
+	CALL YNWait(mvint, msen, 3, qcr%)
+	IF qcr% = 1 THEN SYSTEM
 END SUB
 
 '----- write the live game state to slot 1-10 (saver a-j.pac). Lives in GAME.BAS for DIM SHARED access; called from the GAME4 save/load screen.

@@ -176,7 +176,7 @@
   .bgthumb:hover{border-color:var(--accent)}
   .bgthumb canvas{width:100%;aspect-ratio:320/200;display:block;image-rendering:pixelated}
   .bgthumb .tlabel{font-size:11px;padding:4px 6px;color:var(--txt);background:var(--panel);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .bgcard{width:auto;max-width:96vw}
+  .bgcard{width:auto;max-width:96vw;overflow-y:auto}   /* safety net: if anything still overflows, scroll to it instead of clipping */
   .bgview{display:flex;justify-content:center;padding:10px;background:#000}
   .bgview canvas{image-rendering:pixelated;display:block}   /* sized by fitModalCanvas() to the image's own ratio */
   #bgModal{gap:16px}
@@ -1539,12 +1539,20 @@ let bgPic=null, bgPal=null;
 // integer upscale for crisp pixels (capped 20x), fractional downscale when it wouldn't fit
 function fitModalCanvas(){
   const cv=document.getElementById('bgCanvas'); if(!cv||!cv.width||!cv.height) return;
-  const availW=Math.max(200, window.innerWidth*0.92-60);
-  const availH=Math.max(160, window.innerHeight-230);   // room for the modal head + palette row
-  const s=Math.min(availW/cv.width, availH/cv.height);
-  const scale=(s>=1)? Math.min(Math.floor(s),20) : s;
-  cv.style.width=Math.round(cv.width*scale)+'px';
-  cv.style.height=Math.round(cv.height*scale)+'px';
+  // size the image to the space the card actually has left after the title row and
+  // the palette row — MEASURED, so the palette dropdowns stay visible on short
+  // screens (the card is capped at 84vh with overflow hidden). Two passes: the
+  // first resize can rewrap the head/palette rows and change their heights.
+  const head=document.querySelector('#bgModal .modalHead'), pal=document.getElementById('bgPalUI');
+  for(let pass=0;pass<2;pass++){
+    const headH=(head&&head.offsetHeight)||44, palH=(pal&&pal.offsetHeight)||58;
+    const availW=Math.max(200, window.innerWidth*0.92-60);
+    const availH=Math.max(120, window.innerHeight*0.84 - headH - palH - 28);   // 28 = .bgview padding + slack
+    const s=Math.min(availW/cv.width, availH/cv.height);
+    const scale=(s>=1)? Math.min(Math.floor(s),20) : s;
+    cv.style.width=Math.round(cv.width*scale)+'px';
+    cv.style.height=Math.round(cv.height*scale)+'px';
+  }
 }
 window.addEventListener('resize',()=>{ const m=document.getElementById('bgModal'); if(m&&!m.hidden) fitModalCanvas(); });
 function bgRender(){
@@ -1571,8 +1579,8 @@ async function openBgView(name){
     s.onchange=()=>{ bgPal[idx]=+s.value; bgRender(); };
     w.appendChild(s); ui.appendChild(w);
   });
+  document.getElementById('bgModal').hidden=false;   // unhide BEFORE the fit pass so the head/palette rows measure real heights
   bgRender();
-  document.getElementById('bgModal').hidden=false;
 }
 function closeBg(){
   if(bgPendingPic && !confirm('Discard the imported image? It has NOT been saved over '+bgName+'.PIC.')) return;
@@ -2015,8 +2023,8 @@ function openSprView(spr,label,name,idx,k,preferMask){
     s.onchange=()=>{ sprPal[idx]=+s.value; sprRender(); };
     w.appendChild(s); ui.appendChild(w);
   });
+  document.getElementById('bgModal').hidden=false;   // unhide BEFORE the fit pass so the head/palette rows measure real heights
   sprRender();
-  document.getElementById('bgModal').hidden=false;
   loadMaskForCurrent();
 }
 // ---- sprite MASKS (.MSK = parallel to .PCT, same K-interleave; black = solid/opaque = mask 0, white = see-through/transparent = mask 3) ----
