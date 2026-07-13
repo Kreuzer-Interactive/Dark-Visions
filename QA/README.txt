@@ -23,19 +23,27 @@ CONTROLS
   Mouse              point and click to move and interact
   Arrow keys         move the on-screen cursor; Right arrow selects.
                      (The original also accepts the number pad, Num Lock on.)
-  i   or   ESC       open the inventory (while playing)
+  i                  open the inventory (while playing)
+  ESC                open the main menu (New Game / Save / Load / Quit)
+
+  On the main menu:
+     up / down       move the selection (Load is grayed out with no saves)
+     Enter / Space   choose the selected item; N / S / L / Q jump directly
+     ESC  or  x      back to the game
+     mouse           hover to select, click to choose
 
   In the inventory:
      i / x / ESC     close it (back to the game)
-     s   or   l      open the Save / Load screen
      arrow keys      move the selection
      q               quit to DOS
+     (save/load moved to the ESC main menu)
 
-  On the Save / Load screen:
-     S / L / N       Save / Load / New game
-     C   or   X      back to the inventory
-     ESC             exit all the way out to the game
-     arrow keys      move the slot selector
+  On the Save or Load screen (book):
+     arrows / 1-9,0  move the slot selector / jump to a slot
+     Enter / Space   save to / load from the selected slot
+     double-click    same as Enter on that slot
+     S / L           the screen's action button (same as Enter)
+     X   or  ESC     back to the main menu
 
 
 WHAT TO TEST (new build vs. original)
@@ -44,15 +52,17 @@ WHAT TO TEST (new build vs. original)
     tiles, an Info tab, and a Combine tab (drag one item onto another to
     combine).  The ORIGINAL has a plain text inventory.
 
-  * Save / Load:  the NEW build has a 10-slot graphical Save/Load screen that
-    shows each slot's room name and progress %.  Try Save, Load, and New Game.
-    It remembers the last slot you used.
+  * Save / Load:  the NEW build has separate 10-slot Save and Load book screens
+    (ESC menu -> Save or Load) showing each slot's room name and progress %.
+    Enter, double-click, or the action button saves/loads the selected slot;
+    Back returns to the menu to switch screens. Remembers the last slot used.
 
   * Examine:  pick a book or the map in the inventory and click the
     magnifying-glass icon to read/view it.
 
-  * Death:  if your character dies, the NEW build drops you on the Save/Load
-    screen (Save is hidden there; Load needs no confirmation).
+  * Death:  if your character dies, the NEW build drops you on the Load screen
+    (no save switch; loads need no confirmation). Back opens the main menu
+    with Save grayed out, so New Game / Quit stay reachable.
 
   * Overall:  play through both and compare the feel, art, speed, and note any
     bugs, glitches, or differences.
