@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME3.BAS: variable-width small-font renderer (from ART/
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  02CF   0026                            FOR i = 1 TO LEN(lineText)
  0300   0026                                    IF MID$(lineText, i, 1) = "1" T
                                                                       PAGE   2
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 HEN pat = pat + pw2(LEN(lineText) - i)
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  054A   0026            NEXT ux
  055F   0026    END SUB
                                                                       PAGE   3
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0567   0026    
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  07A2   0026                    END IF
  07AC   0026            NEXT i
                                                                       PAGE   4
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  07BB   0026            textWidth = tot
@@ -233,15 +233,15 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 h - 8) * 60
  0A30   0026            pcnt = 0
  0A30   0026            FOR i = 1 TO 51
- 0A72   0026                    IF ob(i) = 1 THEN pcnt = pcnt + 1
+ 0A72   0026                    IF ob(i) >= 1 THEN pcnt = pcnt + 1
                                                                       PAGE   5
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0A99   0026            NEXT i
- 0AA5   0026            IF ob(36) = 1 THEN pcnt = pcnt + 2
- 0ACA   0026            IF ob(35) = 1 THEN pcnt = pcnt + 2
+ 0AA5   0026            IF ob(36) >= 1 THEN pcnt = pcnt + 2
+ 0ACA   0026            IF ob(35) >= 1 THEN pcnt = pcnt + 2
  0AEF   0026            pcnt = CINT(pcnt * 100 / 47)
  0AEF   0026            CALL drawText(49, 11, LTRIM$(STR$(pcnt)) + "%", 2, font
                 Data())
@@ -267,178 +267,367 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0C5E   0026            CALL drawWrap(2, 1, s, 3, 314, lh, fontData())
  0CCA   0026    END SUB
  0CD2   0026    
- 0CD2   0026    '----- intro: black the palette, hold ~1s (hides the slow carr.
+ 0CD2   0026    '----- bottom-left HUD: which inventory item the Use verb appli
+                es ("U" in the
+ 0CD2   0026    '----- room's attr-3 brown, the rest attr-1 gray). Clears the s
+                trip when
+ 0CD2   0026    '----- nothing usable is held.
+ 0CD2   0026    SUB HudUse (sel2 AS INTEGER, ob() AS SINGLE, sn$(), fontData() 
+                AS INTEGER)
+ 0CDD   0026            DIM it$
+ 0CDD   0026            it$ = ""
+ 0CDD   0026            IF sel2 >= 1 AND sel2 <= 50 THEN
+ 0CDD   0026                    IF ob(sel2) = 1 THEN it$ = sn$(sel2)
+ 0D40   0026            END IF
+ 0D40   0026            LINE (0, 192)-(170, 199), 0, BF
+ 0D40   0026            IF it$ = "" THEN EXIT SUB
+ 0D7B   0026            CALL drawText(3, 192, "U", 3, fontData())
+ 0DB8   0026            CALL drawText(3 + textWidth("U", fontData()), 192, "se 
+                = " + it$, 1, fontData())
+ 0E31   0026    END SUB
+ 0E42   0026    
+ 0E42   0026    '----- intro: black the palette, hold ~1s (hides the slow carr.
                 pic BLOAD on old hardware), then load + reveal the car scene
- 0CD2   0026    SUB introShowCarr
- 0CDD   0026            DIM t9 AS SINGLE, d9 AS SINGLE
- 0CDD   0026            PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
- 0CDD   0026            t9 = TIMER
- 0CDD   0026            DO
- 0D18   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
- 0D50   0026            LOOP WHILE d9 < 1
- 0D50   0026            DEF SEG = &HB800: BLOAD "carr.pic", 0: DEF SEG
- 0D50   0026            PALETTE 3, 6: PALETTE 1, 2: PALETTE 2, 11
- 0D50   0026    END SUB
- 0DB5   0026    
- 0DB5   0026    '----- fade "A Kreuzer Production" (attr 3) in through the CGA 
-                grays: 0 black -> 8 dk-gray -> 7 lt-gray -> 15 white, then hold
- 0DB5   0026    SUB introFadeCredit
- 0DC0   0026            DIM t9 AS SINGLE, d9 AS SINGLE, fws AS SINGLE
- 0DC0   0026            fws = .15
- 0DC0   0026            PALETTE 3, 8: GOSUB fcw
- 0DE2   0026            PALETTE 3, 7: GOSUB fcw
- 0DF9   0026            PALETTE 3, 15: GOSUB fcw
- 0E10   0026            fws = .5: GOSUB fcw
- 0E23   0026            EXIT SUB
- 0E23   0026            fcw:
- 0E26   0026            t9 = TIMER
- 0E26   0026            DO
+ 0E42   0026    SUB introShowCarr
+ 0E4D   0026            DIM t9 AS SINGLE, d9 AS SINGLE
+ 0E4D   0026            PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
+ 0E4D   0026            t9 = TIMER
+ 0E4D   0026            DO
                                                                       PAGE   6
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 0E3C   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
- 0E74   0026            LOOP WHILE d9 < fws
- 0E74   0026            RETURN
- 0E74   0026    END SUB
- 0E92   0026    
- 0E92   0026    '----- book reader: hold the just-loaded book picture ~1.5s, th
+ 0E88   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
+ 0EC0   0026            LOOP WHILE d9 < 1
+ 0EC0   0026            DEF SEG = &HB800: BLOAD "carr.pic", 0: DEF SEG
+ 0EC0   0026            PALETTE 3, 6: PALETTE 1, 2: PALETTE 2, 11
+ 0EC0   0026    END SUB
+ 0F25   0026    
+ 0F25   0026    '----- fade "A Kreuzer Production" (attr 3) in through the CGA 
+                grays: 0 black -> 8 dk-gray -> 7 lt-gray -> 15 white, then hold
+ 0F25   0026    SUB introFadeCredit
+ 0F30   0026            DIM t9 AS SINGLE, d9 AS SINGLE, fws AS SINGLE
+ 0F30   0026            fws = .15
+ 0F30   0026            PALETTE 3, 8: GOSUB fcw
+ 0F52   0026            PALETTE 3, 7: GOSUB fcw
+ 0F69   0026            PALETTE 3, 15: GOSUB fcw
+ 0F80   0026            fws = .5: GOSUB fcw
+ 0F93   0026            EXIT SUB
+ 0F93   0026            fcw:
+ 0F96   0026            t9 = TIMER
+ 0F96   0026            DO
+ 0FAC   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
+ 0FE4   0026            LOOP WHILE d9 < fws
+ 0FE4   0026            RETURN
+ 0FE4   0026    END SUB
+ 1002   0026    
+ 1002   0026    '----- book reader: hold the just-loaded book picture ~1.5s, th
                 en clear and word-wrap the book's text in the given font
- 0E92   0026    SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
- 0E9D   0026            DIM t9 AS SINGLE, d9 AS SINGLE, bt AS STRING, lh AS INT
+ 1002   0026    SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
+ 100D   0026            DIM t9 AS SINGLE, d9 AS SINGLE, bt AS STRING, lh AS INT
                 EGER
- 0E9D   0026            t9 = TIMER
- 0E9D   0026            DO
- 0EAE   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
- 0EE6   0026            LOOP WHILE d9 < 1.5
- 0EE6   0026            bt = ""
- 0EE6   0026            SELECT CASE sel
- 0EE6   0026            CASE 3
- 0EE6   0026                    bt = "The other doctors have become weary as th
+ 100D   0026            t9 = TIMER
+ 100D   0026            DO
+ 101E   0026                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
+ 1056   0026            LOOP WHILE d9 < 1.5
+ 1056   0026            bt = ""
+ 1056   0026            SELECT CASE sel
+ 1056   0026            CASE 3
+ 1056   0026                    bt = "The other doctors have become weary as th
                 e"
- 0EE6   0026                    bt = bt + " research money is drying up. I have
+ 1056   0026                    bt = bt + " research money is drying up. I have
                  taken the"
- 0EE6   0026                    bt = bt + " liberty of hiding the rest so they 
+ 1056   0026                    bt = bt + " liberty of hiding the rest so they 
                 do not get"
- 0EE6   0026                    bt = bt + " greedy and steal it. The money is n
+ 1056   0026                    bt = bt + " greedy and steal it. The money is n
                 ow boarded up"
- 0EE6   0026                    bt = bt + " in the headboard of my bed; not eve
+ 1056   0026                    bt = bt + " in the headboard of my bed; not eve
                 n the"
- 0EE6   0026                    bt = bt + " servants know about it.\\Time is th
+ 1056   0026                    bt = bt + " servants know about it.\\Time is th
                 e barrier to"
- 0EE6   0026                    bt = bt + " the place of the damned."
- 0EE6   0026            CASE 9
- 0FC0   0026                    bt = "Patient: Naton McDaniel\Disorder: Paranoi
+ 1056   0026                    bt = bt + " the place of the damned."
+ 1056   0026            CASE 9
+ 1130   0026                    bt = "Patient: Naton McDaniel\Disorder: Paranoi
                 d"
- 0FC0   0026                    bt = bt + " Schizophrenia\Notes: Nervous, compl
+ 1130   0026                    bt = bt + " Schizophrenia\Notes: Nervous, compl
                 ains of"
- 0FC0   0026                    bt = bt + " voices, often talks in gibberish.\I
-                D: 12443"
- 0FC0   0026                    bt = bt + "\\Patient: Havos Lobos\Disorder: Sev
-                ere"
- 0FC0   0026                    bt = bt + " Delusions\Notes: What he sees and h
-                ears becomes"
- 0FC0   0026                    bt = bt + " his reality. Very dangerous.\ID: 38
-                5938"
- 0FC0   0026                    bt = bt + "\\Patient: Gary Coleman\Disorder: Ps
-                ychotic"
- 0FC0   0026                    bt = bt + " dementia\Notes: A leader among the 
-                patients,"
- 0FC0   0026                    bt = bt + " fixated on knives, blood and sacrif
-                ice."
- 0FC0   0026                    bt = bt + " Extremely disturbed.\ID: 485970"
- 0FC0   0026            CASE 10
- 10B4   0026                    bt = "I have concluded another successful exper
-                iment."
- 10B4   0026                    bt = bt + "  This time the other doctors have g
                                                                       PAGE   7
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 1130   0026                    bt = bt + " voices, often talks in gibberish.\I
+                D: 12443"
+ 1130   0026                    bt = bt + "\\Patient: Havos Lobos\Disorder: Sev
+                ere"
+ 1130   0026                    bt = bt + " Delusions\Notes: What he sees and h
+                ears becomes"
+ 1130   0026                    bt = bt + " his reality. Very dangerous.\ID: 38
+                5938"
+ 1130   0026                    bt = bt + "\\Patient: Gary Coleman\Disorder: Ps
+                ychotic"
+ 1130   0026                    bt = bt + " dementia\Notes: A leader among the 
+                patients,"
+ 1130   0026                    bt = bt + " fixated on knives, blood and sacrif
+                ice."
+ 1130   0026                    bt = bt + " Extremely disturbed.\ID: 485970"
+ 1130   0026            CASE 10
+ 1224   0026                    bt = "I have concluded another successful exper
+                iment."
+ 1224   0026                    bt = bt + "  This time the other doctors have g
                 rown greedy"
- 10B4   0026                    bt = bt + " and want the notes for themselves. 
+ 1224   0026                    bt = bt + " and want the notes for themselves. 
                  So I gave"
- 10B4   0026                    bt = bt + " them to the servants and coded them
+ 1224   0026                    bt = bt + " them to the servants and coded them
                  -- and the"
- 10B4   0026                    bt = bt + " code book is hidden, where they wil
+ 1224   0026                    bt = bt + " code book is hidden, where they wil
                 l never find"
- 10B4   0026                    bt = bt + " it nor steal my breakthrough."
- 10B4   0026            CASE 19
- 114C   0026                    bt = "3/15\The patients have become unruly. I f
+ 1224   0026                    bt = bt + " it nor steal my breakthrough."
+ 1224   0026            CASE 19
+ 12BC   0026                    bt = "3/15\The patients have become unruly. I f
                 ear they"
- 114C   0026                    bt = bt + " will overpower us, but the research
+ 12BC   0026                    bt = bt + " will overpower us, but the research
                  must go on."
- 114C   0026                    bt = bt + "\\3/17\The other doctors too are con
+ 12BC   0026                    bt = bt + "\\3/17\The other doctors too are con
                 cerned. We"
- 114C   0026                    bt = bt + " are tired from the long hours and m
+ 12BC   0026                    bt = bt + " are tired from the long hours and m
                 ake many"
- 114C   0026                    bt = bt + " errors of judgment.\\3/23\Something
+ 12BC   0026                    bt = bt + " errors of judgment.\\3/23\Something
                  in the air"
- 114C   0026                    bt = bt + " down there clouds my head. I have m
+ 12BC   0026                    bt = bt + " down there clouds my head. I have m
                 oved my"
- 114C   0026                    bt = bt + " practice to the attic, hidden behin
+ 12BC   0026                    bt = bt + " practice to the attic, hidden behin
                 d a pit of"
- 114C   0026                    bt = bt + " ash that only an electric circuit w
+ 12BC   0026                    bt = bt + " ash that only an electric circuit w
                 ill open."
- 114C   0026                    bt = bt + " The MPTP vials are upper left.\\3/2
+ 12BC   0026                    bt = bt + " The MPTP vials are upper left.\\3/2
                 9\Edwards has"
- 114C   0026                    bt = bt + " been following me. I fear he grows 
+ 12BC   0026                    bt = bt + " been following me. I fear he grows 
                 suspicious."
- 114C   0026                    bt = bt + " (The rest of the page is torn away.
+ 12BC   0026                    bt = bt + " (The rest of the page is torn away.
                 )"
- 114C   0026            CASE 21
- 1257   0026                    bt = "The Zombie Syrem\\MPTP -- this formula ha
+ 12BC   0026            CASE 21
+ 13C7   0026                    bt = "The Zombie Syrem\\MPTP -- this formula ha
                 rbors the"
- 1257   0026                    bt = bt + " most dangerous compound known, one 
-                that leaves a"
- 1257   0026                    bt = bt + " victim paralyzed for days at a time
-                . The"
- 1257   0026                    bt = bt + " conclusive test on human subjects h
-                as yielded"
- 1257   0026                    bt = bt + " promising results.\\The subjects, t
-                hough, gain in"
- 1257   0026                    bt = bt + " strength and reflex, growing harder
-                 to control."
- 1257   0026                    bt = bt + " We have begun using torture to curb
-                 them; it is"
- 1257   0026                    bt = bt + " almost safer to keep them on it per
-                manently, lest"
- 1257   0026                    bt = bt + " they overthrow the doctors."
- 1257   0026            CASE 25
- 1334   0026                    bt = "A Cipher Key\\A slim codex of symbols, ea
-                ch set"
- 1334   0026                    bt = bt + " beside its true letter. The doctor 
-                coded his"
+ 13C7   0026                    bt = bt + " most dangerous compound known, one 
                                                                       PAGE   8
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 1334   0026                    bt = bt + " notes to keep them from greedy hand
+                that leaves a"
+ 13C7   0026                    bt = bt + " victim paralyzed for days at a time
+                . The"
+ 13C7   0026                    bt = bt + " conclusive test on human subjects h
+                as yielded"
+ 13C7   0026                    bt = bt + " promising results.\\The subjects, t
+                hough, gain in"
+ 13C7   0026                    bt = bt + " strength and reflex, growing harder
+                 to control."
+ 13C7   0026                    bt = bt + " We have begun using torture to curb
+                 them; it is"
+ 13C7   0026                    bt = bt + " almost safer to keep them on it per
+                manently, lest"
+ 13C7   0026                    bt = bt + " they overthrow the doctors."
+ 13C7   0026            CASE 25
+ 14A4   0026                    bt = "A Cipher Key\\A slim codex of symbols, ea
+                ch set"
+ 14A4   0026                    bt = bt + " beside its true letter. The doctor 
+                coded his"
+ 14A4   0026                    bt = bt + " notes to keep them from greedy hand
                 s -- but with"
- 1334   0026                    bt = bt + " this key the cipher gives way. Lay 
+ 14A4   0026                    bt = bt + " this key the cipher gives way. Lay 
                 it against the"
- 1334   0026                    bt = bt + " torn halves of the formula and the 
+ 14A4   0026                    bt = bt + " torn halves of the formula and the 
                 scattered"
- 1334   0026                    bt = bt + " notations resolve into a single, co
+ 14A4   0026                    bt = bt + " notations resolve into a single, co
                 mplete"
- 1334   0026                    bt = bt + " working."
- 1334   0026            CASE ELSE
- 13E3   0026                    bt = "The pages are water-stained and illegible
+ 14A4   0026                    bt = bt + " working."
+ 14A4   0026            CASE ELSE
+ 1553   0026                    bt = "The pages are water-stained and illegible
                 ."
- 13E3   0026            END SELECT
- 13F0   0026            LINE (0, 0)-(319, 199), 0, BF
- 13F0   0026            PALETTE 3, 6
- 13F0   0026            lh = fontData(0) + 1
- 13F0   0026            CALL drawWrap(6, 2, bt, 3, 308, lh, fontData())
- 1469   0026    END SUB
- 147A   0026    
- 1481   0026    
+ 1553   0026            END SELECT
+ 1560   0026            LINE (0, 0)-(319, 199), 0, BF
+ 1560   0026            PALETTE 3, 6
+ 1560   0026            lh = fontData(0) + 1
+ 1560   0026            CALL drawWrap(6, 2, bt, 3, 308, lh, fontData())
+ 15D9   0026    END SUB
+ 15EA   0026    
+ 15EA   0026    '----- ShowRules: the pre-game instructions screen (moved verba
+                tim from
+ 15EA   0026    '----- GAME.BAS's rules: gosub -- that module is at the 64K cod
+                e ceiling)
+ 15EA   0026    SUB ShowRules
+ 15F5   0026            CLS
+ 15F5   0026            WIDTH 80
+ 15F5   0026            PRINT " Welcome to the premier point and click game by 
+                Kreuzer productions"
+ 15F5   0026            PRINT " The point and click interface is really quite e
+                asy. Move the green"
+ 15F5   0026            PRINT " cursor onto the object you want to manipulate a
+                nd press one of "
+ 15F5   0026            PRINT " these keys. (a) for action . (l) to look at an 
+                object. Type (u) to"
+ 15F5   0026            PRINT " use th active object. (g) to get that object.(n
+                                                                      PAGE   9
+                                                                      19 Jul 26
+                                                                      17:41:33
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                ote) some objects you"
+ 15F5   0026            PRINT " must look at to get or you must look at the dra
+                wer to find the object "
+ 15F5   0026            PRINT " inside. Also at any time during the game you ma
+                y press (i) to display "
+ 15F5   0026            PRINT " the your inventory ,time and place. Plus you ma
+                y load,save or quit"
+ 15F5   0026            PRINT " or select the active object from this screen. "
+ 15F5   0026            PRINT " if you seem to be stuck it would be wise to bac
+                ktrack and look to see if"
+ 15F5   0026            PRINT " you anything new has opened up or one of your o
+                bjects has a use in that"
+ 15F5   0026            PRINT " room. If action does not work on something you 
+                might try look or get or"
+ 15F5   0026            PRINT " vice versa, also try clicking the cursor on dif
+                ferent parts of the object"
+ 15F5   0026            PRINT " it might reveal different things. "
+ 15F5   0026            PRINT " Hints: Click (a) on and arrow by the door to le
+                ave"
+ 15F5   0026            PRINT " Even though it might seem as if two or more obj
+                ects"
+ 15F5   0026            PRINT " could do the trick, usually only one will work.
+                "
+ 15F5   0026            PRINT " Just to get you started move your cursor by the
+                 rug of the first"
+ 15F5   0026            PRINT " room. Then press (l) it will say you see a lump
+                y rug. That didn't help."
+ 15F5   0026            PRINT " Don't worry, save often you never know what may
+                 happen"
+ 15F5   0026            PRINT " P.S. Time does matter"
+ 15F5   0026            PRINT " Get ready to journey into the twisting and cont
+                orting shadows of"
+ 15F5   0026            PRINT " your uncle's residence"
+ 15F5   0026            PRINT " PRESS ANY KEY TO CONTINUE "
+ 15F5   0026            DO
+ 16E4   0026                    rk$ = INKEY$
+ 16E4   0026            LOOP WHILE rk$ = ""
+ 16E4   0026            SCREEN 1
+ 16E4   0026    END SUB
+ 1721   0026    
+ 1721   0026    '----- Credits / ending sequence (moved verbatim from GAME.BAS 
+                -- 64K ceiling).
+ 1721   0026    '----- gd% carries ob(43): 1 = curtains were lit -> the house-b
+                urns good
+ 1721   0026    '----- ending; anything else -> the bad "uncle not saved" scree
+                n.
+ 1721   0026    SUB Credits (gd%)
+ 172C   0026            DIM e0(600) AS INTEGER
+ 1744   0026            SCREEN 1
+ 1744   0026            KEY OFF
+ 1752   0026            PALETTE 1, 8: PALETTE 2, 4: PALETTE 3, 14
+ 1752   0026            IF gd% <> 1 THEN GOTO 15700
+ 1792   0026    
+ 1792   0026            '----- good ending: house burns
+                                                                      PAGE  10
+                                                                      19 Jul 26
+                                                                      17:41:33
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 1792   0026            DEF SEG = &HB800: BLOAD "end.pic", 0: DEF SEG
+ 1792   0026            PLAY "e-6d5e-5d5f7p7"
+ 17B9   0026            PLAY "a5>c6<b6a5g6a4"
+ 17C2   0026            FOR e3 = 1 TO 5: SOUND 32761, 1: NEXT e3
+ 17FC   0026    
+ 17FC   0026            FOR e6 = 1 TO 3
+ 1804   0026                    FOR e4 = 1 TO 3
+ 180C   0026                            IF e4 = 1 THEN e5 = 8 ELSE IF e4 = 2 TH
+                EN e5 = 7 ELSE e5 = 15
+ 185D   0026                            PALETTE e6, e5
+ 185D   0026                            FOR e3 = 1 TO 5: IF RND < .9 THEN SOUND
+                 RND * 71 + 50, (RND * .2) + .3 ELSE SOUND 32767, .5
+ 18EC   0026                            NEXT e3
+ 1910   0026                    NEXT e4: NEXT e6
+ 1958   0026    
+ 1958   0026            PALETTE 0, 15
+ 1958   0026            DEF SEG = &HB800: BLOAD "end2.pic", 0: DEF SEG
+ 1958   0026            FOR e3 = 1 TO 7: SOUND 32671, .5: NEXT e3
+ 19BE   0026            PALETTE 0, 0
+ 19BE   0026    
+ 19BE   0026            FOR e6 = 1 TO 3
+ 19D4   0026                    FOR e4 = 1 TO 3
+ 19DC   0026                            IF e4 = 1 THEN e5 = 8 ELSE IF e4 = 2 TH
+                EN e5 = 7 ELSE GOSUB 15640
+ 1A2A   0026                            PALETTE e6, e5
+ 1A2A   0026                            FOR e3 = 1 TO 5: IF RND < .9 THEN SOUND
+                 RND * 71 + 50, (RND * .2) + .3 ELSE SOUND 32767, .5
+ 1AB8   0026                            NEXT e3
+ 1ADC   0026                    NEXT e4: NEXT e6
+ 1B24   0026    
+ 1B24   0026            FOR e3 = 1 TO 40: SOUND 32676, .1: NEXT e3
+ 1B5E   0026            GOSUB 15660
+ 1B66   0026            FOR e3 = 1 TO 20: SOUND 32761, 1: NEXT e3
+ 1BA0   0026            GOSUB 15650
+ 1BA8   0026    
+ 1BA8   0026            '----- closing narration
+ 1BA8   0026            PRINT "You run swiftly from the flaming"
+ 1BA8   0026            PRINT "building that is being consumed by"
+ 1BA8   0026            PRINT "the blaze. As you look back at the"
+ 1BA8   0026            PRINT "burning house, spewing fiery shrapnel"
+ 1BA8   0026            PRINT "about the grounds you wonder about"
+ 1BA8   0026            PRINT "your uncle and his work. What was"
+ 1BA8   0026            PRINT "he realy like? What was obliterated"
+ 1BA8   0026            PRINT "in the house? Did you leave something"
+ 1BA8   0026            PRINT "behind or undone ...."
+ 1BA8   0026            PRINT "Maybe some day you'll find out."
+ 1BA8   0026            PRINT "": PRINT "Press a key to exit."
+ 1BA8   0026    15592 IF INKEY$ = "" THEN GOTO 15592
+ 1C2A   0026            EXIT SUB
+ 1C2A   0026    
+ 1C2A   0026            '----- pick palette color by frame
+ 1C2A   0026    15640 IF e6 = 1 THEN e5 = 8
+ 1C52   0026            IF e6 = 2 THEN e5 = 2
+ 1C72   0026            IF e6 = 3 THEN e5 = 6
+                                                                      PAGE  11
+                                                                      19 Jul 26
+                                                                      17:41:33
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 1C92   0026            RETURN
+ 1C92   0026    
+ 1C92   0026            '----- static-screen wipe effect
+ 1C92   0026    15650 FOR e3 = 1 TO 23: FOR e2 = 1 TO 40
+ 1CAC   0026                    LOCATE INT(RND * 23) + 1, INT(RND * 40) + 1: PR
+                INT " "
+ 1CAC   0026                    SOUND 32676, .05
+ 1D19   0026            NEXT e2: NEXT e3
+ 1D61   0026            CLS
+ 1D61   0026            RETURN
+ 1D61   0026    
+ 1D61   0026            '----- flying shrapnel animation
+ 1D61   0026    15660 GET (212, 140)-(262, 160), e0
+ 1D6F   0026            PUT (212, 140), e0, XOR
+ 1D6F   0026            LINE (211, 148)-(265, 148), 1
+ 1D6F   0026            FOR e1 = 212 TO 65 STEP -1
+ 1DF0   0026                    PUT (e1, 140), e0, XOR
+ 1DF0   0026                    SOUND (RND * 100) + 50, .1: SOUND 100, .1
+ 1E4E   0026                    PUT (e1, 140), e0, XOR
+ 1E4E   0026            NEXT e1
+ 1E98   0026            RETURN
+ 1E98   0026    
+ 1E98   0026            '----- bad ending (uncle not saved)
+ 1E98   0026    15700 DEF SEG = &HB800: BLOAD "end1.pic", 0: DEF SEG
+ 1E9D   0026            PALETTE 1, 8: PALETTE 2, 4: PALETTE 3, 14
+ 1E9D   0026            PLAY "e-6d5e-5d5f7p7"
+ 1EF6   0026            PLAY "a5>c6<b6a5g6a4"
+ 1EFF   0026    15704 IF INKEY$ = "" THEN GOTO 15704
+ 1F15   0026            EXIT SUB
+ 1F15   0026    END SUB
+ 1F29   0026    
+ 1F48   0026    
 
 43949 Bytes Available
-36148 Bytes Free
+32948 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

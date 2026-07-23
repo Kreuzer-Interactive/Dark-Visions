@@ -230,7 +230,7 @@
 <body>
 <div id="app">
   <header>
-    <h1>Dark Visions · Room Tools <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:0">v41</span></h1>
+    <h1>Dark Visions · Room Tools <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:0">v42</span></h1>
     <span class="spacer"></span>
     <span id="mode" class="badge">…</span>
   </header>
@@ -481,12 +481,13 @@
   <div id="bgModal" class="modal" hidden>
     <button id="bgPrev" class="navarrow" type="button" hidden title="Previous (←)">‹</button>
     <div class="modalCard bgcard">
-      <div class="modalHead"><span id="bgTitle">background</span><span class="mhbtns"><button id="mskToggle" type="button" hidden title="Toggle sprite / mask view">View mask</button><span id="mskPend" class="pendbadge" hidden>● unsaved mask</span><button id="mskSave" type="button" hidden>💾 Save mask</button><button id="mskImport" type="button" hidden>⬆ Import mask</button><button id="mskExport" type="button" hidden>⬇ Export mask</button><button id="mskDelete" type="button" hidden title="Delete this .MSK file from disk">🗑 Delete mask</button><span id="sprPend" class="pendbadge" hidden>● unsaved sprite</span><button id="sprSave" type="button" hidden>💾 Save sprite</button><button id="sprImport" type="button" hidden>⬆ Import sprite</button><button id="sprExport" type="button" hidden>⬇ Export sprite</button><button id="sprDelete" type="button" hidden title="Delete this sprite's .PCT and .MSK from disk">🗑 Delete sprite</button><span id="bgPend" class="pendbadge" hidden>● unsaved import</span><button id="bgSaveImport" type="button" hidden>💾 Save</button><button id="bgImport" type="button" hidden>⬆ Import PNG</button><button id="bgExport" type="button" hidden>⬇ Export PNG</button><button id="bgModalClose" type="button" title="Close (Esc)">✕</button></span></div>
+      <div class="modalHead"><span id="bgTitle">background</span><span class="mhbtns"><button id="mskToggle" type="button" hidden title="Toggle sprite / mask view">View mask</button><span id="mskPend" class="pendbadge" hidden>● unsaved mask</span><button id="mskSave" type="button" hidden>💾 Save mask</button><button id="mskImport" type="button" hidden>⬆ Import mask</button><button id="mskExport" type="button" hidden>⬇ Export mask</button><button id="mskDelete" type="button" hidden title="Delete this .MSK file from disk">🗑 Delete mask</button><span id="sprPend" class="pendbadge" hidden>● unsaved sprite</span><button id="sprSave" type="button" hidden>💾 Save sprite</button><button id="sprImport" type="button" hidden>⬆ Import sprite</button><button id="sprExport" type="button" hidden>⬇ Export sprite</button><button id="sprDelete" type="button" hidden title="Delete this sprite's .PCT and .MSK from disk">🗑 Delete sprite</button><span id="bgPlayUI" hidden><input id="bgPlayMs" type="number" min="25" max="1000" step="25" value="125" title="ms per frame — the game plays ANIMS.PAC rate × 25 ms (seq mode); 125 = rate 5" style="width:64px"> <button id="bgPlay" type="button" title="Play this numbered frame series in place (loops; the X settle frame holds longer)">▶ Play</button></span><span id="bgPend" class="pendbadge" hidden>● unsaved import</span><button id="bgSaveImport" type="button" hidden>💾 Save</button><button id="bgImport" type="button" hidden>⬆ Import PNG</button><button id="bgExport" type="button" hidden>⬇ Export PNG</button><button id="revImport" type="button" hidden>⬆ Import PNG</button><button id="revExport" type="button" hidden>⬇ Export PNG</button><button id="bgModalClose" type="button" title="Close (Esc)">✕</button></span></div>
       <div class="bgview"><canvas id="bgCanvas" width="320" height="200"></canvas></div>
       <div id="bgPalUI" class="bgpal"></div>
       <input type="file" id="bgImportFile" accept="image/png" hidden>
       <input type="file" id="mskImportFile" accept="image/png" hidden>
       <input type="file" id="sprImportFile" accept="image/png" hidden>
+      <input type="file" id="revImportFile" accept="image/png" hidden>
     </div>
     <button id="bgNext" class="navarrow" type="button" hidden title="Next (→)">›</button>
   </div>
@@ -1510,6 +1511,14 @@ async function getPicBytes(name){
 }
 function bgPalette(name){
   if(rooms.includes(name)&&thumbCache[name]&&thumbCache[name].palette) return thumbCache[name].palette.slice();
+  // FIRE01-14 + FIREX are full-screen frames of the room3 curtain-fire cutscene
+  // (ANIMS.PAC id 33/34): they draw over the live room, so show them in ROOM3's
+  // .PAC palette rather than the generic screen default
+  if(/^fire(\d+|x)$/i.test(name)){
+    const r3=thumbCache['ROOM3']||thumbCache['room3'];
+    if(r3&&r3.palette) return r3.palette.slice();
+    return [0,8,1,6];
+  }
   return (CUTSCENE_PAL[name.toLowerCase()]||DEFAULT_BG_PAL).slice();
 }
 async function buildBgGallery(){
@@ -1564,11 +1573,13 @@ function bgRender(){
   fitModalCanvas();
 }
 async function openBgView(name){
+  stopBgPlay();
   const pb=await getPicBytes(name); if(!pb) return;
   bgPic=pb; bgPal=bgPalette(name);
+  document.getElementById('bgPlayUI').hidden=!bgSeries(name);
   document.querySelector('.bgview').classList.remove('spr');
   bgName=name; clearBgPending(); document.getElementById('bgExport').hidden=false; document.getElementById('bgImport').hidden=false;
-  ['mskToggle','mskExport','mskImport','mskSave','mskPend','mskDelete','sprPend','sprSave','sprImport','sprExport','sprDelete'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=true; }); clearMskPending(); clearSprPending(); mskCur=null; sprMode='sprite'; mskPeek=false; mskPaintBtn=null;
+  ['mskToggle','mskExport','mskImport','mskSave','mskPend','mskDelete','sprPend','sprSave','sprImport','sprExport','sprDelete','revExport','revImport'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=true; }); clearMskPending(); clearSprPending(); mskCur=null; sprMode='sprite'; mskPeek=false; mskPaintBtn=null;
   document.getElementById('bgPrev').hidden=false; document.getElementById('bgNext').hidden=false;
   document.getElementById('bgTitle').textContent=name+(rooms.includes(name)?'  ·  .PAC palette':'  ·  screen — palette approximate, adjust below');
   const ui=document.getElementById('bgPalUI'); ui.innerHTML='';
@@ -1582,7 +1593,45 @@ async function openBgView(name){
   document.getElementById('bgModal').hidden=false;   // unhide BEFORE the fit pass so the head/palette rows measure real heights
   bgRender();
 }
+// ---- frame-series playback: preview numbered .PIC sequences (FIRE01..FIRE14 + FIREX) in place ----
+// a series = same stem + 2-digit frame numbers (rooms excluded); stem+"X" = the settle
+// frame the game rests on (PicSeq) — appended last and held ~6 frames before the loop repeats
+let bgPlayTimer=null, bgPlaySeq=null;
+function bgSeries(name){
+  if(rooms.includes(name)) return null;
+  const m=/^(.*?)(\d{2,})$/.exec(name); if(!m) return null;
+  const base=m[1]; if(!base) return null;
+  const nums=allPics.filter(n=>n.toUpperCase().startsWith(base.toUpperCase())&&/^\d{2,}$/.test(n.slice(base.length))).sort();
+  if(nums.length<2) return null;
+  const settle=allPics.find(n=>n.toUpperCase()===(base+'X').toUpperCase())||null;
+  return {frames:nums, settle:settle};
+}
+function stopBgPlay(){
+  if(bgPlayTimer){ clearTimeout(bgPlayTimer); bgPlayTimer=null; }
+  bgPlaySeq=null;
+  const b=document.getElementById('bgPlay'); if(b) b.textContent='▶ Play';
+  const back=bgPendingPic||(bgName&&picBytesCache[bgName]);
+  if(back){ bgPic=back; bgRender(); }
+}
+async function startBgPlay(){
+  const ser=bgSeries(bgName); if(!ser) return;
+  const names=ser.frames.concat(ser.settle?[ser.settle]:[]);
+  const bytes=await Promise.all(names.map(getPicBytes));
+  bgPlaySeq={names:names, bytes:bytes, i:0};
+  bgPlayStep();
+}
+function bgPlayStep(){
+  if(!bgPlaySeq) return;
+  const s=bgPlaySeq, ms=Math.max(25,+document.getElementById('bgPlayMs').value||125);
+  bgPic=s.bytes[s.i]; if(bgPic) bgRender();
+  document.getElementById('bgPlay').textContent='⏸ '+s.names[s.i];
+  const last=(s.i===s.bytes.length-1);
+  s.i=(s.i+1)%s.bytes.length;
+  bgPlayTimer=setTimeout(bgPlayStep, last? ms*6 : ms);
+}
+document.getElementById('bgPlay').onclick=()=>{ if(bgPlaySeq) stopBgPlay(); else startBgPlay(); };
 function closeBg(){
+  stopBgPlay();
   if(bgPendingPic && !confirm('Discard the imported image? It has NOT been saved over '+bgName+'.PIC.')) return;
   if(mskPending && !confirm('Discard the imported mask? It has NOT been saved to '+sprName+'.MSK.')) return;
   if(sprPending && !confirm('Discard the imported sprite pixels? They have NOT been saved to '+sprName+'.PCT.')) return;
@@ -1634,6 +1683,7 @@ function encodeIndexedPNG(w,h,indices,palRGB,transIdx){   // bit depth 8, colour
 function downloadPNG(bytes,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([bytes],{type:'image/png'})); a.download=name; a.click(); }
 let bgName='';
 function exportBgPNG(){
+  stopBgPlay();
   if(!bgPic) return;
   const w=320,h=200, idx=new Uint8Array(w*h);
   for(let y=0;y<h;y++) for(let x=0;x<w;x++) idx[y*w+x]=cgapix(bgPic,x,y);
@@ -1650,6 +1700,7 @@ function encodePic(indices){   // inverse of cgapix: 7-byte BSAVE header [FD,seg
 }
 let bgPendingPic=null;
 async function importBgPNG(file){
+  stopBgPlay();
   if(!bgName) return;
   const img=new Image(), ok=await new Promise(res=>{ img.onload=()=>res(true); img.onerror=()=>res(false); img.src=URL.createObjectURL(file); });
   if(!ok){ alert('Could not read that PNG.'); return; }
@@ -1904,6 +1955,79 @@ function paintSprite(canvas,spr,pal,scale,msk){
   for(let i=0;i<spr.px.length;i++){ const v=spr.px[i], p=i*4, solid=useM? (msk.px[i]===0) : (v!==0); if(!solid){ d[p+3]=0; } else { const e=EGA[pal[v]]||[255,0,255]; d[p]=e[0];d[p+1]=e[1];d[p+2]=e[2];d[p+3]=255; } }
   tg.putImageData(img,0,0); g.clearRect(0,0,canvas.width,canvas.height); g.drawImage(tmp,0,0,canvas.width,canvas.height);
 }
+// ---- REVIVE.DAT: the revive message sprite (count, sprite ints, mask ints).
+// Display palette = what the game sets while showing it (1=8 dkgray, 2=1 blue,
+// 3=6 brown); mask 3 = transparent. PNG round-trip: white OR alpha = transparent.
+const REV_PAL=[0,8,1,6];
+let revSpr=null, revMsk=null;
+function decodeRevFrame(ints){   // decodeSprite without its 140px sprite cap
+  const wb=u16s(ints[0]||0), h=u16s(ints[1]||0), wpx=wb>>1, bpr=Math.ceil(wb/8);
+  if(wpx<1||h<1||wpx>320||h>200) return null;
+  const by=[]; for(let k=2;k<ints.length;k++){ const v=u16s(ints[k]); by.push(v&255,(v>>8)&255); }
+  const px=new Uint8Array(wpx*h);
+  for(let y=0;y<h;y++) for(let x=0;x<wpx;x++){ const b=by[y*bpr+(x>>2)]||0; px[y*wpx+x]=(b>>(6-2*(x&3)))&3; }
+  return {w:wpx, h:h, px:px};
+}
+async function getReviveDat(){
+  let t=null;
+  if(mode==='server'){ try{ const r=await fetch('api/dat?name=REVIVE',{cache:'no-store'}); if(r.ok) t=await r.text(); }catch(_){ } }
+  if(t==null) return null;
+  const all=t.split(/[\s,]+/).filter(s=>s.length).map(Number);
+  const n=all[0]; if(!n||all.length<1+2*n) return null;
+  const spr=decodeRevFrame(all.slice(1,1+n)), msk=decodeRevFrame(all.slice(1+n,1+2*n));
+  if(!spr||!msk) return null;
+  return {spr:spr, msk:msk};
+}
+function openReviveView(){
+  if(!revSpr) return;
+  document.querySelector('.bgview').classList.add('spr');
+  bgName='';
+  clearBgPending(); clearMskPending(); clearSprPending(); mskCur=null;
+  ['bgExport','bgImport','bgSaveImport','bgPend','mskToggle','mskExport','mskImport','mskSave','mskPend','mskDelete','sprPend','sprSave','sprImport','sprExport','sprDelete','bgPrev','bgNext'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=true; });
+  document.getElementById('revExport').hidden=false; document.getElementById('revImport').hidden=false;
+  document.getElementById('bgTitle').textContent='REVIVE message  ·  '+revSpr.w+'×'+revSpr.h+'  ·  shown after a revive death (white/alpha in the PNG = transparent)';
+  document.getElementById('bgPalUI').innerHTML='';
+  paintSprite(document.getElementById('bgCanvas'),revSpr,REV_PAL,1,revMsk);
+  fitModalCanvas();
+  document.getElementById('bgModal').hidden=false;
+}
+function exportRevivePNG(){
+  if(!revSpr) return;
+  const w=revSpr.w, h=revSpr.h, idx=new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++) idx[i]=(revMsk.px[i]===3)?4:revSpr.px[i];
+  const palRGB=[[0,0,0],[0x55,0x55,0x55],[0,0,0xAA],[0xAA,0x55,0],[255,255,255]];
+  downloadPNG(encodeIndexedPNG(w,h,idx,palRGB,4),'REVIVE.png');
+}
+async function importRevivePNG(file){
+  const img=await loadImgFile(file); if(!img){ alert('Could not read that PNG.'); return; }
+  const w=img.width, h=img.height;
+  if(w>320||h>200){ alert('The message must fit 320×200 — this PNG is '+w+'×'+h+'.'); return; }
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const g=cv.getContext('2d'); g.drawImage(img,0,0);
+  const d=g.getImageData(0,0,w,h).data;
+  const spx=new Uint8Array(w*h), mpx=new Uint8Array(w*h);
+  const cols=[[0,0,0,0],[0x55,0x55,0x55,1],[0,0,0xAA,2],[0xAA,0x55,0,3]];
+  for(let i=0;i<w*h;i++){
+    const p=i*4;
+    if(d[p+3]<128 || (d[p]>=250&&d[p+1]>=250&&d[p+2]>=250)){ spx[i]=0; mpx[i]=3; continue; }
+    let best=0, bd=Infinity;
+    for(const c of cols){ const dr=d[p]-c[0],dg=d[p+1]-c[1],db=d[p+2]-c[2],dd=dr*dr+dg*dg+db*db; if(dd<bd){bd=dd;best=c[3];} }
+    spx[i]=best; mpx[i]=0;
+  }
+  const sInts=packSpriteInts(spx,w,h), mInts=packSpriteInts(mpx,w,h);
+  const n=sInts.length;
+  if(n>1200){ alert('Too big: '+n+' ints exceeds the game buffer (1200) — shrink the image.'); return; }
+  const text=[String(n)].concat(sInts.map(String)).concat(mInts.map(String)).join('\r\n')+'\r\n';
+  if(mode==='server'){ await fetch('api/dat?name=REVIVE',{method:'POST',headers:{'Content-Type':'text/plain'},body:text}); }
+  else { dlBlob('REVIVE.DAT',text,'text/plain'); }
+  revSpr={w:w,h:h,px:spx}; revMsk={w:w,h:h,px:mpx};
+  paintSprite(document.getElementById('bgCanvas'),revSpr,REV_PAL,1,revMsk);
+  fitModalCanvas();
+  document.getElementById('bgTitle').textContent='REVIVE message  ·  '+w+'×'+h+'   ✓ saved';
+  buildSprites();
+}
+document.getElementById('revExport').onclick=exportRevivePNG;
+document.getElementById('revImport').onclick=()=>document.getElementById('revImportFile').click();
+document.getElementById('revImportFile').onchange=e=>{ const f=e.target.files[0]; if(f) importRevivePNG(f); e.target.value=''; };
 async function buildSprites(){
   const wrap=document.getElementById('sprWrap'); if(!wrap) return;
   await loadSpritePalettes();
@@ -1911,6 +2035,18 @@ async function buildSprites(){
   wrap.innerHTML='';
   const grid=document.createElement('div'); grid.className='sprgrid'; wrap.appendChild(grid);
   sprNavOrder=[];
+  // ---- the revive message (REVIVE.DAT: masked sprite, own display palette) ----
+  const rev=await getReviveDat();
+  if(rev){
+    revSpr=rev.spr; revMsk=rev.msk;
+    const t=document.createElement('div'); t.className='sprthumb'; t.title='Click to enlarge';
+    const c=document.createElement('canvas');
+    paintSprite(c,rev.spr,REV_PAL,Math.max(1,Math.floor(92/Math.max(rev.spr.w,rev.spr.h))),rev.msk);
+    const la=document.createElement('div'); la.className='tlabel'; la.textContent='REVIVE message  ('+rev.spr.w+'×'+rev.spr.h+')';
+    t.appendChild(c); t.appendChild(la);
+    t.onclick=()=>openReviveView();
+    grid.appendChild(t);
+  }
   for(const name of allPcts){
     const txt=await getPctText(name); if(txt==null) continue;
     const lay=pctLayout(name,txt);
@@ -1998,6 +2134,7 @@ function openSprView(spr,label,name,idx,k,preferMask){
   mskFrames=null; mskCur=null; sprMode='sprite'; clearMskPending();
   document.querySelector('.bgview').classList.add('spr');
   document.getElementById('bgExport').hidden=true; document.getElementById('bgImport').hidden=true; clearBgPending();
+  document.getElementById('revExport').hidden=true; document.getElementById('revImport').hidden=true;
   document.getElementById('sprExport').hidden=false; document.getElementById('sprImport').hidden=false; document.getElementById('sprDelete').hidden=false; clearSprPending();
   document.getElementById('bgPrev').hidden=false; document.getElementById('bgNext').hidden=false;
   { const tog=document.getElementById('mskToggle'); tog.hidden=false; tog.disabled=true; tog.textContent='View mask'; }

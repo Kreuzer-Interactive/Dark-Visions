@@ -142,6 +142,20 @@ while ($listener.IsListening) {
       elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
       else { $res.StatusCode = 404; Write-Host ("  404 .PAC not found: $f") -ForegroundColor Yellow }
     }
+    elseif ($path -eq '/api/dat') {
+      $name = Safe-Name $req.QueryString['name']
+      $f = Join-Path $data ($name + '.DAT')
+      if ($req.HttpMethod -eq 'POST') {
+        $reader = New-Object IO.StreamReader($req.InputStream, $req.ContentEncoding)
+        $body = $reader.ReadToEnd(); $reader.Close()
+        $body = ($body -replace "`r`n", "`n") -replace "`n", "`r`n"
+        [IO.File]::WriteAllText($f, $body)
+        Write-Host ("  saved {0}.DAT  ({1} bytes)" -f $name, $body.Length) -ForegroundColor Green
+        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+      }
+      elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
+      else { $res.StatusCode = 404; Write-Host ("  404 .DAT not found: $f") -ForegroundColor Yellow }
+    }
     elseif ($path -eq '/api/anims') {
       $f = Join-Path $data 'ANIMS.PAC'
       if ($req.HttpMethod -eq 'POST') {

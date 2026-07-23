@@ -136,6 +136,21 @@
 194,122,18
 194,126,18
 194,130,18
+150,174,19
+150,178,19
+146,174,19
+146,178,19
+154,174,19
+154,178,19
+158,174,19
+158,178,19
+78,154,20
+82,154,20
+74,158,20
+78,158,20
+82,158,20
+74,154,20
+78,150,20
 0,0,0
 "","Doctor Frank Maller Psychiatrist.","l",0,0,0,"f7"
 "","It's your uncle! He's Dead!","l",42,0,0,"f9"
@@ -144,9 +159,9 @@
 "","The chair is comfortable.","l",0,0,0,"f8"
 "","It is a picture of someone chained to   the wall.","l",0,0,0,"f4"
 "","The case has been cleaned out.","l",0,0,0,"f1"
-"room5","You descend the stairs.","a",0,0,0,"ws"
+"room5","You descend the stairs.","a",0,43,0,"ws"
 "room4","You go back to your room.","a",0,0,0,"wn"
-"room2","You leave the room.","a",0,0,0,"ww"
+"room2","You leave the room.","a",0,43,0,"ww"
 "window","You glance out the window.","l",0,0,0,"fc6"
 "safe","You look at the safe.","l",0,0,0,"fc7"
 "","The vent warms the room.","l",0,0,0,"f6"
@@ -155,12 +170,18 @@
 "","The curtains are dusty and dry.","l",0,0,0,"f6"
 "","You pull on the curtains and dust fills the air.","a",0,0,0,"f6"
 "","The closet door is stuck shut.","l",0,42,0,"f9"
-"","","",0,0,0,""
-"","","",0,0,0,""
+"","The flames bar your way.","a",43,0,0,"f2"
+"","The flames bar your way.","a",43,0,0,"f4"
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
 1,175,109,50,42
+34,0,0,43,0
+33,0,0,43,61
+35,147,167,43,0
+36,74,142,43,0
+37,217,120,43,0
 -2,3,179,144,9
+-2,15,213,160,6

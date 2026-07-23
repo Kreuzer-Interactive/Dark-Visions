@@ -4,10 +4,11 @@ REM $DYNAMIC
 
 '----- SUB declarations
 DECLARE SUB Intro ()
-DECLARE SUB Credits ()
+DECLARE SUB Credits (gd%)
 DECLARE SUB invhi ()
 DECLARE SUB SlotScreen (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, mode AS INTEGER, dead AS INTEGER, act AS INTEGER)
 DECLARE SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS INTEGER, dead AS INTEGER)
+DECLARE SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
 DECLARE SUB drawcur ()
 DECLARE SUB erasecur ()
 DECLARE SUB InitVars ()
@@ -36,8 +37,10 @@ DECLARE SUB AnimParse (s$, fsq%(), nfr2%)
 DECLARE SUB AnimWait (rate2)
 DECLARE SUB InvReSel (cilist%(), cic2, lv%, is2, iv2, ivm)
 DECLARE SUB RmPal (co2, p1, p2, p3)
+DECLARE SUB LoadFade (co2, p1, p2, p3)
 DECLARE SUB InvNav (k$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, mx2%, my2%, act%)
 DECLARE SUB JoyNav (d$)
+DECLARE SUB JoyPoll (a2$, vk2$)
 DECLARE SUB CombChk (s%, c%, r%)
 DECLARE SUB CombDo2 (r%, ob(), cn%)
 DECLARE SUB initAllFonts (fontData() AS INTEGER, font3Data() AS INTEGER, fontbData() AS INTEGER)
@@ -47,6 +50,7 @@ DECLARE SUB drawWrap (x AS INTEGER, y AS INTEGER, txt AS STRING, col AS INTEGER,
 DECLARE FUNCTION textWidth (text AS STRING, fontData() AS INTEGER)
 DECLARE SUB drawStats (ob() AS SINGLE, cl AS SINGLE, cr AS SINGLE, fontData() AS INTEGER)
 DECLARE SUB drawMsg (s AS STRING, fontData() AS INTEGER)
+DECLARE SUB HudUse (sel2 AS INTEGER, ob() AS SINGLE, sn$(), fontData() AS INTEGER)
 DECLARE SUB introShowCarr ()
 DECLARE SUB introFadeCredit ()
 DECLARE SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
@@ -54,6 +58,8 @@ DECLARE SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), f
 DECLARE SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%())
 DECLARE SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
 DECLARE SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+DECLARE SUB PicSeq (sq$, fr$, rate%, sn2$)
+DECLARE SUB ShowRules ()
 
 '----- assembly interrupt support (INT 33h mouse)
 TYPE RegType
@@ -92,7 +98,7 @@ DIM SHARED pt AS SINGLE
 DIM SHARED q$, a$, done$, tt$, lf$, sl$, dop$, vk$, tk$, m$, sf$, sy$
 DIM SHARED cl, h9, h10, h11, hr, mn, t1, t2, t3, cv
 DIM SHARED gw, gy, gx, sel, doc, sn, di, dn1, dn2, dn3
-COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon
+COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon, rvon
 COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
 DIM SHARED pk, jx, jy, dx2, dy2, co, co2, pa1, pa2, pa3
 DIM SHARED oh, ohs, pz, j, pc, pp2, gm, tmo, wk, js0, js1
@@ -295,7 +301,7 @@ IF sfps = 1 AND itt > .5 THEN LOCATE 3, 1: PRINT USING "Intro: ### steps in ###.
 400 a$ = INKEY$
 IF a$ <> "" THEN GOTO 430
 GOTO 400
-430 IF a$ = "Y" OR a$ = "y" THEN GOSUB rules
+430 IF a$ = "Y" OR a$ = "y" THEN CALL ShowRules
 
 '----- enter the game
 qstart:
@@ -308,39 +314,7 @@ q$ = "room4"
 GOSUB loadroom
 GOSUB face
 GOTO mainloop
-'----- rules screen: instructions and intro text
-rules:
-	CLS
-	WIDTH 80
-	PRINT " Welcome to the premier point and click game by Kreuzer productions"
-	PRINT " The point and click interface is really quite easy. Move the green"
-	PRINT " cursor onto the object you want to manipulate and press one of "
-	PRINT " these keys. (a) for action . (l) to look at an object. Type (u) to"
-	PRINT " use th active object. (g) to get that object.(note) some objects you"
-	PRINT " must look at to get or you must look at the drawer to find the object "
-	PRINT " inside. Also at any time during the game you may press (i) to display "
-	PRINT " the your inventory ,time and place. Plus you may load,save or quit"
-	PRINT " or select the active object from this screen. "
-	PRINT " if you seem to be stuck it would be wise to backtrack and look to see if"
-	PRINT " you anything new has opened up or one of your objects has a use in that"
-	PRINT " room. If action does not work on something you might try look or get or"
-	PRINT " vice versa, also try clicking the cursor on different parts of the object"
-	PRINT " it might reveal different things. "
-	PRINT " Hints: Click (a) on and arrow by the door to leave"
-	PRINT " Even though it might seem as if two or more objects"
-	PRINT " could do the trick, usually only one will work."
-	PRINT " Just to get you started move your cursor by the rug of the first"
-	PRINT " room. Then press (l) it will say you see a lumpy rug. That didn't help."
-	PRINT " Don't worry, save often you never know what may happen"
-	PRINT " P.S. Time does matter"
-	PRINT " Get ready to journey into the twisting and contorting shadows of"
-	PRINT " your uncle's residence"
-	PRINT " PRESS ANY KEY TO CONTINUE "
-
-	'----- wait for keypress, then return to game
-	790 a$ = INKEY$
-	IF a$ <> "" THEN SCREEN 1: RETURN
-	GOTO 790
+'----- rules screen: moved to GAME3 ShowRules (GAME.BAS is at the 64K code ceiling)
 
 	'----- password prompt
 	820 SCREEN 1
@@ -546,11 +520,13 @@ action:
 	GOTO 6230
 	6210 i = oh
 	GOTO 6130
+	'----- use records need the item STRICTLY held (ob=1): a consumed item
+	'----- (state 2) satisfies flag checks but must not fire uses
 	6230 IF ky$(i) <> "u" THEN GOTO 6260
-	IF bs(i) = sel THEN GOTO 6260
+	IF bs(i) = sel AND ob(sel) = 1 THEN GOTO 6260
 	wantbs = bs(i)
 	GOTO 6280
-	6260 IF bs(i) = 0 OR ob(bs(i)) = 1 THEN GOTO 6300
+	6260 IF bs(i) = 0 OR ob(bs(i)) >= 1 THEN GOTO 6300
 	6280 i = oh
 	GOTO 6130
 	6300 IF cs(i) = 0 OR ob(cs(i)) = 0 THEN GOTO 6340
@@ -561,8 +537,10 @@ action:
 6340 acthit = 1
 	GOSUB wlkitem
 	ob(CINT(st(i))) = 1
-	'----- a consuming use takes the item out of the inventory (ob flag off)
-	IF a$ = "u" AND xus(i) = 1 THEN ob(sel) = 0
+	'----- a consuming use takes the item out of the inventory. State 2 = "used
+	'----- up": gone from the inventory (which lists =1 only) but still counting
+	'----- as taken for room conditions -- so its pickup spot never re-arms
+	IF a$ = "u" AND xus(i) = 1 THEN ob(sel) = 2: CALL HudUse(CINT(sel), ob(), sn$(), fontData())
 	'----- pickup sound now plays via the acquisition scan (mainloop) so action-gets sound too
 	IF a$ <> "u" THEN GOTO 6400
 	CALL Snd3
@@ -610,6 +588,12 @@ action:
 	IF df$(i) = "end" THEN GOTO endgame
 '----- enter a room and draw the player
 gotoroom:
+	'----- revive=1: snapshot the PRE-transition state (the safe room) before
+	'----- q$ switches, so a killer death in the next room restores to before
+	'----- entering it. The killer scenes flag rvArm when they fire. NEVER
+	'----- snapshot the transition INTO a death cutscene -- that would clobber
+	'----- the safe snapshot with the kill-room state.
+	IF rvon = 1 AND q$ <> "" AND df$(i) <> "death" AND df$(i) <> "dindead" AND df$(i) <> "lightn" THEN CALL SaveGame(11): rvSnap = 1
 	q$ = df$(i)
 	GOSUB loadroom
 	IF q$ = "lightn" OR q$ = "dindead" OR q$ = "death" THEN GOTO death
@@ -633,6 +617,9 @@ doinv:
 	CALL invhi
 	GOSUB loadroom
 	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
+	'----- mid-fight inventory trip (e.g. grabbing the syringe): redraw the
+	'----- killer the room repaint wiped and restart the reaction window
+	IF doc = 1 THEN PUT (135, 135), wa, XOR: ti = TIMER
 	t0 = TIMER
 	RETURN
 
@@ -643,8 +630,14 @@ domenu:
 	IF msen = 1 THEN CALL erasecur
 	CALL MainMenu(fontData(), mvint, msen, slvAct, 0)
 	IF slvAct = 2 THEN RUN
+	'----- a manual load invalidates any armed/pending revive snapshot, and
+	'----- fades the loaded room in (rvfd holds rmpal black until LoadFade)
+	IF slvAct = 1 THEN rvArm = 0: rvSnap = 0: doc = 0: rvfd = 1: PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
 	GOSUB loadroom
 	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
+	IF rvfd = 1 THEN rvfd = 0: CALL LoadFade(co, pa1, pa2, pa3)
+	'----- resumed mid-fight: redraw the killer and restart the reaction window
+	IF doc = 1 THEN PUT (135, 135), wa, XOR: ti = TIMER
 	t0 = TIMER
 	RETURN
 
@@ -654,6 +647,9 @@ mainloop:
 	'----- (36). Re-derived every pass so it lands no matter which prerequisite came
 	'----- last (the combine-only check missed soda-after-formula) and heals old saves
 	IF ob(32) = 1 AND ob(36) = 1 THEN ob(33) = 1
+	'----- heal: holding/having-taken the saw (20) implies the toolchest was
+	'----- opened (58) -- saves from before flag 58 existed show it open
+	IF ob(20) >= 1 AND ob(58) < 1 THEN ob(58) = 1
 	'----- reveal first, sound second: a get that trips a scene sprite (open drawer)
 	'----- draws it BEFORE the acquisition scan plays the pickup sound
 	GOSUB reanim
@@ -906,8 +902,10 @@ animdims:
 	CALL AnimDims(acPct(), acN(), acs, adw, adh)
 	RETURN
 
-'----- rmpal: set the current room's palette (body in GAME2 -- 64K ceiling)
+'----- rmpal: set the current room's palette (body in GAME2 -- 64K ceiling).
+'----- While a load fade is pending (rvfd), stay black -- LoadFade lights it up.
 rmpal:
+	IF rvfd = 1 THEN RETURN
 	CALL RmPal(co, pa1, pa2, pa3)
 	RETURN
 
@@ -923,8 +921,8 @@ animdraw:
 		NEXT
 		IF bgi = 0 THEN GOTO bgnext
 		IF anType$(bgi) <> "bg" THEN GOTO bgnext
-		IF plCond(pp) > 0 THEN IF ob(plCond(pp)) <> 1 THEN GOTO bgnext
-		IF plCond(pp) < 0 THEN IF ob(-plCond(pp)) = 1 THEN GOTO bgnext
+		IF plCond(pp) > 0 THEN IF ob(plCond(pp)) < 1 THEN GOTO bgnext
+		IF plCond(pp) < 0 THEN IF ob(-plCond(pp)) >= 1 THEN GOTO bgnext
 		bgf$ = anFrames$(bgi)
 		bgp = 0
 		FOR bgc = 1 TO LEN(bgf$)
@@ -946,8 +944,8 @@ animdraw:
 		'----- visibility -- unplayed they sit at the start spot (the idle clock).
 		'----- negative cond = show WHILE the flag is OFF (tick-tock until the slide)
 		IF anMode$(aidx) = "move" THEN GOTO adcondok
-		IF plCond(pp) > 0 THEN IF ob(plCond(pp)) <> 1 THEN GOTO adnext
-		IF plCond(pp) < 0 THEN IF ob(-plCond(pp)) = 1 THEN GOTO adnext
+		IF plCond(pp) > 0 THEN IF ob(plCond(pp)) < 1 THEN GOTO adnext
+		IF plCond(pp) < 0 THEN IF ob(-plCond(pp)) >= 1 THEN GOTO adnext
 		adcondok:
 		GOSUB animparse
 		IF nfr < 1 THEN GOTO adnext
@@ -958,6 +956,15 @@ animdraw:
 		IF anMode$(aidx) = "move" THEN
 			adplayed = 0
 			IF plSet(pp) > 0 THEN IF ob(plSet(pp)) = 1 THEN adplayed = 1
+			'----- trigger already on at room load (older save): the travel
+			'----- belongs to the trigger moment -- settle at the end spot
+			'----- silently and mark it played so reanim doesn't re-run it
+			IF adplayed = 0 AND plCond(pp) > 0 THEN
+				IF ob(plCond(pp)) >= 1 THEN
+					adplayed = 1
+					IF plSet(pp) > 0 THEN ob(plSet(pp)) = 1
+				END IF
+			END IF
 			IF adplayed = 1 THEN
 				'----- already travelled: rest at the END spot
 				CALL MovParse(anFrames$(aidx), mdx(), mdy(), mvn%, bx1%, by1%, bx2%, by2%)
@@ -985,19 +992,16 @@ animdraw:
 				IF anMode$(aidx) = "hold" THEN afn = fsq(nfr) + 1: GOSUB animframe
 			ELSE
 				IF q$ = "room3" THEN GOTO adnext
-				'----- an on-entry full play must be SEEN: light the palette up first
-				'----- (loadroom may still be holding it black for the composite pass)
-				GOSUB rmpal
-				GET (PX, PY)-(PX + 30, PY + 30), wbg
-				FOR adf = 1 TO nfr
-					afn = fsq(adf) + 1
-					GOSUB animframe
-					GOSUB animwait
-				NEXT
-				IF anSnd$(aidx) <> "" THEN PLAY anSnd$(aidx)
-				IF anMode$(aidx) = "once" THEN PUT (PX, PY), wbg, PSET
+				'----- cond on but never played (e.g. an older save): settle on the
+				'----- end frame SILENTLY and mark it -- the animated play belongs
+				'----- to the triggering action (reanim), never to room entry
+				IF anMode$(aidx) = "hold" THEN afn = fsq(nfr) + 1: GOSUB animframe
 				IF plSet(pp) > 0 THEN ob(plSet(pp)) = 1
 			END IF
+		ELSEIF anMode$(aidx) = "seq" THEN
+			'----- never plays on a room LOAD (the bg swap already shows the end
+			'----- state) -- just mark it played, healing saves made mid-flag
+			IF plSet(pp) > 0 THEN ob(plSet(pp)) = 1
 		ELSEIF anMode$(aidx) = "loop" OR LEFT$(anMode$(aidx), 6) = "random" THEN
 			IF nLoop < 4 THEN
 				nLoop = nLoop + 1
@@ -1031,6 +1035,8 @@ animdraw:
 				GET (PX, PY)-(PX + adw - 1, PY + adh - 1), liSaveAll((nLoop - 1) * 150)
 				afn = fsq(1) + 1
 				GOSUB animframe
+				'----- mark registered so reanim's mid-room spawn never doubles it
+				plStat(pp) = 1
 			END IF
 		END IF
 		adnext:
@@ -1046,7 +1052,7 @@ animtick:
 		IF TIMER >= liLast(li) + liWait(li) THEN
 			'----- "while flag OFF" instance whose flag turned ON mid-room: freeze it
 			'----- (no restore -- whatever replaced the area, e.g. the slide, stays)
-			IF liCond(li) < 0 THEN IF ob(-liCond(li)) = 1 THEN GOTO atnext
+			IF liCond(li) < 0 THEN IF ob(-liCond(li)) >= 1 THEN GOTO atnext
 			'----- hold the tick while the player's 31x31 box overlaps this instance --
 			'----- no z-order exists, advancing would stamp background over him; the
 			'----- anim freezes and resumes as soon as he moves away (skip in nopl views)
@@ -1134,7 +1140,7 @@ reanim:
 		'----- once (plStat) -- no need to leave and re-enter the room to see it
 		IF anMode$(aidx) <> "static" THEN GOTO ranotstat
 		IF plCond(pp) <= 0 THEN GOTO ranext
-		IF ob(plCond(pp)) <> 1 THEN GOTO ranext
+		IF ob(plCond(pp)) < 1 THEN GOTO ranext
 		IF plStat(pp) = 1 THEN GOTO ranext
 		GOSUB animparse
 		IF nfr < 1 THEN GOTO ranext
@@ -1148,11 +1154,73 @@ reanim:
 		GOSUB ovpost
 		GOTO ranext
 		ranotstat:
+		'----- "seq" full-screen cutscene (GAME5 PicSeq): plays ONCE when its cond
+		'----- flag trips mid-room; the end-facing digit rides in the pal field
+		IF anMode$(aidx) <> "seq" THEN GOTO ranotseq
+		IF plCond(pp) <= 0 THEN GOTO ranext
+		IF ob(plCond(pp)) < 1 THEN GOTO ranext
+		IF plSet(pp) < 1 THEN GOTO ranext
+		IF ob(plSet(pp)) = 1 THEN GOTO ranext
+		GOSUB ovpre
+		CALL PicSeq(anSrc$(aidx), anFrames$(aidx), anRate(aidx), anSnd$(aidx))
+		CALL HudUse(CINT(sel), ob(), sn$(), fontData())
+		IF anPal$(aidx) <> "" THEN lf$ = anPal$(aidx)
+		GOSUB ovpost
+		ob(plSet(pp)) = 1
+		GOTO ranext
+		ranotseq:
+		'----- loop/random placement whose cond flag tripped MID-ROOM (the exit fires
+		'----- the moment the curtain seq ends): register the instance now -- animdraw
+		'----- only does it on room load. plStat doubles as the "registered" marker
+		'----- (animdraw sets it for load-time instances so this never double-spawns).
+		IF anMode$(aidx) <> "loop" AND LEFT$(anMode$(aidx), 6) <> "random" THEN GOTO ranotloop
+		IF plCond(pp) <= 0 THEN GOTO ranext
+		IF ob(plCond(pp)) < 1 THEN GOTO ranext
+		IF plStat(pp) = 1 THEN GOTO ranext
+		IF nLoop >= 4 THEN GOTO ranext
+		GOSUB animparse
+		IF nfr < 1 THEN GOTO ranext
+		SRC$ = anSrc$(aidx)
+		PX = plX(pp)
+		PY = plY(pp)
+		awrate = anRate(aidx)
+		'----- lift the player before the save-under GET so it never captures him
+		GOSUB ovpre
+		nLoop = nLoop + 1
+		liAnim(nLoop) = aidx
+		liX(nLoop) = PX
+		liY(nLoop) = PY
+		liCur(nLoop) = 1
+		liRate(nLoop) = awrate
+		liLast(nLoop) = TIMER
+		liCond(nLoop) = plCond(pp)
+		liMin(nLoop) = 0: liMax(nLoop) = 0
+		liWait(nLoop) = awrate * .05
+		IF LEFT$(anMode$(aidx), 6) = "random" THEN
+			IF nfseed = 0 THEN RANDOMIZE TIMER: nfseed = 1
+			ars$ = MID$(anMode$(aidx), 8)
+			liMin(nLoop) = VAL(ars$)
+			arp = INSTR(ars$, " ")
+			IF arp > 0 THEN liMax(nLoop) = VAL(MID$(ars$, arp + 1))
+			IF liMax(nLoop) < liMin(nLoop) THEN liMax(nLoop) = liMin(nLoop)
+			liWait(nLoop) = liMin(nLoop) + RND * (liMax(nLoop) - liMin(nLoop))
+		END IF
+		GOSUB animdims
+		IF PX + adw > 320 THEN adw = 320 - PX
+		IF PY + adh > 200 THEN adh = 200 - PY
+		liW(nLoop) = adw: liH(nLoop) = adh
+		GET (PX, PY)-(PX + adw - 1, PY + adh - 1), liSaveAll((nLoop - 1) * 150)
+		afn = fsq(1) + 1
+		GOSUB animframe
+		GOSUB ovpost
+		plStat(pp) = 1
+		GOTO ranext
+		ranotloop:
 		'----- move-mode: the sprite itself travels -- play its 1px step script once
 		'----- (save-under follows it, the player stays drawn), settle at the end
 		IF anMode$(aidx) <> "move" THEN GOTO ranotmove
 		IF plCond(pp) <= 0 THEN GOTO ranext
-		IF ob(plCond(pp)) <> 1 THEN GOTO ranext
+		IF ob(plCond(pp)) < 1 THEN GOTO ranext
 		IF plSet(pp) < 1 THEN GOTO ranext
 		IF ob(plSet(pp)) = 1 THEN GOTO ranext
 		CALL MovParse(anFrames$(aidx), mdx(), mdy(), mvn%, bx1%, by1%, bx2%, by2%)
@@ -1191,7 +1259,7 @@ reanim:
 		ranotmove:
 		IF anMode$(aidx) <> "hold" AND anMode$(aidx) <> "once" THEN GOTO ranext
 		IF plCond(pp) <= 0 THEN GOTO ranext
-		IF ob(plCond(pp)) <> 1 THEN GOTO ranext
+		IF ob(plCond(pp)) < 1 THEN GOTO ranext
 		IF plSet(pp) < 1 THEN GOTO ranext
 		IF ob(plSet(pp)) = 1 THEN GOTO ranext
 		GOSUB animparse
@@ -1338,6 +1406,9 @@ loadroom:
 	GOSUB animdraw
 	GOSUB rmpal
 	GET (1, 8)-(9, 18), bk: GET (1, 8)-(9, 18), bk2
+	'----- bottom Use-item HUD, drawn BEFORE the player save-under GET so
+	'----- sprite restores keep it intact
+	IF q$ <> "title" AND q$ <> "death" AND q$ <> "dindead" AND q$ <> "lightn" THEN CALL HudUse(CINT(sel), ob(), sn$(), fontData())
 	IF q$ <> lrq$ THEN pjx = 140: pjy = 130
 	lrq$ = q$
 	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
@@ -1502,6 +1573,9 @@ joeface:
 '----- wilb: load and show Wilbur sprite, play death cue
 wilb:
 	CLOSE
+	'----- revive=1: the pre-room snapshot becomes the revive point (doc guard:
+	'----- the fight loop re-enters these scenes -- only arm on first appearance)
+	IF rvon = 1 AND doc = 0 AND rvSnap = 1 THEN rvArm = 1
 	OPEN "wilb.pct" FOR INPUT AS #1
 	FOR i = 0 TO 125
 		IF EOF(1) THEN GOTO 9955
@@ -1514,7 +1588,9 @@ wilb:
 		INPUT #1, mwa(i)
 	NEXT
 
-	9960 PUT (110, 128), mwa, AND: PUT (110, 128), wa, OR
+	'----- close the msk (same #1 leak as golf's)
+	9960 CLOSE
+	PUT (110, 128), mwa, AND: PUT (110, 128), wa, OR
 
 	ti = TIMER
 	FOR i = 1 TO 4
@@ -1538,6 +1614,8 @@ wilb:
 '----- golf: animated golf-club swing sequence, then death event
 golf:
 	CLOSE
+	'----- revive=1: the pre-room snapshot becomes the revive point (see wilb)
+	IF rvon = 1 AND doc = 0 AND rvSnap = 1 THEN rvArm = 1
 	OPEN "golf.pct" FOR INPUT AS #1
 	FOR i = 0 TO 125
 		IF EOF(1) THEN GOTO 10205
@@ -1549,7 +1627,10 @@ golf:
 		IF EOF(1) THEN GOTO 10200
 		INPUT #1, mwa(i), mwb(i)
 	NEXT
-	10200 i = 150
+	'----- close the msk! it used to leak #1 open, which blew up any OPEN #1
+	'----- before the next room load (e.g. the revive snapshot right after)
+	10200 CLOSE
+	i = 150
 
 	10210 CALL PStep(135, i, 0, f3, 1.2, 0, wa(), mwa(), wb(), mwb(), wbg())
 	i = i - 2
@@ -1576,6 +1657,9 @@ golf:
 
 '----- events: fire room-specific Wilbur / golf events by step count
 events:
+	'----- the lit-curtain endgame OWNS room4: the scripted encounter (trigger),
+	'----- never a roamer, must meet the player there or the ending breaks
+	IF q$ = "room4" AND ob(43) = 1 THEN GOTO 11570
 	IF doc <> 1 THEN GOTO 10840
 	10840 IF klon = 0 THEN GOTO 11570
 	IF q$ = "room7" AND (INT(cl * cr)) > 0 AND (INT(cl * cr)) < 8 THEN GOSUB wilb
@@ -1600,25 +1684,9 @@ events:
 	ob(37) = 1
 	11580 RETURN
 
-'----- joystick poll: read STICK, set direction a$
+'----- joystick poll: body in GAME2 (JoyPoll) -- GAME.BAS is at the 64K ceiling
 joy:
-	IF jsen <> 1 THEN RETURN
-	js0 = STICK(0)
-	js1 = STICK(1)
-	IF js1 = 0# AND js0 = 0 THEN RETURN
-	IF js0 >= 40 THEN GOTO 11920
-	a$ = "4"
-	11920 IF js0 <= 120 THEN GOTO 11940
-	a$ = "6"
-	11940 IF js1 >= 40 THEN GOTO 11960
-	a$ = "8"
-	11960 IF js1 <= 120 THEN GOTO 11980
-	a$ = "2"
-	11980 IF js1 < 40 AND js0 > 120 THEN a$ = "9"
-	IF js1 < 40 AND js0 < 40 THEN a$ = "7"
-	IF js0 > 120 AND js1 > 120 THEN a$ = "3"
-	IF js0 < 40 AND js1 > 120 THEN a$ = "1"
-	IF a$ = "1" OR a$ = "2" OR a$ = "3" OR a$ = "4" OR a$ = "5" OR a$ = "6" OR a$ = "7" OR a$ = "8" OR a$ = "9" THEN vk$ = ""
+	CALL JoyPoll(a$, vk$)
 	RETURN
 
 '----- enable joystick fire buttons
@@ -1970,14 +2038,14 @@ trigger:
 	IF a$ <> "" THEN GOTO 14120
 	GOTO 14090
 	14120 GOTO 14250
-	14250 CALL Credits
+	14250 CALL Credits(CINT(ob(43)))
 
 '----- endgame: roll credits, then quit or restart
 endgame:
 	IF ob(43) <> 1 THEN GOTO 14290
-	CALL Credits: SYSTEM
+	CALL Credits(CINT(ob(43))): SYSTEM
 	GOTO 14300
-	14290 CALL Credits: RUN
+	14290 CALL Credits(CINT(ob(43))): RUN
 	14300 SYSTEM
 	PRINT ERL
 	SYSTEM
@@ -2005,6 +2073,7 @@ fight:
 	SOUND f3, .2
 	SOUND f1, .5
 	doc = 2
+	rvArm = 0
 	LOCATE 1, 1
 	PRINT "You quickly inject him and he crumbles into a distorted heap. "
 	a$ = "n"
@@ -2015,11 +2084,19 @@ fight:
 death:
 	ti = TIMER
 	CALL DeathMusic
+	'----- the press that skipped the dirge also ends the death screen --
+	'----- otherwise it looks like the game stalled until a second press
+	IF mt = -1 THEN GOTO 14660
 	14600 IF (TIMER - ti) <= tmo THEN GOTO 14620
 	GOTO 14630
 	14620 GOTO 14600
+	'----- key OR mouse click ends the death screen
 	14630 a$ = INKEY$
 	IF a$ <> "" THEN GOTO 14660
+	IF msen = 1 THEN
+		mreg.ax = 3: CALL INTERRUPT(mvint, mreg, mout)
+		IF (mout.bx AND 1) <> 0 THEN GOTO 14660
+	END IF
 	GOTO 14630
 
 	14660 IF q$ <> "dindead" THEN GOTO 14700
@@ -2027,14 +2104,36 @@ death:
 	GOSUB loadroom
 	GOTO 14600
 
-	'----- death: the LOAD screen first; Back opens the main menu (Save locked,
-	'----- no resume) so New Game / Quit stay reachable
-	14700 CALL SlotScreen(fontData(), mvint, msen, 2, 1, slvAct)
-	IF slvAct <> 1 THEN CALL MainMenu(fontData(), mvint, msen, slvAct, 1)
-	IF slvAct = 2 THEN RUN
-	IF slvAct <> 1 THEN GOTO 14700
+	'----- revive=1 with an armed snapshot (saverk): skip the Load screen --
+	'----- restore the snapshot, show the revive message, drop back into play
+	14700 IF rvon <> 1 OR rvArm <> 1 THEN GOTO 14710
+	rvArm = 0: doc = 0
+	CALL LoadGame(11)
+	'----- the snapshot restores the clock too: the killer STILL holds the room
+	'----- that got you (killers block and redirect -- dying buys no passage);
+	'----- the revive only spares the lost progress
+	rvfd = 1: PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
 	GOSUB loadroom
 	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
+	rvfd = 0
+	CALL LoadFade(co, pa1, pa2, pa3)
+	CALL ReviveShow(mvint, msen)
+	GOSUB rmpal
+	t0 = TIMER
+	GOTO 14570
+
+	'----- death: the LOAD screen first; Back opens the main menu (Save locked,
+	'----- no resume) so New Game / Quit stay reachable
+	14710 CALL SlotScreen(fontData(), mvint, msen, 2, 1, slvAct)
+	IF slvAct <> 1 THEN CALL MainMenu(fontData(), mvint, msen, slvAct, 1)
+	IF slvAct = 2 THEN RUN
+	IF slvAct <> 1 THEN GOTO 14710
+	rvArm = 0: rvSnap = 0: doc = 0
+	rvfd = 1: PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
+	GOSUB loadroom
+	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
+	rvfd = 0
+	CALL LoadFade(co, pa1, pa2, pa3)
 	t0 = TIMER
 	GOTO 14570
 
@@ -2069,94 +2168,8 @@ burn:
 
 REM $STATIC
 
-'----- Credits / ending sequence
-SUB Credits
-	DIM e0(600) AS INTEGER
-	SCREEN 1
-	KEY OFF
-	PALETTE 1, 8: PALETTE 2, 4: PALETTE 3, 14
-	IF ob(43) <> 1 THEN GOTO 15700
-
-	'----- good ending: house burns
-	DEF SEG = &HB800: BLOAD "end.pic", 0: DEF SEG
-	PLAY "e-6d5e-5d5f7p7"
-	PLAY "a5>c6<b6a5g6a4"
-	FOR e3 = 1 TO 5: SOUND 32761, 1: NEXT e3
-
-	FOR e6 = 1 TO 3
-		FOR e4 = 1 TO 3
-			IF e4 = 1 THEN e5 = 8 ELSE IF e4 = 2 THEN e5 = 7 ELSE e5 = 15
-			PALETTE e6, e5
-			FOR e3 = 1 TO 5: IF RND < .9 THEN SOUND RND * 71 + 50, (RND * .2) + .3 ELSE SOUND 32767, .5
-			NEXT e3
-		NEXT e4: NEXT e6
-
-	PALETTE 0, 15
-	DEF SEG = &HB800: BLOAD "end2.pic", 0: DEF SEG
-	FOR e3 = 1 TO 7: SOUND 32671, .5: NEXT e3
-	PALETTE 0, 0
-
-	FOR e6 = 1 TO 3
-		FOR e4 = 1 TO 3
-			IF e4 = 1 THEN e5 = 8 ELSE IF e4 = 2 THEN e5 = 7 ELSE GOSUB 15640
-			PALETTE e6, e5
-			FOR e3 = 1 TO 5: IF RND < .9 THEN SOUND RND * 71 + 50, (RND * .2) + .3 ELSE SOUND 32767, .5
-			NEXT e3
-		NEXT e4: NEXT e6
-
-	FOR e3 = 1 TO 40: SOUND 32676, .1: NEXT e3
-	GOSUB 15660
-	FOR e3 = 1 TO 20: SOUND 32761, 1: NEXT e3
-	GOSUB 15650
-
-	'----- closing narration
-	PRINT "You run swiftly from the flaming"
-	PRINT "building that is being consumed by"
-	PRINT "the blaze. As you look back at the"
-	PRINT "burning house, spewing fiery shrapnel"
-	PRINT "about the grounds you wonder about"
-	PRINT "your uncle and his work. What was"
-	PRINT "he realy like? What was obliterated"
-	PRINT "in the house? Did you leave something"
-	PRINT "behind or undone ...."
-	PRINT "Maybe some day you'll find out."
-	PRINT "": PRINT "Press a key to exit."
-15592 IF INKEY$ = "" THEN GOTO 15592
-	EXIT SUB
-
-	'----- pick palette color by frame
-15640 IF e6 = 1 THEN e5 = 8
-	IF e6 = 2 THEN e5 = 2
-	IF e6 = 3 THEN e5 = 6
-	RETURN
-
-	'----- static-screen wipe effect
-15650 FOR e3 = 1 TO 23: FOR e2 = 1 TO 40
-		LOCATE INT(RND * 23) + 1, INT(RND * 40) + 1: PRINT " "
-		SOUND 32676, .05
-	NEXT e2: NEXT e3
-	CLS
-	RETURN
-
-	'----- flying shrapnel animation
-15660 GET (212, 140)-(262, 160), e0
-	PUT (212, 140), e0, XOR
-	LINE (211, 148)-(265, 148), 1
-	FOR e1 = 212 TO 65 STEP -1
-		PUT (e1, 140), e0, XOR
-		SOUND (RND * 100) + 50, .1: SOUND 100, .1
-		PUT (e1, 140), e0, XOR
-	NEXT e1
-	RETURN
-
-	'----- bad ending (uncle not saved)
-15700 DEF SEG = &HB800: BLOAD "end1.pic", 0: DEF SEG
-	PALETTE 1, 8: PALETTE 2, 4: PALETTE 3, 14
-	PLAY "e-6d5e-5d5f7p7"
-	PLAY "a5>c6<b6a5g6a4"
-15704 IF INKEY$ = "" THEN GOTO 15704
-	EXIT SUB
-END SUB
+'----- Credits / ending sequence: moved to GAME3 (64K ceiling); gd% = ob(43)
+'----- (1 = the house-burns good ending, else the bad "uncle not saved" screen)
 
 '----- DeathMusic moved to GAME2.BAS (multi-module split)
 
@@ -2529,8 +2542,10 @@ SUB invhi
 	DEF SEG = -18432
 	BLOAD "INVMAIN.PIC", 0
 	DEF SEG
-	'----- save/load moved to the ESC menu -- blank the old Save/Load button
+	'----- save/load + quit moved to the ESC menu -- blank both old buttons
+	'----- (quit still works via the q key)
 	LINE (186, 162)-(266, 185), 0, BF
+	LINE (8, 162)-(100, 185), 0, BF
 	REDIM combuf(800), infobuf(800), modalbuf(500), combtn(80), exmico(40)
 	GET (29, 129)-(85, 144), combtn
 	LINE (29, 129)-(85, 144), 0, BF
@@ -2545,7 +2560,7 @@ SUB invhi
 	LINE (210, 34)-(297, 73), 0, BF
 	invtab = 0
 	isel = 0: ivscr = 0: cbot = 0: cdrg = 0: crec = 0
-	nvz = 0: nvb = 1
+	nvz = 0: nvb = 0
 	ivmax = (cic + 3) \ 4 - 2: IF ivmax < 0 THEN ivmax = 0
 	'----- reselect the item picked last time (GAME2 InvReSel; the grid can shift)
 	CALL InvReSel(cilist(), cic, lvsel, isel, ivscr, ivmax)
@@ -2568,7 +2583,6 @@ SUB invhi
 			IF my >= 28 AND my <= 42 AND mx >= 53 AND mx <= 98 AND invtab <> 1 THEN invtab = 1: GOSUB invredraw
 			IF exf = 1 AND mx >= 84 AND mx <= 101 AND my >= 43 AND my <= 58 THEN GOSUB doexam
 			IF mx >= 275 AND mx <= 312 AND my >= 164 AND my <= 183 THEN GOTO invdone
-			IF mx >= 4 AND mx <= 96 AND my >= 164 AND my <= 183 THEN GOSUB doquit: mlb = 1: GOTO invwait
 			IF mx >= 299 AND my >= 28 AND my <= 36 THEN ivns = ivscr - 1: GOSUB invss
 			IF mx >= 299 AND my >= 146 AND my <= 154 THEN ivns = ivscr + 1: GOSUB invss
 			IF invtab = 1 AND crec > 0 AND mx >= 32 AND mx <= 81 AND my >= 129 AND my <= 143 THEN GOSUB combdo
@@ -2609,7 +2623,6 @@ SUB invhi
 	IF nvk$ = "" AND jsen = 1 THEN CALL JoyNav(nvk$)
 	IF nvk$ <> "" THEN
 		CALL InvNav(nvk$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, nvx%, nvy%, act%)
-		IF act% = 4 THEN GOSUB doquit: mlb = 1: GOTO invwait
 		IF act% = 6 THEN GOTO invdone
 		IF act% = 7 THEN IF invtab = 1 AND crec > 0 THEN GOSUB combdo
 		IF act% = 8 THEN IF exf = 1 THEN GOSUB doexam
@@ -2645,10 +2658,14 @@ SUB invhi
 	'----- quit confirmation: show centered modal, wait for Yes/No (click or key)
 	doquit:
 	IF msen = 1 THEN CALL erasecur
-	CALL DrawYNBox("Quit the game?", 3, fontData())
+	'----- dialogs use the standard UI palette layout (1=dkgray 2=ltgray 3=brown);
+	'----- the inventory behind recolours while the modal is up, restored on No
+	PALETTE 1, 8: PALETTE 2, 7: PALETTE 3, 6
+	CALL DrawYNBox("Quit the game?", 1, fontData())
 	CALL QuitConfirm
 	DEF SEG = -18432: BLOAD "INVMAIN.PIC", 0: DEF SEG
 	LINE (186, 162)-(266, 185), 0, BF
+	LINE (8, 162)-(100, 185), 0, BF
 	PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
 	LINE (8, 27)-(202, 151), 0, BF: LINE (210, 34)-(297, 73), 0, BF
 	GOSUB invdraw
@@ -2812,7 +2829,7 @@ END SUB
 '----- QuitConfirm: wait for Yes/No on the quit modal -- the interactive loop
 '----- lives in GAME4 (YNWait) to stay under GAME.BAS's 64K code ceiling
 SUB QuitConfirm
-	CALL YNWait(mvint, msen, 3, qcr%)
+	CALL YNWait(mvint, msen, 1, qcr%)
 	IF qcr% = 1 THEN SYSTEM
 END SUB
 

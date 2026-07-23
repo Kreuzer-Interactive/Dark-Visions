@@ -88,6 +88,17 @@
 74,158,25
 74,154,25
 78,150,25
+206,118,10
+206,122,10
+206,126,10
+206,130,10
+190,134,10
+194,134,10
+198,134,10
+202,134,10
+206,134,10
+202,122,21
+202,126,21
 0,0,0
 "","It resembles a jail cell.","l",0,0,0,"f4"
 "","The candle provides light.","l",0,0,0,"f8"
@@ -108,12 +119,15 @@
 "","","",5,0,6,""
 "","You smash the vase to reveal a |key|.","u",6,5,5,"f8"
 "","The vase makes a metallic sound when you touch it.","a",0,5,0,"f8"
-"","The armoire is locked.","a",0,0,0,"f9"
+"","The armoire is locked.","a",0,7,0,"f9"
 "","You unlock the closet to find a... box  of |baking soda| which you earnestly take.","u",8,7,7,"f9"
 "room1","You leave the room","a",0,0,0,"ws"
 "room6","You leave the room","a",0,0,0,"wn"
 "room3","You leave the room.","a",0,0,0,"we"
 "room8","You leave the room","a",0,0,0,"ww"
+31,199,115,7,60
+30,121,121,5,59
+32,168,127,2,0
 -2,12,166,148,8
 -2,13,166,148,8
 -2,15,222,172,6

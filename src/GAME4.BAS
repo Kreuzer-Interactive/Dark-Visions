@@ -26,6 +26,7 @@ DECLARE SUB YNBtn (sel AS INTEGER, dk AS INTEGER)
 DECLARE SUB YNWait (mvint AS INTEGER, msen AS SINGLE, dk AS INTEGER, res AS INTEGER)
 DECLARE SUB SaveGame (slot AS INTEGER)
 DECLARE SUB LoadGame (slot AS INTEGER)
+DECLARE SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
 DECLARE SUB SlotScreen (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, mode AS INTEGER, dead AS INTEGER, act AS INTEGER)
 DECLARE FUNCTION slLoc$ (rq AS STRING)
 
@@ -42,11 +43,12 @@ DIM SHARED slLast AS INTEGER
 REDIM SHARED mnArt(1) AS INTEGER
 REDIM SHARED mnLbl(1) AS INTEGER
 DIM SHARED mnOk AS INTEGER
-'----- themed yes/no dialog parts, parsed once by DlgLoad (dlgOk flag):
-'----- dlgCor = DLGCOR.PCT, 8x 9x9 corner scrolls (BL,BR,TL,TR base palette, then
-'----- the same with attrs 1<->3 swapped for the save/load screen palette);
-'----- dlgBtn = DLGBTN.PCT, 8x 16x10 buttons (yes-act, yes-inact, no-act, no-inact x2);
-'----- dlgStr = DLGSTRK.PCT, 2x 91x3 ornament stroke (base, swapped)
+'----- themed yes/no dialog parts, parsed once by DlgLoad (dlgOk flag). ONE art
+'----- set: every dialog screen (ESC menu, save/load book, inventory quit) uses
+'----- the same palette layout (1=dkgray 2=ltgray 3=brown).
+'----- dlgCor = DLGCOR.PCT, 4x 9x9 corner scrolls (BL,BR,TL,TR);
+'----- dlgBtn = DLGBTN.PCT, 4x 16x10 buttons (yes-act, yes-inact, no-act, no-inact);
+'----- dlgStr = DLGSTRK.PCT, 1x 91x3 ornament stroke
 REDIM SHARED dlgCor(1) AS INTEGER
 REDIM SHARED dlgBtn(1) AS INTEGER
 REDIM SHARED dlgStr(1) AS INTEGER
@@ -56,6 +58,12 @@ DIM SHARED dlgOk AS INTEGER
 '----- boxes (rect at dx13-96, ornament hanging left); placeholder REDIM
 REDIM SHARED rgL(1) AS INTEGER
 DIM SHARED rgNL AS INTEGER, rgOk AS INTEGER
+'----- revive message sprite (src/Revive.png -> REVIVE.DAT: count n, then n
+'----- sprite ints and n mask ints; ints 0/1 = width*2 and height). Drawn the
+'----- game's masked way: PUT mask AND, PUT sprite OR. Placeholder REDIMs.
+REDIM SHARED rvArt(1) AS INTEGER
+REDIM SHARED rvMsk(1) AS INTEGER
+DIM SHARED rvOk AS INTEGER
 
 '----- map a saved room tag (q$) to a short location name shown on the slot
 FUNCTION slLoc$ (rq AS STRING)
@@ -98,9 +106,9 @@ SUB slDrawStat (slot AS INTEGER, sx AS INTEGER, sy AS INTEGER, fontData() AS INT
 	pc = 0
 	FOR j = 1 TO 65
 		sob = 0: IF NOT EOF(2) THEN INPUT #2, sob
-		IF j <= 51 AND sob = 1 THEN pc = pc + 1
-		IF j = 35 AND sob = 1 THEN pc = pc + 2
-		IF j = 36 AND sob = 1 THEN pc = pc + 2
+		IF j <= 51 AND sob >= 1 THEN pc = pc + 1
+		IF j = 35 AND sob >= 1 THEN pc = pc + 2
+		IF j = 36 AND sob >= 1 THEN pc = pc + 2
 	NEXT j
 	CLOSE #2
 	pc = CINT(pc * 100 / 47)
@@ -328,21 +336,18 @@ END SUB
 '----- 138/166): hit zones Yes 132-158, No 161-187, y 105-117 (plus the legacy
 '----- 260-270/80-87 = No).
 SUB DrawYNBox (msg AS STRING, dk AS INTEGER, fontData() AS INTEGER)
-	DIM vo AS INTEGER, so AS INTEGER
 	CALL DlgLoad
-	vo = 0: so = 0
-	IF dk = 1 THEN vo = 4: so = 37
 	LINE (44, 76)-(276, 124), dk, B
 	LINE (45, 77)-(275, 123), 0, B
 	LINE (46, 78)-(274, 122), dk, B
 	LINE (47, 79)-(273, 121), 2, B
 	LINE (48, 80)-(272, 120), 0, BF
-	PUT (44, 116), dlgCor((vo + 0) * 16), PSET
-	PUT (268, 116), dlgCor((vo + 1) * 16), PSET
-	PUT (44, 76), dlgCor((vo + 2) * 16), PSET
-	PUT (268, 76), dlgCor((vo + 3) * 16), PSET
+	PUT (44, 116), dlgCor(0), PSET
+	PUT (268, 116), dlgCor(16), PSET
+	PUT (44, 76), dlgCor(32), PSET
+	PUT (268, 76), dlgCor(48), PSET
 	CALL drawText(160 - textWidth(msg, fontData()) \ 2, 85, msg, 2, fontData())
-	PUT (115, 96), dlgStr(so), PSET
+	PUT (115, 96), dlgStr(0), PSET
 	CALL YNBtn(1, dk)
 END SUB
 
@@ -350,22 +355,22 @@ END SUB
 SUB DlgLoad
 	DIM i AS INTEGER
 	IF dlgOk = 1 THEN EXIT SUB
-	REDIM dlgCor(127) AS INTEGER
-	REDIM dlgBtn(175) AS INTEGER
-	REDIM dlgStr(73) AS INTEGER
+	REDIM dlgCor(63) AS INTEGER
+	REDIM dlgBtn(87) AS INTEGER
+	REDIM dlgStr(36) AS INTEGER
 	OPEN "DLGCOR.PCT" FOR INPUT AS #2
 	FOR i = 0 TO 15
-		INPUT #2, dlgCor(i), dlgCor(16 + i), dlgCor(32 + i), dlgCor(48 + i), dlgCor(64 + i), dlgCor(80 + i), dlgCor(96 + i), dlgCor(112 + i)
+		INPUT #2, dlgCor(i), dlgCor(16 + i), dlgCor(32 + i), dlgCor(48 + i)
 	NEXT
 	CLOSE #2
 	OPEN "DLGBTN.PCT" FOR INPUT AS #2
 	FOR i = 0 TO 21
-		INPUT #2, dlgBtn(i), dlgBtn(22 + i), dlgBtn(44 + i), dlgBtn(66 + i), dlgBtn(88 + i), dlgBtn(110 + i), dlgBtn(132 + i), dlgBtn(154 + i)
+		INPUT #2, dlgBtn(i), dlgBtn(22 + i), dlgBtn(44 + i), dlgBtn(66 + i)
 	NEXT
 	CLOSE #2
 	OPEN "DLGSTRK.PCT" FOR INPUT AS #2
 	FOR i = 0 TO 36
-		INPUT #2, dlgStr(i), dlgStr(37 + i)
+		INPUT #2, dlgStr(i)
 	NEXT
 	CLOSE #2
 	dlgOk = 1
@@ -451,17 +456,119 @@ SUB YNWait (mvint AS INTEGER, msen AS SINGLE, dk AS INTEGER, res AS INTEGER)
 	RETURN
 END SUB
 
+'----- ReviveShow: after a revive=1 timer death restores the temp save, show
+'----- the "they're still in there" message sprite (REVIVE.DAT) centered over
+'----- the restored room in a fixed palette, wait for a fresh key or click,
+'----- then put the screen back. The CALLER restores the room palette (rmpal).
+SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
+	DIM mr AS RegType, mo AS RegType
+	DIM i AS INTEGER, n AS INTEGER, cx AS INTEGER, cy AS INTEGER
+	DIM k$
+	DIM rt AS SINGLE, el AS SINGLE
+	DIM cbuf(40) AS INTEGER
+	DIM cmx AS INTEGER, cmy AS INTEGER, nmx AS INTEGER, nmy AS INTEGER, cdrn AS INTEGER
+	REDIM rvu(1200) AS INTEGER
+	IF rvOk <> 1 THEN
+		REDIM rvArt(1200) AS INTEGER
+		REDIM rvMsk(1200) AS INTEGER
+		OPEN "REVIVE.DAT" FOR INPUT AS #2
+		INPUT #2, n
+		FOR i = 0 TO n - 1
+			INPUT #2, rvArt(i)
+		NEXT
+		FOR i = 0 TO n - 1
+			INPUT #2, rvMsk(i)
+		NEXT
+		CLOSE #2
+		rvOk = 1
+	END IF
+	cx = (320 - rvArt(0) \ 2) \ 2
+	cy = (200 - rvArt(1)) \ 2
+	'----- art palette: dkgray box, blue portrait detail, brown/orange text
+	PALETTE 1, 8: PALETTE 2, 1: PALETTE 3, 6
+	GET (cx, cy)-(cx + rvArt(0) \ 2 - 1, cy + rvArt(1) - 1), rvu
+	PUT (cx, cy), rvMsk, AND
+	PUT (cx, cy), rvArt, OR
+	'----- keys mashed during the death music/screen are NOT a dismissal:
+	'----- flush the type-ahead buffer and drain any held click first
+	DO
+		k$ = INKEY$
+	LOOP WHILE k$ <> ""
+	IF msen = 1 THEN
+		DO
+			mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+		LOOP WHILE (mo.bx AND 1) <> 0
+		'----- software cursor so the pointer stays visible over the message
+		cmx = mo.cx \ 2: cmy = mo.dx
+		IF cmx > 312 THEN cmx = 312 ELSE IF cmx < 0 THEN cmx = 0
+		IF cmy > 192 THEN cmy = 192 ELSE IF cmy < 0 THEN cmy = 0
+		GOSUB rvcdraw
+	END IF
+	'----- wait for a fresh key or click, cursor tracking the mouse...
+	rt = TIMER
+	rvwait:
+	k$ = INKEY$
+	IF k$ <> "" THEN GOTO rvdone
+	IF msen = 1 THEN
+		GOSUB rvctrack
+		IF (mo.bx AND 1) <> 0 THEN GOTO rvdone
+	END IF
+	GOTO rvwait
+	'----- ...but never blink away: an early press still leaves the message
+	'----- up until it has been visible a full second (cursor keeps moving)
+	rvdone:
+	DO
+		el = TIMER - rt
+		IF el < 0 THEN el = el + 86400
+		IF el >= 1 THEN EXIT DO
+		IF msen = 1 THEN GOSUB rvctrack
+	LOOP
+	IF msen = 1 THEN GOSUB rvcerase
+	PUT (cx, cy), rvu, PSET
+	EXIT SUB
+
+	'----- poll the mouse and move the software cursor if it changed
+	rvctrack:
+	mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+	nmx = mo.cx \ 2: nmy = mo.dx
+	IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THEN nmx = 0
+	IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THEN nmy = 0
+	IF nmx <> cmx OR nmy <> cmy THEN GOSUB rvcerase: cmx = nmx: cmy = nmy: GOSUB rvcdraw
+	RETURN
+
+	'----- NW-arrow cursor with save-under (brown outline + dkgray fill --
+	'----- the revive palette has no light gray)
+	rvcdraw:
+	GET (cmx, cmy)-(cmx + 5, cmy + 7), cbuf
+	PSET (cmx, cmy), 3
+	PSET (cmx, cmy + 1), 3: PSET (cmx + 1, cmy + 1), 3
+	PSET (cmx, cmy + 2), 3: PSET (cmx + 2, cmy + 2), 3
+	PSET (cmx, cmy + 3), 3: PSET (cmx + 3, cmy + 3), 3
+	PSET (cmx, cmy + 4), 3: PSET (cmx + 4, cmy + 4), 3
+	PSET (cmx, cmy + 5), 3: PSET (cmx + 2, cmy + 5), 3: PSET (cmx + 3, cmy + 5), 3
+	PSET (cmx, cmy + 6), 3: PSET (cmx + 1, cmy + 6), 3
+	PSET (cmx + 1, cmy + 2), 1
+	PSET (cmx + 1, cmy + 3), 1: PSET (cmx + 2, cmy + 3), 1
+	PSET (cmx + 1, cmy + 4), 1: PSET (cmx + 2, cmy + 4), 1: PSET (cmx + 3, cmy + 4), 1
+	PSET (cmx + 1, cmy + 5), 1
+	cdrn = 1
+	RETURN
+	rvcerase:
+	IF cdrn = 1 THEN PUT (cmx, cmy), cbuf, PSET
+	cdrn = 0
+	RETURN
+END SUB
+
 '----- (re)draw the dialog's Yes/No art buttons inside their hit rects.
 '----- sel: 1 = Yes active / No inactive, 2 = No active / Yes inactive.
-'----- dk = 1 -> save/load screen palette -> attr-swapped frame set.
+'----- (dk kept for signature stability; one art set fits every dialog screen)
 SUB YNBtn (sel AS INTEGER, dk AS INTEGER)
-	DIM vo AS INTEGER, yf AS INTEGER, nf AS INTEGER
+	DIM yf AS INTEGER, nf AS INTEGER
 	CALL DlgLoad
-	vo = 0: IF dk = 1 THEN vo = 4
 	yf = 1: IF sel = 1 THEN yf = 0
 	nf = 3: IF sel = 2 THEN nf = 2
-	PUT (138, 106), dlgBtn((vo + yf) * 22), PSET
-	PUT (166, 106), dlgBtn((vo + nf) * 22), PSET
+	PUT (138, 106), dlgBtn(yf * 22), PSET
+	PUT (166, 106), dlgBtn(nf * 22), PSET
 END SUB
 
 '----- ESC main menu: dim the LIVE room screen to black/dark-gray, switch to the
@@ -521,16 +628,17 @@ SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS IN
 	NEXT
 
 	'----- dim the live screen: snap every colour to dark gray FIRST (instant, hides the
-	'----- pixel pass), then rewrite the framebuffer so every lit pixel is attr 3, then
-	'----- switch to the inventory palette (attr3 = 8 = dark gray) for the menu art
+	'----- pixel pass), then rewrite the framebuffer so every lit pixel is attr 1, then
+	'----- switch to the standard UI palette (1=dkgray 2=ltgray 3=brown -- same
+	'----- layout as the save/load screens, so dialog art needs no variants)
 	PALETTE 0, 0: PALETTE 1, 8: PALETTE 2, 8: PALETTE 3, 8
 	DEF SEG = &HB800
 	FOR i = 0 TO 16383
 		v = PEEK(i)
-		IF v <> 0 THEN t = (v OR v \ 2) AND &H55: POKE i, t OR t * 2
+		IF v <> 0 THEN t = (v OR v \ 2) AND &H55: POKE i, t
 	NEXT
 	DEF SEG
-	PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
+	PALETTE 1, 8: PALETTE 2, 7: PALETTE 3, 6
 
 	'----- take the REAL driver position before the first draw -- mmdraw ends with a
 	'----- cursor draw at (mx,my), so a made-up position here would orphan a cursor
@@ -647,7 +755,7 @@ SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS IN
 	CALL SlotScreen(fontData(), mvint, msen, mnmd, dead, act2)
 	IF act2 = 1 THEN act = 1: done = 1: RETURN
 	PUT (0, 0), mnscr, PSET
-	PALETTE 0, 0: PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
+	PALETTE 0, 0: PALETTE 1, 8: PALETTE 2, 7: PALETTE 3, 6
 	mlb = 1
 	IF msen = 1 THEN
 		mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
@@ -662,7 +770,7 @@ SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS IN
 	mmconfirm:
 	IF msen = 1 THEN GOSUB mmerasecur
 	GET (44, 76)-(276, 124), cnf
-	CALL DrawYNBox(cmsg$, 3, fontData())
+	CALL DrawYNBox(cmsg$, 1, fontData())
 	cyes = -1: cmlb = 1: cysl = 1
 	IF msen = 1 THEN GOSUB mmdrawcur
 	mmcfw:
@@ -694,7 +802,7 @@ SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS IN
 	IF cnyn > 0 AND cnyn <> cysl THEN
 		cysl = cnyn
 		IF msen = 1 THEN GOSUB mmerasecur
-		CALL YNBtn(cysl, 3)
+		CALL YNBtn(cysl, 1)
 		IF msen = 1 THEN GOSUB mmdrawcur
 	END IF
 	IF cyes = -1 THEN GOTO mmcfw

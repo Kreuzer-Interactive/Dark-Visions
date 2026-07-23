@@ -52,7 +52,6 @@
 130,70,9
 126,70,9
 126,78,10
-122,78,1
 130,78,10
 114,102,11
 114,106,11
@@ -100,7 +99,7 @@
 "","This fuse is broken.","l",0,41,0,""
 "","You place the copper penny into the fuse. You hear some rumbling in the distance","u",0,0,0,""
 "","","",0,0,0,""
-"","You place the copper penny in the fuse  completing the circuit.","u",12,41,41,""
+"","You place the copper penny in the fuse  completing the circuit.","u",12,41,41,"x"
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""

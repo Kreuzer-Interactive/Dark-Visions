@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME4.BAS: menu / save / load UI module. Own 64K code se
@@ -41,6 +41,7 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 EGER, res AS INTEGER)
  0030   0006    DECLARE SUB SaveGame (slot AS INTEGER)
  0030   0006    DECLARE SUB LoadGame (slot AS INTEGER)
+ 0030   0006    DECLARE SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
  0030   0006    DECLARE SUB SlotScreen (fontData() AS INTEGER, mvint AS INTEGER
                 , msen AS SINGLE, mode AS INTEGER, dead AS INTEGER, act AS INTE
                 GER)
@@ -56,12 +57,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 Ok flag):
  0030   0006    '----- mnArt = MENUMAIN.PCT (122x99 box, inventory palette), mn
                 Lbl = MENULBL.PCT
- 0030   0006    '----- (6 frames of 70 ints, 59x9 label cells: 1-4 = New Game/S
                                                                       PAGE   2
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 0030   0006    '----- (6 frames of 70 ints, 59x9 label cells: 1-4 = New Game/S
                 ave/Load/Quit
  0030   0006    '----- not-selected, 5 = Save disabled, 6 = Load disabled). Dyn
                 amic = far heap.
@@ -73,15 +74,15 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  004D   0030    REDIM SHARED mnLbl(1) AS INTEGER
  0065   0042    DIM SHARED mnOk AS INTEGER
  0065   0044    '----- themed yes/no dialog parts, parsed once by DlgLoad (dlgO
-                k flag):
- 0065   0044    '----- dlgCor = DLGCOR.PCT, 8x 9x9 corner scrolls (BL,BR,TL,TR 
-                base palette, then
- 0065   0044    '----- the same with attrs 1<->3 swapped for the save/load scre
-                en palette);
- 0065   0044    '----- dlgBtn = DLGBTN.PCT, 8x 16x10 buttons (yes-act, yes-inac
-                t, no-act, no-inact x2);
- 0065   0044    '----- dlgStr = DLGSTRK.PCT, 2x 91x3 ornament stroke (base, swa
-                pped)
+                k flag). ONE art
+ 0065   0044    '----- set: every dialog screen (ESC menu, save/load book, inve
+                ntory quit) uses
+ 0065   0044    '----- the same palette layout (1=dkgray 2=ltgray 3=brown).
+ 0065   0044    '----- dlgCor = DLGCOR.PCT, 4x 9x9 corner scrolls (BL,BR,TL,TR)
+                ;
+ 0065   0044    '----- dlgBtn = DLGBTN.PCT, 4x 16x10 buttons (yes-act, yes-inac
+                t, no-act, no-inact);
+ 0065   0044    '----- dlgStr = DLGSTRK.PCT, 1x 91x3 ornament stroke
  0065   0044    REDIM SHARED dlgCor(1) AS INTEGER
  007D   0056    REDIM SHARED dlgBtn(1) AS INTEGER
  0095   0068    REDIM SHARED dlgStr(1) AS INTEGER
@@ -94,926 +95,1068 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 der REDIM
  00AD   007C    REDIM SHARED rgL(1) AS INTEGER
  00C5   008E    DIM SHARED rgNL AS INTEGER, rgOk AS INTEGER
- 00C5   0092    
- 00C5   0092    '----- map a saved room tag (q$) to a short location name shown
+ 00C5   0092    '----- revive message sprite (src/Revive.png -> REVIVE.DAT: cou
+                nt n, then n
+ 00C5   0092    '----- sprite ints and n mask ints; ints 0/1 = width*2 and heig
+                ht). Drawn the
+ 00C5   0092    '----- game's masked way: PUT mask AND, PUT sprite OR. Placehol
+                der REDIMs.
+ 00C5   0092    REDIM SHARED rvArt(1) AS INTEGER
+ 00DD   00A4    REDIM SHARED rvMsk(1) AS INTEGER
+ 00F5   00B6    DIM SHARED rvOk AS INTEGER
+ 00F5   00B8    
+ 00F5   00B8    '----- map a saved room tag (q$) to a short location name shown
                  on the slot
- 00C5   0092    FUNCTION slLoc$ (rq AS STRING)
- 00D0   0092            DIM hd$, nm$, q1 AS INTEGER, q2 AS INTEGER
- 00D0   0092            IF rq = "" THEN
- 00D0   0092                    slLoc$ = "?"
- 00D0   0092            ELSEIF LEFT$(rq, 4) = "room" THEN
- 00F1   0092                    nm$ = ""
- 00F1   0092                    OPEN rq + ".pac" FOR INPUT AS #4
- 00F1   0092                    LINE INPUT #4, hd$
- 0140   0092                    CLOSE #4
- 0140   0092                    q1 = INSTR(hd$, CHR$(34))
- 0140   0092                    IF q1 > 0 THEN
- 0140   0092                            q2 = INSTR(q1 + 1, hd$, CHR$(34))
- 0140   0092                            IF q2 > q1 + 1 THEN nm$ = MID$(hd$, q1 
-                + 1, q2 - q1 - 1)
- 01C2   0092                    END IF
- 01C2   0092                    IF nm$ <> "" THEN slLoc$ = nm$ ELSE slLoc$ = "R
-                oom " + MID$(rq, 5)
- 0208   0092            ELSE
- 020B   0092                    slLoc$ = rq
+ 00F5   00B8    FUNCTION slLoc$ (rq AS STRING)
+ 0100   00B8            DIM hd$, nm$, q1 AS INTEGER, q2 AS INTEGER
+ 0100   00B8            IF rq = "" THEN
+ 0100   00B8                    slLoc$ = "?"
+ 0100   00B8            ELSEIF LEFT$(rq, 4) = "room" THEN
+ 0121   00B8                    nm$ = ""
+ 0121   00B8                    OPEN rq + ".pac" FOR INPUT AS #4
+ 0121   00B8                    LINE INPUT #4, hd$
+ 0170   00B8                    CLOSE #4
                                                                       PAGE   3
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 020B   0092            END IF
- 0217   0092    END FUNCTION
- 023A   0092    
- 023A   0092    '----- draw one slot's stats: Location + Progress%, or "- empty
+ 0170   00B8                    q1 = INSTR(hd$, CHR$(34))
+ 0170   00B8                    IF q1 > 0 THEN
+ 0170   00B8                            q2 = INSTR(q1 + 1, hd$, CHR$(34))
+ 0170   00B8                            IF q2 > q1 + 1 THEN nm$ = MID$(hd$, q1 
+                + 1, q2 - q1 - 1)
+ 01F2   00B8                    END IF
+ 01F2   00B8                    IF nm$ <> "" THEN slLoc$ = nm$ ELSE slLoc$ = "R
+                oom " + MID$(rq, 5)
+ 0238   00B8            ELSE
+ 023B   00B8                    slLoc$ = rq
+ 023B   00B8            END IF
+ 0247   00B8    END FUNCTION
+ 026A   00B8    
+ 026A   00B8    '----- draw one slot's stats: Location + Progress%, or "- empty
                  -" for an unused slot.
- 023A   0092    '----- Also records slUsed(slot). Progress mirrors GAME3 drawSt
+ 026A   00B8    '----- Also records slUsed(slot). Progress mirrors GAME3 drawSt
                 ats.
- 023A   0092    SUB slDrawStat (slot AS INTEGER, sx AS INTEGER, sy AS INTEGER, 
+ 026A   00B8    SUB slDrawStat (slot AS INTEGER, sx AS INTEGER, sy AS INTEGER, 
                 fontData() AS INTEGER)
- 0245   0092            DIM f$, sq$, sdn$, stt$, sa$, slf$
- 0245   0092            DIM scl AS SINGLE, spt AS SINGLE, sob AS INTEGER, j AS 
+ 0275   00B8            DIM f$, sq$, sdn$, stt$, sa$, slf$
+ 0275   00B8            DIM scl AS SINGLE, spt AS SINGLE, sob AS INTEGER, j AS 
                 INTEGER, pc AS INTEGER
- 0245   0092            '----- wipe the stat area (covers a previous "- empty -
+ 0275   00B8            '----- wipe the stat area (covers a previous "- empty -
                 " on refresh)
- 0245   0092            LINE (sx - 1, sy - 1)-(sx + 56, sy + 12), 0, BF
- 0245   0092            f$ = "saver" + CHR$(slot + 96) + ".pac"
- 0245   0092            OPEN f$ FOR APPEND AS #2: CLOSE #2          ' ensure th
+ 0275   00B8            LINE (sx - 1, sy - 1)-(sx + 56, sy + 12), 0, BF
+ 0275   00B8            f$ = "saver" + CHR$(slot + 96) + ".pac"
+ 0275   00B8            OPEN f$ FOR APPEND AS #2: CLOSE #2          ' ensure th
                 e file exists (no truncate)
- 0245   0092            OPEN f$ FOR INPUT AS #2
- 0245   0092            IF EOF(2) THEN
- 0245   0092                    slUsed(slot) = 0
- 0245   0092                    CALL drawText(sx - 1, sy + 3, "- empty -", 2, f
+ 0275   00B8            OPEN f$ FOR INPUT AS #2
+ 0275   00B8            IF EOF(2) THEN
+ 0275   00B8                    slUsed(slot) = 0
+ 0275   00B8                    CALL drawText(sx - 1, sy + 3, "- empty -", 2, f
                 ontData())
- 034F   0092                    CLOSE #2: EXIT SUB
- 034F   0092            END IF
- 035F   0092            slUsed(slot) = 1
- 035F   0092            INPUT #2, sq$, scl, spt, sdn$, stt$, sa$, slf$
- 0375   0092            pc = 0
- 0375   0092            FOR j = 1 TO 65
- 03DE   0092                    sob = 0: IF NOT EOF(2) THEN INPUT #2, sob
- 040F   0092                    IF j <= 51 AND sob = 1 THEN pc = pc + 1
- 042F   0092                    IF j = 35 AND sob = 1 THEN pc = pc + 2
- 0450   0092                    IF j = 36 AND sob = 1 THEN pc = pc + 2
- 0471   0092            NEXT j
- 0480   0092            CLOSE #2
- 0480   0092            pc = CINT(pc * 100 / 47)
- 0480   0092            CALL drawText(sx - 1, sy - 1, slLoc$(sq$), 2, fontData(
+ 037F   00B8                    CLOSE #2: EXIT SUB
+ 037F   00B8            END IF
+ 038F   00B8            slUsed(slot) = 1
+ 038F   00B8            INPUT #2, sq$, scl, spt, sdn$, stt$, sa$, slf$
+ 03A5   00B8            pc = 0
+ 03A5   00B8            FOR j = 1 TO 65
+ 040E   00B8                    sob = 0: IF NOT EOF(2) THEN INPUT #2, sob
+ 043F   00B8                    IF j <= 51 AND sob >= 1 THEN pc = pc + 1
+ 045F   00B8                    IF j = 35 AND sob >= 1 THEN pc = pc + 2
+ 0480   00B8                    IF j = 36 AND sob >= 1 THEN pc = pc + 2
+ 04A1   00B8            NEXT j
+ 04B0   00B8            CLOSE #2
+ 04B0   00B8            pc = CINT(pc * 100 / 47)
+ 04B0   00B8            CALL drawText(sx - 1, sy - 1, slLoc$(sq$), 2, fontData(
                 ))
- 04E7   0092            CALL drawText(sx - 1, sy + 6, LTRIM$(STR$(pc)) + "% don
+ 0517   00B8            CALL drawText(sx - 1, sy + 6, LTRIM$(STR$(pc)) + "% don
                 e", 2, fontData())
- 0543   0092    END SUB
- 058A   0092    
- 058A   0092    '----- SlotScreen: dedicated Save (mode 1) or Load (mode 2) scr
+ 0573   00B8    END SUB
+ 05BA   00B8    
+ 05BA   00B8    '----- SlotScreen: dedicated Save (mode 1) or Load (mode 2) scr
                 een on the book
- 058A   0092    '----- background (SAVEBG/LOADBG.PIC; palette 1=dkgray 2=ltgray
-                 3=brown).
- 058A   0092    '----- 10 slots: 1-5 on the left page (x60-159), 6-0 on the rig
-                ht (x170-263),
- 058A   0092    '----- rows y = 37 + 22*row, 20 tall. Arrows / number keys / cl
-                ick select a
- 058A   0092    '----- slot; Enter, Space, a DOUBLE-click, the action button or
-                 its S/L key
- 058A   0092    '----- fires it (save = overwrite confirm when the slot is used
-                , load =
                                                                       PAGE   4
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 058A   0092    '----- lost-progress confirm unless dead).
- 058A   0092    '----- Buttons under the book: Back (X or Esc) at 109-151, the 
+ 05BA   00B8    '----- background (SAVEBG/LOADBG.PIC; palette 1=dkgray 2=ltgray
+                 3=brown).
+ 05BA   00B8    '----- 10 slots: 1-5 on the left page (x60-159), 6-0 on the rig
+                ht (x170-263),
+ 05BA   00B8    '----- rows y = 37 + 22*row, 20 tall. Arrows / number keys / cl
+                ick select a
+ 05BA   00B8    '----- slot; Enter, Space, a DOUBLE-click, the action button or
+                 its S/L key
+ 05BA   00B8    '----- fires it (save = overwrite confirm when the slot is used
+                , load =
+ 05BA   00B8    '----- lost-progress confirm unless dead).
+ 05BA   00B8    '----- Buttons under the book: Back (X or Esc) at 109-151, the 
                 screen's action
- 058A   0092    '----- button (Save S / Load L) at 168-210, both y178-194. Swit
+ 05BA   00B8    '----- button (Save S / Load L) at 168-210, both y178-194. Swit
                 ching screens =
- 058A   0092    '----- Back to the menu and pick the other.
- 058A   0092    '----- act out: 1 = a game was LOADED, 0 = Back (caller decides
+ 05BA   00B8    '----- Back to the menu and pick the other.
+ 05BA   00B8    '----- act out: 1 = a game was LOADED, 0 = Back (caller decides
                  what's behind).
- 058A   0092    SUB SlotScreen (fontData() AS INTEGER, mvint AS INTEGER, msen A
+ 05BA   00B8    SUB SlotScreen (fontData() AS INTEGER, mvint AS INTEGER, msen A
                 S SINGLE, mode AS INTEGER, dead AS INTEGER, act AS INTEGER)
- 0595   0092            DIM mr AS RegType, mo AS RegType
- 0595   0092            DIM cbuf(40) AS INTEGER
- 05AD   0092            DIM sel AS INTEGER, i AS INTEGER, done AS INTEGER, mlb 
+ 05C5   00B8            DIM mr AS RegType, mo AS RegType
+ 05C5   00B8            DIM cbuf(40) AS INTEGER
+ 05DD   00B8            DIM sel AS INTEGER, i AS INTEGER, done AS INTEGER, mlb 
                 AS INTEGER, cdrn AS INTEGER
- 05AD   0092            DIM mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy A
+ 05DD   00B8            DIM mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy A
                 S INTEGER
- 05AD   0092            DIM ns AS INTEGER, k$, cyn AS INTEGER
- 05AD   0092            DIM sgi AS INTEGER, sgx1 AS INTEGER, sgy1 AS INTEGER, s
+ 05DD   00B8            DIM ns AS INTEGER, k$, cyn AS INTEGER
+ 05DD   00B8            DIM sgi AS INTEGER, sgx1 AS INTEGER, sgy1 AS INTEGER, s
                 gx2 AS INTEGER, sgy2 AS INTEGER, sgtx AS INTEGER
- 05AD   0092            DIM dcs AS INTEGER, dct AS SINGLE, rp AS INTEGER, rgo A
+ 05DD   00B8            DIM dcs AS INTEGER, dct AS SINGLE, rp AS INTEGER, rgo A
                 S INTEGER
- 05AD   0092            REDIM srb(300) AS INTEGER
- 05C6   0092    
- 05C6   0092            '----- parse the selection-ring pixel list once per ses
+ 05DD   00B8            REDIM srb(300) AS INTEGER
+ 05F6   00B8    
+ 05F6   00B8            '----- parse the selection-ring pixel list once per ses
                 sion
- 05C6   0092            IF rgOk <> 1 THEN
- 05C6   0092                    REDIM rgL(400) AS INTEGER
- 05E8   0092                    OPEN "RING2.DAT" FOR INPUT AS #2
- 05E8   0092                    INPUT #2, rgNL
- 0606   0092                    FOR i = 1 TO rgNL: INPUT #2, rgL(i): NEXT
- 0654   0092                    CLOSE #2
- 0654   0092                    rgOk = 1
- 0654   0092            END IF
- 0667   0092    
- 0667   0092            '----- mlb starts PRESSED so the click/keypress that op
+ 05F6   00B8            IF rgOk <> 1 THEN
+ 05F6   00B8                    REDIM rgL(400) AS INTEGER
+ 0618   00B8                    OPEN "RING2.DAT" FOR INPUT AS #2
+ 0618   00B8                    INPUT #2, rgNL
+ 0636   00B8                    FOR i = 1 TO rgNL: INPUT #2, rgL(i): NEXT
+ 0684   00B8                    CLOSE #2
+ 0684   00B8                    rgOk = 1
+ 0684   00B8            END IF
+ 0697   00B8    
+ 0697   00B8            '----- mlb starts PRESSED so the click/keypress that op
                 ened this screen
- 0667   0092            '----- doesn't re-register here
- 0667   0092            act = 0: done = 0: mlb = 1: cdrn = 0: dcs = 0: dct = 0
- 0667   0092            sel = 1: IF slLast >= 1 AND slLast <= 10 THEN sel = slL
+ 0697   00B8            '----- doesn't re-register here
+ 0697   00B8            act = 0: done = 0: mlb = 1: cdrn = 0: dcs = 0: dct = 0
+ 0697   00B8            sel = 1: IF slLast >= 1 AND slLast <= 10 THEN sel = slL
                 ast
- 06B7   0092            SCREEN 1
- 06B7   0092            GOSUB ssall
- 06CD   0092            IF msen = 1 THEN
- 06CD   0092                    mr.ax = 2: CALL INTERRUPT(mvint, mr, mo)
- 06F9   0092                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
- 070E   0092                    mx = mo.cx \ 2: my = mo.dx
- 070E   0092                    IF mx > 312 THEN mx = 312 ELSE IF mx < 0 THEN m
-                x = 0
- 0740   0092                    IF my > 192 THEN my = 192 ELSE IF my < 0 THEN m
-                y = 0
- 0760   0092                    GOSUB ssdrawcur
- 0768   0092            END IF
- 0768   0092    
- 0768   0092            sswait:
+ 06E7   00B8            SCREEN 1
+ 06E7   00B8            GOSUB ssall
+ 06FD   00B8            IF msen = 1 THEN
+ 06FD   00B8                    mr.ax = 2: CALL INTERRUPT(mvint, mr, mo)
                                                                       PAGE   5
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 0768   0092            k$ = INKEY$
- 0768   0092            IF k$ <> "" THEN GOSUB sskey
- 0796   0092            IF done = 0 AND msen = 1 THEN
- 0796   0092                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
- 07D8   0092                    nmx = mo.cx \ 2: nmy = mo.dx
- 07D8   0092                    IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THE
+ 0729   00B8                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+ 073E   00B8                    mx = mo.cx \ 2: my = mo.dx
+ 073E   00B8                    IF mx > 312 THEN mx = 312 ELSE IF mx < 0 THEN m
+                x = 0
+ 0770   00B8                    IF my > 192 THEN my = 192 ELSE IF my < 0 THEN m
+                y = 0
+ 0790   00B8                    GOSUB ssdrawcur
+ 0798   00B8            END IF
+ 0798   00B8    
+ 0798   00B8            sswait:
+ 0798   00B8            k$ = INKEY$
+ 0798   00B8            IF k$ <> "" THEN GOSUB sskey
+ 07C6   00B8            IF done = 0 AND msen = 1 THEN
+ 07C6   00B8                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+ 0808   00B8                    nmx = mo.cx \ 2: nmy = mo.dx
+ 0808   00B8                    IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THE
                 N nmx = 0
- 080A   0092                    IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THE
+ 083A   00B8                    IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THE
                 N nmy = 0
- 082A   0092                    IF nmx <> mx OR nmy <> my THEN GOSUB sserase: m
+ 085A   00B8                    IF nmx <> mx OR nmy <> my THEN GOSUB sserase: m
                 x = nmx: my = nmy: GOSUB ssdrawcur
- 0867   0092                    IF (mo.bx AND 1) <> 0 AND mlb = 0 THEN GOSUB ss
+ 0897   00B8                    IF (mo.bx AND 1) <> 0 AND mlb = 0 THEN GOSUB ss
                 click
- 0890   0092                    mlb = (mo.bx AND 1)
- 0890   0092            END IF
- 0899   0092            IF done = 0 THEN GOTO sswait
- 08A2   0092            IF msen = 1 THEN GOSUB sserase
- 08C1   0092            EXIT SUB
- 08C1   0092    
- 08C1   0092            '----- full redraw: background by mode, palette, slot s
+ 08C0   00B8                    mlb = (mo.bx AND 1)
+ 08C0   00B8            END IF
+ 08C9   00B8            IF done = 0 THEN GOTO sswait
+ 08D2   00B8            IF msen = 1 THEN GOSUB sserase
+ 08F1   00B8            EXIT SUB
+ 08F1   00B8    
+ 08F1   00B8            '----- full redraw: background by mode, palette, slot s
                 tats, selection ring
- 08C1   0092            ssall:
- 08C4   0092            IF mode = 1 THEN
- 08C4   0092                    DEF SEG = &HB800: BLOAD "SAVEBG.PIC", 0: DEF SE
+ 08F1   00B8            ssall:
+ 08F4   00B8            IF mode = 1 THEN
+ 08F4   00B8                    DEF SEG = &HB800: BLOAD "SAVEBG.PIC", 0: DEF SE
                 G
- 08C4   0092            ELSE
- 08F5   0092                    DEF SEG = &HB800: BLOAD "LOADBG.PIC", 0: DEF SE
+ 08F4   00B8            ELSE
+ 0925   00B8                    DEF SEG = &HB800: BLOAD "LOADBG.PIC", 0: DEF SE
                 G
- 08F5   0092            END IF
- 0913   0092            PALETTE 1, 8: PALETTE 2, 7: PALETTE 3, 6
- 0913   0092            FOR i = 1 TO 10
- 0946   0092                    sgi = i: GOSUB ssgeo
- 0951   0092                    CALL slDrawStat(i, sgtx, sgy1 + 4, fontData())
- 0970   0092            NEXT
- 097C   0092            GOSUB ssring
- 0984   0092            RETURN
- 0984   0092    
- 0984   0092            '----- slot geometry: sgi in -> box rect + stat text x 
+ 0925   00B8            END IF
+ 0943   00B8            PALETTE 1, 8: PALETTE 2, 7: PALETTE 3, 6
+ 0943   00B8            FOR i = 1 TO 10
+ 0976   00B8                    sgi = i: GOSUB ssgeo
+ 0981   00B8                    CALL slDrawStat(i, sgtx, sgy1 + 4, fontData())
+ 09A0   00B8            NEXT
+ 09AC   00B8            GOSUB ssring
+ 09B4   00B8            RETURN
+ 09B4   00B8    
+ 09B4   00B8            '----- slot geometry: sgi in -> box rect + stat text x 
                 (text anchored so the
- 0984   0092            '----- wipe rect stays inside each pill's black interio
+ 09B4   00B8            '----- wipe rect stays inside each pill's black interio
                 r: left 88-146, right 190-248)
- 0984   0092            ssgeo:
- 0989   0092            IF sgi <= 5 THEN sgx1 = 60: sgx2 = 159: sgtx = 90 ELSE 
+ 09B4   00B8            ssgeo:
+ 09B9   00B8            IF sgi <= 5 THEN sgx1 = 60: sgx2 = 159: sgtx = 90 ELSE 
                 sgx1 = 170: sgx2 = 263: sgtx = 192
- 09B8   0092            sgy1 = 37 + ((sgi - 1) MOD 5) * 22
- 09B8   0092            sgy2 = sgy1 + 19
- 09B8   0092            RETURN
- 09B8   0092    
- 09B8   0092            '----- selection ring: the classic orange ring sprite, 
-                PSET over the slot
- 09B8   0092            '----- after a save-under GET (erase = PUT it back). On
-                e ring fits both
- 09B8   0092            '----- pages (equal 82px slot boxes); the draw origin p
-                uts its rectangle
                                                                       PAGE   6
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 09B8   0092            '----- flush around the box with the diamond ornament h
+ 09E8   00B8            sgy1 = 37 + ((sgi - 1) MOD 5) * 22
+ 09E8   00B8            sgy2 = sgy1 + 19
+ 09E8   00B8            RETURN
+ 09E8   00B8    
+ 09E8   00B8            '----- selection ring: the classic orange ring sprite, 
+                PSET over the slot
+ 09E8   00B8            '----- after a save-under GET (erase = PUT it back). On
+                e ring fits both
+ 09E8   00B8            '----- pages (equal 82px slot boxes); the draw origin p
+                uts its rectangle
+ 09E8   00B8            '----- flush around the box with the diamond ornament h
                 anging left of it.
- 09B8   0092            '----- Left page box starts at x68 -> origin 54; right 
+ 09E8   00B8            '----- Left page box starts at x68 -> origin 54; right 
                 box at x170 -> 156.
- 09B8   0092            ssring:
- 09DA   0092            sgi = sel: GOSUB ssgeo
- 09ED   0092            rgo = 6: IF sel > 5 THEN rgo = 14
- 0A00   0092            GET (sgx1 - rgo, sgy1)-(sgx1 - rgo + 99, sgy2), srb
- 0A00   0092            FOR i = 1 TO rgNL
- 0A42   0092                    rp = rgL(i)
- 0A42   0092                    PSET (sgx1 - rgo + rp MOD 100, sgy1 + (rp \ 100
+ 09E8   00B8            ssring:
+ 0A0A   00B8            sgi = sel: GOSUB ssgeo
+ 0A1D   00B8            rgo = 6: IF sel > 5 THEN rgo = 14
+ 0A30   00B8            GET (sgx1 - rgo, sgy1)-(sgx1 - rgo + 99, sgy2), srb
+ 0A30   00B8            FOR i = 1 TO rgNL
+ 0A72   00B8                    rp = rgL(i)
+ 0A72   00B8                    PSET (sgx1 - rgo + rp MOD 100, sgy1 + (rp \ 100
                 ) MOD 100), rp \ 10000
- 0A42   0092            NEXT
- 0A90   0092            RETURN
- 0A90   0092            ssunring:
- 0A95   0092            sgi = sel: GOSUB ssgeo
- 0AA8   0092            rgo = 6: IF sel > 5 THEN rgo = 14
- 0ABB   0092            PUT (sgx1 - rgo, sgy1), srb, PSET
- 0ABB   0092            RETURN
- 0ABB   0092    
- 0ABB   0092            '----- move the selection to ns (1-10)
- 0ABB   0092            ssmove:
- 0AE5   0092            IF ns < 1 OR ns > 10 OR ns = sel THEN RETURN
- 0B1A   0092            IF msen = 1 THEN GOSUB sserase
- 0B39   0092            GOSUB ssunring
- 0B41   0092            sel = ns
- 0B41   0092            GOSUB ssring
- 0B4F   0092            IF msen = 1 THEN GOSUB ssdrawcur
- 0B6E   0092            RETURN
- 0B6E   0092    
- 0B6E   0092            '----- keys: Esc/X back, Enter/Space/S(save)/L(load) fi
+ 0A72   00B8            NEXT
+ 0AC0   00B8            RETURN
+ 0AC0   00B8            ssunring:
+ 0AC5   00B8            sgi = sel: GOSUB ssgeo
+ 0AD8   00B8            rgo = 6: IF sel > 5 THEN rgo = 14
+ 0AEB   00B8            PUT (sgx1 - rgo, sgy1), srb, PSET
+ 0AEB   00B8            RETURN
+ 0AEB   00B8    
+ 0AEB   00B8            '----- move the selection to ns (1-10)
+ 0AEB   00B8            ssmove:
+ 0B15   00B8            IF ns < 1 OR ns > 10 OR ns = sel THEN RETURN
+ 0B4A   00B8            IF msen = 1 THEN GOSUB sserase
+ 0B69   00B8            GOSUB ssunring
+ 0B71   00B8            sel = ns
+ 0B71   00B8            GOSUB ssring
+ 0B7F   00B8            IF msen = 1 THEN GOSUB ssdrawcur
+ 0B9E   00B8            RETURN
+ 0B9E   00B8    
+ 0B9E   00B8            '----- keys: Esc/X back, Enter/Space/S(save)/L(load) fi
                 re, digits jump,
- 0B6E   0092            '----- arrows move (up/down within the page, left/right
+ 0B9E   00B8            '----- arrows move (up/down within the page, left/right
                  across pages)
- 0B6E   0092            sskey:
- 0B73   0092            IF k$ = CHR$(27) OR k$ = "x" OR k$ = "X" THEN act = 0: 
+ 0B9E   00B8            sskey:
+ 0BA3   00B8            IF k$ = CHR$(27) OR k$ = "x" OR k$ = "X" THEN act = 0: 
                 done = 1: RETURN
- 0BE3   0092            IF k$ = CHR$(13) OR k$ = " " THEN GOSUB ssfire: RETURN
- 0C2D   0092            IF mode = 1 AND (k$ = "s" OR k$ = "S") THEN GOSUB ssfir
+ 0C13   00B8            IF k$ = CHR$(13) OR k$ = " " THEN GOSUB ssfire: RETURN
+ 0C5D   00B8            IF mode = 1 AND (k$ = "s" OR k$ = "S") THEN GOSUB ssfir
                 e: RETURN
- 0C87   0092            IF mode = 2 AND (k$ = "l" OR k$ = "L") THEN GOSUB ssfir
+ 0CB7   00B8            IF mode = 2 AND (k$ = "l" OR k$ = "L") THEN GOSUB ssfir
                 e: RETURN
- 0CE1   0092            ns = 0
- 0CE1   0092            IF k$ >= "1" AND k$ <= "9" THEN ns = ASC(k$) - 48
- 0D2C   0092            IF k$ = "0" THEN ns = 10
- 0D43   0092            IF k$ = CHR$(0) + CHR$(72) THEN ns = sel - 1: IF ns < 1
-                 THEN ns = 1
- 0D7E   0092            IF k$ = CHR$(0) + CHR$(80) THEN ns = sel + 1: IF ns > 1
-                0 THEN ns = 10
- 0DB9   0092            IF k$ = CHR$(0) + CHR$(75) THEN IF sel > 5 THEN ns = se
-                l - 5
- 0DF2   0092            IF k$ = CHR$(0) + CHR$(77) THEN IF sel <= 5 THEN ns = s
-                el + 5
- 0E2B   0092            IF ns > 0 THEN GOSUB ssmove
+ 0D11   00B8            ns = 0
+ 0D11   00B8            IF k$ >= "1" AND k$ <= "9" THEN ns = ASC(k$) - 48
                                                                       PAGE   7
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 0E3C   0092            RETURN
- 0E3C   0092    
- 0E3C   0092            '----- click: the buttons under the book, or a slot (se
+ 0D5C   00B8            IF k$ = "0" THEN ns = 10
+ 0D73   00B8            IF k$ = CHR$(0) + CHR$(72) THEN ns = sel - 1: IF ns < 1
+                 THEN ns = 1
+ 0DAE   00B8            IF k$ = CHR$(0) + CHR$(80) THEN ns = sel + 1: IF ns > 1
+                0 THEN ns = 10
+ 0DE9   00B8            IF k$ = CHR$(0) + CHR$(75) THEN IF sel > 5 THEN ns = se
+                l - 5
+ 0E22   00B8            IF k$ = CHR$(0) + CHR$(77) THEN IF sel <= 5 THEN ns = s
+                el + 5
+ 0E5B   00B8            IF ns > 0 THEN GOSUB ssmove
+ 0E6C   00B8            RETURN
+ 0E6C   00B8    
+ 0E6C   00B8            '----- click: the buttons under the book, or a slot (se
                 lect; double-click fires)
- 0E3C   0092            ssclick:
- 0E41   0092            IF my >= 178 AND my <= 194 THEN
- 0E41   0092                    IF mx >= 109 AND mx <= 151 THEN act = 0: done =
+ 0E6C   00B8            ssclick:
+ 0E71   00B8            IF my >= 178 AND my <= 194 THEN
+ 0E71   00B8                    IF mx >= 109 AND mx <= 151 THEN act = 0: done =
                  1
- 0E8F   0092                    IF mx >= 168 AND mx <= 210 THEN GOSUB ssfire
- 0EB6   0092                    RETURN
- 0EB6   0092            END IF
- 0EBB   0092            FOR i = 1 TO 10
- 0EC2   0092                    sgi = i: GOSUB ssgeo
- 0ECD   0092                    IF mx >= sgx1 AND mx <= sgx2 AND my >= sgy1 AND
+ 0EBF   00B8                    IF mx >= 168 AND mx <= 210 THEN GOSUB ssfire
+ 0EE6   00B8                    RETURN
+ 0EE6   00B8            END IF
+ 0EEB   00B8            FOR i = 1 TO 10
+ 0EF2   00B8                    sgi = i: GOSUB ssgeo
+ 0EFD   00B8                    IF mx >= sgx1 AND mx <= sgx2 AND my >= sgy1 AND
                  my <= sgy2 THEN
- 0ECD   0092                            IF i = sel AND dcs = i AND TIMER - dct 
+ 0EFD   00B8                            IF i = sel AND dcs = i AND TIMER - dct 
                 >= 0 AND TIMER - dct < .45 THEN
- 0ECD   0092                                    dcs = 0
- 0ECD   0092                                    GOSUB ssfire
- 0F88   0092                            ELSE
- 0F8B   0092                                    ns = i: GOSUB ssmove
- 0F99   0092                                    dcs = i: dct = TIMER
- 0F99   0092                            END IF
- 0FAF   0092                            i = 10
- 0FAF   0092                    END IF
- 0FB4   0092            NEXT
- 0FC3   0092            RETURN
- 0FC3   0092    
- 0FC3   0092            '----- fire the selected slot: save to it / load from i
+ 0EFD   00B8                                    dcs = 0
+ 0EFD   00B8                                    GOSUB ssfire
+ 0FB8   00B8                            ELSE
+ 0FBB   00B8                                    ns = i: GOSUB ssmove
+ 0FC9   00B8                                    dcs = i: dct = TIMER
+ 0FC9   00B8                            END IF
+ 0FDF   00B8                            i = 10
+ 0FDF   00B8                    END IF
+ 0FE4   00B8            NEXT
+ 0FF3   00B8            RETURN
+ 0FF3   00B8    
+ 0FF3   00B8            '----- fire the selected slot: save to it / load from i
                 t (with confirms)
- 0FC3   0092            ssfire:
- 0FC8   0092            IF mode = 1 THEN
- 0FC8   0092                    cyn = 1
- 0FC8   0092                    IF slUsed(sel) = 1 THEN
- 0FC8   0092                            IF msen = 1 THEN GOSUB sserase
- 100B   0092                            CALL DrawYNBox("Overwrite this slot?", 
+ 0FF3   00B8            ssfire:
+ 0FF8   00B8            IF mode = 1 THEN
+ 0FF8   00B8                    cyn = 1
+ 0FF8   00B8                    IF slUsed(sel) = 1 THEN
+ 0FF8   00B8                            IF msen = 1 THEN GOSUB sserase
+ 103B   00B8                            CALL DrawYNBox("Overwrite this slot?", 
                 1, fontData())
- 103B   0092                            CALL YNWait(mvint, msen, 1, cyn)
- 1055   0092                    END IF
- 1055   0092                    IF cyn = 1 THEN CALL SaveGame(sel): slLast = se
+ 106B   00B8                            CALL YNWait(mvint, msen, 1, cyn)
+ 1085   00B8                    END IF
+ 1085   00B8                    IF cyn = 1 THEN CALL SaveGame(sel): slLast = se
                 l
- 106D   0092                    IF msen = 1 THEN GOSUB sserase
- 108C   0092                    GOSUB ssall
- 1094   0092                    IF msen = 1 THEN GOSUB ssdrawcur
- 10B3   0092                    mlb = 1
- 10B3   0092            ELSE
- 10BB   0092                    IF slUsed(sel) = 0 THEN RETURN
- 10CF   0092                    cyn = 1
- 10CF   0092                    IF dead = 0 THEN
- 10CF   0092                            IF msen = 1 THEN GOSUB sserase
- 10FE   0092                            CALL DrawYNBox("Load? unsaved game lost
-                .", 1, fontData())
- 112E   0092                            CALL YNWait(mvint, msen, 1, cyn)
- 1148   0092                    END IF
+ 109D   00B8                    IF msen = 1 THEN GOSUB sserase
+ 10BC   00B8                    GOSUB ssall
+ 10C4   00B8                    IF msen = 1 THEN GOSUB ssdrawcur
                                                                       PAGE   8
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 1148   0092                    IF cyn = 1 THEN
- 1148   0092                            CALL LoadGame(sel)
- 115A   0092                            slLast = sel
- 115A   0092                            act = 1: done = 1
- 115A   0092                    ELSE
- 116F   0092                            IF msen = 1 THEN GOSUB sserase
- 118E   0092                            GOSUB ssall
- 1196   0092                            IF msen = 1 THEN GOSUB ssdrawcur
- 11B5   0092                            mlb = 1
- 11B5   0092                    END IF
- 11BA   0092            END IF
- 11BA   0092            RETURN
- 11BA   0092    
- 11BA   0092            '----- self-drawn NW-arrow cursor with save-under (same
+ 10E3   00B8                    mlb = 1
+ 10E3   00B8            ELSE
+ 10EB   00B8                    IF slUsed(sel) = 0 THEN RETURN
+ 10FF   00B8                    cyn = 1
+ 10FF   00B8                    IF dead = 0 THEN
+ 10FF   00B8                            IF msen = 1 THEN GOSUB sserase
+ 112E   00B8                            CALL DrawYNBox("Load? unsaved game lost
+                .", 1, fontData())
+ 115E   00B8                            CALL YNWait(mvint, msen, 1, cyn)
+ 1178   00B8                    END IF
+ 1178   00B8                    IF cyn = 1 THEN
+ 1178   00B8                            CALL LoadGame(sel)
+ 118A   00B8                            slLast = sel
+ 118A   00B8                            act = 1: done = 1
+ 118A   00B8                    ELSE
+ 119F   00B8                            IF msen = 1 THEN GOSUB sserase
+ 11BE   00B8                            GOSUB ssall
+ 11C6   00B8                            IF msen = 1 THEN GOSUB ssdrawcur
+ 11E5   00B8                            mlb = 1
+ 11E5   00B8                    END IF
+ 11EA   00B8            END IF
+ 11EA   00B8            RETURN
+ 11EA   00B8    
+ 11EA   00B8            '----- self-drawn NW-arrow cursor with save-under (same
                  art as the other screens)
- 11BA   0092            ssdrawcur:
- 11BF   0092            GET (mx, my)-(mx + 5, my + 7), cbuf
- 11BF   0092            PSET (mx, my), 3
- 11BF   0092            PSET (mx, my + 1), 3: PSET (mx + 1, my + 1), 3
- 11BF   0092            PSET (mx, my + 2), 3: PSET (mx + 2, my + 2), 3
- 11BF   0092            PSET (mx, my + 3), 3: PSET (mx + 3, my + 3), 3
- 11BF   0092            PSET (mx, my + 4), 3: PSET (mx + 4, my + 4), 3
- 11BF   0092            PSET (mx, my + 5), 3: PSET (mx + 2, my + 5), 3: PSET (m
+ 11EA   00B8            ssdrawcur:
+ 11EF   00B8            GET (mx, my)-(mx + 5, my + 7), cbuf
+ 11EF   00B8            PSET (mx, my), 3
+ 11EF   00B8            PSET (mx, my + 1), 3: PSET (mx + 1, my + 1), 3
+ 11EF   00B8            PSET (mx, my + 2), 3: PSET (mx + 2, my + 2), 3
+ 11EF   00B8            PSET (mx, my + 3), 3: PSET (mx + 3, my + 3), 3
+ 11EF   00B8            PSET (mx, my + 4), 3: PSET (mx + 4, my + 4), 3
+ 11EF   00B8            PSET (mx, my + 5), 3: PSET (mx + 2, my + 5), 3: PSET (m
                 x + 3, my + 5), 3
- 11BF   0092            PSET (mx, my + 6), 3: PSET (mx + 1, my + 6), 3
- 11BF   0092            PSET (mx + 1, my + 2), 2
- 11BF   0092            PSET (mx + 1, my + 3), 2: PSET (mx + 2, my + 3), 2
- 11BF   0092            PSET (mx + 1, my + 4), 2: PSET (mx + 2, my + 4), 2: PSE
+ 11EF   00B8            PSET (mx, my + 6), 3: PSET (mx + 1, my + 6), 3
+ 11EF   00B8            PSET (mx + 1, my + 2), 2
+ 11EF   00B8            PSET (mx + 1, my + 3), 2: PSET (mx + 2, my + 3), 2
+ 11EF   00B8            PSET (mx + 1, my + 4), 2: PSET (mx + 2, my + 4), 2: PSE
                 T (mx + 3, my + 4), 2
- 11BF   0092            PSET (mx + 1, my + 5), 2
- 11BF   0092            cdrn = 1
- 11BF   0092            RETURN
- 11BF   0092            sserase:
- 13FF   0092            IF cdrn = 1 THEN PUT (mx, my), cbuf, PSET
- 142B   0092            cdrn = 0
- 142B   0092            RETURN
- 142B   0092    END SUB
- 1459   0092    
- 1459   0092    '----- shared yes/no modal window (dark theme, matches the main
+ 11EF   00B8            PSET (mx + 1, my + 5), 2
+ 11EF   00B8            cdrn = 1
+ 11EF   00B8            RETURN
+ 11EF   00B8            sserase:
+ 142F   00B8            IF cdrn = 1 THEN PUT (mx, my), cbuf, PSET
+ 145B   00B8            cdrn = 0
+ 145B   00B8            RETURN
+ 145B   00B8    END SUB
+ 1489   00B8    
+ 1489   00B8    '----- shared yes/no modal window (dark theme, matches the main
                  menu): nested
- 1459   0092    '----- outlines (dkgray, black, dkgray, ltgray, black interior)
+ 1489   00B8    '----- outlines (dkgray, black, dkgray, ltgray, black interior)
                 , 9x9 corner
- 1459   0092    '----- scrolls, ltgray message, ornament stroke, art Yes/No but
+ 1489   00B8    '----- scrolls, ltgray message, ornament stroke, art Yes/No but
                 tons (Yes drawn
- 1459   0092    '----- active). dk = the active palette's dark-gray attr: 3 on 
-                the inventory /
- 1459   0092    '----- main-menu palette, 1 on the save/load screen (also selec
-                ts the
- 1459   0092    '----- attr-swapped art variant). Buttons sit centered as a pai
-                r (16x10 art at
- 1459   0092    '----- 138/166): hit zones Yes 132-158, No 161-187, y 105-117 (
-                plus the legacy
- 1459   0092    '----- 260-270/80-87 = No).
- 1459   0092    SUB DrawYNBox (msg AS STRING, dk AS INTEGER, fontData() AS INTE
                                                                       PAGE   9
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 1489   00B8    '----- active). dk = the active palette's dark-gray attr: 3 on 
+                the inventory /
+ 1489   00B8    '----- main-menu palette, 1 on the save/load screen (also selec
+                ts the
+ 1489   00B8    '----- attr-swapped art variant). Buttons sit centered as a pai
+                r (16x10 art at
+ 1489   00B8    '----- 138/166): hit zones Yes 132-158, No 161-187, y 105-117 (
+                plus the legacy
+ 1489   00B8    '----- 260-270/80-87 = No).
+ 1489   00B8    SUB DrawYNBox (msg AS STRING, dk AS INTEGER, fontData() AS INTE
                 GER)
- 1464   0092            DIM vo AS INTEGER, so AS INTEGER
- 1464   0092            CALL DlgLoad
- 1469   0092            vo = 0: so = 0
- 1469   0092            IF dk = 1 THEN vo = 4: so = 37
- 1488   0092            LINE (44, 76)-(276, 124), dk, B
- 1488   0092            LINE (45, 77)-(275, 123), 0, B
- 1488   0092            LINE (46, 78)-(274, 122), dk, B
- 1488   0092            LINE (47, 79)-(273, 121), 2, B
- 1488   0092            LINE (48, 80)-(272, 120), 0, BF
- 1488   0092            PUT (44, 116), dlgCor((vo + 0) * 16), PSET
- 1488   0092            PUT (268, 116), dlgCor((vo + 1) * 16), PSET
- 1488   0092            PUT (44, 76), dlgCor((vo + 2) * 16), PSET
- 1488   0092            PUT (268, 76), dlgCor((vo + 3) * 16), PSET
- 1488   0092            CALL drawText(160 - textWidth(msg, fontData()) \ 2, 85,
+ 1494   00B8            CALL DlgLoad
+ 1499   00B8            LINE (44, 76)-(276, 124), dk, B
+ 1499   00B8            LINE (45, 77)-(275, 123), 0, B
+ 1499   00B8            LINE (46, 78)-(274, 122), dk, B
+ 1499   00B8            LINE (47, 79)-(273, 121), 2, B
+ 1499   00B8            LINE (48, 80)-(272, 120), 0, BF
+ 1499   00B8            PUT (44, 116), dlgCor(0), PSET
+ 1499   00B8            PUT (268, 116), dlgCor(16), PSET
+ 1499   00B8            PUT (44, 76), dlgCor(32), PSET
+ 1499   00B8            PUT (268, 76), dlgCor(48), PSET
+ 1499   00B8            CALL drawText(160 - textWidth(msg, fontData()) \ 2, 85,
                  msg, 2, fontData())
- 165B   0092            PUT (115, 96), dlgStr(so), PSET
- 165B   0092            CALL YNBtn(1, dk)
- 1693   0092    END SUB
- 169B   0092    
- 169B   0092    '----- parse the dialog part sprites from disk once (see the dl
+ 164D   00B8            PUT (115, 96), dlgStr(0), PSET
+ 164D   00B8            CALL YNBtn(1, dk)
+ 1682   00B8    END SUB
+ 168A   00B8    
+ 168A   00B8    '----- parse the dialog part sprites from disk once (see the dl
                 g* notes up top)
- 169B   0092    SUB DlgLoad
- 16A6   0092            DIM i AS INTEGER
- 16A6   0092            IF dlgOk = 1 THEN EXIT SUB
- 16B0   0092            REDIM dlgCor(127) AS INTEGER
- 16C8   0092            REDIM dlgBtn(175) AS INTEGER
- 16E0   0092            REDIM dlgStr(73) AS INTEGER
- 16F8   0092            OPEN "DLGCOR.PCT" FOR INPUT AS #2
- 16F8   0092            FOR i = 0 TO 15
- 1712   0092                    INPUT #2, dlgCor(i), dlgCor(16 + i), dlgCor(32 
-                + i), dlgCor(48 + i), dlgCor(64 + i), dlgCor(80 + i), dlgCor(96
-                 + i), dlgCor(112 + i)
- 171B   0092            NEXT
- 17DE   0092            CLOSE #2
- 17DE   0092            OPEN "DLGBTN.PCT" FOR INPUT AS #2
- 17DE   0092            FOR i = 0 TO 21
- 1806   0092                    INPUT #2, dlgBtn(i), dlgBtn(22 + i), dlgBtn(44 
-                + i), dlgBtn(66 + i), dlgBtn(88 + i), dlgBtn(110 + i), dlgBtn(1
-                32 + i), dlgBtn(154 + i)
- 180F   0092            NEXT
- 18D3   0092            CLOSE #2
- 18D3   0092            OPEN "DLGSTRK.PCT" FOR INPUT AS #2
- 18D3   0092            FOR i = 0 TO 36
- 18FA   0092                    INPUT #2, dlgStr(i), dlgStr(37 + i)
- 1903   0092            NEXT
- 1941   0092            CLOSE #2
- 1941   0092            dlgOk = 1
- 1941   0092    END SUB
- 195C   0092    
- 195C   0092    '----- modal wait on an ALREADY-DRAWN yes/no dialog (DrawYNBox)
-                , with its own
- 195C   0092    '----- self-drawn cursor: hover/arrows move the active-button h
-                ighlight,
+ 168A   00B8    SUB DlgLoad
+ 1695   00B8            DIM i AS INTEGER
+ 1695   00B8            IF dlgOk = 1 THEN EXIT SUB
+ 169F   00B8            REDIM dlgCor(63) AS INTEGER
+ 16B7   00B8            REDIM dlgBtn(87) AS INTEGER
+ 16CF   00B8            REDIM dlgStr(36) AS INTEGER
+ 16E7   00B8            OPEN "DLGCOR.PCT" FOR INPUT AS #2
+ 16E7   00B8            FOR i = 0 TO 15
+ 1702   00B8                    INPUT #2, dlgCor(i), dlgCor(16 + i), dlgCor(32 
+                + i), dlgCor(48 + i)
+ 170B   00B8            NEXT
+ 1773   00B8            CLOSE #2
+ 1773   00B8            OPEN "DLGBTN.PCT" FOR INPUT AS #2
+ 1773   00B8            FOR i = 0 TO 21
+ 179A   00B8                    INPUT #2, dlgBtn(i), dlgBtn(22 + i), dlgBtn(44 
+                + i), dlgBtn(66 + i)
+ 17A3   00B8            NEXT
+ 180C   00B8            CLOSE #2
+ 180C   00B8            OPEN "DLGSTRK.PCT" FOR INPUT AS #2
+ 180C   00B8            FOR i = 0 TO 36
+ 1834   00B8                    INPUT #2, dlgStr(i)
+ 183D   00B8            NEXT
+ 1863   00B8            CLOSE #2
+ 1863   00B8            dlgOk = 1
+ 1863   00B8    END SUB
                                                                       PAGE  10
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 195C   0092    '----- Enter/Space fire the active button, Y/N/Esc answer direc
+ 187E   00B8    
+ 187E   00B8    '----- modal wait on an ALREADY-DRAWN yes/no dialog (DrawYNBox)
+                , with its own
+ 187E   00B8    '----- self-drawn cursor: hover/arrows move the active-button h
+                ighlight,
+ 187E   00B8    '----- Enter/Space fire the active button, Y/N/Esc answer direc
                 tly, clicks use
- 195C   0092    '----- the classic zones. dk as in DrawYNBox. res out: 1 = Yes,
+ 187E   00B8    '----- the classic zones. dk as in DrawYNBox. res out: 1 = Yes,
                  0 = No.
- 195C   0092    '----- Used by GAME.BAS QuitConfirm (kept tiny for the 64K code
+ 187E   00B8    '----- Used by GAME.BAS QuitConfirm (kept tiny for the 64K code
                  ceiling).
- 195C   0092    SUB YNWait (mvint AS INTEGER, msen AS SINGLE, dk AS INTEGER, re
+ 187E   00B8    SUB YNWait (mvint AS INTEGER, msen AS SINGLE, dk AS INTEGER, re
                 s AS INTEGER)
- 1967   0092            DIM mr AS RegType, mo AS RegType
- 1967   0092            DIM cbuf(40) AS INTEGER
- 197F   0092            DIM mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy A
+ 1889   00B8            DIM mr AS RegType, mo AS RegType
+ 1889   00B8            DIM cbuf(40) AS INTEGER
+ 18A1   00B8            DIM mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy A
                 S INTEGER
- 197F   0092            DIM sel AS INTEGER, nyn AS INTEGER, cdrn AS INTEGER
- 197F   0092            DIM k$
- 197F   0092            res = -1: sel = 1: cdrn = 0
- 197F   0092            IF msen = 1 THEN
- 197F   0092                    '----- let the opening click release so it does
+ 18A1   00B8            DIM sel AS INTEGER, nyn AS INTEGER, cdrn AS INTEGER
+ 18A1   00B8            DIM k$
+ 18A1   00B8            res = -1: sel = 1: cdrn = 0
+ 18A1   00B8            IF msen = 1 THEN
+ 18A1   00B8                    '----- let the opening click release so it does
                 n't carry into Yes/No
- 197F   0092                    DO
- 19A8   0092                            mr.ax = 3: CALL INTERRUPT(mvint, mr, mo
+ 18A1   00B8                    DO
+ 18CA   00B8                            mr.ax = 3: CALL INTERRUPT(mvint, mr, mo
                 )
- 19BD   0092                    LOOP WHILE (mo.bx AND 1) <> 0
- 19BD   0092                    mx = mo.cx \ 2: my = mo.dx
- 19BD   0092                    IF mx > 312 THEN mx = 312 ELSE IF mx < 0 THEN m
+ 18DF   00B8                    LOOP WHILE (mo.bx AND 1) <> 0
+ 18DF   00B8                    mx = mo.cx \ 2: my = mo.dx
+ 18DF   00B8                    IF mx > 312 THEN mx = 312 ELSE IF mx < 0 THEN m
                 x = 0
- 19F9   0092                    IF my > 192 THEN my = 192 ELSE IF my < 0 THEN m
+ 191B   00B8                    IF my > 192 THEN my = 192 ELSE IF my < 0 THEN m
                 y = 0
- 1A19   0092                    GOSUB ynwdraw
- 1A21   0092            END IF
- 1A21   0092            ynwloop:
- 1A21   0092            nyn = 0
- 1A21   0092            k$ = INKEY$
- 1A21   0092            IF k$ = "y" OR k$ = "Y" THEN res = 1
- 1A76   0092            IF k$ = "n" OR k$ = "N" OR k$ = CHR$(27) THEN res = 0
- 1AD3   0092            IF k$ = CHR$(0) + CHR$(75) THEN nyn = 1
- 1AFF   0092            IF k$ = CHR$(0) + CHR$(77) THEN nyn = 2
- 1B2B   0092            IF k$ = CHR$(13) OR k$ = " " THEN IF sel = 1 THEN res =
+ 193B   00B8                    GOSUB ynwdraw
+ 1943   00B8            END IF
+ 1943   00B8            ynwloop:
+ 1943   00B8            nyn = 0
+ 1943   00B8            k$ = INKEY$
+ 1943   00B8            IF k$ = "y" OR k$ = "Y" THEN res = 1
+ 1998   00B8            IF k$ = "n" OR k$ = "N" OR k$ = CHR$(27) THEN res = 0
+ 19F5   00B8            IF k$ = CHR$(0) + CHR$(75) THEN nyn = 1
+ 1A21   00B8            IF k$ = CHR$(0) + CHR$(77) THEN nyn = 2
+ 1A4D   00B8            IF k$ = CHR$(13) OR k$ = " " THEN IF sel = 1 THEN res =
                  1 ELSE res = 0
- 1B80   0092            IF msen = 1 THEN
- 1B80   0092                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
- 1BAC   0092                    nmx = mo.cx \ 2: nmy = mo.dx
- 1BAC   0092                    IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THE
+ 1AA2   00B8            IF msen = 1 THEN
+ 1AA2   00B8                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+ 1ACE   00B8                    nmx = mo.cx \ 2: nmy = mo.dx
+ 1ACE   00B8                    IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THE
                 N nmx = 0
- 1BDE   0092                    IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THE
+ 1B00   00B8                    IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THE
                 N nmy = 0
- 1BFE   0092                    IF nmx <> mx OR nmy <> my THEN GOSUB ynwerase: 
+ 1B20   00B8                    IF nmx <> mx OR nmy <> my THEN GOSUB ynwerase: 
                 mx = nmx: my = nmy: GOSUB ynwdraw
- 1C3B   0092                    IF my >= 105 AND my <= 117 THEN
- 1C3B   0092                            IF mx >= 132 AND mx <= 158 THEN nyn = 1
- 1C7C   0092                            IF mx >= 161 AND mx <= 187 THEN nyn = 2
- 1CA0   0092                    END IF
- 1CA0   0092                    IF (mo.bx AND 1) <> 0 THEN
- 1CA0   0092                            IF my >= 105 AND my <= 117 AND mx >= 13
-                2 AND mx <= 158 THEN res = 1
+ 1B5D   00B8                    IF my >= 105 AND my <= 117 THEN
+ 1B5D   00B8                            IF mx >= 132 AND mx <= 158 THEN nyn = 1
                                                                       PAGE  11
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 1CEB   0092                            IF my >= 105 AND my <= 117 AND mx >= 16
+ 1B9E   00B8                            IF mx >= 161 AND mx <= 187 THEN nyn = 2
+ 1BC2   00B8                    END IF
+ 1BC2   00B8                    IF (mo.bx AND 1) <> 0 THEN
+ 1BC2   00B8                            IF my >= 105 AND my <= 117 AND mx >= 13
+                2 AND mx <= 158 THEN res = 1
+ 1C0D   00B8                            IF my >= 105 AND my <= 117 AND mx >= 16
                 1 AND mx <= 187 THEN res = 0
- 1D29   0092                            IF my >= 80 AND my <= 87 AND mx >= 260 
+ 1C4B   00B8                            IF my >= 80 AND my <= 87 AND mx >= 260 
                 AND mx <= 270 THEN res = 0
- 1D67   0092                    END IF
- 1D67   0092            END IF
- 1D67   0092            '----- hover / arrows move the active-button highlight
- 1D67   0092            IF nyn > 0 AND nyn <> sel THEN
- 1D67   0092                    sel = nyn
- 1D67   0092                    GOSUB ynwerase
- 1D96   0092                    CALL YNBtn(sel, dk)
- 1DA2   0092                    GOSUB ynwdraw
- 1DAA   0092            END IF
- 1DAA   0092            IF res = -1 THEN GOTO ynwloop
- 1DB5   0092            GOSUB ynwerase
- 1DBD   0092            EXIT SUB
- 1DBD   0092    
- 1DBD   0092            '----- self-drawn NW-arrow cursor with save-under (same
+ 1C89   00B8                    END IF
+ 1C89   00B8            END IF
+ 1C89   00B8            '----- hover / arrows move the active-button highlight
+ 1C89   00B8            IF nyn > 0 AND nyn <> sel THEN
+ 1C89   00B8                    sel = nyn
+ 1C89   00B8                    GOSUB ynwerase
+ 1CB8   00B8                    CALL YNBtn(sel, dk)
+ 1CC4   00B8                    GOSUB ynwdraw
+ 1CCC   00B8            END IF
+ 1CCC   00B8            IF res = -1 THEN GOTO ynwloop
+ 1CD7   00B8            GOSUB ynwerase
+ 1CDF   00B8            EXIT SUB
+ 1CDF   00B8    
+ 1CDF   00B8            '----- self-drawn NW-arrow cursor with save-under (same
                  art as the save/load screen's)
- 1DBD   0092            ynwdraw:
- 1DC0   0092            IF msen <> 1 THEN RETURN
- 1DE1   0092            GET (mx, my)-(mx + 5, my + 7), cbuf
- 1DE1   0092            PSET (mx, my), 3
- 1DE1   0092            PSET (mx, my + 1), 3: PSET (mx + 1, my + 1), 3
- 1DE1   0092            PSET (mx, my + 2), 3: PSET (mx + 2, my + 2), 3
- 1DE1   0092            PSET (mx, my + 3), 3: PSET (mx + 3, my + 3), 3
- 1DE1   0092            PSET (mx, my + 4), 3: PSET (mx + 4, my + 4), 3
- 1DE1   0092            PSET (mx, my + 5), 3: PSET (mx + 2, my + 5), 3: PSET (m
+ 1CDF   00B8            ynwdraw:
+ 1CE2   00B8            IF msen <> 1 THEN RETURN
+ 1D03   00B8            GET (mx, my)-(mx + 5, my + 7), cbuf
+ 1D03   00B8            PSET (mx, my), 3
+ 1D03   00B8            PSET (mx, my + 1), 3: PSET (mx + 1, my + 1), 3
+ 1D03   00B8            PSET (mx, my + 2), 3: PSET (mx + 2, my + 2), 3
+ 1D03   00B8            PSET (mx, my + 3), 3: PSET (mx + 3, my + 3), 3
+ 1D03   00B8            PSET (mx, my + 4), 3: PSET (mx + 4, my + 4), 3
+ 1D03   00B8            PSET (mx, my + 5), 3: PSET (mx + 2, my + 5), 3: PSET (m
                 x + 3, my + 5), 3
- 1DE1   0092            PSET (mx, my + 6), 3: PSET (mx + 1, my + 6), 3
- 1DE1   0092            PSET (mx + 1, my + 2), 2
- 1DE1   0092            PSET (mx + 1, my + 3), 2: PSET (mx + 2, my + 3), 2
- 1DE1   0092            PSET (mx + 1, my + 4), 2: PSET (mx + 2, my + 4), 2: PSE
+ 1D03   00B8            PSET (mx, my + 6), 3: PSET (mx + 1, my + 6), 3
+ 1D03   00B8            PSET (mx + 1, my + 2), 2
+ 1D03   00B8            PSET (mx + 1, my + 3), 2: PSET (mx + 2, my + 3), 2
+ 1D03   00B8            PSET (mx + 1, my + 4), 2: PSET (mx + 2, my + 4), 2: PSE
                 T (mx + 3, my + 4), 2
- 1DE1   0092            PSET (mx + 1, my + 5), 2
- 1DE1   0092            cdrn = 1
- 1DE1   0092            RETURN
- 1DE1   0092            ynwerase:
- 1FFB   0092            IF cdrn = 1 THEN PUT (mx, my), cbuf, PSET
- 2027   0092            cdrn = 0
- 2027   0092            RETURN
- 2027   0092    END SUB
- 204B   0092    
- 204B   0092    '----- (re)draw the dialog's Yes/No art buttons inside their hi
-                t rects.
- 204B   0092    '----- sel: 1 = Yes active / No inactive, 2 = No active / Yes i
-                nactive.
- 204B   0092    '----- dk = 1 -> save/load screen palette -> attr-swapped frame
-                 set.
- 204B   0092    SUB YNBtn (sel AS INTEGER, dk AS INTEGER)
- 2056   0092            DIM vo AS INTEGER, yf AS INTEGER, nf AS INTEGER
- 2056   0092            CALL DlgLoad
- 205B   0092            vo = 0: IF dk = 1 THEN vo = 4
- 2070   0092            yf = 1: IF sel = 1 THEN yf = 0
+ 1D03   00B8            PSET (mx + 1, my + 5), 2
+ 1D03   00B8            cdrn = 1
+ 1D03   00B8            RETURN
+ 1D03   00B8            ynwerase:
+ 1F1D   00B8            IF cdrn = 1 THEN PUT (mx, my), cbuf, PSET
+ 1F49   00B8            cdrn = 0
+ 1F49   00B8            RETURN
+ 1F49   00B8    END SUB
+ 1F6D   00B8    
+ 1F6D   00B8    '----- ReviveShow: after a revive=1 timer death restores the te
+                mp save, show
+ 1F6D   00B8    '----- the "they're still in there" message sprite (REVIVE.DAT)
+                 centered over
+ 1F6D   00B8    '----- the restored room in a fixed palette, wait for a fresh k
+                ey or click,
                                                                       PAGE  12
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 2085   0092            nf = 3: IF sel = 2 THEN nf = 2
- 209A   0092            PUT (138, 106), dlgBtn((vo + yf) * 22), PSET
- 209A   0092            PUT (166, 106), dlgBtn((vo + nf) * 22), PSET
- 209A   0092    END SUB
- 2101   0092    
- 2101   0092    '----- ESC main menu: dim the LIVE room screen to black/dark-gr
-                ay, switch to the
- 2101   0092    '----- inventory palette and draw the MainMenu box centered. It
-                ems: 1 New Game,
- 2101   0092    '----- 2 Save, 3 Load (dithered+skipped when no save exists), 4
-                 Quit (SYSTEM after
- 2101   0092    '----- confirm). Save/Load open the Save/Load screen (own bg, r
-                eplaces the menu).
- 2101   0092    '----- act out: 0 = resume the game (caller reloads the room), 
-                1 = a game was
- 2101   0092    '----- LOADED, 2 = NEW GAME chosen (caller RUNs).
- 2101   0092    '----- dead = 1: opened over the death screen -- Save is dither
-                ed/locked, ESC/x
- 2101   0092    '----- cannot resume (the player must pick New Game, Load or Qu
-                it), and New
- 2101   0092    '----- Game skips its confirm (there is nothing to lose).
- 2101   0092    SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS 
-                SINGLE, act AS INTEGER, dead AS INTEGER)
- 210C   0092            DIM mr AS RegType, mo AS RegType
- 210C   0092            DIM cbuf(40) AS INTEGER
- 2124   0092            DIM mny(4) AS INTEGER
- 213C   0092            DIM i AS INTEGER, v AS INTEGER, t AS INTEGER, f AS INTE
-                GER
- 213C   0092            DIM sel AS INTEGER, ns AS INTEGER, dir AS INTEGER, ldok
-                 AS INTEGER
- 213C   0092            DIM mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy A
-                S INTEGER, mlb AS INTEGER
- 213C   0092            DIM done AS INTEGER, cdrn AS INTEGER, hit AS INTEGER
- 213C   0092            DIM k$, mnf$, cmsg$, ck$
- 213C   0092            DIM cyes AS INTEGER, cmlb AS INTEGER
- 213C   0092            DIM cysl AS INTEGER, cnyn AS INTEGER
- 213C   0092            DIM mnmd AS INTEGER, act2 AS INTEGER
- 213C   0092            '----- save-under for the yes/no modal (44,76)-(276,124
-                ): 59 bytes x 49 rows
- 213C   0092            REDIM cnf(1450) AS INTEGER
- 2155   0092            '----- whole-screen save-under so Back from the save/lo
-                ad screens can restore
- 2155   0092            '----- the dimmed menu exactly (GET needs 4 + 80*200 by
-                tes = 8002 ints)
- 2155   0092            REDIM mnscr(8195) AS INTEGER
- 216E   0092    
- 216E   0092            act = 0: done = 0: sel = 1: mlb = 1: cdrn = 0
- 216E   0092            mny(1) = 34: mny(2) = 48: mny(3) = 62: mny(4) = 76
- 216E   0092    
- 216E   0092            '----- parse the menu art once per session (interleaved
-                 6-wide like other .PCTs);
- 216E   0092            '----- the REDIMs do the real far-heap allocation (see 
-                module-level note)
- 216E   0092            IF mnOk <> 1 THEN
+ 1F6D   00B8    '----- then put the screen back. The CALLER restores the room p
+                alette (rmpal).
+ 1F6D   00B8    SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
+ 1F78   00B8            DIM mr AS RegType, mo AS RegType
+ 1F78   00B8            DIM i AS INTEGER, n AS INTEGER, cx AS INTEGER, cy AS IN
+                TEGER
+ 1F78   00B8            DIM k$
+ 1F78   00B8            DIM rt AS SINGLE, el AS SINGLE
+ 1F78   00B8            DIM cbuf(40) AS INTEGER
+ 1F90   00B8            DIM cmx AS INTEGER, cmy AS INTEGER, nmx AS INTEGER, nmy
+                 AS INTEGER, cdrn AS INTEGER
+ 1F90   00B8            REDIM rvu(1200) AS INTEGER
+ 1FA8   00B8            IF rvOk <> 1 THEN
+ 1FA8   00B8                    REDIM rvArt(1200) AS INTEGER
+ 1FCA   00B8                    REDIM rvMsk(1200) AS INTEGER
+ 1FE2   00B8                    OPEN "REVIVE.DAT" FOR INPUT AS #2
+ 1FE2   00B8                    INPUT #2, n
+ 2000   00B8                    FOR i = 0 TO n - 1
+ 201E   00B8                            INPUT #2, rvArt(i)
+ 2027   00B8                    NEXT
+ 204D   00B8                    FOR i = 0 TO n - 1
+ 205A   00B8                            INPUT #2, rvMsk(i)
+ 2063   00B8                    NEXT
+ 2089   00B8                    CLOSE #2
+ 2089   00B8                    rvOk = 1
+ 2089   00B8            END IF
+ 209C   00B8            cx = (320 - rvArt(0) \ 2) \ 2
+ 209C   00B8            cy = (200 - rvArt(1)) \ 2
+ 209C   00B8            '----- art palette: dkgray box, blue portrait detail, b
+                rown/orange text
+ 209C   00B8            PALETTE 1, 8: PALETTE 2, 1: PALETTE 3, 6
+ 209C   00B8            GET (cx, cy)-(cx + rvArt(0) \ 2 - 1, cy + rvArt(1) - 1)
+                , rvu
+ 209C   00B8            PUT (cx, cy), rvMsk, AND
+ 209C   00B8            PUT (cx, cy), rvArt, OR
+ 209C   00B8            '----- keys mashed during the death music/screen are NO
+                T a dismissal:
+ 209C   00B8            '----- flush the type-ahead buffer and drain any held c
+                lick first
+ 209C   00B8            DO
+ 2184   00B8                    k$ = INKEY$
+ 2184   00B8            LOOP WHILE k$ <> ""
+ 2184   00B8            IF msen = 1 THEN
+ 2184   00B8                    DO
+ 21BA   00B8                            mr.ax = 3: CALL INTERRUPT(mvint, mr, mo
+                )
+ 21CF   00B8                    LOOP WHILE (mo.bx AND 1) <> 0
+ 21CF   00B8                    '----- software cursor so the pointer stays vis
+                ible over the message
+ 21CF   00B8                    cmx = mo.cx \ 2: cmy = mo.dx
+ 21CF   00B8                    IF cmx > 312 THEN cmx = 312 ELSE IF cmx < 0 THE
+                N cmx = 0
+ 220B   00B8                    IF cmy > 192 THEN cmy = 192 ELSE IF cmy < 0 THE
+                N cmy = 0
                                                                       PAGE  13
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 216E   0092                    REDIM mnArt(1536) AS INTEGER
- 21E6   0092                    REDIM mnLbl(419) AS INTEGER
- 21FE   0092                    OPEN "MENUMAIN.PCT" FOR INPUT AS #2
- 21FE   0092                    FOR i = 0 TO 1536: INPUT #2, mnArt(i): NEXT
- 2247   0092                    CLOSE #2
- 2247   0092                    OPEN "MENULBL.PCT" FOR INPUT AS #2
- 2247   0092                    FOR i = 0 TO 69
- 226E   0092                            INPUT #2, mnLbl(i), mnLbl(70 + i), mnLb
-                l(140 + i), mnLbl(210 + i), mnLbl(280 + i), mnLbl(350 + i)
- 2277   0092                    NEXT
- 2317   0092                    CLOSE #2
- 2317   0092                    mnOk = 1
- 2317   0092            END IF
- 232A   0092    
- 232A   0092            '----- Load is dithered/skipped unless some slot holds 
-                a save (same probe as slDrawStat)
- 232A   0092            ldok = 0
- 232A   0092            FOR i = 1 TO 10
- 2336   0092                    mnf$ = "saver" + CHR$(i + 96) + ".pac"
- 2336   0092                    OPEN mnf$ FOR APPEND AS #2: CLOSE #2
- 2336   0092                    OPEN mnf$ FOR INPUT AS #2
- 2336   0092                    IF NOT EOF(2) THEN ldok = 1
- 23AE   0092                    CLOSE #2
- 23AE   0092            NEXT
- 23CA   0092    
- 23CA   0092            '----- dim the live screen: snap every colour to dark g
-                ray FIRST (instant, hides the
- 23CA   0092            '----- pixel pass), then rewrite the framebuffer so eve
-                ry lit pixel is attr 3, then
- 23CA   0092            '----- switch to the inventory palette (attr3 = 8 = dar
-                k gray) for the menu art
- 23CA   0092            PALETTE 0, 0: PALETTE 1, 8: PALETTE 2, 8: PALETTE 3, 8
- 23CA   0092            DEF SEG = &HB800
- 23CA   0092            FOR i = 0 TO 16383
- 2412   0092                    v = PEEK(i)
- 2412   0092                    IF v <> 0 THEN t = (v OR v \ 2) AND &H55: POKE 
-                i, t OR t * 2
- 2447   0092            NEXT
- 2453   0092            DEF SEG
- 2453   0092            PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
- 2453   0092    
- 2453   0092            '----- take the REAL driver position before the first d
-                raw -- mmdraw ends with a
- 2453   0092            '----- cursor draw at (mx,my), so a made-up position he
-                re would orphan a cursor
- 2453   0092            IF msen = 1 THEN
- 2453   0092                    mr.ax = 2: CALL INTERRUPT(mvint, mr, mo)
- 24B1   0092                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
- 24C6   0092                    mx = mo.cx \ 2: my = mo.dx
- 24C6   0092                    IF mx > 312 THEN mx = 312 ELSE IF mx < 0 THEN m
-                x = 0
- 24F8   0092                    IF my > 192 THEN my = 192 ELSE IF my < 0 THEN m
-                y = 0
- 2518   0092            END IF
+ 222B   00B8                    GOSUB rvcdraw
+ 2233   00B8            END IF
+ 2233   00B8            '----- wait for a fresh key or click, cursor tracking t
+                he mouse...
+ 2233   00B8            rt = TIMER
+ 2233   00B8            rvwait:
+ 2243   00B8            k$ = INKEY$
+ 2243   00B8            IF k$ <> "" THEN GOTO rvdone
+ 2269   00B8            IF msen = 1 THEN
+ 2269   00B8                    GOSUB rvctrack
+ 2288   00B8                    IF (mo.bx AND 1) <> 0 THEN GOTO rvdone
+ 2295   00B8            END IF
+ 2295   00B8            GOTO rvwait
+ 2295   00B8            '----- ...but never blink away: an early press still le
+                aves the message
+ 2295   00B8            '----- up until it has been visible a full second (curs
+                or keeps moving)
+ 2295   00B8            rvdone:
+ 2297   00B8            DO
+ 229C   00B8                    el = TIMER - rt
+ 229C   00B8                    IF el < 0 THEN el = el + 86400
+ 22D4   00B8                    IF el >= 1 THEN EXIT DO
+ 22E9   00B8                    IF msen = 1 THEN GOSUB rvctrack
+ 2308   00B8            LOOP
+ 230A   00B8            IF msen = 1 THEN GOSUB rvcerase
+ 2329   00B8            PUT (cx, cy), rvu, PSET
+ 2329   00B8            EXIT SUB
+ 2329   00B8    
+ 2329   00B8            '----- poll the mouse and move the software cursor if i
+                t changed
+ 2329   00B8            rvctrack:
+ 234A   00B8            mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+ 2364   00B8            nmx = mo.cx \ 2: nmy = mo.dx
+ 2364   00B8            IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THEN nmx = 
+                0
+ 2396   00B8            IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THEN nmy = 
+                0
+ 23B6   00B8            IF nmx <> cmx OR nmy <> cmy THEN GOSUB rvcerase: cmx = 
+                nmx: cmy = nmy: GOSUB rvcdraw
+ 23F3   00B8            RETURN
+ 23F3   00B8    
+ 23F3   00B8            '----- NW-arrow cursor with save-under (brown outline +
+                 dkgray fill --
+ 23F3   00B8            '----- the revive palette has no light gray)
+ 23F3   00B8            rvcdraw:
+ 23F8   00B8            GET (cmx, cmy)-(cmx + 5, cmy + 7), cbuf
+ 23F8   00B8            PSET (cmx, cmy), 3
+ 23F8   00B8            PSET (cmx, cmy + 1), 3: PSET (cmx + 1, cmy + 1), 3
+ 23F8   00B8            PSET (cmx, cmy + 2), 3: PSET (cmx + 2, cmy + 2), 3
+ 23F8   00B8            PSET (cmx, cmy + 3), 3: PSET (cmx + 3, cmy + 3), 3
+ 23F8   00B8            PSET (cmx, cmy + 4), 3: PSET (cmx + 4, cmy + 4), 3
+ 23F8   00B8            PSET (cmx, cmy + 5), 3: PSET (cmx + 2, cmy + 5), 3: PSE
+                T (cmx + 3, cmy + 5), 3
+ 23F8   00B8            PSET (cmx, cmy + 6), 3: PSET (cmx + 1, cmy + 6), 3
                                                                       PAGE  14
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 2518   0092            GOSUB mmdraw
- 2520   0092    
- 2520   0092            mmwait:
- 2520   0092            IF msen = 1 THEN
- 2520   0092                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
- 2551   0092                    nmx = mo.cx \ 2: nmy = mo.dx
- 2551   0092                    IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THE
-                N nmx = 0
- 2583   0092                    IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THE
-                N nmy = 0
- 25A3   0092                    IF nmx <> mx OR nmy <> my THEN
- 25A3   0092                            GOSUB mmerasecur: mx = nmx: my = nmy
- 25CC   0092                            GOSUB mmhover
- 25E0   0092                            '----- a hover-driven redraw already dr
-                ew the cursor (cdrn=1); drawing
- 25E0   0092                            '----- again would GET a save-under WIT
-                H the cursor in it = ghost trail
- 25E0   0092                            IF cdrn = 0 THEN GOSUB mmdrawcur
- 25F1   0092                    END IF
- 25F1   0092                    IF (mo.bx AND 1) <> 0 AND mlb = 0 THEN
- 25F1   0092                            GOSUB mmhit
- 261A   0092                            IF hit = sel AND hit > 0 THEN GOSUB mmg
-                o
- 2641   0092                    END IF
- 2641   0092                    mlb = (mo.bx AND 1)
- 2641   0092            END IF
- 264A   0092            k$ = INKEY$
- 264A   0092            IF (k$ = CHR$(27) OR k$ = "x" OR k$ = "X") AND dead = 0
-                 THEN done = 1
- 26C6   0092            IF k$ = CHR$(13) OR k$ = " " THEN GOSUB mmgo
- 270B   0092            IF k$ = "n" OR k$ = "N" THEN ns = 1: GOSUB mmset: GOSUB
-                 mmgo
- 2757   0092            IF (k$ = "s" OR k$ = "S") AND dead = 0 THEN ns = 2: GOS
-                UB mmset: GOSUB mmgo
- 27B1   0092            IF (k$ = "l" OR k$ = "L") AND ldok = 1 THEN ns = 3: GOS
-                UB mmset: GOSUB mmgo
- 2809   0092            IF k$ = "q" OR k$ = "Q" THEN ns = 4: GOSUB mmset: GOSUB
-                 mmgo
- 2855   0092            IF k$ = CHR$(0) + CHR$(72) THEN dir = -1: GOSUB mmstep
- 2889   0092            IF k$ = CHR$(0) + CHR$(80) THEN dir = 1: GOSUB mmstep
- 28BD   0092            IF done = 0 THEN GOTO mmwait
- 28C6   0092            IF msen = 1 THEN GOSUB mmerasecur
- 28E5   0092            EXIT SUB
- 28E5   0092    
- 28E5   0092            '----- draw the menu box + the not-selected/disabled la
-                bel states over it.
- 28E5   0092            '----- The selected item keeps the base art's light-gra
-                y label.
- 28E5   0092            mmdraw:
- 28E8   0092            IF msen = 1 THEN GOSUB mmerasecur
- 290C   0092            PUT (99, 50), mnArt, PSET
- 290C   0092            FOR i = 1 TO 4
- 2934   0092                    f = 0
- 2934   0092                    IF i = 2 AND dead = 1 THEN
+ 23F8   00B8            PSET (cmx + 1, cmy + 2), 1
+ 23F8   00B8            PSET (cmx + 1, cmy + 3), 1: PSET (cmx + 2, cmy + 3), 1
+ 23F8   00B8            PSET (cmx + 1, cmy + 4), 1: PSET (cmx + 2, cmy + 4), 1:
+                 PSET (cmx + 3, cmy + 4), 1
+ 23F8   00B8            PSET (cmx + 1, cmy + 5), 1
+ 23F8   00B8            cdrn = 1
+ 23F8   00B8            RETURN
+ 23F8   00B8            rvcerase:
+ 262D   00B8            IF cdrn = 1 THEN PUT (cmx, cmy), cbuf, PSET
+ 2659   00B8            cdrn = 0
+ 2659   00B8            RETURN
+ 2659   00B8    END SUB
+ 2686   00B8    
+ 2686   00B8    '----- (re)draw the dialog's Yes/No art buttons inside their hi
+                t rects.
+ 2686   00B8    '----- sel: 1 = Yes active / No inactive, 2 = No active / Yes i
+                nactive.
+ 2686   00B8    '----- (dk kept for signature stability; one art set fits every
+                 dialog screen)
+ 2686   00B8    SUB YNBtn (sel AS INTEGER, dk AS INTEGER)
+ 2691   00B8            DIM yf AS INTEGER, nf AS INTEGER
+ 2691   00B8            CALL DlgLoad
+ 2696   00B8            yf = 1: IF sel = 1 THEN yf = 0
+ 26AB   00B8            nf = 3: IF sel = 2 THEN nf = 2
+ 26C0   00B8            PUT (138, 106), dlgBtn(yf * 22), PSET
+ 26C0   00B8            PUT (166, 106), dlgBtn(nf * 22), PSET
+ 26C0   00B8    END SUB
+ 271D   00B8    
+ 271D   00B8    '----- ESC main menu: dim the LIVE room screen to black/dark-gr
+                ay, switch to the
+ 271D   00B8    '----- inventory palette and draw the MainMenu box centered. It
+                ems: 1 New Game,
+ 271D   00B8    '----- 2 Save, 3 Load (dithered+skipped when no save exists), 4
+                 Quit (SYSTEM after
+ 271D   00B8    '----- confirm). Save/Load open the Save/Load screen (own bg, r
+                eplaces the menu).
+ 271D   00B8    '----- act out: 0 = resume the game (caller reloads the room), 
+                1 = a game was
+ 271D   00B8    '----- LOADED, 2 = NEW GAME chosen (caller RUNs).
+ 271D   00B8    '----- dead = 1: opened over the death screen -- Save is dither
+                ed/locked, ESC/x
+ 271D   00B8    '----- cannot resume (the player must pick New Game, Load or Qu
+                it), and New
+ 271D   00B8    '----- Game skips its confirm (there is nothing to lose).
+ 271D   00B8    SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS 
+                SINGLE, act AS INTEGER, dead AS INTEGER)
+ 2728   00B8            DIM mr AS RegType, mo AS RegType
+ 2728   00B8            DIM cbuf(40) AS INTEGER
+ 2740   00B8            DIM mny(4) AS INTEGER
+ 2758   00B8            DIM i AS INTEGER, v AS INTEGER, t AS INTEGER, f AS INTE
+                GER
+ 2758   00B8            DIM sel AS INTEGER, ns AS INTEGER, dir AS INTEGER, ldok
+                 AS INTEGER
+ 2758   00B8            DIM mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy A
                                                                       PAGE  15
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 2934   0092                            f = 5
- 2934   0092                    ELSEIF i = 3 AND ldok = 0 THEN
- 295F   0092                            f = 6
- 295F   0092                    ELSEIF i <> sel THEN
- 2984   0092                            f = i
- 2984   0092                    END IF
- 2995   0092                    IF f > 0 THEN PUT (128, 50 + mny(i)), mnLbl((f 
-                - 1) * 70), PSET
- 29DE   0092            NEXT
- 29ED   0092            IF msen = 1 THEN GOSUB mmdrawcur
- 2A0C   0092            RETURN
- 2A0C   0092    
- 2A0C   0092            '----- move the selection dir steps, wrapping and skipp
-                ing a disabled Load
- 2A0C   0092            mmstep:
- 2A11   0092            ns = sel
- 2A11   0092            mmstep2:
- 2A1C   0092            ns = ns + dir
- 2A1C   0092            IF ns < 1 THEN ns = 4
- 2A35   0092            IF ns > 4 THEN ns = 1
- 2A43   0092            IF ns = 2 AND dead = 1 THEN GOTO mmstep2
- 2A5F   0092            IF ns = 3 AND ldok = 0 THEN GOTO mmstep2
- 2A79   0092            mmset:
- 2A79   0092            IF ns <> sel THEN sel = ns: GOSUB mmdraw
- 2A97   0092            RETURN
- 2A97   0092    
- 2A97   0092            '----- which item the mouse is over (0 = none); rows fo
-                llow the label boxes
- 2A97   0092            mmhit:
- 2A9C   0092            hit = 0
- 2A9C   0092            IF mx >= 120 AND mx <= 195 THEN
- 2A9C   0092                    FOR i = 1 TO 4
- 2ACA   0092                            IF my >= 47 + mny(i) AND my <= 61 + mny
-                (i) THEN hit = i
- 2B0C   0092                    NEXT
- 2B18   0092            END IF
- 2B18   0092            IF hit = 2 AND dead = 1 THEN hit = 0
- 2B3C   0092            IF hit = 3 AND ldok = 0 THEN hit = 0
- 2B5E   0092            RETURN
- 2B5E   0092    
- 2B5E   0092            mmhover:
- 2B63   0092            GOSUB mmhit
- 2B70   0092            IF hit > 0 AND hit <> sel THEN ns = hit: GOSUB mmset
- 2B9F   0092            RETURN
- 2B9F   0092    
- 2B9F   0092            '----- fire the selected item
- 2B9F   0092            mmgo:
- 2BA4   0092            IF sel = 1 THEN
- 2BA4   0092                    cyes = 1
- 2BA4   0092                    IF dead = 0 THEN cmsg$ = "New game? unsaved gam
-                e lost.": GOSUB mmconfirm
- 2BD9   0092                    IF cyes = 1 THEN act = 2: done = 1
- 2BEF   0092            ELSEIF sel = 2 OR sel = 3 THEN
- 2BF2   0092                    mnmd = sel - 1
+                S INTEGER, mlb AS INTEGER
+ 2758   00B8            DIM done AS INTEGER, cdrn AS INTEGER, hit AS INTEGER
+ 2758   00B8            DIM k$, mnf$, cmsg$, ck$
+ 2758   00B8            DIM cyes AS INTEGER, cmlb AS INTEGER
+ 2758   00B8            DIM cysl AS INTEGER, cnyn AS INTEGER
+ 2758   00B8            DIM mnmd AS INTEGER, act2 AS INTEGER
+ 2758   00B8            '----- save-under for the yes/no modal (44,76)-(276,124
+                ): 59 bytes x 49 rows
+ 2758   00B8            REDIM cnf(1450) AS INTEGER
+ 2771   00B8            '----- whole-screen save-under so Back from the save/lo
+                ad screens can restore
+ 2771   00B8            '----- the dimmed menu exactly (GET needs 4 + 80*200 by
+                tes = 8002 ints)
+ 2771   00B8            REDIM mnscr(8195) AS INTEGER
+ 278A   00B8    
+ 278A   00B8            act = 0: done = 0: sel = 1: mlb = 1: cdrn = 0
+ 278A   00B8            mny(1) = 34: mny(2) = 48: mny(3) = 62: mny(4) = 76
+ 278A   00B8    
+ 278A   00B8            '----- parse the menu art once per session (interleaved
+                 6-wide like other .PCTs);
+ 278A   00B8            '----- the REDIMs do the real far-heap allocation (see 
+                module-level note)
+ 278A   00B8            IF mnOk <> 1 THEN
+ 278A   00B8                    REDIM mnArt(1536) AS INTEGER
+ 2802   00B8                    REDIM mnLbl(419) AS INTEGER
+ 281A   00B8                    OPEN "MENUMAIN.PCT" FOR INPUT AS #2
+ 281A   00B8                    FOR i = 0 TO 1536: INPUT #2, mnArt(i): NEXT
+ 2863   00B8                    CLOSE #2
+ 2863   00B8                    OPEN "MENULBL.PCT" FOR INPUT AS #2
+ 2863   00B8                    FOR i = 0 TO 69
+ 288A   00B8                            INPUT #2, mnLbl(i), mnLbl(70 + i), mnLb
+                l(140 + i), mnLbl(210 + i), mnLbl(280 + i), mnLbl(350 + i)
+ 2893   00B8                    NEXT
+ 2933   00B8                    CLOSE #2
+ 2933   00B8                    mnOk = 1
+ 2933   00B8            END IF
+ 2946   00B8    
+ 2946   00B8            '----- Load is dithered/skipped unless some slot holds 
+                a save (same probe as slDrawStat)
+ 2946   00B8            ldok = 0
+ 2946   00B8            FOR i = 1 TO 10
+ 2952   00B8                    mnf$ = "saver" + CHR$(i + 96) + ".pac"
+ 2952   00B8                    OPEN mnf$ FOR APPEND AS #2: CLOSE #2
+ 2952   00B8                    OPEN mnf$ FOR INPUT AS #2
+ 2952   00B8                    IF NOT EOF(2) THEN ldok = 1
+ 29CA   00B8                    CLOSE #2
+ 29CA   00B8            NEXT
+ 29E6   00B8    
+ 29E6   00B8            '----- dim the live screen: snap every colour to dark g
+                ray FIRST (instant, hides the
+ 29E6   00B8            '----- pixel pass), then rewrite the framebuffer so eve
+                ry lit pixel is attr 1, then
+ 29E6   00B8            '----- switch to the standard UI palette (1=dkgray 2=lt
+                gray 3=brown -- same
                                                                       PAGE  16
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 2BF2   0092                    GOSUB mmslot
- 2C1F   0092            ELSEIF sel = 4 THEN
- 2C22   0092                    cmsg$ = "Quit the game?": GOSUB mmconfirm
- 2C41   0092                    IF cyes = 1 THEN SYSTEM
- 2C50   0092            END IF
- 2C50   0092            RETURN
- 2C50   0092    
- 2C50   0092            '----- open the Save (mnmd 1) or Load (mnmd 2) screen o
-                ver the menu; Back
- 2C50   0092            '----- restores the dimmed menu from a whole-screen sav
-                e-under
- 2C50   0092            mmslot:
- 2C55   0092            IF msen = 1 THEN GOSUB mmerasecur
- 2C79   0092            GET (0, 0)-(319, 199), mnscr
- 2C79   0092            CALL SlotScreen(fontData(), mvint, msen, mnmd, dead, ac
-                t2)
- 2CBC   0092            IF act2 = 1 THEN act = 1: done = 1: RETURN
- 2CD7   0092            PUT (0, 0), mnscr, PSET
- 2CD7   0092            PALETTE 0, 0: PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
- 2CD7   0092            mlb = 1
- 2CD7   0092            IF msen = 1 THEN
- 2CD7   0092                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
- 2D61   0092                    mx = mo.cx \ 2: my = mo.dx
- 2D61   0092                    IF mx > 312 THEN mx = 312 ELSE IF mx < 0 THEN m
+ 29E6   00B8            '----- layout as the save/load screens, so dialog art n
+                eeds no variants)
+ 29E6   00B8            PALETTE 0, 0: PALETTE 1, 8: PALETTE 2, 8: PALETTE 3, 8
+ 29E6   00B8            DEF SEG = &HB800
+ 29E6   00B8            FOR i = 0 TO 16383
+ 2A2E   00B8                    v = PEEK(i)
+ 2A2E   00B8                    IF v <> 0 THEN t = (v OR v \ 2) AND &H55: POKE 
+                i, t
+ 2A5E   00B8            NEXT
+ 2A6A   00B8            DEF SEG
+ 2A6A   00B8            PALETTE 1, 8: PALETTE 2, 7: PALETTE 3, 6
+ 2A6A   00B8    
+ 2A6A   00B8            '----- take the REAL driver position before the first d
+                raw -- mmdraw ends with a
+ 2A6A   00B8            '----- cursor draw at (mx,my), so a made-up position he
+                re would orphan a cursor
+ 2A6A   00B8            IF msen = 1 THEN
+ 2A6A   00B8                    mr.ax = 2: CALL INTERRUPT(mvint, mr, mo)
+ 2AC8   00B8                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+ 2ADD   00B8                    mx = mo.cx \ 2: my = mo.dx
+ 2ADD   00B8                    IF mx > 312 THEN mx = 312 ELSE IF mx < 0 THEN m
                 x = 0
- 2D93   0092                    IF my > 192 THEN my = 192 ELSE IF my < 0 THEN m
+ 2B0F   00B8                    IF my > 192 THEN my = 192 ELSE IF my < 0 THEN m
                 y = 0
- 2DB3   0092                    GOSUB mmdrawcur
- 2DBB   0092            END IF
- 2DBB   0092            RETURN
- 2DBB   0092    
- 2DBB   0092            '----- yes/no modal over the menu, with save-under rest
-                ore on No
- 2DBB   0092            mmconfirm:
- 2DC0   0092            IF msen = 1 THEN GOSUB mmerasecur
- 2DE4   0092            GET (44, 76)-(276, 124), cnf
- 2DE4   0092            CALL DrawYNBox(cmsg$, 3, fontData())
- 2E28   0092            cyes = -1: cmlb = 1: cysl = 1
- 2E28   0092            IF msen = 1 THEN GOSUB mmdrawcur
- 2E59   0092            mmcfw:
- 2E59   0092            cnyn = 0
- 2E59   0092            IF msen = 1 THEN
- 2E59   0092                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
- 2E90   0092                    nmx = mo.cx \ 2: nmy = mo.dx
- 2E90   0092                    IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THE
+ 2B2F   00B8            END IF
+ 2B2F   00B8            GOSUB mmdraw
+ 2B37   00B8    
+ 2B37   00B8            mmwait:
+ 2B37   00B8            IF msen = 1 THEN
+ 2B37   00B8                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+ 2B68   00B8                    nmx = mo.cx \ 2: nmy = mo.dx
+ 2B68   00B8                    IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THE
                 N nmx = 0
- 2EC2   0092                    IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THE
+ 2B9A   00B8                    IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THE
                 N nmy = 0
- 2EE2   0092                    IF nmx <> mx OR nmy <> my THEN GOSUB mmerasecur
-                : mx = nmx: my = nmy: GOSUB mmdrawcur
- 2F1F   0092                    IF my >= 105 AND my <= 117 THEN
- 2F1F   0092                            IF mx >= 132 AND mx <= 158 THEN cnyn = 
-                1
- 2F61   0092                            IF mx >= 161 AND mx <= 187 THEN cnyn = 
+ 2BBA   00B8                    IF nmx <> mx OR nmy <> my THEN
+ 2BBA   00B8                            GOSUB mmerasecur: mx = nmx: my = nmy
+ 2BE3   00B8                            GOSUB mmhover
+ 2BF7   00B8                            '----- a hover-driven redraw already dr
+                ew the cursor (cdrn=1); drawing
+ 2BF7   00B8                            '----- again would GET a save-under WIT
+                H the cursor in it = ghost trail
+ 2BF7   00B8                            IF cdrn = 0 THEN GOSUB mmdrawcur
+ 2C08   00B8                    END IF
+ 2C08   00B8                    IF (mo.bx AND 1) <> 0 AND mlb = 0 THEN
+ 2C08   00B8                            GOSUB mmhit
+ 2C31   00B8                            IF hit = sel AND hit > 0 THEN GOSUB mmg
+                o
+ 2C58   00B8                    END IF
+ 2C58   00B8                    mlb = (mo.bx AND 1)
+ 2C58   00B8            END IF
+ 2C61   00B8            k$ = INKEY$
+ 2C61   00B8            IF (k$ = CHR$(27) OR k$ = "x" OR k$ = "X") AND dead = 0
+                 THEN done = 1
                                                                       PAGE  17
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
-                2
- 2F86   0092                    END IF
- 2F86   0092                    IF (mo.bx AND 1) <> 0 AND cmlb = 0 THEN
- 2F86   0092                            IF my >= 105 AND my <= 117 AND mx >= 13
-                2 AND mx <= 158 THEN cyes = 1
- 2FE5   0092                            IF my >= 105 AND my <= 117 AND mx >= 16
-                1 AND mx <= 187 THEN cyes = 0
- 3022   0092                            IF my >= 80 AND my <= 87 AND mx >= 260 
-                AND mx <= 270 THEN cyes = 0
- 305F   0092                    END IF
- 305F   0092                    cmlb = (mo.bx AND 1)
- 305F   0092            END IF
- 3069   0092            ck$ = INKEY$
- 3069   0092            IF ck$ = "y" OR ck$ = "Y" THEN cyes = 1
- 30B8   0092            IF ck$ = "n" OR ck$ = "N" OR ck$ = CHR$(27) THEN cyes =
-                 0
- 311B   0092            IF ck$ = CHR$(0) + CHR$(75) THEN cnyn = 1
- 3149   0092            IF ck$ = CHR$(0) + CHR$(77) THEN cnyn = 2
- 3177   0092            IF ck$ = CHR$(13) OR ck$ = " " THEN IF cysl = 1 THEN cy
-                es = 1 ELSE cyes = 0
- 31CF   0092            '----- hover / arrows move the active-button highlight
- 31CF   0092            IF cnyn > 0 AND cnyn <> cysl THEN
- 31CF   0092                    cysl = cnyn
- 31CF   0092                    IF msen = 1 THEN GOSUB mmerasecur
- 321A   0092                    CALL YNBtn(cysl, 3)
- 322F   0092                    IF msen = 1 THEN GOSUB mmdrawcur
- 324E   0092            END IF
- 324E   0092            IF cyes = -1 THEN GOTO mmcfw
- 3258   0092            IF msen = 1 THEN GOSUB mmerasecur
- 3277   0092            PUT (44, 76), cnf, PSET
- 3277   0092            IF msen = 1 THEN GOSUB mmdrawcur
- 32B9   0092            RETURN
- 32B9   0092    
- 32B9   0092            '----- self-drawn NW-arrow cursor with save-under (same
-                 art as the save/load screen's)
- 32B9   0092            mmdrawcur:
- 32BE   0092            GET (mx, my)-(mx + 5, my + 7), cbuf
- 32BE   0092            PSET (mx, my), 3
- 32BE   0092            PSET (mx, my + 1), 3: PSET (mx + 1, my + 1), 3
- 32BE   0092            PSET (mx, my + 2), 3: PSET (mx + 2, my + 2), 3
- 32BE   0092            PSET (mx, my + 3), 3: PSET (mx + 3, my + 3), 3
- 32BE   0092            PSET (mx, my + 4), 3: PSET (mx + 4, my + 4), 3
- 32BE   0092            PSET (mx, my + 5), 3: PSET (mx + 2, my + 5), 3: PSET (m
-                x + 3, my + 5), 3
- 32BE   0092            PSET (mx, my + 6), 3: PSET (mx + 1, my + 6), 3
- 32BE   0092            PSET (mx + 1, my + 2), 2
- 32BE   0092            PSET (mx + 1, my + 3), 2: PSET (mx + 2, my + 3), 2
- 32BE   0092            PSET (mx + 1, my + 4), 2: PSET (mx + 2, my + 4), 2: PSE
-                T (mx + 3, my + 4), 2
- 32BE   0092            PSET (mx + 1, my + 5), 2
- 32BE   0092            cdrn = 1
- 32BE   0092            RETURN
- 32BE   0092            mmerasecur:
- 34FE   0092            IF cdrn = 1 THEN PUT (mx, my), cbuf, PSET
+ 2CDD   00B8            IF k$ = CHR$(13) OR k$ = " " THEN GOSUB mmgo
+ 2D22   00B8            IF k$ = "n" OR k$ = "N" THEN ns = 1: GOSUB mmset: GOSUB
+                 mmgo
+ 2D6E   00B8            IF (k$ = "s" OR k$ = "S") AND dead = 0 THEN ns = 2: GOS
+                UB mmset: GOSUB mmgo
+ 2DC8   00B8            IF (k$ = "l" OR k$ = "L") AND ldok = 1 THEN ns = 3: GOS
+                UB mmset: GOSUB mmgo
+ 2E20   00B8            IF k$ = "q" OR k$ = "Q" THEN ns = 4: GOSUB mmset: GOSUB
+                 mmgo
+ 2E6C   00B8            IF k$ = CHR$(0) + CHR$(72) THEN dir = -1: GOSUB mmstep
+ 2EA0   00B8            IF k$ = CHR$(0) + CHR$(80) THEN dir = 1: GOSUB mmstep
+ 2ED4   00B8            IF done = 0 THEN GOTO mmwait
+ 2EDD   00B8            IF msen = 1 THEN GOSUB mmerasecur
+ 2EFC   00B8            EXIT SUB
+ 2EFC   00B8    
+ 2EFC   00B8            '----- draw the menu box + the not-selected/disabled la
+                bel states over it.
+ 2EFC   00B8            '----- The selected item keeps the base art's light-gra
+                y label.
+ 2EFC   00B8            mmdraw:
+ 2EFF   00B8            IF msen = 1 THEN GOSUB mmerasecur
+ 2F23   00B8            PUT (99, 50), mnArt, PSET
+ 2F23   00B8            FOR i = 1 TO 4
+ 2F4C   00B8                    f = 0
+ 2F4C   00B8                    IF i = 2 AND dead = 1 THEN
+ 2F4C   00B8                            f = 5
+ 2F4C   00B8                    ELSEIF i = 3 AND ldok = 0 THEN
+ 2F77   00B8                            f = 6
+ 2F77   00B8                    ELSEIF i <> sel THEN
+ 2F9C   00B8                            f = i
+ 2F9C   00B8                    END IF
+ 2FAD   00B8                    IF f > 0 THEN PUT (128, 50 + mny(i)), mnLbl((f 
+                - 1) * 70), PSET
+ 2FF6   00B8            NEXT
+ 3005   00B8            IF msen = 1 THEN GOSUB mmdrawcur
+ 3024   00B8            RETURN
+ 3024   00B8    
+ 3024   00B8            '----- move the selection dir steps, wrapping and skipp
+                ing a disabled Load
+ 3024   00B8            mmstep:
+ 3029   00B8            ns = sel
+ 3029   00B8            mmstep2:
+ 3034   00B8            ns = ns + dir
+ 3034   00B8            IF ns < 1 THEN ns = 4
+ 304D   00B8            IF ns > 4 THEN ns = 1
+ 305B   00B8            IF ns = 2 AND dead = 1 THEN GOTO mmstep2
+ 3077   00B8            IF ns = 3 AND ldok = 0 THEN GOTO mmstep2
+ 3091   00B8            mmset:
+ 3091   00B8            IF ns <> sel THEN sel = ns: GOSUB mmdraw
+ 30AF   00B8            RETURN
+ 30AF   00B8    
+ 30AF   00B8            '----- which item the mouse is over (0 = none); rows fo
+                llow the label boxes
+ 30AF   00B8            mmhit:
                                                                       PAGE  18
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 352A   0092            cdrn = 0
- 352A   0092            RETURN
- 352A   0092    END SUB
- 3588   0092    
- 358F   0092    
+ 30B4   00B8            hit = 0
+ 30B4   00B8            IF mx >= 120 AND mx <= 195 THEN
+ 30B4   00B8                    FOR i = 1 TO 4
+ 30E2   00B8                            IF my >= 47 + mny(i) AND my <= 61 + mny
+                (i) THEN hit = i
+ 3124   00B8                    NEXT
+ 3130   00B8            END IF
+ 3130   00B8            IF hit = 2 AND dead = 1 THEN hit = 0
+ 3154   00B8            IF hit = 3 AND ldok = 0 THEN hit = 0
+ 3176   00B8            RETURN
+ 3176   00B8    
+ 3176   00B8            mmhover:
+ 317B   00B8            GOSUB mmhit
+ 3188   00B8            IF hit > 0 AND hit <> sel THEN ns = hit: GOSUB mmset
+ 31B7   00B8            RETURN
+ 31B7   00B8    
+ 31B7   00B8            '----- fire the selected item
+ 31B7   00B8            mmgo:
+ 31BC   00B8            IF sel = 1 THEN
+ 31BC   00B8                    cyes = 1
+ 31BC   00B8                    IF dead = 0 THEN cmsg$ = "New game? unsaved gam
+                e lost.": GOSUB mmconfirm
+ 31F1   00B8                    IF cyes = 1 THEN act = 2: done = 1
+ 3207   00B8            ELSEIF sel = 2 OR sel = 3 THEN
+ 320A   00B8                    mnmd = sel - 1
+ 320A   00B8                    GOSUB mmslot
+ 3237   00B8            ELSEIF sel = 4 THEN
+ 323A   00B8                    cmsg$ = "Quit the game?": GOSUB mmconfirm
+ 3259   00B8                    IF cyes = 1 THEN SYSTEM
+ 3268   00B8            END IF
+ 3268   00B8            RETURN
+ 3268   00B8    
+ 3268   00B8            '----- open the Save (mnmd 1) or Load (mnmd 2) screen o
+                ver the menu; Back
+ 3268   00B8            '----- restores the dimmed menu from a whole-screen sav
+                e-under
+ 3268   00B8            mmslot:
+ 326D   00B8            IF msen = 1 THEN GOSUB mmerasecur
+ 3291   00B8            GET (0, 0)-(319, 199), mnscr
+ 3291   00B8            CALL SlotScreen(fontData(), mvint, msen, mnmd, dead, ac
+                t2)
+ 32D4   00B8            IF act2 = 1 THEN act = 1: done = 1: RETURN
+ 32EF   00B8            PUT (0, 0), mnscr, PSET
+ 32EF   00B8            PALETTE 0, 0: PALETTE 1, 8: PALETTE 2, 7: PALETTE 3, 6
+ 32EF   00B8            mlb = 1
+ 32EF   00B8            IF msen = 1 THEN
+ 32EF   00B8                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+ 3379   00B8                    mx = mo.cx \ 2: my = mo.dx
+ 3379   00B8                    IF mx > 312 THEN mx = 312 ELSE IF mx < 0 THEN m
+                x = 0
+ 33AB   00B8                    IF my > 192 THEN my = 192 ELSE IF my < 0 THEN m
+                y = 0
+ 33CB   00B8                    GOSUB mmdrawcur
+ 33D3   00B8            END IF
+                                                                      PAGE  19
+                                                                      19 Jul 26
+                                                                      17:41:33
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 33D3   00B8            RETURN
+ 33D3   00B8    
+ 33D3   00B8            '----- yes/no modal over the menu, with save-under rest
+                ore on No
+ 33D3   00B8            mmconfirm:
+ 33D8   00B8            IF msen = 1 THEN GOSUB mmerasecur
+ 33FC   00B8            GET (44, 76)-(276, 124), cnf
+ 33FC   00B8            CALL DrawYNBox(cmsg$, 1, fontData())
+ 3440   00B8            cyes = -1: cmlb = 1: cysl = 1
+ 3440   00B8            IF msen = 1 THEN GOSUB mmdrawcur
+ 3471   00B8            mmcfw:
+ 3471   00B8            cnyn = 0
+ 3471   00B8            IF msen = 1 THEN
+ 3471   00B8                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+ 34A8   00B8                    nmx = mo.cx \ 2: nmy = mo.dx
+ 34A8   00B8                    IF nmx > 312 THEN nmx = 312 ELSE IF nmx < 0 THE
+                N nmx = 0
+ 34DA   00B8                    IF nmy > 192 THEN nmy = 192 ELSE IF nmy < 0 THE
+                N nmy = 0
+ 34FA   00B8                    IF nmx <> mx OR nmy <> my THEN GOSUB mmerasecur
+                : mx = nmx: my = nmy: GOSUB mmdrawcur
+ 3537   00B8                    IF my >= 105 AND my <= 117 THEN
+ 3537   00B8                            IF mx >= 132 AND mx <= 158 THEN cnyn = 
+                1
+ 3579   00B8                            IF mx >= 161 AND mx <= 187 THEN cnyn = 
+                2
+ 359E   00B8                    END IF
+ 359E   00B8                    IF (mo.bx AND 1) <> 0 AND cmlb = 0 THEN
+ 359E   00B8                            IF my >= 105 AND my <= 117 AND mx >= 13
+                2 AND mx <= 158 THEN cyes = 1
+ 35FD   00B8                            IF my >= 105 AND my <= 117 AND mx >= 16
+                1 AND mx <= 187 THEN cyes = 0
+ 363A   00B8                            IF my >= 80 AND my <= 87 AND mx >= 260 
+                AND mx <= 270 THEN cyes = 0
+ 3677   00B8                    END IF
+ 3677   00B8                    cmlb = (mo.bx AND 1)
+ 3677   00B8            END IF
+ 3681   00B8            ck$ = INKEY$
+ 3681   00B8            IF ck$ = "y" OR ck$ = "Y" THEN cyes = 1
+ 36D0   00B8            IF ck$ = "n" OR ck$ = "N" OR ck$ = CHR$(27) THEN cyes =
+                 0
+ 3733   00B8            IF ck$ = CHR$(0) + CHR$(75) THEN cnyn = 1
+ 3761   00B8            IF ck$ = CHR$(0) + CHR$(77) THEN cnyn = 2
+ 378F   00B8            IF ck$ = CHR$(13) OR ck$ = " " THEN IF cysl = 1 THEN cy
+                es = 1 ELSE cyes = 0
+ 37E7   00B8            '----- hover / arrows move the active-button highlight
+ 37E7   00B8            IF cnyn > 0 AND cnyn <> cysl THEN
+ 37E7   00B8                    cysl = cnyn
+ 37E7   00B8                    IF msen = 1 THEN GOSUB mmerasecur
+ 3832   00B8                    CALL YNBtn(cysl, 1)
+ 3847   00B8                    IF msen = 1 THEN GOSUB mmdrawcur
+ 3866   00B8            END IF
+ 3866   00B8            IF cyes = -1 THEN GOTO mmcfw
+ 3870   00B8            IF msen = 1 THEN GOSUB mmerasecur
+                                                                      PAGE  20
+                                                                      19 Jul 26
+                                                                      17:41:33
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 388F   00B8            PUT (44, 76), cnf, PSET
+ 388F   00B8            IF msen = 1 THEN GOSUB mmdrawcur
+ 38D1   00B8            RETURN
+ 38D1   00B8    
+ 38D1   00B8            '----- self-drawn NW-arrow cursor with save-under (same
+                 art as the save/load screen's)
+ 38D1   00B8            mmdrawcur:
+ 38D6   00B8            GET (mx, my)-(mx + 5, my + 7), cbuf
+ 38D6   00B8            PSET (mx, my), 3
+ 38D6   00B8            PSET (mx, my + 1), 3: PSET (mx + 1, my + 1), 3
+ 38D6   00B8            PSET (mx, my + 2), 3: PSET (mx + 2, my + 2), 3
+ 38D6   00B8            PSET (mx, my + 3), 3: PSET (mx + 3, my + 3), 3
+ 38D6   00B8            PSET (mx, my + 4), 3: PSET (mx + 4, my + 4), 3
+ 38D6   00B8            PSET (mx, my + 5), 3: PSET (mx + 2, my + 5), 3: PSET (m
+                x + 3, my + 5), 3
+ 38D6   00B8            PSET (mx, my + 6), 3: PSET (mx + 1, my + 6), 3
+ 38D6   00B8            PSET (mx + 1, my + 2), 2
+ 38D6   00B8            PSET (mx + 1, my + 3), 2: PSET (mx + 2, my + 3), 2
+ 38D6   00B8            PSET (mx + 1, my + 4), 2: PSET (mx + 2, my + 4), 2: PSE
+                T (mx + 3, my + 4), 2
+ 38D6   00B8            PSET (mx + 1, my + 5), 2
+ 38D6   00B8            cdrn = 1
+ 38D6   00B8            RETURN
+ 38D6   00B8            mmerasecur:
+ 3B16   00B8            IF cdrn = 1 THEN PUT (mx, my), cbuf, PSET
+ 3B42   00B8            cdrn = 0
+ 3B42   00B8            RETURN
+ 3B42   00B8    END SUB
+ 3BA0   00B8    
+ 3BA7   00B8    
 
 43949 Bytes Available
-33578 Bytes Free
+33027 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

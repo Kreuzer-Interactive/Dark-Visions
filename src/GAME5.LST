@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME5.BAS: player rendering module (walk-to movement pha
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    
  0030   0006    SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), 
                                                                       PAGE   2
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), 
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 AS #fh%
  0609   0008                    FOR i% = 0 TO 125
                                                                       PAGE   3
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0654   0008                            IF EOF(fh%) THEN EXIT FOR
@@ -129,56 +129,99 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  06AF   0008            NEXT
  06CA   0008    END SUB
  06D2   0008    
- 06D2   0008    SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(),
+ 06D2   0008    '----- PicSeq: full-screen .pic cutscene player (anim mode "seq
+                "). BLOADs
+ 06D2   0008    '-----   sq$+"01".pic .. sq$+NN.pic at rate%*0.025s a frame -- 
+                HALF the unit
+ 06D2   0008    '-----   the other anim modes use (integer rates were too coars
+                e to tune a
+ 06D2   0008    '-----   14-frame cutscene: 0.10s vs 0.15s with nothing between
+                ) -- then settles on
+ 06D2   0008    '-----   sq$+"x.pic" -- the SAME player-less end-state file a b
+                g placement
+ 06D2   0008    '-----   shows on later room loads. Rows 0-21 (the live top mes
+                sage) are
+ 06D2   0008    '-----   lifted before the first frame and re-stamped over ever
+                y BLOAD so the
+ 06D2   0008    '-----   triggering action's message stays readable through the
+                 play.
+ 06D2   0008    '-----   sn2$ non-empty = PLAY string fired at the start ("MB..
+                " = background).
+ 06D2   0008    SUB PicSeq (sq$, fr$, rate%, sn2$)
+ 06DD   0008            n% = VAL(fr$)
+ 06DD   0008            IF n% < 1 THEN EXIT SUB
+ 06FA   0008            REDIM tb%(884)
+ 0712   0008            GET (0, 0)-(319, 21), tb%
+ 0712   0008            IF sn2$ <> "" THEN PLAY sn2$
+ 0750   0008            FOR f% = 1 TO n%
+ 075C   0008                    pf$ = LTRIM$(STR$(f%))
+ 075C   0008                    IF f% < 10 THEN pf$ = "0" + pf$
+ 0792   0008                    DEF SEG = -18432
+ 0792   0008                    BLOAD sq$ + pf$ + ".pic", 0
+ 0792   0008                    DEF SEG
+ 0792   0008                    PUT (0, 0), tb%, PSET
+ 0792   0008                    t! = TIMER
+ 0792   0008                    DO
+ 07F0   0008                            IF TIMER < t! THEN EXIT DO
+ 080A   0008                    LOOP WHILE TIMER < t! + rate% * .025
+ 0830   0008            NEXT
+ 083F   0008            DEF SEG = -18432
+ 083F   0008            BLOAD sq$ + "x.pic", 0
+ 083F   0008            DEF SEG
+ 083F   0008            PUT (0, 0), tb%, PSET
+ 083F   0008            ERASE tb%
+ 088B   0008    END SUB
+ 08A5   0008    
+ 08A5   0008    SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(),
                  cmwb%(), wbg%())
- 06DD   0008            '----- stride phase wfb% carries over from the previous
-                 walk (no reset)
- 06DD   0008            '----- diagonal leg: full (3,2) steps while both axes s
-                till need one
- 06DD   0008            WHILE ABS(tx! - px!) >= 3 AND ABS(ty! - py!) >= 2
- 06DE   0008                    IF ty! > py! THEN
- 06DE   0008                            IF tx! > px! THEN d% = 5 ELSE d% = 4
- 0762   0008                            sd! = 1.1
- 0762   0008                    ELSE
- 0770   0008                            IF tx! > px! THEN d% = 7 ELSE d% = 6
- 0795   0008                            sd! = 1.2
- 0795   0008                    END IF
- 07A0   0008                    px! = px! + SGN(tx! - px!) * 3
- 07A0   0008                    py! = py! + SGN(ty! - py!) * 2
- 07A0   0008                    CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151
-                , cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
- 0812   0008                    wfb% = 1 - wfb%
- 0812   0008            WEND
- 0820   0008            WHILE px! <> tx!
- 0820   0008                    '----- 4px stride at down-walk cadence = same s
-                peed, step sound in rhythm
- 0820   0008                    IF tx! > px! THEN d% = 2 ELSE d% = 3
- 0857   0008                    IF ABS(tx! - px!) <= 3 THEN px! = tx! ELSE px! 
-                = px! + SGN(tx! - px!) * 4
- 08A2   0008                    CALL PStep(px!, py!, wfb%, sfrq!, 1.12, d% * 15
-                1, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
- 08DF   0008                    wfb% = 1 - wfb%
- 08DF   0008            WEND
- 08EC   0008            WHILE py! <> ty!
- 08EC   0008                    IF ty! > py! THEN d% = 0: sd! = 1.2 ELSE d% = 1
-                : sd! = 1.4
- 0939   0008                    IF ABS(ty! - py!) <= 2 THEN py! = ty! ELSE py! 
-                = py! + SGN(ty! - py!) * 2
- 0984   0008                    CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151
-                , cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
- 09B6   0008                    wfb% = 1 - wfb%
- 09B6   0008            WEND
- 09C4   0008    END SUB
- 09CC   0008    
- 09D3   0008    
+ 08B0   0008            '----- stride phase wfb% carries over from the previous
                                                                       PAGE   4
-                                                                      13 Jul 26
-                                                                      13:22:48
+                                                                      19 Jul 26
+                                                                      17:41:33
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                 walk (no reset)
+ 08B0   0008            '----- diagonal leg: full (3,2) steps while both axes s
+                till need one
+ 08B0   0008            WHILE ABS(tx! - px!) >= 3 AND ABS(ty! - py!) >= 2
+ 08B0   0008                    IF ty! > py! THEN
+ 08B0   0008                            IF tx! > px! THEN d% = 5 ELSE d% = 4
+ 0934   0008                            sd! = 1.1
+ 0934   0008                    ELSE
+ 0942   0008                            IF tx! > px! THEN d% = 7 ELSE d% = 6
+ 0967   0008                            sd! = 1.2
+ 0967   0008                    END IF
+ 0972   0008                    px! = px! + SGN(tx! - px!) * 3
+ 0972   0008                    py! = py! + SGN(ty! - py!) * 2
+ 0972   0008                    CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151
+                , cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+ 09E4   0008                    wfb% = 1 - wfb%
+ 09E4   0008            WEND
+ 09F2   0008            WHILE px! <> tx!
+ 09F2   0008                    '----- 4px stride at down-walk cadence = same s
+                peed, step sound in rhythm
+ 09F2   0008                    IF tx! > px! THEN d% = 2 ELSE d% = 3
+ 0A29   0008                    IF ABS(tx! - px!) <= 3 THEN px! = tx! ELSE px! 
+                = px! + SGN(tx! - px!) * 4
+ 0A74   0008                    CALL PStep(px!, py!, wfb%, sfrq!, 1.12, d% * 15
+                1, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+ 0AB1   0008                    wfb% = 1 - wfb%
+ 0AB1   0008            WEND
+ 0ABE   0008            WHILE py! <> ty!
+ 0ABE   0008                    IF ty! > py! THEN d% = 0: sd! = 1.2 ELSE d% = 1
+                : sd! = 1.4
+ 0B0B   0008                    IF ABS(ty! - py!) <= 2 THEN py! = ty! ELSE py! 
+                = py! + SGN(ty! - py!) * 2
+ 0B56   0008                    CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151
+                , cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+ 0B88   0008                    wfb% = 1 - wfb%
+ 0B88   0008            WEND
+ 0B96   0008    END SUB
+ 0B9E   0008    
+ 0BA5   0008    
 
 43949 Bytes Available
-40735 Bytes Free
+40447 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

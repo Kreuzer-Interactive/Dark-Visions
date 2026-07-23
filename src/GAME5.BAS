@@ -72,6 +72,40 @@ SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
 	NEXT
 END SUB
 
+'----- PicSeq: full-screen .pic cutscene player (anim mode "seq"). BLOADs
+'-----   sq$+"01".pic .. sq$+NN.pic at rate%*0.025s a frame -- HALF the unit
+'-----   the other anim modes use (integer rates were too coarse to tune a
+'-----   14-frame cutscene: 0.10s vs 0.15s with nothing between) -- then settles on
+'-----   sq$+"x.pic" -- the SAME player-less end-state file a bg placement
+'-----   shows on later room loads. Rows 0-21 (the live top message) are
+'-----   lifted before the first frame and re-stamped over every BLOAD so the
+'-----   triggering action's message stays readable through the play.
+'-----   sn2$ non-empty = PLAY string fired at the start ("MB.." = background).
+SUB PicSeq (sq$, fr$, rate%, sn2$)
+	n% = VAL(fr$)
+	IF n% < 1 THEN EXIT SUB
+	REDIM tb%(884)
+	GET (0, 0)-(319, 21), tb%
+	IF sn2$ <> "" THEN PLAY sn2$
+	FOR f% = 1 TO n%
+		pf$ = LTRIM$(STR$(f%))
+		IF f% < 10 THEN pf$ = "0" + pf$
+		DEF SEG = -18432
+		BLOAD sq$ + pf$ + ".pic", 0
+		DEF SEG
+		PUT (0, 0), tb%, PSET
+		t! = TIMER
+		DO
+			IF TIMER < t! THEN EXIT DO
+		LOOP WHILE TIMER < t! + rate% * .025
+	NEXT
+	DEF SEG = -18432
+	BLOAD sq$ + "x.pic", 0
+	DEF SEG
+	PUT (0, 0), tb%, PSET
+	ERASE tb%
+END SUB
+
 SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
 	'----- stride phase wfb% carries over from the previous walk (no reset)
 	'----- diagonal leg: full (3,2) steps while both axes still need one

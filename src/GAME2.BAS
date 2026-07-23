@@ -1,36 +1,94 @@
 '----- GAME2.BAS: secondary module for the multi-module split (sound effects)
 '----- gets its own 64K code segment; shares scalars with GAME.BAS via COMMON SHARED.
 '----- The COMMON SHARED line below MUST match GAME.BAS exactly (same names + order).
-COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon
+TYPE RegType
+	ax AS INTEGER
+	bx AS INTEGER
+	cx AS INTEGER
+	dx AS INTEGER
+	bp AS INTEGER
+	si AS INTEGER
+	di AS INTEGER
+	flags AS INTEGER
+	ds AS INTEGER
+	es AS INTEGER
+END TYPE
+DECLARE SUB INTERRUPT (intnum AS INTEGER, inreg AS RegType, outreg AS RegType)
+COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon, rvon
 COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
 
-'----- DeathMusic: play one of four random dirges
+'----- DeathMusic: play one of four random dirges, note by note so a keypress
+'----- or mouse click skips the rest (octave shifts are rebalanced on a skip
+'----- since the tunes rely on balanced <...> pairs)
 SUB DeathMusic
+	DIM mr AS RegType, mo AS RegType
+	DIM tn$, nt$, ch$
+	DIM i AS INTEGER, shf AS INTEGER, skp AS INTEGER
 	RANDOMIZE TIMER
 	mt = INT(RND * 4)
-	IF mt <> 1 THEN GOTO 15370
-	GOTO 15440
-	GOTO 15440
-15370 IF mt <> 2 THEN GOTO 15400
-	GOTO 15460
-	GOTO 15440
-15400 IF mt <> 3 THEN GOTO 15430
-	GOTO 15490
-	GOTO 15440
-15430 GOTO 15510
+	IF mt = 1 THEN tn$ = "<<<g-2g8a+8f+8e8d-3e4f+5f+5e-5e3>d2>>"
+	IF mt = 2 THEN tn$ = "<<<d+8e-8<a8g8f3b8g8f+8e3g-2g8a8f+8e8d-3e4f+5c8c8c3>>>"
+	IF mt = 3 THEN tn$ = "<<<c3c3d-5d-5c3c3<b-5a-5>c3c3d-5e-5c3c3>>>"
+	IF tn$ = "" THEN tn$ = "<g8a8b-8b8<c8g8a8b-8a8a8b8a8>>"
+	PLAY "MF"
+	i = 1: shf = 0: skp = 0
+	DO WHILE i <= LEN(tn$)
+		'----- gather octave shifts (and skip spaces) onto the next note
+		nt$ = ""
+		DO WHILE i <= LEN(tn$)
+			ch$ = MID$(tn$, i, 1)
+			IF ch$ <> "<" AND ch$ <> ">" AND ch$ <> " " THEN EXIT DO
+			IF ch$ = "<" THEN nt$ = nt$ + ch$: shf = shf + 1
+			IF ch$ = ">" THEN nt$ = nt$ + ch$: shf = shf - 1
+			i = i + 1
+		LOOP
+		IF i > LEN(tn$) THEN
+			IF nt$ <> "" THEN PLAY nt$: shf = 0
+			EXIT DO
+		END IF
+		'----- the note letter plus accidentals / length digits / dots
+		nt$ = nt$ + MID$(tn$, i, 1): i = i + 1
+		DO WHILE i <= LEN(tn$)
+			ch$ = MID$(tn$, i, 1)
+			IF (ch$ < "0" OR ch$ > "9") AND ch$ <> "+" AND ch$ <> "-" AND ch$ <> "#" AND ch$ <> "." THEN EXIT DO
+			nt$ = nt$ + ch$: i = i + 1
+		LOOP
+		PLAY nt$
+		'----- a key or click skips the rest of the dirge
+		IF INKEY$ <> "" THEN skp = 1
+		IF skp = 0 AND msen = 1 THEN
+			mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+			IF (mo.bx AND 1) <> 0 THEN skp = 1
+		END IF
+		IF skp = 1 THEN
+			IF shf > 0 THEN PLAY STRING$(shf, ">")
+			IF shf < 0 THEN PLAY STRING$(-shf, "<")
+			'----- signal the caller: the skip press also ends the death screen
+			mt = -1
+			EXIT DO
+		END IF
+	LOOP
+END SUB
 
-15440 PLAY "<<<g-2g8a+8f+8e8d-3e4f+5f+5e-5e3>d2>>"
-	EXIT SUB
-
-15460 PLAY "<<<d+8e-8<a8g8f3b8g8f+8e3"
-	PLAY "  g-2g8a8f+8e8d-3e4f+5c8c8c3>>>"
-	EXIT SUB
-
-15490 PLAY "<<<c3c3d-5d-5c3c3<b-5a-5>c3c3d-5e-5c3c3>>>"
-	EXIT SUB
-
-15510 PLAY "<g8a8b-8b8<c8g8a8b-8a8a8b8a8>>"
-	EXIT SUB
+'----- joystick poll (moved from GAME.BAS -- 64K ceiling): read STICK, set the
+'----- movement direction into a2$; any direction cancels a pending verb (vk2$)
+SUB JoyPoll (a2$, vk2$)
+	DIM js0 AS SINGLE, js1 AS SINGLE
+	IF jsen <> 1 THEN EXIT SUB
+	js0 = STICK(0)
+	js1 = STICK(1)
+	IF js1 = 0# AND js0 = 0 THEN EXIT SUB
+	IF js0 < 40 THEN a2$ = "4"
+	IF js0 > 120 THEN a2$ = "6"
+	IF js1 < 40 THEN a2$ = "8"
+	IF js1 > 120 THEN a2$ = "2"
+	IF js1 < 40 AND js0 > 120 THEN a2$ = "9"
+	IF js1 < 40 AND js0 < 40 THEN a2$ = "7"
+	IF js0 > 120 AND js1 > 120 THEN a2$ = "3"
+	IF js0 < 40 AND js1 > 120 THEN a2$ = "1"
+	IF LEN(a2$) = 1 THEN
+		IF INSTR("123456789", a2$) > 0 THEN vk2$ = ""
+	END IF
 END SUB
 
 '----- sound effect 1
@@ -143,11 +201,13 @@ END SUB
 '----- apply combine recipe r%: swap the ingredient ob() flags for the result, and
 '----- re-derive 33 (ready to mix) since 36 may just have appeared
 SUB CombDo2 (r%, ob(), cn%)
+	'----- ingredients become state 2 ("used up"): out of the inventory but
+	'----- still counting as taken, so their pickup spots never re-arm
 	cn% = 0
-	IF r% = 1 THEN ob(18) = 0: ob(28) = 0: ob(22) = 1: cn% = 22
-	IF r% = 2 THEN ob(24) = 0: ob(11) = 0: ob(52) = 1: cn% = 52
-	IF r% = 3 THEN ob(29) = 0: ob(34) = 0: ob(35) = 1: cn% = 35
-	IF r% = 4 THEN ob(52) = 0: ob(36) = 1: cn% = 36
+	IF r% = 1 THEN ob(18) = 2: ob(28) = 2: ob(22) = 1: cn% = 22
+	IF r% = 2 THEN ob(24) = 2: ob(11) = 2: ob(52) = 1: cn% = 52
+	IF r% = 3 THEN ob(29) = 2: ob(34) = 2: ob(35) = 1: cn% = 35
+	IF r% = 4 THEN ob(52) = 2: ob(36) = 1: cn% = 36
 	IF ob(32) = 1 AND ob(36) = 1 THEN ob(33) = 1
 END SUB
 
@@ -181,15 +241,12 @@ SUB InvNav (k$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, mx2%, my2%, act%)
 			nvz = 2
 		END IF
 	ELSE
-		'----- bottom row is just QUIT and Close now (save/load moved to the ESC menu)
-		IF k$ = "L" THEN
-			IF nvb > 0 THEN nvb = nvb - 1
-		ELSEIF k$ = "R" THEN
-			IF nvb < 1 THEN nvb = nvb + 1
-		ELSEIF k$ = "U" THEN
+		'----- bottom row is just Close now (quit button removed -- q key quits)
+		nvb = 0
+		IF k$ = "U" THEN
 			IF cic > 0 THEN nvz = 0 ELSE nvz = 1
 		ELSEIF k$ = "E" THEN
-			act% = 4 + nvb * 2
+			act% = 6
 		END IF
 	END IF
 	'----- scroll the selected row into view, then park the cursor on the focus:
@@ -206,9 +263,8 @@ SUB InvNav (k$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, mx2%, my2%, act%)
 		IF invtab = 0 THEN mx2% = 46 ELSE mx2% = 92
 		my2% = 39
 	ELSE
-		'----- button art: QUIT ~20-78, Close ~268-306, y169-181
-		IF nvb = 0 THEN mx2% = 72
-		IF nvb = 1 THEN mx2% = 300
+		'----- button art: Close ~268-306, y169-181
+		mx2% = 300
 		my2% = 178
 	END IF
 END SUB
@@ -247,6 +303,26 @@ SUB RmPal (co2, p1, p2, p3)
 	PALETTE 1, p1
 	PALETTE 2, p2
 	PALETTE 3, p3
+END SUB
+
+'----- LoadFade: palette fade-in after loading a game -- steps the whole room
+'----- through black, dark gray, light gray and white, then the room palette
+SUB LoadFade (co2, p1, p2, p3)
+	DIM fi AS INTEGER, fc AS INTEGER
+	DIM ft AS SINGLE, fd AS SINGLE
+	FOR fi = 1 TO 4
+		fc = 0
+		IF fi = 2 THEN fc = 8
+		IF fi = 3 THEN fc = 7
+		IF fi = 4 THEN fc = 15
+		PALETTE 1, fc: PALETTE 2, fc: PALETTE 3, fc
+		ft = TIMER
+		DO
+			fd = TIMER - ft
+			IF fd < 0 THEN fd = fd + 86400
+		LOOP WHILE fd < .13
+	NEXT
+	CALL RmPal(co2, p1, p2, p3)
 END SUB
 
 '----- does the player's 31x31 box intersect rect x1..x2 / y1..y2? (np = nopl close-up)
@@ -517,6 +593,9 @@ SUB LoadConfig
 		PRINT #1, "intro=1"
 		PRINT #1, "; quickstart=1 jumps straight into the game - no intro, title or instructions prompt (testing)"
 		PRINT #1, "quickstart=0"
+		PRINT #1, "; revive=1 auto-saves when a timed-death room arms and, after dying there,"
+		PRINT #1, "; restores that save with a message instead of the Load screen"
+		PRINT #1, "revive=0"
 			PRINT #1, "; hit-zone debug overlay (needs mouse=1): ring hotspot click-zones, 1=show 0=hide (look=blue action=brown get/use=gray)"
 			PRINT #1, "hitzone_look=0"
 			PRINT #1, "hitzone_get=0"
@@ -532,6 +611,7 @@ SUB LoadConfig
 	klon = 1
 	wksen = 1
 	qkon = 0
+	rvon = 0
 	hzon$ = ""
 	OPEN "dark.ini" FOR INPUT AS #1
 	DO WHILE NOT EOF(1)
@@ -557,6 +637,7 @@ SUB LoadConfig
 				IF k$ = "walkto" THEN wksen = tv
 				IF k$ = "intro" THEN inon = tv
 				IF k$ = "quickstart" THEN qkon = tv
+				IF k$ = "revive" THEN rvon = tv
 				IF k$ = "hitzone_look" AND tv = 1 THEN hzon$ = hzon$ + "l"
 				IF k$ = "hitzone_get" AND tv = 1 THEN hzon$ = hzon$ + "g"
 				IF k$ = "hitzone_use" AND tv = 1 THEN hzon$ = hzon$ + "u"

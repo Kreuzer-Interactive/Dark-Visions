@@ -109,8 +109,8 @@
 0,0,0
 "","The window offers the only light into   the room.","l",0,0,0,"f4"
 "","It is a toolchest.","l",0,0,0,"f4"
-"","Inside the toolchest is a saw.","a",0,20,0,"f4"
-"","You remove the |saw|.","g",0,20,20,"f4"
+"","Inside the toolchest is a saw.","a",0,20,58,"f4"
+"","You remove the |saw|.","g",58,20,20,"f4"
 "","It is geometric pattern of a DNA strand.","l",0,0,0,"f8"
 "","It is a file cabinet.","l",0,0,0,"f8"
 "","The file cabinet is locked.","a",0,21,0,"f8"
@@ -132,7 +132,10 @@
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
+27,79,147,58,0
+28,224,163,24,0
+29,147,133,21,0
 -2,4,98,156,1
 -2,8,152,146,8
 -2,11,178,149,9
--2,16,216,173,9
+-2,16,214,171,9

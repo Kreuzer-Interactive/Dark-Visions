@@ -64,6 +64,12 @@ WHAT TO TEST (new build vs. original)
     (no save switch; loads need no confirmation). Back opens the main menu
     with Save grayed out, so New Game / Quit stay reachable.
 
+  * Revive (dark.ini revive=1):  every room transition auto-saves the room you
+    are LEAVING to a hidden temp slot; if a timed killer encounter then gets
+    you, the death skips the Load screen -- the game restores that save (back
+    in the safe room, before you walked in), shows Joe's "they're still in
+    there" message, and play continues. revive=0 = classic behaviour.
+
   * Overall:  play through both and compare the feel, art, speed, and note any
     bugs, glitches, or differences.
 

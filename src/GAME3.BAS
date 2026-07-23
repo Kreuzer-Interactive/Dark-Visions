@@ -158,10 +158,10 @@ SUB drawStats (ob() AS SINGLE, cl AS SINGLE, cr AS SINGLE, fontData() AS INTEGER
 	tmin = INT(cl * cr): hh = 8 + tmin \ 60: mm = tmin - (hh - 8) * 60
 	pcnt = 0
 	FOR i = 1 TO 51
-		IF ob(i) = 1 THEN pcnt = pcnt + 1
+		IF ob(i) >= 1 THEN pcnt = pcnt + 1
 	NEXT i
-	IF ob(36) = 1 THEN pcnt = pcnt + 2
-	IF ob(35) = 1 THEN pcnt = pcnt + 2
+	IF ob(36) >= 1 THEN pcnt = pcnt + 2
+	IF ob(35) >= 1 THEN pcnt = pcnt + 2
 	pcnt = CINT(pcnt * 100 / 47)
 	CALL drawText(49, 11, LTRIM$(STR$(pcnt)) + "%", 2, fontData())
 	CALL drawText(278, 11, LTRIM$(STR$(hh)) + ":" + RIGHT$("0" + LTRIM$(STR$(mm)), 2), 2, fontData())
@@ -180,6 +180,21 @@ SUB drawMsg (s AS STRING, fontData() AS INTEGER)
 	lh = fontData(0) + 1
 	LINE (0, 0)-(319, lh * 2 - 1), 0, BF
 	CALL drawWrap(2, 1, s, 3, 314, lh, fontData())
+END SUB
+
+'----- bottom-left HUD: which inventory item the Use verb applies ("U" in the
+'----- room's attr-3 brown, the rest attr-1 gray). Clears the strip when
+'----- nothing usable is held.
+SUB HudUse (sel2 AS INTEGER, ob() AS SINGLE, sn$(), fontData() AS INTEGER)
+	DIM it$
+	it$ = ""
+	IF sel2 >= 1 AND sel2 <= 50 THEN
+		IF ob(sel2) = 1 THEN it$ = sn$(sel2)
+	END IF
+	LINE (0, 192)-(170, 199), 0, BF
+	IF it$ = "" THEN EXIT SUB
+	CALL drawText(3, 192, "U", 3, fontData())
+	CALL drawText(3 + textWidth("U", fontData()), 192, "se = " + it$, 1, fontData())
 END SUB
 
 '----- intro: black the palette, hold ~1s (hides the slow carr.pic BLOAD on old hardware), then load + reveal the car scene
@@ -283,4 +298,130 @@ SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
 	PALETTE 3, 6
 	lh = fontData(0) + 1
 	CALL drawWrap(6, 2, bt, 3, 308, lh, fontData())
+END SUB
+
+'----- ShowRules: the pre-game instructions screen (moved verbatim from
+'----- GAME.BAS's rules: gosub -- that module is at the 64K code ceiling)
+SUB ShowRules
+	CLS
+	WIDTH 80
+	PRINT " Welcome to the premier point and click game by Kreuzer productions"
+	PRINT " The point and click interface is really quite easy. Move the green"
+	PRINT " cursor onto the object you want to manipulate and press one of "
+	PRINT " these keys. (a) for action . (l) to look at an object. Type (u) to"
+	PRINT " use th active object. (g) to get that object.(note) some objects you"
+	PRINT " must look at to get or you must look at the drawer to find the object "
+	PRINT " inside. Also at any time during the game you may press (i) to display "
+	PRINT " the your inventory ,time and place. Plus you may load,save or quit"
+	PRINT " or select the active object from this screen. "
+	PRINT " if you seem to be stuck it would be wise to backtrack and look to see if"
+	PRINT " you anything new has opened up or one of your objects has a use in that"
+	PRINT " room. If action does not work on something you might try look or get or"
+	PRINT " vice versa, also try clicking the cursor on different parts of the object"
+	PRINT " it might reveal different things. "
+	PRINT " Hints: Click (a) on and arrow by the door to leave"
+	PRINT " Even though it might seem as if two or more objects"
+	PRINT " could do the trick, usually only one will work."
+	PRINT " Just to get you started move your cursor by the rug of the first"
+	PRINT " room. Then press (l) it will say you see a lumpy rug. That didn't help."
+	PRINT " Don't worry, save often you never know what may happen"
+	PRINT " P.S. Time does matter"
+	PRINT " Get ready to journey into the twisting and contorting shadows of"
+	PRINT " your uncle's residence"
+	PRINT " PRESS ANY KEY TO CONTINUE "
+	DO
+		rk$ = INKEY$
+	LOOP WHILE rk$ = ""
+	SCREEN 1
+END SUB
+
+'----- Credits / ending sequence (moved verbatim from GAME.BAS -- 64K ceiling).
+'----- gd% carries ob(43): 1 = curtains were lit -> the house-burns good
+'----- ending; anything else -> the bad "uncle not saved" screen.
+SUB Credits (gd%)
+	DIM e0(600) AS INTEGER
+	SCREEN 1
+	KEY OFF
+	PALETTE 1, 8: PALETTE 2, 4: PALETTE 3, 14
+	IF gd% <> 1 THEN GOTO 15700
+
+	'----- good ending: house burns
+	DEF SEG = &HB800: BLOAD "end.pic", 0: DEF SEG
+	PLAY "e-6d5e-5d5f7p7"
+	PLAY "a5>c6<b6a5g6a4"
+	FOR e3 = 1 TO 5: SOUND 32761, 1: NEXT e3
+
+	FOR e6 = 1 TO 3
+		FOR e4 = 1 TO 3
+			IF e4 = 1 THEN e5 = 8 ELSE IF e4 = 2 THEN e5 = 7 ELSE e5 = 15
+			PALETTE e6, e5
+			FOR e3 = 1 TO 5: IF RND < .9 THEN SOUND RND * 71 + 50, (RND * .2) + .3 ELSE SOUND 32767, .5
+			NEXT e3
+		NEXT e4: NEXT e6
+
+	PALETTE 0, 15
+	DEF SEG = &HB800: BLOAD "end2.pic", 0: DEF SEG
+	FOR e3 = 1 TO 7: SOUND 32671, .5: NEXT e3
+	PALETTE 0, 0
+
+	FOR e6 = 1 TO 3
+		FOR e4 = 1 TO 3
+			IF e4 = 1 THEN e5 = 8 ELSE IF e4 = 2 THEN e5 = 7 ELSE GOSUB 15640
+			PALETTE e6, e5
+			FOR e3 = 1 TO 5: IF RND < .9 THEN SOUND RND * 71 + 50, (RND * .2) + .3 ELSE SOUND 32767, .5
+			NEXT e3
+		NEXT e4: NEXT e6
+
+	FOR e3 = 1 TO 40: SOUND 32676, .1: NEXT e3
+	GOSUB 15660
+	FOR e3 = 1 TO 20: SOUND 32761, 1: NEXT e3
+	GOSUB 15650
+
+	'----- closing narration
+	PRINT "You run swiftly from the flaming"
+	PRINT "building that is being consumed by"
+	PRINT "the blaze. As you look back at the"
+	PRINT "burning house, spewing fiery shrapnel"
+	PRINT "about the grounds you wonder about"
+	PRINT "your uncle and his work. What was"
+	PRINT "he realy like? What was obliterated"
+	PRINT "in the house? Did you leave something"
+	PRINT "behind or undone ...."
+	PRINT "Maybe some day you'll find out."
+	PRINT "": PRINT "Press a key to exit."
+15592 IF INKEY$ = "" THEN GOTO 15592
+	EXIT SUB
+
+	'----- pick palette color by frame
+15640 IF e6 = 1 THEN e5 = 8
+	IF e6 = 2 THEN e5 = 2
+	IF e6 = 3 THEN e5 = 6
+	RETURN
+
+	'----- static-screen wipe effect
+15650 FOR e3 = 1 TO 23: FOR e2 = 1 TO 40
+		LOCATE INT(RND * 23) + 1, INT(RND * 40) + 1: PRINT " "
+		SOUND 32676, .05
+	NEXT e2: NEXT e3
+	CLS
+	RETURN
+
+	'----- flying shrapnel animation
+15660 GET (212, 140)-(262, 160), e0
+	PUT (212, 140), e0, XOR
+	LINE (211, 148)-(265, 148), 1
+	FOR e1 = 212 TO 65 STEP -1
+		PUT (e1, 140), e0, XOR
+		SOUND (RND * 100) + 50, .1: SOUND 100, .1
+		PUT (e1, 140), e0, XOR
+	NEXT e1
+	RETURN
+
+	'----- bad ending (uncle not saved)
+15700 DEF SEG = &HB800: BLOAD "end1.pic", 0: DEF SEG
+	PALETTE 1, 8: PALETTE 2, 4: PALETTE 3, 14
+	PLAY "e-6d5e-5d5f7p7"
+	PLAY "a5>c6<b6a5g6a4"
+15704 IF INKEY$ = "" THEN GOTO 15704
+	EXIT SUB
 END SUB
