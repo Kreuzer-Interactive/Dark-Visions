@@ -35,3 +35,7 @@
 35,"RM3F1","spr","RM3F1","0;1",6,"random 0.2 1","",""
 36,"RM3F2","spr","RM3F2","0;1",6,"random 0.2 1","",""
 37,"RM2NOCUR frame 0","spr","RM2NOCUR","0",0,"static","",""
+38,"DRESSER frame 0","spr","DRESSER","0",0,"static","",""
+39,"CHAIR frame 0","spr","CHAIR","0",0,"static","",""
+40,"RM5CAB frame 0","spr","RM5CAB","0",0,"static","",""
+41,"RM11CRAT frame 0","spr","RM11CRAT","0",0,"fg","",""

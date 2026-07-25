@@ -54,10 +54,11 @@ DECLARE SUB HudUse (sel2 AS INTEGER, ob() AS SINGLE, sn$(), fontData() AS INTEGE
 DECLARE SUB introShowCarr ()
 DECLARE SUB introFadeCredit ()
 DECLARE SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
-DECLARE SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%())
-DECLARE SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%())
+DECLARE SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%(), ovf%())
+DECLARE SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
 DECLARE SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
-DECLARE SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+DECLARE SUB OvReg (ovf%(), afrm%(), amfrm%(), anpf!, ovh!, ovnext!, PX!, PY!)
+DECLARE SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 DECLARE SUB PicSeq (sq$, fr$, rate%, sn2$)
 DECLARE SUB ShowRules ()
 
@@ -174,6 +175,10 @@ DIM SHARED afrm(460) AS INTEGER, amfrm(460) AS INTEGER, fsq(30) AS INTEGER
 '----- round-robin evict). REDIM = dynamic arrays in the far heap, so DGROUP is untouched.
 REDIM SHARED acPct(6, 1600) AS INTEGER, acMsk(6, 1600) AS INTEGER
 DIM SHARED acSrc$(6), acN(6) AS INTEGER, acM(6) AS INTEGER
+'----- foreground overlays ("fg" mode): furniture the player walks BEHIND. ovf(0)=count,
+'----- then 4 ints per overlay (x, y, pct start, msk start), frame data packed after 17;
+'----- PStand/PStep re-PUT any overlay that intersects the player box (GAME5 OvTop)
+REDIM SHARED ovf(1500) AS INTEGER
 '----- active loop-animation instances for the current room (idle-loop tick)
 DIM SHARED nLoop AS INTEGER
 DIM SHARED liAnim(4) AS INTEGER, liX(4) AS INTEGER, liY(4) AS INTEGER, liCur(4) AS INTEGER, liRate(4) AS INTEGER
@@ -985,6 +990,13 @@ animdraw:
 			afn = fsq(nfr) + 1
 			GOSUB animframe
 			plStat(pp) = 1
+		ELSEIF anMode$(aidx) = "fg" THEN
+			'----- foreground: composite like a static, then register the decoded
+			'----- frame so every player draw re-PUTs it ON TOP of him
+			afn = fsq(nfr) + 1
+			GOSUB animframe
+			plStat(pp) = 1
+			GOSUB ovfreg
 		ELSEIF anMode$(aidx) = "hold" OR anMode$(aidx) = "once" THEN
 			adplayed = 0
 			IF plSet(pp) > 0 THEN IF ob(plSet(pp)) = 1 THEN adplayed = 1
@@ -1041,6 +1053,16 @@ animdraw:
 		END IF
 		adnext:
 	NEXT
+	RETURN
+
+'----- ovfreg: register the frame animframe just drew as a foreground overlay --
+'----- copies afrm/amfrm (still holding the composited frame) into ovf() with its
+'----- spot, so GAME5 OvTop can re-stamp it over the player without any disk read
+'----- (body in GAME2 OvReg -- 64K ceiling)
+ovfreg:
+	ovh = 0
+	IF acM(acs) >= anf THEN ovh = 1
+	CALL OvReg(ovf(), afrm(), amfrm(), anpf, ovh, ovnext, PX, PY)
 	RETURN
 
 '----- animtick: advance active loop/random animations (idle-loop tick, TIMER-delta gated);
@@ -1119,12 +1141,12 @@ ovpre:
 '----- ovlift: erase-only (no cursor teardown) -- used between frames of a play so
 '----- the player can be re-drawn over every frame instead of vanishing for the swing
 ovlift:
-	CALL PStand("", pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur())
+	CALL PStand("", pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur(), ovf())
 	RETURN
 ovpost:
 	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
 	IF lf$ = "" THEN lf$ = "2"
-	CALL PStand(lf$, pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur())
+	CALL PStand(lf$, pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur(), ovf())
 	RETURN
 
 reanim:
@@ -1298,9 +1320,9 @@ dooseq:
 	CLOSE
 	'----- walk in from the door using the startup-cached right-facing set (slot 2 = offset 302)
 	FOR i = 90 TO 140 STEP 3
-		CALL PStep(i, 130, 0, f3, 1, 302, cwa(), cmwa(), cwb(), cmwb(), wbg())
+		CALL PStep(i, 130, 0, f3, 1, 302, cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
 		i = i + 3
-		CALL PStep(i, 130, 1, f3, 1, 302, cwa(), cmwa(), cwb(), cmwb(), wbg())
+		CALL PStep(i, 130, 1, f3, 1, 302, cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
 	NEXT
 	a$ = "6": GOSUB face
 	dwsec = .5: GOSUB dwait
@@ -1358,6 +1380,7 @@ loadroom:
 	FOR i = 1 TO 25: spx(i) = -1: spd(i) = 0: NEXT
 	FOR i = 1 TO 20: plStat(i) = 0: NEXT
 	mvSp = 0
+	ovf(0) = 0: ovnext = 17
 	ON ERROR GOTO placeeof
 	placeloop:
 	IF nPlace >= 20 THEN GOTO placeend
@@ -1451,14 +1474,14 @@ walkout:
 	'----- leave the player anywhere): L-walk to the door's x first, then out.
 	'----- The 12px dead zone keeps the classic centered walkout pixel-identical.
 	IF (a$ = "1" OR a$ = "2") AND ABS(b - 15 - pjx) > 12 THEN wtx = b - 15
-	CALL walkTo(wtx, wty, pjx, pjy, f3, cwa(), cmwa(), cwb(), cmwb(), wbg())
+	CALL walkTo(wtx, wty, pjx, pjy, f3, cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
 	RETURN
 face:
 	'----- tear down the mouse cursor first: its save-under was sampled before this turn, so restoring it later would repaint the OLD player (erasecur no-ops when the cursor isn't drawn). Next mousepoll re-samples after the turn.
 	CALL erasecur
 	'----- erase + redraw the standing player at (pjx,pjy) -- GAME5 PStand
 	'----- (erase restores fbg; nopl close-up rooms erase but skip the draw)
-	CALL PStand(a$, pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur())
+	CALL PStand(a$, pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur(), ovf())
 	lf$ = a$
 	RETURN
 
@@ -1500,7 +1523,7 @@ wlkitem:
 	a$ = ""
 	GOSUB face
 	a$ = sf$
-	CALL walkTo(wsx, wsy, pjx, pjy, f3, cwa(), cmwa(), cwb(), cmwb(), wbg())
+	CALL walkTo(wsx, wsy, pjx, pjy, f3, cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
 	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
 	wlkface:
 	sf$ = a$
@@ -1632,9 +1655,9 @@ golf:
 	10200 CLOSE
 	i = 150
 
-	10210 CALL PStep(135, i, 0, f3, 1.2, 0, wa(), mwa(), wb(), mwb(), wbg())
+	10210 CALL PStep(135, i, 0, f3, 1.2, 0, wa(), mwa(), wb(), mwb(), wbg(), ovf())
 	i = i - 2
-	CALL PStep(135, i, 1, f3, 1.2, 0, wa(), mwa(), wb(), mwb(), wbg())
+	CALL PStep(135, i, 1, f3, 1.2, 0, wa(), mwa(), wb(), mwb(), wbg(), ovf())
 	i = i + -2
 	IF i >= 135 THEN GOTO 10210
 	GET (135, 135)-(165, 165), wbg: PUT (135, 135), mwa, AND: PUT (135, 135), wa, OR

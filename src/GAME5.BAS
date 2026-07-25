@@ -22,12 +22,35 @@
 '-----   alternating, per-direction sound pacing (right/left 1, down 1.2,
 '-----   up 1.4, dn-diagonals 1.1, up-diagonals 1.2). Updates px,py by ref.
 
+'----- OvTop: foreground overlays (furniture the player walks BEHIND). ovf(0)=count,
+'----- 4 meta ints per overlay (x, y, pct start, msk start; 0 = no mask), frame data
+'----- packed after -- re-PUT every overlay whose box intersects the player's 31x31.
+DECLARE SUB OvTop (px!, py!, ovf%())
+
 '----- wfb: the walk stride phase (0=frame A, 1=frame B). Module-level so it
 '----- PERSISTS across walkTo calls -- short diagonal legs (1-3 steps) would
 '----- otherwise restart on frame A every walk and frame B would never show.
 DIM SHARED wfb%
 
-SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%())
+SUB OvTop (px!, py!, ovf%())
+	IF ovf%(0) < 1 THEN EXIT SUB
+	FOR oi% = 1 TO ovf%(0)
+		om% = 1 + (oi% - 1) * 4
+		ox% = ovf%(om%): oy% = ovf%(om% + 1)
+		os% = ovf%(om% + 2)
+		ow% = ovf%(os%) \ 2: oh% = ovf%(os% + 1)
+		IF ox% < px! + 31 AND ox% + ow% > px! AND oy% < py! + 31 AND oy% + oh% > py! THEN
+			IF ovf%(om% + 3) > 0 THEN
+				PUT (ox%, oy%), ovf%(ovf%(om% + 3)), AND
+				PUT (ox%, oy%), ovf%(os%), OR
+			ELSE
+				PUT (ox%, oy%), ovf%(os%), PSET
+			END IF
+		END IF
+	NEXT
+END SUB
+
+SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%(), ovf%())
 	PUT (px!, py!), fbg%(0), PSET
 	IF nopl! = 1 THEN EXIT SUB
 	IF d$ = "4" THEN PUT (px!, py!), mfl%(0), AND: PUT (px!, py!), fl%(0), OR
@@ -38,15 +61,17 @@ SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mf
 	IF d$ = "7" THEN PUT (px!, py!), mful%(0), AND: PUT (px!, py!), ful%(0), OR
 	IF d$ = "9" THEN PUT (px!, py!), mfur%(0), AND: PUT (px!, py!), fur%(0), OR
 	IF d$ = "3" THEN PUT (px!, py!), mfdr%(0), AND: PUT (px!, py!), fdr%(0), OR
+	IF d$ <> "" THEN CALL OvTop(px!, py!, ovf%())
 END SUB
 
-SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%())
+SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
 	GET (x!, y!)-(x! + 30, y! + 30), wbg%(0)
 	IF fb% = 0 THEN
 		PUT (x!, y!), mwa%(ofs%), AND: PUT (x!, y!), wa%(ofs%), OR
 	ELSE
 		PUT (x!, y!), mwb%(ofs%), AND: PUT (x!, y!), wb%(ofs%), OR
 	END IF
+	CALL OvTop(x!, y!, ovf%())
 	SOUND sfrq!, .1
 	FOR j% = 1 TO 2: SOUND 32676, sdur!: NEXT
 	PUT (x!, y!), wbg%(0), PSET
@@ -106,7 +131,7 @@ SUB PicSeq (sq$, fr$, rate%, sn2$)
 	ERASE tb%
 END SUB
 
-SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 	'----- stride phase wfb% carries over from the previous walk (no reset)
 	'----- diagonal leg: full (3,2) steps while both axes still need one
 	WHILE ABS(tx! - px!) >= 3 AND ABS(ty! - py!) >= 2
@@ -119,20 +144,20 @@ SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
 		END IF
 		px! = px! + SGN(tx! - px!) * 3
 		py! = py! + SGN(ty! - py!) * 2
-		CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+		CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 		wfb% = 1 - wfb%
 	WEND
 	WHILE px! <> tx!
 		'----- 4px stride at down-walk cadence = same speed, step sound in rhythm
 		IF tx! > px! THEN d% = 2 ELSE d% = 3
 		IF ABS(tx! - px!) <= 3 THEN px! = tx! ELSE px! = px! + SGN(tx! - px!) * 4
-		CALL PStep(px!, py!, wfb%, sfrq!, 1.12, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+		CALL PStep(px!, py!, wfb%, sfrq!, 1.12, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 		wfb% = 1 - wfb%
 	WEND
 	WHILE py! <> ty!
 		IF ty! > py! THEN d% = 0: sd! = 1.2 ELSE d% = 1: sd! = 1.4
 		IF ABS(ty! - py!) <= 2 THEN py! = ty! ELSE py! = py! + SGN(ty! - py!) * 2
-		CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%())
+		CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 		wfb% = 1 - wfb%
 	WEND
 END SUB

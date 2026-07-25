@@ -651,3 +651,25 @@ SUB LoadConfig
 	fpsc = 0
 	mvint = &H33
 END SUB
+
+'----- OvReg: register a foreground overlay ("fg" anim mode) -- copy the frame
+'----- animframe just decoded (afrm/amfrm, anpf ints) into ovf() after the meta
+'----- header, so GAME5 OvTop can re-stamp it over the player (body here, not in
+'----- GAME.BAS -- 64K code ceiling). ovh=1 when a mask exists; ovnext = next
+'----- free element (by ref).
+SUB OvReg (ovf%(), afrm%(), amfrm%(), anpf!, ovh!, ovnext!, PX!, PY!)
+	IF ovf%(0) >= 4 THEN EXIT SUB
+	IF ovnext! + anpf! * 2 > 1500 THEN EXIT SUB
+	ovf%(0) = ovf%(0) + 1
+	ovb% = 1 + (ovf%(0) - 1) * 4
+	ovf%(ovb%) = PX!: ovf%(ovb% + 1) = PY!
+	ovf%(ovb% + 2) = ovnext!
+	ovf%(ovb% + 3) = 0
+	FOR aj% = 0 TO anpf! - 1: ovf%(ovnext! + aj%) = afrm%(aj%): NEXT
+	ovnext! = ovnext! + anpf!
+	IF ovh! = 1 THEN
+		ovf%(ovb% + 3) = ovnext!
+		FOR aj% = 0 TO anpf! - 1: ovf%(ovnext! + aj%) = amfrm%(aj%): NEXT
+		ovnext! = ovnext! + anpf!
+	END IF
+END SUB
