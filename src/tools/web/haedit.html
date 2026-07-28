@@ -1009,7 +1009,7 @@ async function loadRoom(name){
   if(mode==='server'){
     const pb=await (await fetch('api/pic?name='+encodeURIComponent(name),{cache:'no-store'})).arrayBuffer();
     pic=new Uint8Array(pb);
-    const pt=await (await fetch('api/pac?name='+encodeURIComponent(name),{cache:'no-store'})).text();
+    const pt=await mtTrack('pac:'+name, await fetch('api/pac?name='+encodeURIComponent(name),{cache:'no-store'})).text();
     S=parsePac(pt);
   } else {
     pic=fileBlobs[name].pic; S=parsePac(fileBlobs[name].pac);
@@ -1177,12 +1177,24 @@ function addPlacement(){
 document.getElementById('placeAdd').onclick=addPlacement;
 document.getElementById('noplchk').onchange=function(){ if(S){ S.nopl=this.checked?1:0; setDirty(true); } };
 document.getElementById('roomname').oninput=function(){ if(S){ S.name=this.value; setDirty(true); } };
+// ---- multi-session save guard: remember each file's on-disk mtime at load and
+//      send it back on save; serve.ps1 answers 409 when the file changed on disk
+//      since (another editor/Claude session saved it) instead of clobbering it
+const fileMtime={};
+function mtTrack(key,resp){ const m=resp&&resp.headers&&resp.headers.get('X-File-Mtime'); if(m) fileMtime[key]=m; return resp; }
+async function mtSave(url,key,body,label){
+  const h={'Content-Type':'text/plain'}; if(fileMtime[key]) h['X-Base-Mtime']=fileMtime[key];
+  const r=await fetch(url,{method:'POST',headers:h,body});
+  if(r.status===409){ alert(label+' changed on disk since this editor loaded it (another session or tool saved it).\n\nSave cancelled so nothing is clobbered. Reload it here first (refresh, or switch away and back), re-apply your change, then save.'); return false; }
+  mtTrack(key,r);
+  return r.ok;
+}
 async function save(){
   if(!S) return;
   const txt=genPac(S);
   itemXref=null; delete roomObjCache[room];
   if(mode==='server'){
-    await fetch('api/pac?name='+encodeURIComponent(room),{method:'POST',headers:{'Content-Type':'text/plain'},body:txt});
+    if(!await mtSave('api/pac?name='+encodeURIComponent(room),'pac:'+room,txt,room+'.PAC')) return;
     setDirty(false); flash('Saved '+room+'.PAC to disk');
   } else {
     const a=document.createElement('a');
@@ -1336,7 +1348,7 @@ function parseInv(text){
 }
 async function loadInv(){
   let txt=null;
-  if(mode==='server'){ try{ txt=await (await fetch('api/pac?name=OBJECT',{cache:'no-store'})).text(); }catch(_){}}
+  if(mode==='server'){ try{ txt=await mtTrack('pac:OBJECT', await fetch('api/pac?name=OBJECT',{cache:'no-store'})).text(); }catch(_){}}
   else if(fileBlobs['OBJECT']) txt=fileBlobs['OBJECT'].pac;
   if(txt==null) return;
   inv=parseInv(txt); invByNum={}; for(const it of inv) invByNum[it.num]=it;
@@ -1407,7 +1419,7 @@ function setInvDirty(v){ invDirty=v; const d=document.getElementById('invDirty')
 function genInv(){ return inv.map(it=>it.num+',"'+it.short+'","'+it.desc+'"').join('\r\n')+'\r\n'; }
 async function saveInv(){
   const txt=genInv();
-  if(mode==='server'){ await fetch('api/pac?name=OBJECT',{method:'POST',headers:{'Content-Type':'text/plain'},body:txt}); setInvDirty(false); flash('Saved OBJECT.PAC to disk'); }
+  if(mode==='server'){ if(!await mtSave('api/pac?name=OBJECT','pac:OBJECT',txt,'OBJECT.PAC')) return; setInvDirty(false); flash('Saved OBJECT.PAC to disk'); }
   else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'})); a.download='OBJECT.PAC'; a.click(); setInvDirty(false); }
 }
 document.getElementById('invSave').onclick=saveInv;
@@ -1424,7 +1436,7 @@ function parseFlags(text){
 function reindexFlags(){ flagByNum={}; for(const f of flags) flagByNum[f.num]=f; }
 async function loadFlags(){
   let txt=null;
-  if(mode==='server'){ try{ const r=await fetch('api/pac?name=FLAGS',{cache:'no-store'}); if(r.ok) txt=await r.text(); }catch(_){}}
+  if(mode==='server'){ try{ const r=await fetch('api/pac?name=FLAGS',{cache:'no-store'}); if(r.ok){ mtTrack('pac:FLAGS',r); txt=await r.text(); } }catch(_){}}
   else if(fileBlobs['FLAGS']) txt=fileBlobs['FLAGS'].pac;
   flags=txt?parseFlags(txt):[]; reindexFlags(); buildInvDatalist();
   if(activeTab==='flags') buildFlagTable();
@@ -1434,7 +1446,7 @@ function genFlags(){ return flags.filter(f=>fsan(f.name)||fsan(f.note)).sort((a,
 function setFlagsDirty(v){ flagsDirty=v; const d=document.getElementById('flagsDirty'); d.textContent=v?'● unsaved':''; d.className=v?'badge warn':'badge'; }
 async function saveFlags(){
   const txt=genFlags();
-  if(mode==='server'){ await fetch('api/pac?name=FLAGS',{method:'POST',headers:{'Content-Type':'text/plain'},body:txt}); setFlagsDirty(false); flash('Saved FLAGS.PAC to disk'); }
+  if(mode==='server'){ if(!await mtSave('api/pac?name=FLAGS','pac:FLAGS',txt,'FLAGS.PAC')) return; setFlagsDirty(false); flash('Saved FLAGS.PAC to disk'); }
   else { dlBlob('FLAGS.PAC',txt,'text/plain'); fileBlobs['FLAGS']=fileBlobs['FLAGS']||{}; fileBlobs['FLAGS'].pac=txt; setFlagsDirty(false); }
   buildInvDatalist();
 }
@@ -2386,13 +2398,13 @@ function genMode(a){ if(a.mode!=='random') return a.mode; let mn=+a.rndMin,mx=+a
 function genAnims(){ return anims.map(a=>[a.id,'"'+a.name+'"','"'+a.type+'"','"'+a.source+'"','"'+a.frames+'"',(a.rate|0),'"'+genMode(a)+'"','"'+a.pal+'"','"'+(a.snd||'')+'"'].join(',')).join('\r\n')+(anims.length?'\r\n':''); }
 async function loadAnims(){
   let txt=null;
-  if(mode==='server'){ try{ const r=await fetch('api/anims',{cache:'no-store'}); if(r.ok) txt=await r.text(); }catch(_){} }
+  if(mode==='server'){ try{ const r=await fetch('api/anims',{cache:'no-store'}); if(r.ok){ mtTrack('anims',r); txt=await r.text(); } }catch(_){} }
   else if(fileBlobs['ANIMS']) txt=fileBlobs['ANIMS'].pac;
   anims = txt!=null ? parseAnims(txt) : [];
 }
 async function saveAnims(){
   const text=genAnims();
-  if(mode==='server'){ await fetch('api/anims',{method:'POST',headers:{'Content-Type':'text/plain'},body:text}); }
+  if(mode==='server'){ if(!await mtSave('api/anims','anims',text,'ANIMS.PAC')) return; }
   else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'})); a.download='ANIMS.PAC'; a.click(); fileBlobs['ANIMS']=fileBlobs['ANIMS']||{}; fileBlobs['ANIMS'].pac=text; }
   setAnimDirty(false);
 }

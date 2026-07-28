@@ -135,11 +135,25 @@ while ($listener.IsListening) {
       if ($req.HttpMethod -eq 'POST') {
         $reader = New-Object IO.StreamReader($req.InputStream, $req.ContentEncoding)
         $body = $reader.ReadToEnd(); $reader.Close()
-        [IO.File]::WriteAllText($f, $body)
-        Write-Host ("  saved {0}.PAC  ({1} bytes)" -f $name, $body.Length) -ForegroundColor Green
-        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+        # staleness guard: the editor sends the mtime it LOADED; if the file moved
+        # on disk since (another session / another tool saved), refuse the write
+        $base = $req.Headers['X-Base-Mtime']
+        if ($base -and (Test-Path $f) -and (''+[IO.File]::GetLastWriteTimeUtc($f).Ticks) -ne $base) {
+          $res.StatusCode = 409
+          Write-Host ("  409 STALE save refused: {0}.PAC changed on disk since the editor loaded it" -f $name) -ForegroundColor Red
+          Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('stale')) 'text/plain'
+        }
+        else {
+          [IO.File]::WriteAllText($f, $body)
+          Write-Host ("  saved {0}.PAC  ({1} bytes)" -f $name, $body.Length) -ForegroundColor Green
+          $res.Headers.Add('X-File-Mtime', ('' + [IO.File]::GetLastWriteTimeUtc($f).Ticks))
+          Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+        }
       }
-      elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
+      elseif (Test-Path $f) {
+        $res.Headers.Add('X-File-Mtime', ('' + [IO.File]::GetLastWriteTimeUtc($f).Ticks))
+        Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8'
+      }
       else { $res.StatusCode = 404; Write-Host ("  404 .PAC not found: $f") -ForegroundColor Yellow }
     }
     elseif ($path -eq '/api/dat') {
@@ -162,11 +176,24 @@ while ($listener.IsListening) {
         $reader = New-Object IO.StreamReader($req.InputStream, $req.ContentEncoding)
         $body = $reader.ReadToEnd(); $reader.Close()
         $body = ($body -replace "`r`n", "`n") -replace "`n", "`r`n"
-        [IO.File]::WriteAllText($f, $body)
-        Write-Host ("  saved ANIMS.PAC  ({0} bytes)" -f $body.Length) -ForegroundColor Green
-        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+        # staleness guard (same as /api/pac): refuse to clobber a newer file
+        $base = $req.Headers['X-Base-Mtime']
+        if ($base -and (Test-Path $f) -and (''+[IO.File]::GetLastWriteTimeUtc($f).Ticks) -ne $base) {
+          $res.StatusCode = 409
+          Write-Host ("  409 STALE save refused: ANIMS.PAC changed on disk since the editor loaded it") -ForegroundColor Red
+          Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('stale')) 'text/plain'
+        }
+        else {
+          [IO.File]::WriteAllText($f, $body)
+          Write-Host ("  saved ANIMS.PAC  ({0} bytes)" -f $body.Length) -ForegroundColor Green
+          $res.Headers.Add('X-File-Mtime', ('' + [IO.File]::GetLastWriteTimeUtc($f).Ticks))
+          Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+        }
       }
-      elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8' }
+      elseif (Test-Path $f) {
+        $res.Headers.Add('X-File-Mtime', ('' + [IO.File]::GetLastWriteTimeUtc($f).Ticks))
+        Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'text/plain; charset=utf-8'
+      }
       else { $res.StatusCode = 404 }
     }
     elseif ($path -eq '/api/fontfile') {

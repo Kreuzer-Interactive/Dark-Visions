@@ -13,7 +13,7 @@
 13,"Uncle's key","The large key is heavily stained with   your Uncle's blood."
 14,"Rope","The rope is well worn but strong enough to support your weight."
 15,"Polished rock","You can see the streams of carbon on    this piece of granite rock."
-16,"Map page","The paper has a house plan stenciled in light crayon."
+16,"Map page","A rough plan of the mansion penciled in  light crayon. Press M anytime to study  it."
 17,"Spoon","The spoon is wooden with pieces of food crusted upon it."
 18,"Small knife","The small paring knife is used to peel fruit and vegetables."
 19,"Uncle's journal","The item came from the safe."
@@ -34,3 +34,4 @@
 35,"Loaded syringe","The syringe is now full of the bubbling chemicals."
 0,"","Chris says that you're a little girl."
 52,"Unreadable formula","The rejoined page is unreadable. Its content looks intentionally obscured."
+62,"Pulley","The iron pulley is small but its wheel  still spins freely."

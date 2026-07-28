@@ -161,3 +161,37 @@ SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(),
 		wfb% = 1 - wfb%
 	WEND
 END SUB
+
+'----- ClimbSeq: rope-climb cutscene (room12). Loads CLIMB.PCT/.MSK (2
+'----- interleaved 31x31 frames, golf-style 2-column text) into the caller's
+'----- scratch arrays, then PStep-walks the sprite vertically at x: up=0
+'----- descends y0->y1, up=1 ascends y1->y0. 2px half-steps, frames alternate,
+'----- and each step restores its save-under so the rope stays clean behind.
+SUB ClimbSeq (up%, x!, y0!, y1!, sfrq!, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
+	fh% = FREEFILE
+	OPEN "climb.pct" FOR INPUT AS #fh%
+	FOR i% = 0 TO 149
+		IF EOF(fh%) THEN EXIT FOR
+		INPUT #fh%, wa%(i%), wb%(i%)
+	NEXT
+	CLOSE #fh%
+	fh% = FREEFILE
+	OPEN "climb.msk" FOR INPUT AS #fh%
+	FOR i% = 0 TO 149
+		IF EOF(fh%) THEN EXIT FOR
+		INPUT #fh%, mwa%(i%), mwb%(i%)
+	NEXT
+	CLOSE #fh%
+	cf% = 0
+	IF up% = 0 THEN
+		FOR i% = y0! TO y1! STEP 2
+			CALL PStep(x!, CSNG(i%), cf%, sfrq!, 1.2, 0, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
+			cf% = 1 - cf%
+		NEXT
+	ELSE
+		FOR i% = y1! TO y0! STEP -2
+			CALL PStep(x!, CSNG(i%), cf%, sfrq!, 1.2, 0, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
+			cf% = 1 - cf%
+		NEXT
+	END IF
+END SUB

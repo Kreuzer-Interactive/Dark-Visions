@@ -832,3 +832,249 @@ SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS IN
 	cdrn = 0
 	RETURN
 END SUB
+
+'----- MapView: the m-key map screen. Five level plans (MAPL1..MAPB2, W/N.PIC):
+'----- W = full plan (shown when the map item 16 is held), N = fog (rooms solid).
+'----- Without the map only VISITED rooms (vis bitmask = ob(64)) are lifted from
+'----- the W picture and pasted over the N one. Per-room layout lives in
+'----- MAPDAT.PAC: room,level,x0,y0,x1,y1,dotx,doty (level 1=L1 2=L2 3=L3 4=B1
+'----- 5=B2). Red ring = viewed level; red dot on the plan = the player (only
+'----- when viewing his level); red dot beside the selector = his level when
+'----- viewing another. Click a selector label to switch level (the plan slides
+'----- in from above/below per the building direction); any key or a click
+'----- anywhere else closes. The caller reloads the room afterwards.
+SUB MapView (hasmap AS INTEGER, curRoom AS INTEGER, vis AS LONG, mvint AS INTEGER, msen AS SINGLE)
+	DIM mr AS RegType, mo AS RegType
+	DIM cbuf(40) AS INTEGER
+	DIM rmN(15) AS INTEGER, rmL(15) AS INTEGER, rx0(15) AS INTEGER, ry0(15) AS INTEGER
+	DIM rx1(15) AS INTEGER, ry1(15) AS INTEGER, rdx(15) AS INTEGER, rdy(15) AS INTEGER
+	DIM rvx(15) AS INTEGER, rvy(15) AS INTEGER, rvo(15) AS INTEGER
+	DIM ls(5) AS INTEGER, hgt(5) AS INTEGER
+	DIM nrm AS INTEGER, i AS INTEGER, fh AS INTEGER, nrev AS INTEGER, ofs AS INTEGER
+	DIM w AS INTEGER, h AS INTEGER, bpr AS INTEGER
+	DIM plv AS INTEGER, vlv AS INTEGER, olv AS INTEGER, hitl AS INTEGER
+	DIM mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy AS INTEGER, cdrn AS INTEGER
+	DIM ly AS INTEGER, dxx AS INTEGER, dyy AS INTEGER, sdy AS INTEGER, sst AS INTEGER
+	DIM t9 AS SINGLE
+	DIM kbs AS INTEGER, kc AS INTEGER, mvq AS INTEGER
+	DIM oly AS INTEGER, nly AS INTEGER, stp AS INTEGER, yy AS INTEGER
+	DIM rbuf(120) AS INTEGER
+	DIM k$, lv$
+	REDIM mbuf(8100) AS INTEGER
+	'----- selector: slots top->bottom are L3 L2 L1 B1 B2 (label tops y=83+8*slot).
+	'----- ls maps level<->slot (the permutation is its own inverse); hgt = how
+	'----- high each level sits in the building (drives the slide direction)
+	ls(1) = 3: ls(2) = 2: ls(3) = 1: ls(4) = 4: ls(5) = 5
+	hgt(1) = 3: hgt(2) = 4: hgt(3) = 5: hgt(4) = 2: hgt(5) = 1
+	nrm = 0
+	fh = FREEFILE
+	OPEN "mapdat.pac" FOR INPUT AS #fh
+	DO WHILE NOT EOF(fh)
+		IF nrm >= 15 THEN EXIT DO
+		nrm = nrm + 1
+		INPUT #fh, rmN(nrm), rmL(nrm), rx0(nrm), ry0(nrm), rx1(nrm), ry1(nrm), rdx(nrm), rdy(nrm)
+	LOOP
+	CLOSE #fh
+	plv = 0
+	FOR i = 1 TO nrm
+		IF rmN(i) = curRoom THEN plv = rmL(i)
+	NEXT
+	vlv = plv: IF vlv < 1 THEN vlv = 2
+	kbs = ls(vlv)
+	olv = 0
+	KEY OFF
+	GOSUB mvdraw
+	'----- flush type-ahead and wait out the opening click
+	DO: k$ = INKEY$: LOOP WHILE k$ <> ""
+	IF msen = 1 THEN
+		DO
+			mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+		LOOP WHILE (mo.bx AND 1) <> 0
+		mx = mo.cx \ 2: my = mo.dx
+		IF mx > 313 THEN mx = 313
+		IF mx < 0 THEN mx = 0
+		IF my > 191 THEN my = 191
+		IF my < 0 THEN my = 0
+		GOSUB mvcdraw
+	END IF
+	mvloop:
+	k$ = INKEY$
+	IF k$ = "" THEN GOTO mvmouse
+	IF LEN(k$) = 2 THEN
+		'----- arrows walk the selector; Down past B2 parks on the Close button
+		kc = ASC(RIGHT$(k$, 1))
+		IF kc = 72 AND kbs > 1 THEN kbs = kbs - 1: GOSUB mvkbpos
+		IF kc = 80 AND kbs < 6 THEN kbs = kbs + 1: GOSUB mvkbpos
+		GOTO mvloop
+	END IF
+	IF k$ = CHR$(13) OR k$ = " " THEN
+		GOSUB mvact
+		IF mvq = 1 THEN GOTO mvout
+		GOTO mvloop
+	END IF
+	GOTO mvout
+	mvmouse:
+	IF msen = 1 THEN
+		mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+		nmx = mo.cx \ 2: nmy = mo.dx
+		IF nmx > 313 THEN nmx = 313
+		IF nmx < 0 THEN nmx = 0
+		IF nmy > 191 THEN nmy = 191
+		IF nmy < 0 THEN nmy = 0
+		IF nmx <> mx OR nmy <> my THEN GOSUB mvcerase: mx = nmx: my = nmy: GOSUB mvcdraw
+		IF (mo.bx AND 1) <> 0 THEN
+			DO
+				mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
+			LOOP WHILE (mo.bx AND 1) <> 0
+			GOSUB mvact
+			IF mvq = 1 THEN GOTO mvout
+		END IF
+	END IF
+	GOTO mvloop
+	mvout:
+	EXIT SUB
+
+	'----- activate whatever is under the pointer: a level label switches (with
+	'----- the slide + ring animations), anything else closes (mvq = 1)
+	mvact:
+	mvq = 0
+	hitl = 0
+	FOR i = 1 TO 5
+		ly = 83 + (i - 1) * 8
+		IF my >= ly - 2 AND my <= ly + 6 AND mx >= 196 AND mx <= 220 THEN hitl = ls(i)
+	NEXT
+	IF hitl = 0 THEN mvq = 1: RETURN
+	IF hitl <> vlv THEN
+		GOSUB mvcerase
+		olv = vlv: vlv = hitl
+		GOSUB mvdraw
+		GOSUB mvcdraw
+	END IF
+	RETURN
+
+	'----- park the pointer on the keyboard-selected slot (6 = Close button)
+	mvkbpos:
+	GOSUB mvcerase
+	IF kbs <= 5 THEN
+		mx = 207: my = 83 + (kbs - 1) * 8 + 2
+	ELSE
+		mx = 105: my = 183
+	END IF
+	'----- warp the driver too (INT33 fn 4) or the next poll snaps the pointer
+	'----- straight back to the physical mouse position
+	IF msen = 1 THEN
+		mr.ax = 4: mr.cx = mx * 2: mr.dx = my
+		CALL INTERRUPT(mvint, mr, mo)
+	END IF
+	GOSUB mvcdraw
+	RETURN
+
+	'----- compose the vlv view; when olv is set the plan half slides into place
+	mvdraw:
+	cdrn = 0
+	PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
+	lv$ = MID$("L1L2L3B1B2", vlv * 2 - 1, 2)
+	DEF SEG = &HB800
+	IF hasmap = 1 THEN
+		BLOAD "MAP" + lv$ + "W.PIC", 0
+	ELSE
+		BLOAD "MAP" + lv$ + "N.PIC", 0
+	END IF
+	DEF SEG
+	IF hasmap <> 1 THEN
+		'----- no map item: walls only (the N picture is blue-only) and ONLY the
+		'----- room he is standing in -- everything else stays black, so the real
+		'----- map is worth finding
+		hitl = 0
+		IF plv = vlv AND curRoom >= 1 THEN
+			FOR i = 1 TO nrm
+				IF rmN(i) = curRoom THEN hitl = i
+			NEXT
+		END IF
+		IF hitl = 0 THEN
+			LINE (0, 19)-(199, 177), 0, BF
+		ELSE
+			IF ry0(hitl) > 19 THEN LINE (0, 19)-(199, ry0(hitl) - 1), 0, BF
+			IF ry1(hitl) < 177 THEN LINE (0, ry1(hitl) + 1)-(199, 177), 0, BF
+			IF rx0(hitl) > 0 THEN LINE (0, ry0(hitl))-(rx0(hitl) - 1, ry1(hitl)), 0, BF
+			IF rx1(hitl) < 199 THEN LINE (rx1(hitl) + 1, ry0(hitl))-(199, ry1(hitl)), 0, BF
+		END IF
+	END IF
+	'----- the player's dot goes on BEFORE the slide so it rides with the plan
+	IF plv = vlv AND curRoom >= 1 THEN
+		FOR i = 1 TO nrm
+			IF rmN(i) = curRoom THEN dxx = rdx(i): dyy = rdy(i): GOSUB mvdot
+		NEXT
+	END IF
+	IF olv >= 1 AND olv <> vlv THEN
+		GET (0, 28)-(199, 169), mbuf(0)
+		IF hgt(vlv) > hgt(olv) THEN sdy = -9 ELSE sdy = 9
+		'----- plans show light blue WITH the map, dark gray without (less inviting)
+	PALETTE 1, 7: PALETTE 3, 12
+	IF hasmap = 1 THEN PALETTE 2, 9 ELSE PALETTE 2, 8
+		FOR sst = 3 TO 0 STEP -1
+			LINE (0, 19)-(199, 178), 0, BF
+			PUT (0, 28 + (sdy * sst) \ 3), mbuf(0), PSET
+			t9 = TIMER
+			DO
+				IF TIMER < t9 THEN EXIT DO
+			LOOP WHILE TIMER < t9 + .035
+		NEXT
+	END IF
+	'----- selector overlays: ring on the viewed level, dot beside the player's
+	'----- plans show light blue WITH the map, dark gray without (less inviting)
+	PALETTE 1, 7: PALETTE 3, 12
+	IF hasmap = 1 THEN PALETTE 2, 9 ELSE PALETTE 2, 8
+	IF olv >= 1 AND olv <> vlv THEN
+		'----- the ring hops down/up the selector to the new slot
+		oly = 83 + (ls(olv) - 1) * 8
+		nly = 83 + (ls(vlv) - 1) * 8
+		GET (202, 80)-(218, 122), rbuf
+		stp = 4: IF nly < oly THEN stp = -4
+		FOR yy = oly TO nly STEP stp
+			PUT (202, 80), rbuf, PSET
+			LINE (204, yy - 2)-(216, yy + 6), 3, B
+			t9 = TIMER
+			DO
+				IF TIMER < t9 THEN EXIT DO
+			LOOP WHILE TIMER < t9 + .025
+		NEXT
+		PUT (202, 80), rbuf, PSET
+	END IF
+	ly = 83 + (ls(vlv) - 1) * 8
+	LINE (204, ly - 2)-(216, ly + 6), 3, B
+	IF plv >= 1 AND plv <> vlv THEN
+		ly = 83 + (ls(plv) - 1) * 8
+		dxx = 199: dyy = ly + 2: GOSUB mvdot
+	END IF
+	RETURN
+
+	'----- 5x5 rounded red dot at (dxx,dyy)
+	mvdot:
+	LINE (dxx - 1, dyy - 2)-(dxx + 1, dyy - 2), 3
+	LINE (dxx - 2, dyy - 1)-(dxx + 2, dyy + 1), 3, BF
+	LINE (dxx - 1, dyy + 2)-(dxx + 1, dyy + 2), 3
+	RETURN
+
+	'----- self-drawn NW-arrow cursor with save-under (the save/load screen's art)
+	mvcdraw:
+	IF msen <> 1 THEN RETURN
+	GET (mx, my)-(mx + 5, my + 7), cbuf
+	PSET (mx, my), 3
+	PSET (mx, my + 1), 3: PSET (mx + 1, my + 1), 3
+	PSET (mx, my + 2), 3: PSET (mx + 2, my + 2), 3
+	PSET (mx, my + 3), 3: PSET (mx + 3, my + 3), 3
+	PSET (mx, my + 4), 3: PSET (mx + 4, my + 4), 3
+	PSET (mx, my + 5), 3: PSET (mx + 2, my + 5), 3: PSET (mx + 3, my + 5), 3
+	PSET (mx, my + 6), 3: PSET (mx + 1, my + 6), 3
+	PSET (mx + 1, my + 2), 2
+	PSET (mx + 1, my + 3), 2: PSET (mx + 2, my + 3), 2
+	PSET (mx + 1, my + 4), 2: PSET (mx + 2, my + 4), 2: PSET (mx + 3, my + 4), 2
+	PSET (mx + 1, my + 5), 2
+	cdrn = 1
+	RETURN
+	mvcerase:
+	IF cdrn = 1 THEN PUT (mx, my), cbuf, PSET
+	cdrn = 0
+	RETURN
+END SUB

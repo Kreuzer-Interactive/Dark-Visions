@@ -673,3 +673,48 @@ SUB OvReg (ovf%(), afrm%(), amfrm%(), anpf!, ovh!, ovnext!, PX!, PY!)
 		ovnext! = ovnext! + anpf!
 	END IF
 END SUB
+'----- LookDir: 8-way facing digit from the player's eyes (px+15, py+5) toward
+'----- the click (bx, ay), with x/y dead zones; both in the zone -> face down.
+'----- (moved from GAME.BAS lookdir -- 64K code ceiling)
+SUB LookDir (bx!, ay!, px2!, py2!, d2$)
+	ldx! = bx! - (px2! + 15)
+	ldy! = ay! - (py2! + 5)
+	lxs% = 0
+	IF ldx! < -10 THEN lxs% = -1
+	IF ldx! > 10 THEN lxs% = 1
+	lys% = 0
+	IF ldy! < -8 THEN lys% = -1
+	IF ldy! > 8 THEN lys% = 1
+	d2$ = "2"
+	IF lxs% = -1 AND lys% = -1 THEN d2$ = "7"
+	IF lxs% = 0 AND lys% = -1 THEN d2$ = "8"
+	IF lxs% = 1 AND lys% = -1 THEN d2$ = "9"
+	IF lxs% = -1 AND lys% = 0 THEN d2$ = "4"
+	IF lxs% = 1 AND lys% = 0 THEN d2$ = "6"
+	IF lxs% = -1 AND lys% = 1 THEN d2$ = "1"
+	IF lxs% = 1 AND lys% = 1 THEN d2$ = "3"
+END SUB
+'----- KillChk: which roaming killer owns room q2 + $ at step count w --
+'----- bit 1 = wilb window, bit 2 = golf window (moved verbatim from
+'----- GAME.BAS events: -- that module is at the 64K code ceiling).
+SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
+	kw% = 0
+	IF q2$ = "room7" AND w! > 0 AND w! < 8 THEN kw% = kw% OR 1
+	IF q2$ = "room6" AND w! > 8 AND w! < 20 THEN kw% = kw% OR 1
+	IF q2$ = "room8" AND w! > 20 AND w! < 35 THEN kw% = kw% OR 1
+	IF q2$ = "room9" AND w! > 35 AND w! < 47 THEN kw% = kw% OR 1
+	IF q2$ = "room7" AND w! > 47 AND w! < h9b! THEN kw% = kw% OR 1
+	IF q2$ = "room11" AND w! > h9b! AND w! < t1b! THEN kw% = kw% OR 1
+	IF q2$ = "room4" AND w! > t1b! AND w! < t2b! THEN kw% = kw% OR 1
+	IF q2$ = "room10" AND w! > t2b! AND w! < t3b! THEN kw% = kw% OR 1
+	IF q2$ = "room11" AND w! > t3b! AND w! < f3b! THEN kw% = kw% OR 1
+	IF q2$ = "room2" AND w! > 0 AND w! < 8 THEN kw% = kw% OR 2
+	IF q2$ = "room1" AND w! > 8 AND w! < 20 THEN kw% = kw% OR 2
+	IF q2$ = "room5" AND w! > 20 AND w! < 35 THEN kw% = kw% OR 2
+	IF q2$ = "room5" AND w! > 35 AND w! < 47 THEN kw% = kw% OR 2
+	IF q2$ = "room4" AND w! > 47 AND w! < h9b! THEN kw% = kw% OR 2
+	IF q2$ = "room1" AND w! > h9b! AND w! < t1b! THEN kw% = kw% OR 2
+	IF q2$ = "room9" AND w! > t1b! AND w! < t2b! THEN kw% = kw% OR 2
+	IF q2$ = "room1" AND w! > t2b! AND w! < t3b! THEN kw% = kw% OR 2
+	IF q2$ = "room4" AND w! > t3b! AND w! < f3b! THEN kw% = kw% OR 2
+END SUB

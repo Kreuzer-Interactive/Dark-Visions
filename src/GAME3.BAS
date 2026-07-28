@@ -143,7 +143,13 @@ SUB drawWrap (x AS INTEGER, y AS INTEGER, txt AS STRING, col AS INTEGER, maxpx A
 				END IF
 				word = ""
 			END IF
-			IF ch = brc THEN CALL drawText(x, cy, ln, col, fontData()): cy = cy + lineh: ln = "": lw = 0
+			IF ch = brc THEN
+				CALL drawText(x, cy, ln, col, fontData())
+				'----- a blank row (double backslash) advances HALF a line: paragraph
+				'----- gaps stay clear while long book pages still fit 200 rows
+				IF LEN(ln) = 0 THEN cy = cy + lineh \ 2 ELSE cy = cy + lineh
+				ln = "": lw = 0
+			END IF
 		ELSE
 			word = word + ch
 		END IF
@@ -188,7 +194,7 @@ END SUB
 SUB HudUse (sel2 AS INTEGER, ob() AS SINGLE, sn$(), fontData() AS INTEGER)
 	DIM it$
 	it$ = ""
-	IF sel2 >= 1 AND sel2 <= 50 THEN
+	IF sel2 >= 1 AND sel2 <= 65 THEN
 		IF ob(sel2) = 1 THEN it$ = sn$(sel2)
 	END IF
 	LINE (0, 192)-(170, 199), 0, BF
@@ -229,9 +235,11 @@ END SUB
 '----- book reader: hold the just-loaded book picture ~1.5s, then clear and word-wrap the book's text in the given font
 SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
 	DIM t9 AS SINGLE, d9 AS SINGLE, bt AS STRING, lh AS INTEGER
+	'----- linger on the book art, but any key skips straight to the text
 	t9 = TIMER
 	DO
 		d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
+		IF INKEY$ <> "" THEN EXIT DO
 	LOOP WHILE d9 < 1.5
 	bt = ""
 	SELECT CASE sel
@@ -294,10 +302,15 @@ SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
 	CASE ELSE
 		bt = "The pages are water-stained and illegible."
 	END SELECT
-	LINE (0, 0)-(319, 199), 0, BF
-	PALETTE 3, 6
-	lh = fontData(0) + 1
-	CALL drawWrap(6, 2, bt, 3, 308, lh, fontData())
+	'----- the page: dark-gray paper (attr 3 -> 8), white ink (attr 1 -> 15);
+	'----- doexam's return path restores the inventory palette (1,6 2,7 3,8)
+	LINE (0, 0)-(319, 199), 3, BF
+	PALETTE 3, 8
+	PALETTE 1, 15
+	'----- +2 line pitch (was +1): roomier reading; the diary (longest text)
+	'----- still fits 200 rows because paragraph blanks advance half a line
+	lh = fontData(0) + 2
+	CALL drawWrap(6, 2, bt, 1, 308, lh, fontData())
 END SUB
 
 '----- ShowRules: the pre-game instructions screen (moved verbatim from

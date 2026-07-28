@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME5.BAS: player rendering module (walk-to movement pha
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    
  0030   0006    '----- wfb: the walk stride phase (0=frame A, 1=frame B). Modul
                                                                       PAGE   2
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 e-level so it
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 ), mwb%(), wbg%(), ovf%())
  05D0   0008            GET (x!, y!)-(x! + 30, y! + 30), wbg%(0)
                                                                       PAGE   3
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  05D0   0008            IF fb% = 0 THEN
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  08E2   0008    '-----   triggering action's message stays readable through the
                  play.
                                                                       PAGE   4
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  08E2   0008    '-----   sn2$ non-empty = PLAY string fired at the start ("MB..
@@ -235,8 +235,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 = px! + SGN(tx! - px!) * 4
  0C86   0008                    CALL PStep(px!, py!, wfb%, sfrq!, 1.12, d% * 15
                                                                       PAGE   5
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 1, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
@@ -253,10 +253,57 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0DA1   0008            WEND
  0DAE   0008    END SUB
  0DB6   0008    
- 0DBD   0008    
+ 0DB6   0008    '----- ClimbSeq: rope-climb cutscene (room12). Loads CLIMB.PCT/
+                .MSK (2
+ 0DB6   0008    '----- interleaved 31x31 frames, golf-style 2-column text) into
+                 the caller's
+ 0DB6   0008    '----- scratch arrays, then PStep-walks the sprite vertically a
+                t x: up=0
+ 0DB6   0008    '----- descends y0->y1, up=1 ascends y1->y0. 2px half-steps, fr
+                ames alternate,
+ 0DB6   0008    '----- and each step restores its save-under so the rope stays 
+                clean behind.
+ 0DB6   0008    SUB ClimbSeq (up%, x!, y0!, y1!, sfrq!, wa%(), mwa%(), wb%(), m
+                wb%(), wbg%(), ovf%())
+ 0DC1   0008            fh% = FREEFILE
+ 0DC1   0008            OPEN "climb.pct" FOR INPUT AS #fh%
+ 0DC1   0008            FOR i% = 0 TO 149
+ 0DE2   0008                    IF EOF(fh%) THEN EXIT FOR
+ 0DF1   0008                    INPUT #fh%, wa%(i%), wb%(i%)
+ 0DF9   0008            NEXT
+ 0E37   0008            CLOSE #fh%
+ 0E37   0008            fh% = FREEFILE
+ 0E37   0008            OPEN "climb.msk" FOR INPUT AS #fh%
+ 0E37   0008            FOR i% = 0 TO 149
+ 0E64   0008                    IF EOF(fh%) THEN EXIT FOR
+ 0E73   0008                    INPUT #fh%, mwa%(i%), mwb%(i%)
+ 0E7B   0008            NEXT
+ 0EB9   0008            CLOSE #fh%
+ 0EB9   0008            cf% = 0
+ 0EB9   0008            IF up% = 0 THEN
+ 0EB9   0008                    FOR i% = y0! TO y1! STEP 2
+ 0EF2   0008                            CALL PStep(x!, CSNG(i%), cf%, sfrq!, 1.
+                2, 0, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
+ 0F3A   0008                            cf% = 1 - cf%
+ 0F3A   0008                    NEXT
+ 0F51   0008            ELSE
+ 0F54   0008                    FOR i% = y1! TO y0! STEP -2
+ 0F70   0008                            CALL PStep(x!, CSNG(i%), cf%, sfrq!, 1.
+                2, 0, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
+ 0FB8   0008                            cf% = 1 - cf%
+ 0FB8   0008                    NEXT
+ 0FCF   0008            END IF
+                                                                      PAGE   6
+                                                                      27 Jul 26
+                                                                      15:24:01
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0FCF   0008    END SUB
+ 0FD7   0008    
+ 0FDE   0008    
 
 43949 Bytes Available
-38461 Bytes Free
+37962 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

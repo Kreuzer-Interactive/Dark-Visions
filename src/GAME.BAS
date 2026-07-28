@@ -54,10 +54,14 @@ DECLARE SUB HudUse (sel2 AS INTEGER, ob() AS SINGLE, sn$(), fontData() AS INTEGE
 DECLARE SUB introShowCarr ()
 DECLARE SUB introFadeCredit ()
 DECLARE SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
+DECLARE SUB MapView (hasmap AS INTEGER, curRoom AS INTEGER, vis AS LONG, mvint AS INTEGER, msen AS SINGLE)
 DECLARE SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%(), ovf%())
 DECLARE SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
 DECLARE SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
 DECLARE SUB OvReg (ovf%(), afrm%(), amfrm%(), anpf!, ovh!, ovnext!, PX!, PY!)
+DECLARE SUB ClimbSeq (up%, x!, y0!, y1!, sfrq!, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
+DECLARE SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
+DECLARE SUB LookDir (bx!, ay!, px2!, py2!, d2$)
 DECLARE SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 DECLARE SUB PicSeq (sq$, fr$, rate%, sn2$)
 DECLARE SUB ShowRules ()
@@ -222,13 +226,15 @@ DIM SHARED st(150)
 DIM SHARED tg$(150)
 DIM SHARED dn$(65)
 DIM SHARED sn$(65)
-DIM SHARED iord(35)
+DIM SHARED iord(36)
+'----- mrn = last real room number (map screen dot + visited marking)
+DIM SHARED mrn
 DIM SHARED gp(100)
 DIM SHARED er1(400)
 DIM SHARED d(300)
-DIM SHARED tilarr(12600) AS INTEGER
-DIM SHARED iconarr(9400) AS INTEGER
-DIM SHARED kmarr(9400) AS INTEGER
+DIM SHARED tilarr(12900) AS INTEGER
+DIM SHARED iconarr(9600) AS INTEGER
+DIM SHARED kmarr(9600) AS INTEGER
 DIM SHARED dsav(250) AS INTEGER
 DIM SHARED tix(65) AS INTEGER
 DIM SHARED cilist(40) AS INTEGER
@@ -542,6 +548,9 @@ action:
 6340 acthit = 1
 	GOSUB wlkitem
 	ob(CINT(st(i))) = 1
+	'----- getting the map (16) opens the map screen instead of the inventory --
+	'----- deferred to after the action wraps up (dmq checked in the mainloop)
+	IF a$ = "g" AND CINT(st(i)) = 16 THEN dmq = 1: dm$ = ms$(i)
 	'----- a consuming use takes the item out of the inventory. State 2 = "used
 	'----- up": gone from the inventory (which lists =1 only) but still counting
 	'----- as taken for room conditions -- so its pickup spot never re-arms
@@ -593,6 +602,9 @@ action:
 	IF df$(i) = "end" THEN GOTO endgame
 '----- enter a room and draw the player
 gotoroom:
+	'----- leaving the pit (room12): climb the rope back up IN-room first
+	IF q$ = "room12" AND df$(i) = "room10" THEN GOSUB climbup
+	oq$ = q$
 	'----- revive=1: snapshot the PRE-transition state (the safe room) before
 	'----- q$ switches, so a killer death in the next room restores to before
 	'----- entering it. The killer scenes flag rvArm when they fire. NEVER
@@ -612,7 +624,15 @@ gotoroom:
 		a$ = lf$
 		IF LEN(a$) <> 1 OR INSTR("12346789", a$) = 0 THEN a$ = "2"
 	END IF
-	IF q$ = "room3" AND ob(50) = 1 AND ob(42) = 0 THEN GOSUB dooseq ELSE GOSUB face
+	IF q$ = "room3" AND ob(50) = 1 AND ob(42) = 0 THEN
+		GOSUB dooseq
+	ELSEIF q$ = "room12" AND oq$ = "room10" THEN
+		GOSUB climbdn
+	ELSEIF q$ = "room10" AND oq$ = "room12" THEN
+		GOSUB upgrate
+	ELSE
+		GOSUB face
+	END IF
 	RETURN
 
 '----- invhi: ESC inventory -- graphical SCREEN 1 (320x200, 4-color) tile grid.
@@ -620,6 +640,15 @@ gotoroom:
 '      carried items into a 7-col grid with a movable selection ring.
 doinv:
 	CALL invhi
+	GOTO invret
+
+'----- map screen ("m" / auto-open on pickup): GAME4 MapView shows MAP1.PIC once
+'----- the map (16) is held, a plain black placeholder before; shares doinv's
+'----- return path (reload the room, player stays where he stood via lrq$)
+domap:
+	IF msen = 1 THEN CALL erasecur
+	CALL MapView(CINT(ob(16)), CINT(mrn), CLNG(ob(64)), mvint, msen)
+invret:
 	GOSUB loadroom
 	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
 	'----- mid-fight inventory trip (e.g. grabbing the syringe): redraw the
@@ -658,9 +687,13 @@ mainloop:
 	'----- reveal first, sound second: a get that trips a scene sprite (open drawer)
 	'----- draws it BEFORE the acquisition scan plays the pickup sound
 	GOSUB reanim
-	FOR iaq = 1 TO 35
+	FOR iaq = 1 TO 36
 		IF ob(iord(iaq)) = 1 AND aqo(iord(iaq)) = 0 THEN aqc = aqc + 1: aqo(iord(iaq)) = aqc: nwf(iord(iaq)) = 1: CALL Snd1
 	NEXT
+	'----- deferred map auto-open: by now the pickup sprite composited (reanim)
+	'----- and the get sound played (scan above); re-print the pickup message
+	'----- after the map closes so the player still sees it
+	IF dmq = 1 THEN dmq = 0: GOSUB domap: CALL drawMsg(dm$, font3Data()): txr = 1
 	IF msen <> 1 THEN PUT (b, a), d, XOR
 	pt = (TIMER - t0) + pt
 	t0 = TIMER
@@ -731,8 +764,9 @@ mainloop:
 '----- handle inventory, fight, and action keys
 	7610 IF msen = 1 AND INSTR("82467139", a$) > 0 THEN GOSUB ksync
 	IF a$ = CHR$(27) THEN GOSUB domenu: GOTO mainloop
-	IF a$ <> "i" THEN GOTO 7630
+	IF a$ <> "i" THEN GOTO 7620
 	GOSUB doinv: GOTO mainloop
+	7620 IF a$ = "m" THEN GOSUB domap: GOTO mainloop
 	7630 IF doc <> 1 THEN GOTO 7660
 	GOSUB fight
 	GOTO mainloop
@@ -764,6 +798,9 @@ loadmsgs:
 	CALL LoadMsgs(nf$())
 	FOR ivi = 1 TO 29: iord(ivi) = ivi: NEXT
 	iord(30) = 30: iord(31) = 49: iord(32) = 35: iord(33) = 36: iord(34) = 34: iord(35) = 52
+	'----- slot 36 = the pulley (62, room12). NEVER park a slot on 0 -- ob(0)
+	'----- gets set by every st=0 action, which reads as a phantom pickup
+	iord(36) = 62
 	RETURN
 
 '----- look at a truly-empty spot: after 3 looks at the same cell, show a non-repeating
@@ -1136,17 +1173,24 @@ ovprep:
 	b = obb: a = oaa
 	RETURN
 
+'----- ovlift/ovpost route through face (the single PStand call site -- each
+'----- 22-param CALL costs ~170 bytes and GAME.BAS is at the 64K code ceiling);
+'----- a$/lf$ are saved around the trip since face assigns lf$ = a$
 ovpre:
 	CALL erasecur
 '----- ovlift: erase-only (no cursor teardown) -- used between frames of a play so
 '----- the player can be re-drawn over every frame instead of vanishing for the swing
 ovlift:
-	CALL PStand("", pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur(), ovf())
+	ov2$ = a$: ov3$ = lf$
+	a$ = "": GOSUB face
+	a$ = ov2$: lf$ = ov3$
 	RETURN
 ovpost:
 	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
 	IF lf$ = "" THEN lf$ = "2"
-	CALL PStand(lf$, pjx, pjy, nopl, fbg(), fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur(), ovf())
+	ov2$ = a$
+	a$ = lf$: GOSUB face
+	a$ = ov2$
 	RETURN
 
 reanim:
@@ -1346,6 +1390,34 @@ dwait:
 	IF dwd < dwsec THEN GOTO dwl1
 	RETURN
 
+'----- room12 rope travel (GAME5 ClimbSeq does the sprite work).
+'----- climbdn: entry from room10 -- the rope (14) leaves the inventory while
+'----- it is tied off below (state 2); aqo resets so re-taking it beeps again.
+climbdn:
+	'----- no descend cutscene (normal entries do not show a walk-in either):
+	'----- just appear at the rope base; the ASCEND (climbup) still animates
+	ob(14) = 2: aqo(14) = 0
+	pjx = 136: pjy = 132
+	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
+	a$ = "2": GOSUB face
+	RETURN
+'----- climbup: fired in gotoroom BEFORE the room switch -- erase the standing
+'----- player (via face, a$/lf$ preserved), then the sprite climbs up and away
+climbup:
+	ov2$ = a$: ov3$ = lf$
+	a$ = "": GOSUB face
+	a$ = ov2$: lf$ = ov3$
+	CALL ClimbSeq(1, 136, 92, 132, f3, wa(), mwa(), wb(), mwb(), wbg(), ovf())
+	RETURN
+'----- upgrate: arrival in room10 from below -- stand at the grate; the walkout
+'----- already set ob(14)=1, so the acquisition scan plays the pickup sound here
+upgrate:
+	pjx = 203: pjy = 140
+	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
+	a$ = "1": GOSUB face
+	CALL drawMsg("You gather up your rope on the way out.", font3Data()): txr = 1
+	RETURN
+
 loadroom:
 	txr = 0: cdrawn = 0
 	CLOSE
@@ -1432,6 +1504,8 @@ loadroom:
 	'----- bottom Use-item HUD, drawn BEFORE the player save-under GET so
 	'----- sprite restores keep it intact
 	IF q$ <> "title" AND q$ <> "death" AND q$ <> "dindead" AND q$ <> "lightn" THEN CALL HudUse(CINT(sel), ob(), sn$(), fontData())
+	'----- map screen: remember the room number + mark it visited (ob(64) bitmask)
+	IF LEFT$(q$, 4) = "room" THEN mrn = VAL(MID$(q$, 5)): IF mrn >= 1 AND mrn <= 12 THEN ob(64) = CLNG(ob(64)) OR CLNG(2 ^ (mrn - 1))
 	IF q$ <> lrq$ THEN pjx = 140: pjy = 130
 	lrq$ = q$
 	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
@@ -1538,22 +1612,8 @@ wlkitem:
 '----- directions hardcoded in the room data, which assumed a center-screen
 '----- player. Dead zones keep small offsets from twitching into diagonals.
 lookdir:
-	ldx = b - (pjx + 15)
-	ldy = a - (pjy + 5)
-	lxs = 0
-	IF ldx < -10 THEN lxs = -1
-	IF ldx > 10 THEN lxs = 1
-	lys = 0
-	IF ldy < -8 THEN lys = -1
-	IF ldy > 8 THEN lys = 1
-	a$ = "2"
-	IF lxs = -1 AND lys = -1 THEN a$ = "7"
-	IF lxs = 0 AND lys = -1 THEN a$ = "8"
-	IF lxs = 1 AND lys = -1 THEN a$ = "9"
-	IF lxs = -1 AND lys = 0 THEN a$ = "4"
-	IF lxs = 1 AND lys = 0 THEN a$ = "6"
-	IF lxs = -1 AND lys = 1 THEN a$ = "1"
-	IF lxs = 1 AND lys = 1 THEN a$ = "3"
+	'----- body in GAME2 LookDir -- 64K ceiling
+	CALL LookDir(b, a, pjx, pjy, a$)
 	RETURN
 
 '----- joeface: load Joe face sprites, pick direction toward player
@@ -1685,24 +1745,11 @@ events:
 	IF q$ = "room4" AND ob(43) = 1 THEN GOTO 11570
 	IF doc <> 1 THEN GOTO 10840
 	10840 IF klon = 0 THEN GOTO 11570
-	IF q$ = "room7" AND (INT(cl * cr)) > 0 AND (INT(cl * cr)) < 8 THEN GOSUB wilb
-	IF q$ = "room6" AND (INT(cl * cr)) > 8 AND (INT(cl * cr)) < 20 THEN GOSUB wilb
-	IF q$ = "room8" AND (INT(cl * cr)) > 20 AND (INT(cl * cr)) < 35 THEN GOSUB wilb
-	IF q$ = "room9" AND (INT(cl * cr)) > 35 AND (INT(cl * cr)) < 47 THEN GOSUB wilb
-	IF q$ = "room7" AND (INT(cl * cr)) > 47 AND (INT(cl * cr)) < h9 THEN GOSUB wilb
-	IF q$ = "room11" AND (INT(cl * cr)) > h9 AND (INT(cl * cr)) < t1 THEN GOSUB wilb
-	IF q$ = "room4" AND (INT(cl * cr)) > t1 AND (INT(cl * cr)) < t2 THEN GOSUB wilb
-	IF q$ = "room10" AND (INT(cl * cr)) > t2 AND (INT(cl * cr)) < t3 THEN GOSUB wilb
-	IF q$ = "room11" AND (INT(cl * cr)) > t3 AND (INT(cl * cr)) < f3 THEN GOSUB wilb
-	IF q$ = "room2" AND (INT(cl * cr)) > 0 AND (INT(cl * cr)) < 8 THEN GOSUB golf
-	IF q$ = "room1" AND (INT(cl * cr)) > 8 AND (INT(cl * cr)) < 20 THEN GOSUB golf
-	IF q$ = "room5" AND (INT(cl * cr)) > 20 AND (INT(cl * cr)) < 35 THEN GOSUB golf
-	IF q$ = "room5" AND (INT(cl * cr)) > 35 AND (INT(cl * cr)) < 47 THEN GOSUB golf
-	IF q$ = "room4" AND (INT(cl * cr)) > 47 AND (INT(cl * cr)) < h9 THEN GOSUB golf
-	IF q$ = "room1" AND (INT(cl * cr)) > h9 AND (INT(cl * cr)) < t1 THEN GOSUB golf
-	IF q$ = "room9" AND (INT(cl * cr)) > t1 AND (INT(cl * cr)) < t2 THEN GOSUB golf
-	IF q$ = "room1" AND (INT(cl * cr)) > t2 AND (INT(cl * cr)) < t3 THEN GOSUB golf
-	IF q$ = "room4" AND (INT(cl * cr)) > t3 AND (INT(cl * cr)) < f3 THEN GOSUB golf
+	'----- which roamer owns this room at this step count: table in GAME2
+	'----- KillChk (64K ceiling); bit 1 = wilb, bit 2 = golf, order preserved
+	CALL KillChk(q$, INT(cl * cr), h9, t1, t2, t3, f3, kw%)
+	IF (kw% AND 1) = 1 THEN GOSUB wilb
+	IF (kw% AND 2) = 2 THEN GOSUB golf
 	11570 IF (INT(cl * cr)) <= 30 THEN GOTO 11580
 	ob(37) = 1
 	11580 RETURN
@@ -2523,6 +2570,8 @@ SUB invhi
 	'----- the unreadable formula (52, combine step 1) has its own tile 37
 	'----- (INVTIL2/INVMSK2 slot 16; art = the complete-formula icon relabeled)
 	tix(52) = 37
+	'----- the pulley (62, room12) = tile 38 (INVTIL2/INVMSK2 slot 17)
+	tix(62) = 38
 	'----- load keep-masks -> kmarr, then tiles -> tilarr (full) + iconarr (tile AND keepmask = frameless item)
 	DEF SEG = -18432
 	BLOAD "INVMSK1.PIC", 0
@@ -2543,20 +2592,20 @@ SUB invhi
 	DEF SEG = -18432
 	BLOAD "INVMSK2.PIC", 0
 	DEF SEG
-	FOR ivk = 21 TO 37
+	FOR ivk = 21 TO 38
 		'----- slot 15 (ivk 36) is the ring AND-mask tile, no keep-mask
 		IF ivk <> 36 THEN ivj = ivk - 21: ivc = ivj MOD 7: ivr = ivj \ 7: GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 39), kmarr(ivk * ist)
 	NEXT
 	DEF SEG = -18432
 	BLOAD "INVTIL2.PIC", 0
 	DEF SEG
-	FOR ivk = 21 TO 37
+	FOR ivk = 21 TO 38
 		ivj = ivk - 21: ivc = ivj MOD 7: ivr = ivj \ 7
 		GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 53), tilarr(ivk * tst)
 		IF ivk <> 36 THEN PUT (ivc * 45, ivr * 54), kmarr(ivk * ist), AND: GET (ivc * 45, ivr * 54)-(ivc * 45 + 44, ivr * 54 + 39), iconarr(ivk * ist)
 	NEXT
 	'----- derive AND-screen masks in place: kmarr = NOT keepmask (PRESET draws NOT), for the drag sprite (36 = ring mask, skip)
-	FOR ivk = 0 TO 37
+	FOR ivk = 0 TO 38
 		IF ivk <> 36 THEN PUT (0, 0), kmarr(ivk * ist), PRESET: GET (0, 0)-(44, 39), kmarr(ivk * ist)
 	NEXT
 	'----- build the carried-item list (newest-first)
@@ -2666,7 +2715,7 @@ SUB invhi
 	lvsel = 0
 	IF cic > 0 THEN lvsel = cilist(isel)
 	IF msen = 1 THEN CALL erasecur
-	FOR ivi = 1 TO 35: nwf(iord(ivi)) = 0: NEXT
+	FOR ivi = 1 TO 36: nwf(iord(ivi)) = 0: NEXT
 	SCREEN 1
 	EXIT SUB
 
@@ -2760,7 +2809,7 @@ SUB invhi
 	'----- rebuild the carried-item list (newest-first), recompute scroll max
 	cibuild:
 	cic = 0
-	FOR ivi = 1 TO 35
+	FOR ivi = 1 TO 36
 		ivn = iord(ivi)
 		IF ob(ivn) = 1 THEN cilist(cic) = ivn: cic = cic + 1
 	NEXT
@@ -2821,11 +2870,16 @@ SUB invhi
 	'----- examine: show the item's full-screen content, wait for a key/click, then restore the inventory
 	doexam:
 	IF msen = 1 THEN CALL erasecur
-	IF sel = 16 THEN bk$ = "MAP1" ELSE bk$ = "BOOK": PALETTE 1, 7: PALETTE 2, 2: PALETTE 3, 15
-	IF sel = 16 THEN PALETTE 1, 6: PALETTE 2, 4: PALETTE 3, 8
+	'----- the map page opens the full map interface; closing returns HERE
+	IF sel = 16 THEN
+		CALL MapView(1, CINT(mrn), CLNG(ob(64)), mvint, msen)
+		DEF SEG = -18432
+		GOTO exret
+	END IF
+	bk$ = "BOOK": PALETTE 1, 7: PALETTE 2, 2: PALETTE 3, 15
 	DEF SEG = -18432: BLOAD bk$ + ".PIC", 0
 	GOSUB exdrain
-	IF sel <> 16 THEN CALL showBook(sel, font3Data())
+	CALL showBook(sel, font3Data())
 	exwt:
 	ek$ = INKEY$: IF ek$ <> "" THEN GOTO exret
 	IF msen = 1 THEN mreg.ax = 3: CALL INTERRUPT(mvint, mreg, mout): IF (mout.bx AND 1) <> 0 THEN GOTO exret
@@ -2835,6 +2889,8 @@ SUB invhi
 	BLOAD "INVMAIN.PIC", 0: DEF SEG
 	PALETTE 1, 6: PALETTE 2, 7: PALETTE 3, 8
 	LINE (8, 27)-(202, 151), 0, BF: LINE (210, 34)-(297, 73), 0, BF
+	'----- re-blank the retired quit/save buttons the reload brought back
+	LINE (186, 162)-(266, 185), 0, BF: LINE (8, 162)-(100, 185), 0, BF
 	GOSUB invdraw
 	IF msen = 1 THEN CALL drawcur
 	RETURN
@@ -2878,7 +2934,7 @@ SUB LoadGame (slot AS INTEGER)
 	NEXT
 	CLOSE #1
 	aqc = 0
-	FOR slz = 1 TO 35
+	FOR slz = 1 TO 36
 		IF ob(iord(slz)) = 1 THEN aqc = aqc + 1: aqo(iord(slz)) = aqc ELSE aqo(iord(slz)) = 0
 		nwf(iord(slz)) = 0
 	NEXT

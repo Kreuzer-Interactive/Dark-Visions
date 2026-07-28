@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME2.BAS: secondary module for the multi-module split (
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                  " " THEN EXIT DO
  01AF   0006                            IF ch$ = "<" THEN nt$ = nt$ + ch$: shf 
                                                                       PAGE   2
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 = shf + 1
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0544   0006            IF js1 < 40 AND js0 > 120 THEN a2$ = "9"
  0587   0006            IF js1 < 40 AND js0 < 40 THEN a2$ = "7"
                                                                       PAGE   3
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  05CA   0006            IF js0 > 120 AND js1 > 120 THEN a2$ = "3"
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0A72   0006                    IF oy%(i%) = 0 THEN EXIT FOR
  0A8A   0006                    dx% = mx% - ox%(i%)
                                                                       PAGE   4
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0A8A   0006                    dy% = my% - oy%(i%)
@@ -235,8 +235,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0E79   0006    END SUB
  0E8A   0006    
                                                                       PAGE   5
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0E8A   0006    '----- pause rate2*0.05s between animation frames (TIMER-based,
@@ -294,8 +294,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 ng toward the inactive
  11A6   0006    '----- tab ACTIVATES it; down off the grid (or from the tabs) -
                                                                       PAGE   6
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 > the buttons.
@@ -353,8 +353,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 / 4)
  153E   0006                    IF INT(isel / 4) > ivscr + 1 THEN ivscr = INT(i
                                                                       PAGE   7
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 sel / 4) - 1
@@ -412,8 +412,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  17EF   0012    SUB RmPal (co2, p1, p2, p3)
  17FA   0012            COLOR co2
                                                                       PAGE   8
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  17FA   0012            PALETTE 1, p1
@@ -471,8 +471,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1AA3   0012                    fpst = TIMER
  1AA3   0012                    fpsc = 0
                                                                       PAGE   9
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1AA3   0012            ELSEIF fd! >= 1 THEN
@@ -530,8 +530,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1DCF   0024                    ld% = ld% + 1
  1DCF   0024            LOOP
                                                                       PAGE  10
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1DD4   0024            IF ld% < 1 THEN ld% = 1
@@ -589,8 +589,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  210A   0024                            IF w$ <> "" THEN
  210A   0024                                    dx% = 0: dy% = 0: rp% = 0
                                                                       PAGE  11
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  210A   0024                                    FOR j% = 1 TO LEN(w$)
@@ -648,8 +648,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  2398   0024            nf$(15) = "Nothing of note here."
  2398   0024            nf$(16) = "Whatever you sought, it isn't here."
                                                                       PAGE  12
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  2398   0024            nf$(17) = "Nothing worth mentioning."
@@ -707,8 +707,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  2586   008C                    RANDOMIZE TIMER
  2586   008C            END IF
                                                                       PAGE  13
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  26DF   0090            kk = 0
@@ -766,8 +766,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 rrow, 2 crosshair, 3 box, 4 crosshair(xor)"
  2ABD   00B8                    PRINT #1, "mousecursor=1"
                                                                       PAGE  14
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  2ABD   00B8                    PRINT #1, "; mousesnap: click pulls to nearest 
@@ -825,8 +825,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  2D58   00B8            DO WHILE NOT EOF(1)
  2DE2   00B8                    LINE INPUT #1, ln$
                                                                       PAGE  15
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  2DFD   00B8                    ln$ = LTRIM$(RTRIM$(ln$))
@@ -884,8 +884,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  32A0   00B8    END SUB
  32F7   00B8    
                                                                       PAGE  16
-                                                                      23 Jul 26
-                                                                      20:28:58
+                                                                      27 Jul 26
+                                                                      15:24:01
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  32F7   00B8    '----- OvReg: register a foreground overlay ("fg" anim mode) --
@@ -916,10 +916,84 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  34CB   00B8                    ovnext! = ovnext! + anpf!
  34CB   00B8            END IF
  34DC   00B8    END SUB
- 34EB   00B8    
+ 34E4   00B8    '----- LookDir: 8-way facing digit from the player's eyes (px+1
+                5, py+5) toward
+ 34E4   00B8    '----- the click (bx, ay), with x/y dead zones; both in the zon
+                e -> face down.
+ 34E4   00B8    '----- (moved from GAME.BAS lookdir -- 64K code ceiling)
+ 34E4   00B8    SUB LookDir (bx!, ay!, px2!, py2!, d2$)
+ 34EF   00B8            ldx! = bx! - (px2! + 15)
+ 34EF   00B8            ldy! = ay! - (py2! + 5)
+ 34EF   00B8            lxs% = 0
+ 34EF   00B8            IF ldx! < -10 THEN lxs% = -1
+ 3542   00B8            IF ldx! > 10 THEN lxs% = 1
+ 355C   00B8            lys% = 0
+ 355C   00B8            IF ldy! < -8 THEN lys% = -1
+ 357B   00B8            IF ldy! > 8 THEN lys% = 1
+ 3595   00B8            d2$ = "2"
+ 3595   00B8            IF lxs% = -1 AND lys% = -1 THEN d2$ = "7"
+ 35CA   00B8            IF lxs% = 0 AND lys% = -1 THEN d2$ = "8"
+ 35F3   00B8            IF lxs% = 1 AND lys% = -1 THEN d2$ = "9"
+ 361C   00B8            IF lxs% = -1 AND lys% = 0 THEN d2$ = "4"
+ 3645   00B8            IF lxs% = 1 AND lys% = 0 THEN d2$ = "6"
+ 366E   00B8            IF lxs% = -1 AND lys% = 1 THEN d2$ = "1"
+ 3697   00B8            IF lxs% = 1 AND lys% = 1 THEN d2$ = "3"
+ 36C0   00B8    END SUB
+ 36C8   00B8    '----- KillChk: which roaming killer owns room q2 + $ at step c
+                ount w --
+ 36C8   00B8    '----- bit 1 = wilb window, bit 2 = golf window (moved verbatim
+                                                                      PAGE  17
+                                                                      27 Jul 26
+                                                                      15:24:01
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                 from
+ 36C8   00B8    '----- GAME.BAS events: -- that module is at the 64K code ceili
+                ng).
+ 36C8   00B8    SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
+ 36D3   00B8            kw% = 0
+ 36D3   00B8            IF q2$ = "room7" AND w! > 0 AND w! < 8 THEN kw% = kw% O
+                R 1
+ 372F   00B8            IF q2$ = "room6" AND w! > 8 AND w! < 20 THEN kw% = kw% 
+                OR 1
+ 3787   00B8            IF q2$ = "room8" AND w! > 20 AND w! < 35 THEN kw% = kw%
+                 OR 1
+ 37DF   00B8            IF q2$ = "room9" AND w! > 35 AND w! < 47 THEN kw% = kw%
+                 OR 1
+ 3837   00B8            IF q2$ = "room7" AND w! > 47 AND w! < h9b! THEN kw% = k
+                w% OR 1
+ 3890   00B8            IF q2$ = "room11" AND w! > h9b! AND w! < t1b! THEN kw% 
+                = kw% OR 1
+ 38EA   00B8            IF q2$ = "room4" AND w! > t1b! AND w! < t2b! THEN kw% =
+                 kw% OR 1
+ 3944   00B8            IF q2$ = "room10" AND w! > t2b! AND w! < t3b! THEN kw% 
+                = kw% OR 1
+ 399E   00B8            IF q2$ = "room11" AND w! > t3b! AND w! < f3b! THEN kw% 
+                = kw% OR 1
+ 39F8   00B8            IF q2$ = "room2" AND w! > 0 AND w! < 8 THEN kw% = kw% O
+                R 2
+ 3A50   00B8            IF q2$ = "room1" AND w! > 8 AND w! < 20 THEN kw% = kw% 
+                OR 2
+ 3AA8   00B8            IF q2$ = "room5" AND w! > 20 AND w! < 35 THEN kw% = kw%
+                 OR 2
+ 3B00   00B8            IF q2$ = "room5" AND w! > 35 AND w! < 47 THEN kw% = kw%
+                 OR 2
+ 3B58   00B8            IF q2$ = "room4" AND w! > 47 AND w! < h9b! THEN kw% = k
+                w% OR 2
+ 3BB1   00B8            IF q2$ = "room1" AND w! > h9b! AND w! < t1b! THEN kw% =
+                 kw% OR 2
+ 3C0B   00B8            IF q2$ = "room9" AND w! > t1b! AND w! < t2b! THEN kw% =
+                 kw% OR 2
+ 3C65   00B8            IF q2$ = "room1" AND w! > t2b! AND w! < t3b! THEN kw% =
+                 kw% OR 2
+ 3CBF   00B8            IF q2$ = "room4" AND w! > t3b! AND w! < f3b! THEN kw% =
+                 kw% OR 2
+ 3D19   00B8    END SUB
+ 3D21   00B8    
+ 3D28   00B8    
 
 43949 Bytes Available
-28752 Bytes Free
+28063 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

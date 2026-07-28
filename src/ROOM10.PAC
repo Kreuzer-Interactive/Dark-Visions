@@ -102,6 +102,42 @@
 202,165,16
 202,165,13
 202,165,15
+222,148,17
+226,148,17
+230,148,17
+222,152,17
+226,152,17
+230,152,17
+222,148,18
+226,148,18
+230,148,18
+222,152,18
+226,152,18
+230,152,18
+222,148,20
+226,148,20
+230,148,20
+222,152,20
+226,152,20
+230,152,20
+222,148,19
+226,148,19
+230,148,19
+222,152,19
+226,152,19
+230,152,19
+222,148,21
+226,148,21
+230,148,21
+222,152,21
+226,152,21
+230,152,21
+222,148,22
+226,148,22
+230,148,22
+222,152,22
+226,152,22
+230,152,22
 0,0,0
 "","The torch illuminates the western wall.","l",0,0,0,"f7"
 "","The torch provides just a glimmer of    light.","l",0,0,0,"f6"
@@ -119,12 +155,12 @@
 "","You rummage through the food and find an apple.","a",0,28,55,"f3"
 "","You get the |apple|.","g",55,28,28,"f3"
 "","A red apple sits among the picked-over  scraps.","l",55,28,0,"f3"
-"","","",0,0,0,""
-"","","",0,0,0,""
-"","","",0,0,0,""
-"","","",0,0,0,""
-"","","",0,0,0,""
-"","","",0,0,0,""
+"","A small iron grate is set low in the wall. Its lock has a strange oblong slot.","l",0,63,0,"f9"
+"","The grate hangs open. A narrow shaft drops into darkness below.","l",63,0,0,"f9"
+"","The grate is locked tight. The keyhole is a strange oblong shape.","a",0,63,0,"f9"
+"","The dull gray key fits the strange slot perfectly. The grate swings open.","u",22,63,63,"f9"
+"room12","You tie your rope to the grate frame and climb down.","a",14,0,0,""
+"","The shaft drops a long way down. You need something to climb down with.","a",0,14,0,"f9"
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
@@ -134,6 +170,10 @@
 18,191,157,28,0
 20,102,111,0,0
 21,194,110,0,0
+42,218,143,63,0
 -2,12,173,143,4
+-2,20,216,172,9
+-2,21,216,172,9
+-2,22,216,172,9
 -2,14,184,166,6
 -2,15,184,167,6
