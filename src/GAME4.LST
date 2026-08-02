@@ -1,8 +1,9 @@
                                                                       PAGE   1
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 0030   0006    DECLARE SUB JoyPoll (a2$, vk2$)
  0030   0006    '----- GAME4.BAS: menu / save / load UI module. Own 64K code se
                 gment.
  0030   0006    '----- Pure library module (no COMMON SHARED). Holds the ESC ma
@@ -56,12 +57,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    '----- ESC main-menu art, parsed from disk ONCE per session (mn
                 Ok flag):
  0030   0006    '----- mnArt = MENUMAIN.PCT (122x99 box, inventory palette), mn
-                Lbl = MENULBL.PCT
                                                                       PAGE   2
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                Lbl = MENULBL.PCT
  0030   0006    '----- (6 frames of 70 ints, 59x9 label cells: 1-4 = New Game/S
                 ave/Load/Quit
  0030   0006    '----- not-selected, 5 = Save disabled, 6 = Load disabled). Dyn
@@ -115,12 +116,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0121   00B8                    nm$ = ""
  0121   00B8                    OPEN rq + ".pac" FOR INPUT AS #4
  0121   00B8                    LINE INPUT #4, hd$
- 0170   00B8                    CLOSE #4
                                                                       PAGE   3
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 0170   00B8                    CLOSE #4
  0170   00B8                    q1 = INSTR(hd$, CHR$(34))
  0170   00B8                    IF q1 > 0 THEN
  0170   00B8                            q2 = INSTR(q1 + 1, hd$, CHR$(34))
@@ -174,12 +175,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0573   00B8    END SUB
  05BA   00B8    
  05BA   00B8    '----- SlotScreen: dedicated Save (mode 1) or Load (mode 2) scr
-                een on the book
                                                                       PAGE   4
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                een on the book
  05BA   00B8    '----- background (SAVEBG/LOADBG.PIC; palette 1=dkgray 2=ltgray
                  3=brown).
  05BA   00B8    '----- 10 slots: 1-5 on the left page (x60-159), 6-0 on the rig
@@ -233,12 +234,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  06E7   00B8            SCREEN 1
  06E7   00B8            GOSUB ssall
  06FD   00B8            IF msen = 1 THEN
- 06FD   00B8                    mr.ax = 2: CALL INTERRUPT(mvint, mr, mo)
                                                                       PAGE   5
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 06FD   00B8                    mr.ax = 2: CALL INTERRUPT(mvint, mr, mo)
  0729   00B8                    mr.ax = 3: CALL INTERRUPT(mvint, mr, mo)
  073E   00B8                    mx = mo.cx \ 2: my = mo.dx
  073E   00B8                    IF mx > 312 THEN mx = 312 ELSE IF mx < 0 THEN m
@@ -292,12 +293,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 r: left 88-146, right 190-248)
  09B4   00B8            ssgeo:
  09B9   00B8            IF sgi <= 5 THEN sgx1 = 60: sgx2 = 159: sgtx = 90 ELSE 
-                sgx1 = 170: sgx2 = 263: sgtx = 192
                                                                       PAGE   6
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                sgx1 = 170: sgx2 = 263: sgtx = 192
  09E8   00B8            sgy1 = 37 + ((sgi - 1) MOD 5) * 22
  09E8   00B8            sgy2 = sgy1 + 19
  09E8   00B8            RETURN
@@ -351,12 +352,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0CB7   00B8            IF mode = 2 AND (k$ = "l" OR k$ = "L") THEN GOSUB ssfir
                 e: RETURN
  0D11   00B8            ns = 0
- 0D11   00B8            IF k$ >= "1" AND k$ <= "9" THEN ns = ASC(k$) - 48
                                                                       PAGE   7
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 0D11   00B8            IF k$ >= "1" AND k$ <= "9" THEN ns = ASC(k$) - 48
  0D5C   00B8            IF k$ = "0" THEN ns = 10
  0D73   00B8            IF k$ = CHR$(0) + CHR$(72) THEN ns = sel - 1: IF ns < 1
                  THEN ns = 1
@@ -410,12 +411,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 l
  109D   00B8                    IF msen = 1 THEN GOSUB sserase
  10BC   00B8                    GOSUB ssall
- 10C4   00B8                    IF msen = 1 THEN GOSUB ssdrawcur
                                                                       PAGE   8
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 10C4   00B8                    IF msen = 1 THEN GOSUB ssdrawcur
  10E3   00B8                    mlb = 1
  10E3   00B8            ELSE
  10EB   00B8                    IF slUsed(sel) = 0 THEN RETURN
@@ -469,12 +470,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1489   00B8    '----- outlines (dkgray, black, dkgray, ltgray, black interior)
                 , 9x9 corner
  1489   00B8    '----- scrolls, ltgray message, ornament stroke, art Yes/No but
-                tons (Yes drawn
                                                                       PAGE   9
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                tons (Yes drawn
  1489   00B8    '----- active). dk = the active palette's dark-gray attr: 3 on 
                 the inventory /
  1489   00B8    '----- main-menu palette, 1 on the save/load screen (also selec
@@ -528,12 +529,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  183D   00B8            NEXT
  1863   00B8            CLOSE #2
  1863   00B8            dlgOk = 1
- 1863   00B8    END SUB
                                                                       PAGE  10
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 1863   00B8    END SUB
  187E   00B8    
  187E   00B8    '----- modal wait on an ALREADY-DRAWN yes/no dialog (DrawYNBox)
                 , with its own
@@ -587,12 +588,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1B20   00B8                    IF nmx <> mx OR nmy <> my THEN GOSUB ynwerase: 
                 mx = nmx: my = nmy: GOSUB ynwdraw
  1B5D   00B8                    IF my >= 105 AND my <= 117 THEN
- 1B5D   00B8                            IF mx >= 132 AND mx <= 158 THEN nyn = 1
                                                                       PAGE  11
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 1B5D   00B8                            IF mx >= 132 AND mx <= 158 THEN nyn = 1
  1B9E   00B8                            IF mx >= 161 AND mx <= 187 THEN nyn = 2
  1BC2   00B8                    END IF
  1BC2   00B8                    IF (mo.bx AND 1) <> 0 THEN
@@ -646,12 +647,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1F6D   00B8    '----- the "they're still in there" message sprite (REVIVE.DAT)
                  centered over
  1F6D   00B8    '----- the restored room in a fixed palette, wait for a fresh k
-                ey or click,
                                                                       PAGE  12
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                ey or click,
  1F6D   00B8    '----- then put the screen back. The CALLER restores the room p
                 alette (rmpal).
  1F6D   00B8    SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
@@ -705,12 +706,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  21CF   00B8                    IF cmx > 312 THEN cmx = 312 ELSE IF cmx < 0 THE
                 N cmx = 0
  220B   00B8                    IF cmy > 192 THEN cmy = 192 ELSE IF cmy < 0 THE
-                N cmy = 0
                                                                       PAGE  13
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                N cmy = 0
  222B   00B8                    GOSUB rvcdraw
  2233   00B8            END IF
  2233   00B8            '----- wait for a fresh key or click, cursor tracking t
@@ -764,12 +765,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  23F8   00B8            PSET (cmx, cmy + 4), 3: PSET (cmx + 4, cmy + 4), 3
  23F8   00B8            PSET (cmx, cmy + 5), 3: PSET (cmx + 2, cmy + 5), 3: PSE
                 T (cmx + 3, cmy + 5), 3
- 23F8   00B8            PSET (cmx, cmy + 6), 3: PSET (cmx + 1, cmy + 6), 3
                                                                       PAGE  14
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 23F8   00B8            PSET (cmx, cmy + 6), 3: PSET (cmx + 1, cmy + 6), 3
  23F8   00B8            PSET (cmx + 1, cmy + 2), 1
  23F8   00B8            PSET (cmx + 1, cmy + 3), 1: PSET (cmx + 2, cmy + 3), 1
  23F8   00B8            PSET (cmx + 1, cmy + 4), 1: PSET (cmx + 2, cmy + 4), 1:
@@ -823,12 +824,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 GER
  2758   00B8            DIM sel AS INTEGER, ns AS INTEGER, dir AS INTEGER, ldok
                  AS INTEGER
- 2758   00B8            DIM mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy A
                                                                       PAGE  15
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 2758   00B8            DIM mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy A
                 S INTEGER, mlb AS INTEGER
  2758   00B8            DIM done AS INTEGER, cdrn AS INTEGER, hit AS INTEGER
  2758   00B8            DIM k$, mnf$, cmsg$, ck$
@@ -882,12 +883,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  29E6   00B8            '----- pixel pass), then rewrite the framebuffer so eve
                 ry lit pixel is attr 1, then
  29E6   00B8            '----- switch to the standard UI palette (1=dkgray 2=lt
-                gray 3=brown -- same
                                                                       PAGE  16
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                gray 3=brown -- same
  29E6   00B8            '----- layout as the save/load screens, so dialog art n
                 eeds no variants)
  29E6   00B8            PALETTE 0, 0: PALETTE 1, 8: PALETTE 2, 8: PALETTE 3, 8
@@ -941,12 +942,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  2C58   00B8            END IF
  2C61   00B8            k$ = INKEY$
  2C61   00B8            IF (k$ = CHR$(27) OR k$ = "x" OR k$ = "X") AND dead = 0
-                 THEN done = 1
                                                                       PAGE  17
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                 THEN done = 1
  2CDD   00B8            IF k$ = CHR$(13) OR k$ = " " THEN GOSUB mmgo
  2D22   00B8            IF k$ = "n" OR k$ = "N" THEN ns = 1: GOSUB mmset: GOSUB
                  mmgo
@@ -1000,12 +1001,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  30AF   00B8    
  30AF   00B8            '----- which item the mouse is over (0 = none); rows fo
                 llow the label boxes
- 30AF   00B8            mmhit:
                                                                       PAGE  18
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 30AF   00B8            mmhit:
  30B4   00B8            hit = 0
  30B4   00B8            IF mx >= 120 AND mx <= 195 THEN
  30B4   00B8                    FOR i = 1 TO 4
@@ -1059,12 +1060,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  33AB   00B8                    IF my > 192 THEN my = 192 ELSE IF my < 0 THEN m
                 y = 0
  33CB   00B8                    GOSUB mmdrawcur
- 33D3   00B8            END IF
                                                                       PAGE  19
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 33D3   00B8            END IF
  33D3   00B8            RETURN
  33D3   00B8    
  33D3   00B8            '----- yes/no modal over the menu, with save-under rest
@@ -1118,12 +1119,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  3847   00B8                    IF msen = 1 THEN GOSUB mmdrawcur
  3866   00B8            END IF
  3866   00B8            IF cyes = -1 THEN GOTO mmcfw
- 3870   00B8            IF msen = 1 THEN GOSUB mmerasecur
                                                                       PAGE  20
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 3870   00B8            IF msen = 1 THEN GOSUB mmerasecur
  388F   00B8            PUT (44, 76), cnf, PSET
  388F   00B8            IF msen = 1 THEN GOSUB mmdrawcur
  38D1   00B8            RETURN
@@ -1177,12 +1178,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 , mvint AS INTEGER, msen AS SINGLE)
  3BAB   00B8            DIM mr AS RegType, mo AS RegType
  3BAB   00B8            DIM cbuf(40) AS INTEGER
- 3BC3   00B8            DIM rmN(15) AS INTEGER, rmL(15) AS INTEGER, rx0(15) AS 
                                                                       PAGE  21
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 3BC3   00B8            DIM rmN(15) AS INTEGER, rmL(15) AS INTEGER, rx0(15) AS 
                 INTEGER, ry0(15) AS INTEGER
  3C24   00B8            DIM rx1(15) AS INTEGER, ry1(15) AS INTEGER, rdx(15) AS 
                 INTEGER, rdy(15) AS INTEGER
@@ -1236,12 +1237,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  3F7A   00B8            '----- flush type-ahead and wait out the opening click
  3F7A   00B8            DO: k$ = INKEY$: LOOP WHILE k$ <> ""
  3F7A   00B8            IF msen = 1 THEN
- 3F7A   00B8                    DO
                                                                       PAGE  22
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 3F7A   00B8                    DO
  3FB2   00B8                            mr.ax = 3: CALL INTERRUPT(mvint, mr, mo
                 )
  3FC7   00B8                    LOOP WHILE (mo.bx AND 1) <> 0
@@ -1295,12 +1296,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  423C   00B8            EXIT SUB
  423C   00B8    
  423C   00B8            '----- activate whatever is under the pointer: a level 
-                label switches (with
                                                                       PAGE  23
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                label switches (with
  423C   00B8            '----- the slide + ring animations), anything else clos
                 es (mvq = 1)
  423C   00B8            mvact:
@@ -1354,12 +1355,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  445C   00B8            DEF SEG
  445C   00B8            IF hasmap <> 1 THEN
  445C   00B8                    '----- no map item: walls only (the N picture i
-                s blue-only) and ONLY the
                                                                       PAGE  24
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                s blue-only) and ONLY the
  445C   00B8                    '----- room he is standing in -- everything els
                 e stays black, so the real
  445C   00B8                    '----- map is worth finding
@@ -1413,12 +1414,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                  beside the player's
  48A6   00B8            '----- plans show light blue WITH the map, dark gray wi
                 thout (less inviting)
- 48A6   00B8            PALETTE 1, 7: PALETTE 3, 12
                                                                       PAGE  25
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 48A6   00B8            PALETTE 1, 7: PALETTE 3, 12
  48A6   00B8            IF hasmap = 1 THEN PALETTE 2, 9 ELSE PALETTE 2, 8
  48F0   00B8            IF olv >= 1 AND olv <> vlv THEN
  48F0   00B8                    '----- the ring hops down/up the selector to th
@@ -1472,21 +1473,105 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  4C1D   00B8            PSET (mx + 1, my + 5), 2
  4C1D   00B8            cdrn = 1
  4C1D   00B8            RETURN
- 4C1D   00B8            mvcerase:
                                                                       PAGE  26
-                                                                      27 Jul 26
-                                                                      15:24:01
+                                                                      02 Aug 26
+                                                                      13:38:35
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 4C1D   00B8            mvcerase:
  4E6F   00B8            IF cdrn = 1 THEN PUT (mx, my), cbuf, PSET
  4E9E   00B8            cdrn = 0
  4E9E   00B8            RETURN
  4E9E   00B8    END SUB
  4F61   00B8    
- 4F68   00B8    
+ 4F61   00B8    '----- DialGame: the safe-dial minigame, moved VERBATIM from GA
+                ME.BAS dial:
+ 4F61   00B8    '----- (that module is at the 64K ceiling). STATIC so the dial 
+                angle di and
+ 4F61   00B8    '----- the tumbler states dn1-dn3 persist across visits like th
+                e module vars
+ 4F61   00B8    '----- did. 4/6 turn the dial (joystick too), g/x leaves; solvi
+                ng sets ob(45).
+ 4F61   00B8    SUB DialGame (sf3, sf4, ob() AS SINGLE) STATIC
+ 4F6C   00B8            DRAW "bm153,104"
+ 4F75   00B8            d1550:
+ 4F75   00B8            DRAW "c3bl5nl10br5bd4nd9bu4br5nr10bl5c1bu5nu9bd5"
+ 4F83   00B8            d1560:
+ 4F83   00B8            k$ = INKEY$
+ 4F83   00B8            CALL JoyPoll(k$, vk$)
+ 4FA4   00C0            IF k$ = "" THEN GOTO d1560
+ 4FB3   00C0            DRAW "c2bl5nl10br5bd4nd9bu4br5nr10bl5bu5nu9bd5"
+ 4FBC   00C0            IF k$ = "6" THEN GOSUB ddialdn: DRAW "ta=" + VARPTR$(di
+                ): GOTO d1550
+ 4FF5   00C4            IF k$ = "4" THEN GOSUB ddialup: DRAW "ta=" + VARPTR$(di
+                ): GOTO d1550
+ 502F   00C4            IF dn3 = 1 AND dn2 = 1 AND dn1 = 1 THEN SOUND sf4, .5: 
+                ob(45) = 1
+ 50B3   00D0            IF k$ = "g" OR k$ = "x" THEN EXIT SUB
+ 50E8   00D0            GOTO d1560
+ 50E8   00D0    
+ 50E8   00D0            '----- counter-clockwise turn, tumbler tracking (verbat
+                im)
+ 50E8   00D0            ddialdn:
+ 50EB   00D0            di = di - 10
+ 50EB   00D0            IF di = -10 THEN di = 350
+ 5123   00D0            IF (di / 10) = 5 THEN SOUND sf3, .1: dn1 = 0
+ 5163   00D0            IF (di / 10) = 9 THEN SOUND sf3, .1: IF dn2 = 1 THEN dn
+                1 = 1
+ 51B9   00D0            IF (di / 10) = 14 THEN SOUND sf3, .1: dn1 = 0: IF dn2 =
+                 0 THEN dn3 = 0
+ 521B   00D0            IF (di / 10) = 18 THEN SOUND sf3, .1: dn3 = 1
+ 525B   00D0            IF (di / 10) = 23 THEN SOUND sf3, .1
+ 528F   00D0            IF (di / 10) = 27 THEN SOUND sf3, .1
+ 52C3   00D0            IF (di / 10) = 32 THEN SOUND sf3, .1
+ 52F7   00D0            IF (di / 10) = 0 THEN SOUND sf3, .1
+ 532B   00D0            RETURN
+ 532B   00D0    
+ 532B   00D0            '----- clockwise turn (verbatim)
+ 532B   00D0            ddialup:
+ 5330   00D0            di = di + 10
+ 5330   00D0            IF di = 360 THEN di = 0
+ 5368   00D0            IF (di / 10) = 5 THEN SOUND sf3, .1: dn1 = 0: IF dn3 = 
+                                                                      PAGE  27
+                                                                      02 Aug 26
+                                                                      13:38:35
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                1 THEN dn2 = 1
+ 53CA   00D0            IF (di / 10) = 9 THEN SOUND sf3, .1: dn2 = 0
+ 540A   00D0            IF (di / 10) = 14 THEN SOUND sf3, .1: dn1 = 0
+ 544A   00D0            IF (di / 10) = 18 THEN SOUND sf3, .1
+ 547E   00D0            IF (di / 10) = 23 THEN SOUND sf3, .1
+ 54B2   00D0            IF (di / 10) = 27 THEN SOUND sf3, .1
+ 54E6   00D0            IF (di / 10) = 32 THEN SOUND sf3, .1
+ 551A   00D0            IF (di / 10) = 0 THEN SOUND sf3, .1
+ 554E   00D0            RETURN
+ 554E   00D0    END SUB
+ 555B   00D0    
+ 555B   00D0    '----- BurnShow: the burning-house ending flicker, moved VERBAT
+                IM from
+ 555B   00D0    '----- GAME.BAS burn: (64K ceiling). Flickers burn.pic until a 
+                key, then
+ 555B   00D0    '----- returns to the caller, which RUNs (RUN is illegal inside
+                 a SUB).
+ 555B   00D0    SUB BurnShow
+ 5566   00D0            KEY OFF
+ 5566   00D0            DEF SEG = &HB800
+ 5566   00D0            BLOAD "burn.pic", 0
+ 5566   00D0            DEF SEG
+ 5566   00D0            bshow1:
+ 558C   00D0            PALETTE 1, 14: PALETTE 2, 12: PALETTE 3, 4
+ 558C   00D0            FOR j% = 1 TO 10: SOUND 32676, .1: NEXT
+ 55E1   00D0            PALETTE 1, 15: PALETTE 2, 14: PALETTE 3, 12
+ 55E1   00D0            FOR j% = 1 TO 10: SOUND 32676, .1: NEXT
+ 5631   00D0            IF INKEY$ <> "" THEN EXIT SUB
+ 5645   00D0            GOTO bshow1
+ 5645   00D0    END SUB
+ 5650   00D0    
+ 5657   00D0    
 
 43949 Bytes Available
-31330 Bytes Free
+30415 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

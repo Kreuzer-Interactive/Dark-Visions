@@ -147,7 +147,7 @@
 "","You remove a |copper penny| from the        drawer.","g",0,12,12,"f6"
 "","It is a closet.","l",0,38,0,"f6"
 "","The closet is locked.","a",0,38,0,"f6"
-"openclos","You unlock the closet and open  the oak door.","u",13,38,38,"fc6"
+"openclos","You unlock the closet and open the oak door, leaving the key in its lock.","u",13,38,38,"fc6x"
 "","The window is cracked open.","l",0,0,0,"f7"
 "room3","You leave the room.","a",0,0,0,"ws"
 "","You open the window.","a",0,40,40,"f7"

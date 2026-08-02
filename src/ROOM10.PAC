@@ -138,6 +138,18 @@
 222,152,22
 226,152,22
 230,152,22
+222,148,23
+226,148,23
+230,148,23
+222,152,23
+226,152,23
+230,152,23
+222,148,24
+226,148,24
+230,148,24
+222,152,24
+226,152,24
+230,152,24
 0,0,0
 "","The torch illuminates the western wall.","l",0,0,0,"f7"
 "","The torch provides just a glimmer of    light.","l",0,0,0,"f6"
@@ -161,8 +173,8 @@
 "","The dull gray key fits the strange slot perfectly. The grate swings open.","u",22,63,63,"f9"
 "room12","You tie your rope to the grate frame and climb down.","a",14,0,0,""
 "","The shaft drops a long way down. You need something to climb down with.","a",0,14,0,"f9"
-"","","",0,0,0,""
-"","","",0,0,0,""
+"","The rope is no use while the grate is locked. The keyhole is a strange oblong shape.","u",14,63,0,"f9"
+"room12","You tie your rope to the grate frame and climb down.","u",14,0,0,""
 "","","",0,0,0,""
 17,159,137,6,0
 18,191,157,55,0
@@ -175,5 +187,7 @@
 -2,20,216,172,9
 -2,21,216,172,9
 -2,22,216,172,9
+-2,23,216,172,9
+-2,24,216,172,9
 -2,14,184,166,6
 -2,15,184,167,6

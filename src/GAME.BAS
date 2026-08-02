@@ -62,6 +62,9 @@ DECLARE SUB OvReg (ovf%(), afrm%(), amfrm%(), anpf!, ovh!, ovnext!, PX!, PY!)
 DECLARE SUB ClimbSeq (up%, x!, y0!, y1!, sfrq!, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
 DECLARE SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
 DECLARE SUB LookDir (bx!, ay!, px2!, py2!, d2$)
+DECLARE SUB DialGame (sf3!, sf4!, ob() AS SINGLE)
+DECLARE SUB BurnShow ()
+DECLARE SUB CursorPats (px!(), py!(), pc!(), npix!())
 DECLARE SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 DECLARE SUB PicSeq (sq$, fr$, rate%, sn2$)
 DECLARE SUB ShowRules ()
@@ -153,7 +156,7 @@ DIM SHARED fbg(150) AS INTEGER
 '----- masks for the shared walk-frame buffers (wa/wb) + a per-frame save-under for the moving player
 DIM SHARED mwa(150) AS INTEGER
 DIM SHARED mwb(150) AS INTEGER
-DIM SHARED wbg(150) AS INTEGER
+DIM SHARED wbg(210) AS INTEGER
 '----- player position (top-left of the 31x31 sprite box), walkable band for
 '----- walk-to stand points (defaults, or a "-1,xmin,xmax,ymin,ymax" line after
 '----- the .pac anim placements; ymin = highest allowed sprite TOP, ymax =
@@ -168,8 +171,8 @@ DIM SHARED spx(25) AS INTEGER, spy(25) AS INTEGER, spd(25) AS INTEGER
 REDIM SHARED cwa(1207) AS INTEGER, cwb(1207) AS INTEGER, cmwa(1207) AS INTEGER, cmwb(1207) AS INTEGER
 '----- data-driven animation system: ANIMS.PAC library + per-room placements
 DIM SHARED nAnim AS INTEGER, nPlace AS INTEGER
-DIM SHARED anId(50) AS INTEGER, anRate(50) AS INTEGER
-DIM SHARED anName$(50), anType$(50), anSrc$(50), anFrames$(50), anMode$(50), anPal$(50), anSnd$(50)
+DIM SHARED anId(70) AS INTEGER, anRate(70) AS INTEGER
+DIM SHARED anName$(70), anType$(70), anSrc$(70), anFrames$(70), anMode$(70), anPal$(70), anSnd$(70)
 DIM SHARED plAnim(20) AS INTEGER, plX(20) AS INTEGER, plY(20) AS INTEGER, plCond(20) AS INTEGER, plSet(20) AS INTEGER
 '----- scratch buffers for the generic .pct/.msk frame loader (de-interleave + masked draw)
 '----- anim frame buffers: 460 ints = frames up to ~110x32 for static/hold composites;
@@ -183,10 +186,12 @@ DIM SHARED acSrc$(6), acN(6) AS INTEGER, acM(6) AS INTEGER
 '----- then 4 ints per overlay (x, y, pct start, msk start), frame data packed after 17;
 '----- PStand/PStep re-PUT any overlay that intersects the player box (GAME5 OvTop)
 REDIM SHARED ovf(1500) AS INTEGER
+'----- room9 gateopen cutscene save-under (union of the rope overlay rects)
+REDIM SHARED gsv(2100) AS INTEGER
 '----- active loop-animation instances for the current room (idle-loop tick)
 DIM SHARED nLoop AS INTEGER
 DIM SHARED liAnim(4) AS INTEGER, liX(4) AS INTEGER, liY(4) AS INTEGER, liCur(4) AS INTEGER, liRate(4) AS INTEGER
-DIM SHARED liLast(4) AS SINGLE, liSaveAll(640) AS INTEGER
+DIM SHARED liLast(4) AS SINGLE, liSaveAll(850) AS INTEGER
 '----- random mode: liWait = seconds until the next frame advance; liMin/liMax = the random
 '----- per-frame hold (seconds) -- every frame shows min..max s ("random min max" in ANIMS.PAC)
 DIM SHARED liWait(4) AS SINGLE, liMin(4) AS SINGLE, liMax(4) AS SINGLE
@@ -202,7 +207,7 @@ DIM SHARED plStat(20) AS INTEGER
 DIM SHARED mdx(60) AS INTEGER, mdy(60) AS INTEGER
 '----- an unplayed move placement SHOWS frame 0 at its start spot; mvSave holds the
 '----- background under that idle frame so the travel can lift it cleanly (mvSp = owner)
-DIM SHARED mvSave(150) AS INTEGER, mvSp AS INTEGER
+DIM SHARED mvSave(210) AS INTEGER, mvSp AS INTEGER
 '----- xus = per-object "use consumes the item" (tg suffix "x" in the .pac)
 DIM SHARED xus(25) AS INTEGER
 '----- lvsel = the ITEM selected when the inventory was last closed (0 = none);
@@ -403,89 +408,9 @@ GOTO mainloop
 
 '----- combination dial puzzle
 dial:
-	DRAW "bm153,104"
-
-	'----- draw marker, poll for input
-	1550 DRAW "c3bl5nl10br5bd4nd9bu4br5nr10bl5c1bu5nu9bd5"
-	1560 a$ = INKEY$
-	GOSUB joy
-	IF a$ <> "" THEN GOTO 1600
-	GOTO 1560
-
-	'----- redraw marker, dispatch on key
-	1600 DRAW "c2bl5nl10br5bd4nd9bu4br5nr10bl5bu5nu9bd5"
-	IF a$ <> "6" THEN GOTO 1650
-	GOSUB dialdown
-	DRAW "ta=" + VARPTR$(di)
-	GOTO 1550
-
-	1650 IF a$ <> "4" THEN GOTO 1690
-	GOSUB dialup
-	DRAW "ta=" + VARPTR$(di)
-	GOTO 1550
-
-	'----- check for solved combination; exit on g/x
-	1690 IF dn3 = 1 AND dn2 = 1 AND dn1 = 1 THEN SOUND f4, .5: ob(45) = 1
-	IF a$ = "g" OR a$ = "x" THEN RETURN
-	GOTO 1560
-
-'----- turn dial counter-clockwise, track tumblers
-dialdown:
-	di = di - 10
-	IF di <> -10 THEN GOTO 1790
-	di = 350
-	1790 IF (di / 10) <> 5 THEN GOTO 1820
-	SOUND f3, .1
-	dn1 = 0#
-	1820 IF (di / 10) <> 9 THEN GOTO 1860
-	SOUND f3, .1
-	IF dn2 <> 1 THEN GOTO 1860
-	dn1 = 1
-	1860 IF (di / 10) <> 14 THEN GOTO 1910
-	SOUND f3, .1
-	dn1 = 0#
-	IF dn2 <> 0# THEN GOTO 1910
-	dn3 = 0#
-	1910 IF (di / 10) <> 18 THEN GOTO 1940
-	SOUND f3, .1
-	dn3 = 1
-	1940 IF (di / 10) <> 23 THEN GOTO 1960
-	SOUND f3, .1
-	1960 IF (di / 10) <> 27 THEN GOTO 1980
-	SOUND f3, .1
-	1980 IF (di / 10) <> 32 THEN GOTO 2000
-	SOUND f3, .1
-	2000 IF (di / 10) <> 0# THEN GOTO 2020
-	SOUND f3, .1
-	2020 RETURN
-
-'----- turn dial clockwise, track tumblers
-dialup:
-	di = di + 10
-	IF di <> 360 THEN GOTO 2060
-	di = 0
-	2060 IF (di / 10) <> 5 THEN GOTO 2110
-	SOUND f3, .1
-	dn1 = 0#
-	IF dn3 <> 1 THEN GOTO 2110
-	dn2 = 1
-	2110 IF (di / 10) <> 9 THEN GOTO 2140
-	SOUND f3, .1
-	dn2 = 0#
-	2140 IF (di / 10) <> 14 THEN GOTO 2170
-	SOUND f3, .1
-	dn1 = 0#
-	2170 IF (di / 10) <> 18 THEN GOTO 2190
-	SOUND f3, .1
-	2190 IF (di / 10) <> 23 THEN GOTO 2210
-	SOUND f3, .1
-	2210 IF (di / 10) <> 27 THEN GOTO 2230
-	SOUND f3, .1
-	2230 IF (di / 10) <> 32 THEN GOTO 2250
-	SOUND f3, .1
-	2250 IF (di / 10) <> 0# THEN GOTO 2270
-	SOUND f3, .1
-	2270 RETURN
+	'----- safe dial minigame: body in GAME4 DialGame -- 64K ceiling
+	CALL DialGame(f3, f4, ob())
+	RETURN
 '----- error handler: show the error and exit cleanly
 errhand:
 	ehcode = ERR: ehline = ERL
@@ -550,7 +475,8 @@ action:
 	ob(CINT(st(i))) = 1
 	'----- getting the map (16) opens the map screen instead of the inventory --
 	'----- deferred to after the action wraps up (dmq checked in the mainloop)
-	IF a$ = "g" AND CINT(st(i)) = 16 THEN dmq = 1: dm$ = ms$(i)
+	IF (a$ = "g" OR a$ = "u") AND CINT(st(i)) = 16 THEN dmq = 1: dm$ = ms$(i)
+	IF a$ = "u" AND CINT(st(i)) = 68 THEN goq = 1
 	'----- a consuming use takes the item out of the inventory. State 2 = "used
 	'----- up": gone from the inventory (which lists =1 only) but still counting
 	'----- as taken for room conditions -- so its pickup spot never re-arms
@@ -597,7 +523,9 @@ action:
 	GOSUB reanim
 	FOR pz = 1 TO 500
 	NEXT
-	CALL Snd2
+	'----- rope climb out of the pit: the long ClimbSeq IS the transition --
+	'----- the leave-room whoosh right before it reads as a stray door sound
+	IF q$ <> "room12" OR df$(i) <> "room10" THEN CALL Snd2
 	IF df$(i) = "dial" THEN GOSUB dial: RETURN
 	IF df$(i) = "end" THEN GOTO endgame
 '----- enter a room and draw the player
@@ -626,6 +554,12 @@ gotoroom:
 	END IF
 	IF q$ = "room3" AND ob(50) = 1 AND ob(42) = 0 THEN
 		GOSUB dooseq
+	'----- the trap only arms when escape is POSSIBLE: a rope source (held/hung
+	'----- 14, or the poker 2 for the peg) AND a pulley path (held 62, grate
+	'----- open 63, apple key 22, or the knife 18 to cut one) -- else softlock
+	ELSEIF q$ = "room9" AND ob(66) = 0 AND ob(68) = 0 AND (ob(14) >= 1 OR ob(2) >= 1) AND (ob(62) >= 1 OR ob(63) = 1 OR ob(22) >= 1 OR ob(18) >= 1) THEN
+		GOSUB face
+		GOSUB gateseq
 	ELSEIF q$ = "room12" AND oq$ = "room10" THEN
 		GOSUB climbdn
 	ELSEIF q$ = "room10" AND oq$ = "room12" THEN
@@ -694,6 +628,9 @@ mainloop:
 	'----- and the get sound played (scan above); re-print the pickup message
 	'----- after the map closes so the player still sees it
 	IF dmq = 1 THEN dmq = 0: GOSUB domap: CALL drawMsg(dm$, font3Data()): txr = 1
+	'----- q$ guard: a death/load between the fire and this dispatch must not
+	'----- replay the room9 cutscene over whatever room got restored
+	IF goq = 1 THEN goq = 0: IF q$ = "room9" THEN GOSUB gateopen
 	IF msen <> 1 THEN PUT (b, a), d, XOR
 	pt = (TIMER - t0) + pt
 	t0 = TIMER
@@ -842,7 +779,7 @@ loadanims:
 	CLOSE #3
 	OPEN "ANIMS.PAC" FOR INPUT AS #3
 	animloop:
-	IF nAnim >= 50 THEN GOTO animend
+	IF nAnim >= 70 THEN GOTO animend
 	INPUT #3, anId(nAnim + 1), anName$(nAnim + 1), anType$(nAnim + 1), anSrc$(nAnim + 1), anFrames$(nAnim + 1), anRate(nAnim + 1), anMode$(nAnim + 1), anPal$(nAnim + 1), anSnd$(nAnim + 1)
 	nAnim = nAnim + 1
 	GOTO animloop
@@ -1081,7 +1018,7 @@ animdraw:
 				IF PX + adw > 320 THEN adw = 320 - PX
 				IF PY + adh > 200 THEN adh = 200 - PY
 				liW(nLoop) = adw: liH(nLoop) = adh
-				GET (PX, PY)-(PX + adw - 1, PY + adh - 1), liSaveAll((nLoop - 1) * 150)
+				GET (PX, PY)-(PX + adw - 1, PY + adh - 1), liSaveAll((nLoop - 1) * 210)
 				afn = fsq(1) + 1
 				GOSUB animframe
 				'----- mark registered so reanim's mid-room spawn never doubles it
@@ -1118,6 +1055,9 @@ animtick:
 			IF nopl = 0 THEN
 				IF liX(li) < pjx + 31 AND liX(li) + liW(li) > pjx AND liY(li) < pjy + 31 AND liY(li) + liH(li) > pjy THEN GOTO atnext
 			END IF
+			'----- cursor parked on/near this anim: hold the tick too -- redrawing
+			'----- under the pointer causes a draw-over war (resumes when it moves)
+			IF liX(li) < b + 12 AND liX(li) + liW(li) > b - 6 AND liY(li) < a + 12 AND liY(li) + liH(li) > a - 6 THEN GOTO atnext
 			liLast(li) = TIMER
 			'----- lift the XOR mouse cursor while redrawing under it, else the restore
 			'----- eats half the cursor and the next XOR-off leaves garbage pixels
@@ -1131,7 +1071,7 @@ animtick:
 			aidx = liAnim(li)
 			GOSUB animparse
 			IF nfr >= 1 THEN
-				PUT (liX(li), liY(li)), liSaveAll((li - 1) * 150), PSET
+				PUT (liX(li), liY(li)), liSaveAll((li - 1) * 210), PSET
 				liCur(li) = liCur(li) + 1
 				IF liCur(li) > nfr THEN liCur(li) = 1
 				SRC$ = anSrc$(aidx)
@@ -1275,7 +1215,7 @@ reanim:
 		IF PX + adw > 320 THEN adw = 320 - PX
 		IF PY + adh > 200 THEN adh = 200 - PY
 		liW(nLoop) = adw: liH(nLoop) = adh
-		GET (PX, PY)-(PX + adw - 1, PY + adh - 1), liSaveAll((nLoop - 1) * 150)
+		GET (PX, PY)-(PX + adw - 1, PY + adh - 1), liSaveAll((nLoop - 1) * 210)
 		afn = fsq(1) + 1
 		GOSUB animframe
 		GOSUB ovpost
@@ -1337,7 +1277,9 @@ reanim:
 		GOSUB animdims
 		ovx1 = PX: ovy1 = PY: ovx2 = PX + adw - 1: ovy2 = PY + adh - 1
 		GOSUB ovprep
-		GET (PX, PY)-(PX + 30, PY + 30), wbg
+		'----- save-under sized to the FRAME (animdims ran above) -- big hold/once
+		'----- frames (up to 416 bytes, e.g. 33x45) restore cleanly too
+		GET (PX, PY)-(PX + adw - 1, PY + adh - 1), wbg
 		'----- overlapping player stays VISIBLE through the play: re-drawn over each
 		'----- frame (ovpost re-anchors fbg), lifted again before the next. A clear
 		'----- player is left entirely alone (no flicker) -- he just turned to watch
@@ -1407,7 +1349,7 @@ climbup:
 	ov2$ = a$: ov3$ = lf$
 	a$ = "": GOSUB face
 	a$ = ov2$: lf$ = ov3$
-	CALL ClimbSeq(1, 136, 92, 132, f3, wa(), mwa(), wb(), mwb(), wbg(), ovf())
+	CALL ClimbSeq(1, 138, 92, 132, f3, wa(), mwa(), wb(), mwb(), wbg(), ovf())
 	RETURN
 '----- upgrate: arrival in room10 from below -- stand at the grate; the walkout
 '----- already set ob(14)=1, so the acquisition scan plays the pickup sound here
@@ -1416,6 +1358,107 @@ upgrate:
 	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
 	a$ = "1": GOSUB face
 	CALL drawMsg("You gather up your rope on the way out.", font3Data()): txr = 1
+	RETURN
+
+'----- room9 trap: the gate slams and the lever drops on the first entry
+'----- (gotoroom). 66 = trapped (all the state statics + exit lock key on it)
+'----- gplook: coords of anim id gpi's placement in this room -> gpx,gpy
+'----- (leaves the caller's preset fallback when no placement exists)
+gplook:
+	FOR gpp = 1 TO nPlace
+		IF plAnim(gpp) = gpi THEN gpx = plX(gpp): gpy = plY(gpp)
+	NEXT
+	RETURN
+
+gateseq:
+	dwsec = .7: GOSUB dwait
+	gpx = 215: gpy = 151: gpi = 47: GOSUB gplook
+	SRC$ = "NOARROW": afn = 1: PX = gpx: PY = gpy: GOSUB animframe
+	gpx = 221: gpy = 126: gpi = 48: GOSUB gplook: gtx = gpx: gty = gpy
+	gpx = 210: gpy = 127: gpi = 49: GOSUB gplook: lvx = gpx: lvy = gpy
+	SRC$ = "R9GATE"
+	FOR gsf = 1 TO 5
+		afn = gsf: PX = gtx: PY = gty: GOSUB animframe
+		SOUND 90, .6: SOUND 32676, 1.2
+		'----- first clunk: the player spins round to face the falling gate
+		'----- (entry spawn 140,130 never overlaps the gate/lever/arrow rects)
+		IF gsf = 1 THEN a$ = "6": GOSUB face
+	NEXT
+	SOUND 50, 2
+	dwsec = .35: GOSUB dwait
+	SRC$ = "R9LEVER"
+	FOR gsf = 1 TO 3
+		afn = gsf: PX = lvx: PY = lvy: GOSUB animframe
+		SOUND 130, .3: SOUND 32676, 1
+	NEXT
+	ob(66) = 1
+	CALL drawMsg("The gate slams down behind you! The lever drops with a heavy clunk.", font3Data()): txr = 1
+	RETURN
+
+'----- room9 escape (use rope on the pulley, st=68 -> deferred here): rope
+'----- overlay, pull, lever up, gate reverse, arch restore, rope removal.
+'----- 66 clears (trap statics + exit lock off), 68 = solved forever.
+gateopen:
+	GOSUB ovpre
+	'----- coords come from the (never-shown, cond 99) editor placements
+	gpx = 197: gpy = 98: gpi = 51: GOSUB gplook: gp1x = gpx: gp1y = gpy
+	gpx = 197: gpy = 98: gpi = 52: GOSUB gplook: gp2x = gpx: gp2y = gpy
+	gpx = 201: gpy = 98: gpi = 53: GOSUB gplook: gp3x = gpx: gp3y = gpy
+	gpx = 221: gpy = 126: gpi = 48: GOSUB gplook: gtx = gpx: gty = gpy
+	gpx = 210: gpy = 124: gpi = 50: GOSUB gplook: lux = gpx: luy = gpy
+	gx1 = gp1x: IF gp2x < gx1 THEN gx1 = gp2x
+	IF gp3x < gx1 THEN gx1 = gp3x
+	gy1 = gp1y: IF gp2y < gy1 THEN gy1 = gp2y
+	IF gp3y < gy1 THEN gy1 = gp3y
+	gx2 = gp1x + 22: IF gp2x + 22 > gx2 THEN gx2 = gp2x + 22
+	IF gp3x + 13 > gx2 THEN gx2 = gp3x + 13
+	gy2 = gp1y + 48: IF gp2y + 48 > gy2 THEN gy2 = gp2y + 48
+	IF gp3y + 49 > gy2 THEN gy2 = gp3y + 49
+	IF gx2 > 319 THEN gx2 = 319
+	IF gy2 > 199 THEN gy2 = 199
+	GET (gx1, gy1)-(gx2, gy2), gsv
+	SRC$ = "R9RPADD": afn = 1: PX = gp3x: PY = gp3y: GOSUB animframe
+	'----- the hung rope drops in behind the player: show him in front for the
+	'----- beat (ovpost snapshots the rope into fbg, ovlift erases him again)
+	GOSUB ovpost
+	dwsec = .6: GOSUB dwait
+	GOSUB ovlift
+	SRC$ = "R9PULL"
+	FOR gsf = 1 TO 3
+		afn = gsf: PX = gp1x: PY = gp1y: GOSUB animframe
+		SOUND 100, .3: SOUND 32676, 1.4
+	NEXT
+	'----- the lever grind is AUDIO ONLY here: the rope is attached to the
+	'----- lever, so its motion is baked into the pull frames -- a separate
+	'----- lever anim drew over the held pull pose (user 2026-08-01)
+	FOR gsf = 1 TO 3
+		SOUND 140, .3: SOUND 32676, 1
+	NEXT
+	SRC$ = "R9GATE"
+	FOR gsf = 5 TO 1 STEP -1
+		afn = gsf: PX = gtx: PY = gty: GOSUB animframe
+		SOUND 90, .5: SOUND 32676, 1.2
+	NEXT
+	SRC$ = "R9OPNBG": afn = 1: PX = 215: PY = 126: GOSUB animframe
+	dwsec = .3: GOSUB dwait
+	SRC$ = "R9RMROP"
+	FOR gsf = 1 TO 3
+		afn = gsf: PX = gp2x: PY = gp2y: GOSUB animframe
+		'----- remove frame 3's art lacks the lever arm -- keep the raised
+		'----- lever painted through the whole coil-up (no-op on frames 1-2)
+		SRC$ = "R9LEVUP": afn = 1: PX = lux: PY = luy: GOSUB animframe
+		SRC$ = "R9RMROP"
+		dwsec = .22: GOSUB dwait
+	NEXT
+	PUT (gx1, gy1), gsv, PSET
+	'----- the restore re-painted the trapped-state capture (lever down) --
+	'----- stamp the raised lever back before the player returns
+	SRC$ = "R9LEVUP": afn = 1: PX = lux: PY = luy: GOSUB animframe
+	ob(66) = 0: ob(68) = 1
+	GOSUB ovpost
+	'----- the pickup chime tells the player the rope is theirs again
+	CALL Snd1
+	CALL drawMsg("The lever grinds up and the gate rises! You coil the |rope| back into your pack.", font3Data()): txr = 1
 	RETURN
 
 loadroom:
@@ -1877,87 +1920,8 @@ mouseinit:
 
 	cshp = 0
 	hovr = 8
-	FOR sshp = 0 TO 4
-		GOSUB setgrid
-		npc = 0
-		FOR mr = 0 TO 15
-			FOR mc = 0 TO 15
-				mch$ = MID$(arow$(mr), mc + 1, 1)
-				IF mch$ = "X" THEN px(sshp, npc) = mc: py(sshp, npc) = mr: pc(sshp, npc) = 1: npc = npc + 1
-				IF mch$ = "0" THEN px(sshp, npc) = mc: py(sshp, npc) = mr: pc(sshp, npc) = 2: npc = npc + 1
-			NEXT
-		NEXT
-		npix(sshp) = npc
-	NEXT
-	RETURN
-
-'----- select the cursor grid for shape sshp (0=NW 1=up 2=down 3=right 4=left)
-setgrid:
-	FOR mr = 0 TO 15
-		arow$(mr) = "................"
-	NEXT
-	IF sshp = 0 THEN GOSUB grdnw
-	IF sshp = 1 THEN GOSUB grdup
-	IF sshp = 2 THEN GOSUB grddn
-	IF sshp = 3 THEN GOSUB grdrt
-	IF sshp = 4 THEN GOSUB grdlf
-	RETURN
-
-'----- cursor pixel grids (X = outline/gray, 0 = fill/blue, . = clear)
-grdnw:
-	arow$(0) = "X..............."
-	arow$(1) = "XX.............."
-	arow$(2) = "X0X............."
-	arow$(3) = "X00X............"
-	arow$(4) = "X000X..........."
-	arow$(5) = "X0XX............"
-	arow$(6) = "XX.............."
-	RETURN
-
-'----- north / up exit arrow
-grdup:
-	arow$(0) = "...X............"
-	arow$(1) = "..X0X..........."
-	arow$(2) = "..X0X..........."
-	arow$(3) = ".X000X.........."
-	arow$(4) = "X00000X........."
-	arow$(5) = "..X0X..........."
-	arow$(6) = "..X0X..........."
-	arow$(7) = "..X0X..........."
-	RETURN
-
-'----- south / down exit arrow
-grddn:
-	arow$(0) = "..X0X..........."
-	arow$(1) = "..X0X..........."
-	arow$(2) = "..X0X..........."
-	arow$(3) = "X00000X........."
-	arow$(4) = ".X000X.........."
-	arow$(5) = "..X0X..........."
-	arow$(6) = "..X0X..........."
-	arow$(7) = "...X............"
-	RETURN
-
-'----- east / right exit arrow
-grdrt:
-	arow$(0) = "...X............"
-	arow$(1) = "...0X..........."
-	arow$(2) = "XXX00XX........."
-	arow$(3) = "0000000X........"
-	arow$(4) = "XXX00XX........."
-	arow$(5) = "...0X..........."
-	arow$(6) = "...X............"
-	RETURN
-
-'----- west / left exit arrow
-grdlf:
-	arow$(0) = "....X..........."
-	arow$(1) = "...X0..........."
-	arow$(2) = ".XX00XXX........"
-	arow$(3) = "X0000000........"
-	arow$(4) = ".XX00XXX........"
-	arow$(5) = "...X0..........."
-	arow$(6) = "....X..........."
+	'----- cursor pixel grids + builder: moved to GAME2 CursorPats (64K ceiling)
+	CALL CursorPats(px(), py(), pc(), npix())
 	RETURN
 
 '----- poll mouse: move cursor and read buttons
@@ -2209,29 +2173,9 @@ death:
 
 '----- burn: flickering fire animation until a key is pressed
 burn:
-	KEY OFF
-	DEF SEG = &HB800: BLOAD "burn.pic", 0: DEF SEG
-	FOR i = 1 TO 300
-		PALETTE 1, 14
-		PALETTE 2, 12
-		PALETTE 3, 4
-		FOR j = 1 TO 10
-			SOUND 32676, .1
-		NEXT
-		PALETTE 1, 15
-		PALETTE 2, 14
-		PALETTE 3, 12
-		FOR j = 1 TO 10
-			SOUND 32676, .1
-		NEXT
-		a$ = INKEY$
-		IF a$ = "" THEN GOTO 15300
-		GOTO 15316
-		15300 i = 1
-	NEXT
-
-	'----- restart the game
-	15316 RUN
+	'----- house-fire flicker + restart: body in GAME4 BurnShow (64K ceiling)
+	CALL BurnShow
+	RUN
 	GOTO 16750
 	16750 GOTO 18680
 	18680 END
@@ -2917,7 +2861,7 @@ SUB SaveGame (slot AS INTEGER)
 	DIM slz AS INTEGER
 	OPEN "saver" + CHR$(slot + 96) + ".pac" FOR OUTPUT AS #1
 	WRITE #1, q$, cl, pt, done$, tt$, a$, lf$
-	FOR slz = 1 TO 65
+	FOR slz = 1 TO 80
 		WRITE #1, ob(slz)
 	NEXT
 	CLOSE #1
@@ -2929,7 +2873,10 @@ SUB LoadGame (slot AS INTEGER)
 	OPEN "saver" + CHR$(slot + 96) + ".pac" FOR INPUT AS #1
 	INPUT #1, q$, cl, pt, done$, tt$, a$, lf$
 	tt$ = "n": done$ = "": IF LEN(lf$) <> 1 OR INSTR("12346789", lf$) = 0 THEN lf$ = "2"
-	FOR slz = 1 TO 65
+	'----- old saves hold 65 flags; the extension reads what exists (EOF guard)
+	FOR slz = 66 TO 80: ob(slz) = 0: NEXT
+	FOR slz = 1 TO 80
+		IF EOF(1) THEN EXIT FOR
 		INPUT #1, ob(slz)
 	NEXT
 	CLOSE #1

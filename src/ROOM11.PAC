@@ -106,6 +106,14 @@
 226,166,15
 230,166,15
 230,162,15
+186,130,19
+190,130,19
+186,134,19
+190,134,19
+186,130,20
+190,130,20
+186,134,20
+190,134,20
 0,0,0
 "","The window offers the only light into   the room.","l",0,0,0,"f4"
 "","It is a toolchest.","l",0,0,0,"f4"
@@ -116,8 +124,8 @@
 "","The file cabinet is locked.","a",0,21,0,"f8"
 "","You open the file cabinet and remove a  |book|.","u",22,21,21,"f8"
 "","It is a fish tank saturated with dead    fish.","l",0,0,0,"f8"
-"","There is a clockhand mixed in with the  vials.","l",0,23,0,"f9"
-"","You retrieve the |clockhand|.","g",0,23,23,"f9"
+"handbx","A strapped wooden box sits among the vials.","l",0,23,0,"fc9"
+"handbx","You lean in over the strapped box.","a",0,23,0,"fc9"
 "table","You walk over to the labaratory    table.","l",0,0,0,"fc6"
 "table","You look at the laboratory table.","l",0,0,0,"fc6"
 "","You see a piece of paper wedged under   one leg to keep the table flat.","l",0,24,0,"f6"
@@ -125,8 +133,8 @@
 "","You place the rock under the leg and    remove the |piece of paper| so as not to  disrupt the balance of the table.","u",15,24,24,"f6x"
 "","These odds and ends do not interest you.","l",0,0,0,"f8"
 "room7","You walk back through the secret passage.","a",0,0,0,"ws"
-"","","",0,0,0,""
-"","","",0,0,0,""
+"handbxo","The opened box sits among the vials.","l",23,0,0,"fc9"
+"handbxo","You look over the opened box.","a",23,0,0,"fc9"
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
@@ -140,3 +148,4 @@
 -2,8,152,146,8
 -2,11,178,149,9
 -2,16,214,171,9
+-2,20,178,149,9

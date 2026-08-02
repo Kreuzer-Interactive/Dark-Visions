@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -650,7 +650,8 @@ function draw(){
     }
     if(S.placements){ ctx.font='11px monospace'; ctx.textBaseline='alphabetic';
       if(animLocked) ctx.globalAlpha=.3;   // locked: faded + click-through so points can be painted beneath
-      S.placements.forEach((pl,pi)=>{ const fc=placeFrameCache[pl.animId]||{w:31,h:31}, an=anims.find(a=>a.id===pl.animId), sel=(pi===placeSel);
+      S.placements.forEach((pl,pi)=>{ if(placeHidden.has(pi)) return;
+        const fc=placeFrameCache[pl.animId]||{w:31,h:31}, an=anims.find(a=>a.id===pl.animId), sel=(pi===placeSel);
         if(fc.canvas) ctx.drawImage(fc.canvas, pl.x*zoom, pl.y*zoom, fc.w*zoom, fc.h*zoom);
         ctx.strokeStyle=sel?'#ffcc00':'#33ddaa'; ctx.lineWidth=sel?2:1; ctx.strokeRect(pl.x*zoom, pl.y*zoom, fc.w*zoom, fc.h*zoom);
         if(!animLocked){ ctx.fillStyle=sel?'#ffcc00':'#33ddaa'; ctx.fillText((an?an.name:'#'+pl.animId)+(pl.cond?' ['+pl.cond+']':''), pl.x*zoom, pl.y*zoom-2); } });
@@ -674,6 +675,7 @@ function draw(){
 // ---- object list + form ----
 const hidden=new Set();   // object indices hidden from the canvas overlay
 const verbOff=new Set();  // verbs (ky) hidden via the verb filter
+const placeHidden=new Set();   // placement indices hidden from the canvas (session-only; overlapping sprites)
 function objHidden(oi){ const ob=S&&S.objects[oi-1]; return hidden.has(oi) || verbOff.has(ob?ob.ky:''); }   // orphans group under '' (none)
 const SVG='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
 function vIcon(b){
@@ -891,7 +893,14 @@ function paintAt(x,y){
   S.hotspots.push({x,y,oi:curObj}); return true;
 }
 function eraseAt(x,y){
-  for(let k=S.hotspots.length-1;k>=0;k--) if(S.hotspots[k].x===x&&S.hotspots[k].y===y){ S.hotspots.splice(k,1); return true; }
+  // tolerant match: legacy 1993 data (and generated grids) sit at 4k+0, 2px off the
+  // 4k+2 paint lattice — exact equality could never erase them. Sweep the 4px cell
+  // and take every VISIBLE point in it (stacked objects clear in one stroke; the
+  // object-list eye protects hidden ones).
+  let ch=false;
+  for(let k=S.hotspots.length-1;k>=0;k--){ const p=S.hotspots[k];
+    if(Math.abs(p.x-x)<=2&&Math.abs(p.y-y)<=2&&!objHidden(p.oi)){ S.hotspots.splice(k,1); ch=true; } }
+  if(ch) return true;
   return false;
 }
 function canvasCell(e){
@@ -903,7 +912,8 @@ function canvasCell(e){
 function hitPlacement(e){
   if(!S||!S.placements) return -1;
   const r=cv.getBoundingClientRect(), gx=(e.clientX-r.left)/zoom, gy=(e.clientY-r.top)/zoom;
-  for(let i=S.placements.length-1;i>=0;i--){ const pl=S.placements[i], fc=placeFrameCache[pl.animId]||{w:31,h:31};
+  for(let i=S.placements.length-1;i>=0;i--){ if(placeHidden.has(i)) continue;   // hidden: click-through to the one beneath
+    const pl=S.placements[i], fc=placeFrameCache[pl.animId]||{w:31,h:31};
     if(gx>=pl.x&&gx<=pl.x+fc.w&&gy>=pl.y&&gy<=pl.y+fc.h) return i; }
   return -1;
 }
@@ -959,7 +969,7 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>{ if(e.code==='Space'){ peeking=false; draw(); } });
 function doUndo(){ if(!undo.length) return; const u=undo.pop();
-  if(u.t==='p'){ S.placements=JSON.parse(u.d); placeSel=-1; renderPlacements(); }
+  if(u.t==='p'){ S.placements=JSON.parse(u.d); placeSel=-1; placeHidden.clear(); renderPlacements(); }   // indices shift on undo — stale hides would mask the wrong sprite
   else { S.hotspots=JSON.parse(u.d); buildList(); }
   setDirty(true); draw(); }
 
@@ -1018,7 +1028,7 @@ async function loadRoom(name){
   renderArt(); buildList(); fillForm(); resize();
   document.getElementById('noplchk').checked=(S.nopl===1);
   document.getElementById('roomname').value=(S.name||'');
-  placeSel=-1; placingIdx=-1; placeFrameCache={}; standPlacing=false;
+  placeSel=-1; placingIdx=-1; placeFrameCache={}; standPlacing=false; placeHidden.clear();
   if(!anims.length) await loadAnims();
   await ensurePlaceFrames(); ensureStandFrames().then(draw); renderStand(); renderPlacements(); draw();
 }
@@ -1059,10 +1069,20 @@ function renderPlacements(){
   const hd=document.createElement('div'); hd.className='hint'; hd.style.cssText='font-size:10px;line-height:1.35;margin-bottom:6px';
   hd.innerHTML='Drag a marker on the room to move it. A <b>flag #</b> is one of the ob() game-state flags — the same numbers as the object <b>needs-on</b> / <b>sets-on</b> fields.';
   el.appendChild(hd);
+  // show/hide-all eye: overlapping sprites — hide the ones on top to see and drag the one beneath
+  const pv=document.createElement('div'); pv.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:6px';
+  const pe=document.createElement('span'); pe.className='ceye'+(placeHidden.size?' off':''); pe.dataset.eye='all';
+  pe.innerHTML=eyeSvg(!placeHidden.size); pe.title='show / hide every sprite on the canvas';
+  pe.onclick=()=>{ if(placeHidden.size) placeHidden.clear(); else pls.forEach((_,i)=>placeHidden.add(i)); renderPlacements(); draw(); };
+  const pt=document.createElement('span'); pt.className='hint'; pt.style.fontSize='10px';
+  pt.textContent=placeHidden.size?placeHidden.size+' hidden — hidden sprites are click-through':'sprites on canvas';
+  pv.append(pe,pt); el.appendChild(pv);
   pls.forEach((pl,pi)=>{
     const an=anims.find(a=>a.id===pl.animId);
     const mode=an?an.mode:'';
+    const phid=placeHidden.has(pi);
     const card=document.createElement('div'); card.className='placecard'+(pi===placeSel?' sel':'');
+    if(phid) card.style.opacity='.55';
     const sum=document.createElement('div'); sum.className='pc-sum';
     const updateSum=()=>{ sum.textContent='→ '+placeSummary(pl,an); };
     // head: thumbnail + animation + place/remove
@@ -1074,11 +1094,16 @@ function renderPlacements(){
     if(!anims.length){ const o=document.createElement('option'); o.textContent='(no anims)'; sel.appendChild(o); }
     anims.forEach(a=>{ const o=document.createElement('option'); o.value=a.id; o.textContent=a.name+' · '+a.mode; if(a.id===pl.animId)o.selected=true; sel.appendChild(o); });
     sel.onchange=()=>{ pl.animId=parseInt(sel.value,10)||pl.animId; setDirty(true); ensurePlaceFrames().then(()=>{ renderPlacements(); draw(); }); };
+    const eye=document.createElement('span'); eye.className='ceye'+(phid?' off':''); eye.dataset.eye=pi;
+    eye.innerHTML=eyeSvg(!phid); eye.title=phid?'show this sprite on the canvas':'hide this sprite on the canvas (hidden = click-through, so you can drag one beneath it)';
+    eye.onclick=()=>{ placeHidden.has(pi)?placeHidden.delete(pi):placeHidden.add(pi); renderPlacements(); draw(); };
     const place=document.createElement('button'); place.className='pc-btn'; place.textContent='⌖ place'; place.title='click on the room to position this animation';
-    place.onclick=()=>{ placeSel=pi; placingIdx=pi; const ph=document.getElementById('placeHint'); if(ph)ph.textContent='click the room…'; renderPlacements(); draw(); };
+    place.onclick=()=>{ placeHidden.delete(pi); placeSel=pi; placingIdx=pi; const ph=document.getElementById('placeHint'); if(ph)ph.textContent='click the room…'; renderPlacements(); draw(); };
     const rm=document.createElement('button'); rm.className='pc-btn'; rm.textContent='✕'; rm.title='remove';
-    rm.onclick=()=>{ pushUndo('p'); S.placements.splice(pi,1); placeSel=-1; placingIdx=-1; setDirty(true); renderPlacements(); draw(); };
-    head.append(th,sel,place,rm);
+    rm.onclick=()=>{ pushUndo('p'); S.placements.splice(pi,1);
+      const nh=[...placeHidden].filter(i=>i!==pi).map(i=>i>pi?i-1:i); placeHidden.clear(); nh.forEach(i=>placeHidden.add(i));   // re-key hides past the removed row
+      placeSel=-1; placingIdx=-1; setDirty(true); renderPlacements(); draw(); };
+    head.append(th,eye,sel,place,rm);
     card.append(head);
     // show: always / only when a flag is on
     const showRow=document.createElement('div'); showRow.className='pc-field';
@@ -1836,7 +1861,7 @@ async function importNewSprite(files){
   const fInts=2+Math.ceil(Math.ceil(FW*2/8)*FH/2);
   if(FW<1||FH<1||fInts>460){ alert('Frame size '+FW+'×'+FH+' is too big for the game\'s anim buffers.\nKeep ceil(width/4) × height ≤ 916 — e.g. 110×32, 60×60, 31×31.'); return; }
   if(N*fInts>1600){ alert(N+' frames of '+FW+'×'+FH+' ('+(N*fInts)+' ints) exceed the 1600-int anim source cache — use fewer/smaller frames.'); return; }
-  if((FW>31||FH>31) && !confirm(FW+'×'+FH+' frames are fine for hold/static scene animations, but ONCE and LOOP modes (and the player) only save-under 31×31 — bigger frames can leave pixels behind in those modes. Continue?')) return;
+  if(Math.ceil(FW*2/8)*FH>416 && !confirm(FW+'×'+FH+' frames are fine for hold/static/fg scene animations, but ONCE, LOOP and mid-room plays save-under at most 416 bytes/frame (about 33×45) — bigger frames can leave pixels behind in those modes. Continue?')) return;
   // lay the frames out as one internal strip (multi: one file per slot) — the rest of the import is strip-shaped
   const cv=document.createElement('canvas'); cv.width=TW; cv.height=FH; const g=cv.getContext('2d');
   imgs.forEach((im,i)=>g.drawImage(im,multi?i*FW:0,0));

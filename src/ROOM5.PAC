@@ -87,6 +87,10 @@
 146,174,2
 154,138,1
 154,134,1
+174,150,21
+170,150,21
+174,150,22
+170,150,22
 0,0,0
 "room3","You traverse back up the stairs.","a",0,0,0,"wn"
 "dindead","You leave the room.","a",0,0,0,"fc2"
@@ -99,7 +103,7 @@
 "","Behind the pipe you find a wrench.","l",37,4,0,"f8"
 "","You jar loose the |wrench| and take it.","g",37,4,4,"f8"
 "","It is a cookbook. A few pages are hanging out of it.","l",0,0,0,"f6"
-"","You remove a page only to find out it is a |map|.","g",0,16,16,"f6"
+"","You cut a loose page free with the     knife. It is a |map|.","g",18,16,16,"f6"
 "","It is a boiling pot.","l",0,0,0,"f9"
 "","It is too hot to touch with your hand.","g",0,0,0,"f9"
 "","Yuck! There is human flesh in the pot.","u",17,0,0,"f9"
@@ -108,8 +112,8 @@
 "","There is an old wooden spoon in the     drawer.","l",0,17,0,"f4"
 "","You remove the |spoon| from the wooden    drawer.","g",0,17,17,"f4"
 "","It depicts a house  with  flames  leaping out from the windows.","l",0,0,0,"f6"
-"","","",0,0,0,""
-"","","",0,0,0,""
+"","The page is stitched in tight.          Something with a sharp edge could cut   it loose.","g",0,18,0,"f6"
+"","You cut a loose page free with the     knife. It is a |map|.","u",18,16,16,"f6"
 "","","",0,0,0,""
 "","","",0,0,0,""
 "","","",0,0,0,""
@@ -118,6 +122,7 @@
 40,182,151,0,0
 -2,10,174,147,9
 -2,12,158,153,6
+-2,22,158,153,6
 -2,14,193,152,9
 -2,15,192,154,9
 -2,19,100,157,4

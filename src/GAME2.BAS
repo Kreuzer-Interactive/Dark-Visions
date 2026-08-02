@@ -188,8 +188,8 @@ SUB AnimWait (rate2)
 END SUB
 
 '----- inventory combine: which recipe do items s% (top) + c% (bottom) match? 0 = none.
-'----- 1: 18+28 -> 22 Â· 2: formula halves 11+24 -> unreadable 52 Â· 4: 52 + book 25 ->
-'----- complete formula 36 Â· 3: syringe 29 + drug 34 -> loaded syringe 35
+'----- 1: 18+28 -> 22 · 2: formula halves 11+24 -> unreadable 52 · 4: 52 + book 25 ->
+'----- complete formula 36 · 3: syringe 29 + drug 34 -> loaded syringe 35
 SUB CombChk (s%, c%, r%)
 	r% = 0
 	IF (s% = 18 AND c% = 28) OR (s% = 28 AND c% = 18) THEN r% = 1
@@ -419,8 +419,8 @@ SUB AnimDims (acPct%(), acN%(), acs, adw, adh)
 	w% = acPct%(acs, 1) \ 2
 	h% = acPct%(acs, kk% + 1)
 	IF w% < 1 OR h% < 1 THEN EXIT SUB
-	'----- any shape is fine as long as the region fits a 150-int save-under slot
-	IF ((w% * 2 + 7) \ 8) * h% > 296 THEN EXIT SUB
+	'----- any shape is fine as long as the region fits a 210-int save-under slot
+	IF ((w% * 2 + 7) \ 8) * h% > 416 THEN EXIT SUB
 	adw = w%: adh = h%
 END SUB
 
@@ -717,4 +717,70 @@ SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
 	IF q2$ = "room9" AND w! > t1b! AND w! < t2b! THEN kw% = kw% OR 2
 	IF q2$ = "room1" AND w! > t2b! AND w! < t3b! THEN kw% = kw% OR 2
 	IF q2$ = "room4" AND w! > t3b! AND w! < f3b! THEN kw% = kw% OR 2
+END SUB
+
+'----- CursorPats: build the 5 software-cursor pixel grids (0=NW pointer,
+'----- 1=up 2=down 3=right 4=left exit arrows) into px/py/pc/npix.
+'----- Moved VERBATIM from GAME.BAS setgrid/grdnw..grdlf (64K ceiling).
+'----- X = outline pixel (pc 1), 0 = fill pixel (pc 2), . = clear
+SUB CursorPats (px!(), py!(), pc!(), npix!())
+	DIM ar$(15)
+	FOR s% = 0 TO 4
+		FOR mr% = 0 TO 15
+			ar$(mr%) = "................"
+		NEXT
+		SELECT CASE s%
+		CASE 0
+			ar$(0) = "X..............."
+			ar$(1) = "XX.............."
+			ar$(2) = "X0X............."
+			ar$(3) = "X00X............"
+			ar$(4) = "X000X..........."
+			ar$(5) = "X0XX............"
+			ar$(6) = "XX.............."
+		CASE 1
+			ar$(0) = "...X............"
+			ar$(1) = "..X0X..........."
+			ar$(2) = "..X0X..........."
+			ar$(3) = ".X000X.........."
+			ar$(4) = "X00000X........."
+			ar$(5) = "..X0X..........."
+			ar$(6) = "..X0X..........."
+			ar$(7) = "..X0X..........."
+		CASE 2
+			ar$(0) = "..X0X..........."
+			ar$(1) = "..X0X..........."
+			ar$(2) = "..X0X..........."
+			ar$(3) = "X00000X........."
+			ar$(4) = ".X000X.........."
+			ar$(5) = "..X0X..........."
+			ar$(6) = "..X0X..........."
+			ar$(7) = "...X............"
+		CASE 3
+			ar$(0) = "...X............"
+			ar$(1) = "...0X..........."
+			ar$(2) = "XXX00XX........."
+			ar$(3) = "0000000X........"
+			ar$(4) = "XXX00XX........."
+			ar$(5) = "...0X..........."
+			ar$(6) = "...X............"
+		CASE 4
+			ar$(0) = "....X..........."
+			ar$(1) = "...X0..........."
+			ar$(2) = ".XX00XXX........"
+			ar$(3) = "X0000000........"
+			ar$(4) = ".XX00XXX........"
+			ar$(5) = "...X0..........."
+			ar$(6) = "....X..........."
+		END SELECT
+		npc% = 0
+		FOR mr% = 0 TO 15
+			FOR mc% = 0 TO 15
+				mch$ = MID$(ar$(mr%), mc% + 1, 1)
+				IF mch$ = "X" THEN px(s%, npc%) = mc%: py(s%, npc%) = mr%: pc(s%, npc%) = 1: npc% = npc% + 1
+				IF mch$ = "0" THEN px(s%, npc%) = mc%: py(s%, npc%) = mr%: pc(s%, npc%) = 2: npc% = npc% + 1
+			NEXT
+		NEXT
+		npix(s%) = npc%
+	NEXT
 END SUB

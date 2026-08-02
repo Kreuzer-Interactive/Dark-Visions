@@ -1,3 +1,4 @@
+DECLARE SUB JoyPoll (a2$, vk2$)
 '----- GAME4.BAS: menu / save / load UI module. Own 64K code segment.
 '----- Pure library module (no COMMON SHARED). Holds the ESC main menu
 '----- (MainMenu), the dedicated Save and Load book screens (SlotScreen,
@@ -1077,4 +1078,69 @@ SUB MapView (hasmap AS INTEGER, curRoom AS INTEGER, vis AS LONG, mvint AS INTEGE
 	IF cdrn = 1 THEN PUT (mx, my), cbuf, PSET
 	cdrn = 0
 	RETURN
+END SUB
+
+'----- DialGame: the safe-dial minigame, moved VERBATIM from GAME.BAS dial:
+'----- (that module is at the 64K ceiling). STATIC so the dial angle di and
+'----- the tumbler states dn1-dn3 persist across visits like the module vars
+'----- did. 4/6 turn the dial (joystick too), g/x leaves; solving sets ob(45).
+SUB DialGame (sf3, sf4, ob() AS SINGLE) STATIC
+	DRAW "bm153,104"
+	d1550:
+	DRAW "c3bl5nl10br5bd4nd9bu4br5nr10bl5c1bu5nu9bd5"
+	d1560:
+	k$ = INKEY$
+	CALL JoyPoll(k$, vk$)
+	IF k$ = "" THEN GOTO d1560
+	DRAW "c2bl5nl10br5bd4nd9bu4br5nr10bl5bu5nu9bd5"
+	IF k$ = "6" THEN GOSUB ddialdn: DRAW "ta=" + VARPTR$(di): GOTO d1550
+	IF k$ = "4" THEN GOSUB ddialup: DRAW "ta=" + VARPTR$(di): GOTO d1550
+	IF dn3 = 1 AND dn2 = 1 AND dn1 = 1 THEN SOUND sf4, .5: ob(45) = 1
+	IF k$ = "g" OR k$ = "x" THEN EXIT SUB
+	GOTO d1560
+
+	'----- counter-clockwise turn, tumbler tracking (verbatim)
+	ddialdn:
+	di = di - 10
+	IF di = -10 THEN di = 350
+	IF (di / 10) = 5 THEN SOUND sf3, .1: dn1 = 0
+	IF (di / 10) = 9 THEN SOUND sf3, .1: IF dn2 = 1 THEN dn1 = 1
+	IF (di / 10) = 14 THEN SOUND sf3, .1: dn1 = 0: IF dn2 = 0 THEN dn3 = 0
+	IF (di / 10) = 18 THEN SOUND sf3, .1: dn3 = 1
+	IF (di / 10) = 23 THEN SOUND sf3, .1
+	IF (di / 10) = 27 THEN SOUND sf3, .1
+	IF (di / 10) = 32 THEN SOUND sf3, .1
+	IF (di / 10) = 0 THEN SOUND sf3, .1
+	RETURN
+
+	'----- clockwise turn (verbatim)
+	ddialup:
+	di = di + 10
+	IF di = 360 THEN di = 0
+	IF (di / 10) = 5 THEN SOUND sf3, .1: dn1 = 0: IF dn3 = 1 THEN dn2 = 1
+	IF (di / 10) = 9 THEN SOUND sf3, .1: dn2 = 0
+	IF (di / 10) = 14 THEN SOUND sf3, .1: dn1 = 0
+	IF (di / 10) = 18 THEN SOUND sf3, .1
+	IF (di / 10) = 23 THEN SOUND sf3, .1
+	IF (di / 10) = 27 THEN SOUND sf3, .1
+	IF (di / 10) = 32 THEN SOUND sf3, .1
+	IF (di / 10) = 0 THEN SOUND sf3, .1
+	RETURN
+END SUB
+
+'----- BurnShow: the burning-house ending flicker, moved VERBATIM from
+'----- GAME.BAS burn: (64K ceiling). Flickers burn.pic until a key, then
+'----- returns to the caller, which RUNs (RUN is illegal inside a SUB).
+SUB BurnShow
+	KEY OFF
+	DEF SEG = &HB800
+	BLOAD "burn.pic", 0
+	DEF SEG
+	bshow1:
+	PALETTE 1, 14: PALETTE 2, 12: PALETTE 3, 4
+	FOR j% = 1 TO 10: SOUND 32676, .1: NEXT
+	PALETTE 1, 15: PALETTE 2, 14: PALETTE 3, 12
+	FOR j% = 1 TO 10: SOUND 32676, .1: NEXT
+	IF INKEY$ <> "" THEN EXIT SUB
+	GOTO bshow1
 END SUB
