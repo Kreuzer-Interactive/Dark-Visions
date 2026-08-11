@@ -16,6 +16,23 @@ END TYPE
 DECLARE SUB INTERRUPT (intnum AS INTEGER, inreg AS RegType, outreg AS RegType)
 COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon, rvon
 COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
+DECLARE SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
+
+'----- shadow-door (room2 west wall): warning light + pacing silhouette, gated
+'----- on the killer-schedule lookahead ("would walking through this door kill
+'----- me"). Data = SHADW2.PAC (tools\build_shadow_art.ps1): 7 GET blocks in
+'----- one packed pool -- each keeps its own w*2/h PUT header, so drawing is
+'----- PUT (x, y), sdwDat(offset). Static module array: secondary modules never
+'----- run module-level code, so a REDIM here would never execute.
+DIM SHARED sdwDat(400) AS INTEGER
+DIM SHARED sdwOn AS INTEGER, sdwHave AS INTEGER, sdwArm AS INTEGER, sdwWant AS INTEGER
+DIM SHARED sdwODr AS INTEGER, sdwOId AS INTEGER, sdwOLt AS INTEGER, sdwOKp AS INTEGER
+DIM SHARED sdwOBg AS INTEGER, sdwOSR AS INTEGER, sdwOSL AS INTEGER
+DIM SHARED sdwTX AS INTEGER, sdwTY AS INTEGER, sdwTW AS INTEGER, sdwTH AS INTEGER
+DIM SHARED sdwDX AS INTEGER, sdwDY AS INTEGER, sdwSW AS INTEGER, sdwSH AS INTEGER
+DIM SHARED sdwX AS INTEGER, sdwDir AS INTEGER, sdwBob AS INTEGER, sdwXMx AS INTEGER
+DIM SHARED sdwY AS INTEGER, sdwMode AS INTEGER, sdwAx AS INTEGER, sdwDp AS INTEGER
+DIM SHARED sdwNxt AS SINGLE, sdwDst$
 
 '----- DeathMusic: play one of four random dirges, note by note so a keypress
 '----- or mouse click skips the rest (octave shifts are rebalanced on a skip
@@ -188,8 +205,8 @@ SUB AnimWait (rate2)
 END SUB
 
 '----- inventory combine: which recipe do items s% (top) + c% (bottom) match? 0 = none.
-'----- 1: 18+28 -> 22 · 2: formula halves 11+24 -> unreadable 52 · 4: 52 + book 25 ->
-'----- complete formula 36 · 3: syringe 29 + drug 34 -> loaded syringe 35
+'----- 1: 18+28 -> 22 ï¿½ 2: formula halves 11+24 -> unreadable 52 ï¿½ 4: 52 + book 25 ->
+'----- complete formula 36 ï¿½ 3: syringe 29 + drug 34 -> loaded syringe 35
 SUB CombChk (s%, c%, r%)
 	r% = 0
 	IF (s% = 18 AND c% = 28) OR (s% = 28 AND c% = 18) THEN r% = 1
@@ -783,4 +800,140 @@ SUB CursorPats (px!(), py!(), pc!(), npix!())
 		NEXT
 		npix(s%) = npc%
 	NEXT
+END SUB
+
+'----- ShadLoad: parse SHADW2.PAC from the ALREADY-OPEN #3 (GAME.BAS shadload
+'----- does the guarded OPEN so a missing file just leaves the feature off).
+'----- Header line, then 7 arrays each preceded by its int count, in order:
+'----- door stamp (PSET), idle rect (PSET), lit rect (PSET), keep-lit (AND),
+'----- outside-light restore (OR), shadow right (AND), shadow left (AND).
+SUB ShadLoad
+	DIM sv AS INTEGER, sn2 AS INTEGER, si2 AS INTEGER, sof AS INTEGER, sar AS INTEGER
+	sdwOn = 0
+	INPUT #3, sv, sdwTX, sdwTY, sdwTW, sdwTH, sdwDX, sdwDY, sdwSW, sdwSH
+	IF sv <> 1 THEN CLOSE #3: EXIT SUB
+	sof = 0
+	FOR sar = 1 TO 7
+		INPUT #3, sn2
+		IF sof + sn2 > 400 THEN CLOSE #3: EXIT SUB
+		IF sar = 1 THEN sdwODr = sof
+		IF sar = 2 THEN sdwOId = sof
+		IF sar = 3 THEN sdwOLt = sof
+		IF sar = 4 THEN sdwOKp = sof
+		IF sar = 5 THEN sdwOBg = sof
+		IF sar = 6 THEN sdwOSR = sof
+		IF sar = 7 THEN sdwOSL = sof
+		FOR si2 = 1 TO sn2
+			INPUT #3, sdwDat(sof)
+			sof = sof + 1
+		NEXT
+	NEXT
+	CLOSE #3
+	sdwDst$ = "room8"
+	'----- right walk bound: the shadow's LEFT edge stays under the door's base
+	'----- (door width read from the bgDoor GET header = sdwDat(ODr) \ 2)
+	sdwXMx = sdwDX + sdwDat(sdwODr) \ 2 - 1
+	'----- pace ALONG the wall (base line runs up-right in this perspective):
+	'----- anchor = tucked at the door's lower base corner (doorX + 2), a few
+	'----- stair-steps up-right and back. Kept SHORT so the whole silhouette
+	'----- hangs at the doorway instead of wandering into the pool.
+	sdwAx = sdwDX + 2
+	sdwDp = 3
+	IF sdwDp > sdwTH - sdwSH - 2 THEN sdwDp = sdwTH - sdwSH - 2
+	IF sdwAx + sdwDp > sdwXMx THEN sdwDp = sdwXMx - sdwAx
+	sdwOn = 1
+END SUB
+
+'----- ShadRoom: loadroom hook -- reset state; on room2, stamp the closed west
+'----- door over the open doorway. Runs BEFORE the player save-under GET, so a
+'----- player spawning at the door restores door pixels, not doorway pixels.
+SUB ShadRoom (q2$)
+	sdwHave = 0: sdwArm = 0: sdwWant = 0
+	IF sdwOn = 0 THEN EXIT SUB
+	IF q2$ <> "room2" THEN EXIT SUB
+	sdwHave = 1
+	PUT (sdwDX, sdwDY), sdwDat(sdwODr), PSET
+	sdwX = sdwTX: sdwDir = 1: sdwBob = 0: sdwNxt = 0
+	sdwMode = 0: sdwY = sdwTY + sdwTH - sdwSH - 1
+END SUB
+
+'----- ShadTick: idle-loop driver. Recomputes the lookahead every pass (cheap
+'----- KillChk table scan -- and polling self-heals across load/death), applies
+'----- pending light toggles, and paces the shadow: 1px steps with a 1px bob,
+'----- direction flip + pause at the light's edges (the right edge lets it slip
+'----- mostly past the pool before turning). Holds like animtick while the
+'----- player box or the cursor overlaps the rect so no save-under goes stale.
+'----- Lookahead: leaving NOW costs +8 (the exit click) +30 (the transition)
+'----- ticks, so the arrival step is INT((cl + 38) / 60) -- hot when KillChk
+'----- says a killer owns the room behind the door at that step.
+SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!)
+	DIM w2 AS SINGLE, kw2 AS INTEGER
+	IF sdwOn = 0 OR sdwHave = 0 THEN EXIT SUB
+	IF q2$ <> "room2" THEN EXIT SUB
+	sdwWant = 0
+	IF klon <> 0 THEN
+		'----- the lit-curtain endgame owns room4: never spoil that encounter
+		IF sdwDst$ <> "room4" OR ob43% <> 1 THEN
+			w2 = INT((clv! + 38) / 60)
+			CALL KillChk(sdwDst$, w2, h9b!, t1b!, t2b!, t3b!, f3, kw2)
+			IF kw2 <> 0 THEN sdwWant = 1
+		END IF
+	END IF
+	IF pjxv! < sdwTX + sdwTW AND pjxv! + 31 > sdwTX AND pjyv! < sdwTY + sdwTH AND pjyv! + 31 > sdwTY THEN EXIT SUB
+	IF sdwTX < bv! + 12 AND sdwTX + sdwTW > bv! - 6 AND sdwTY < av! + 12 AND sdwTY + sdwTH > av! - 6 THEN EXIT SUB
+	IF sdwWant <> sdwArm THEN
+		IF sdwWant = 1 THEN
+			PUT (sdwTX, sdwTY), sdwDat(sdwOLt), PSET
+			sdwX = sdwTX: sdwDir = 1: sdwBob = 0
+			sdwMode = 0: sdwY = sdwTY + sdwTH - sdwSH - 1
+			sdwNxt = TIMER + .5
+		ELSE
+			PUT (sdwTX, sdwTY), sdwDat(sdwOId), PSET
+		END IF
+		sdwArm = sdwWant
+		EXIT SUB
+	END IF
+	IF sdwArm = 0 THEN EXIT SUB
+	IF TIMER < sdwNxt - 5 THEN sdwNxt = TIMER
+	IF TIMER < sdwNxt THEN EXIT SUB
+	sdwNxt = TIMER + .12
+	IF sdwMode = 0 THEN
+		'----- entry: slide out from behind the door, left to right along the
+		'----- pool's bottom row, with the 1px bob; hand off at the anchor
+		sdwX = sdwX + 1
+		sdwBob = 1 - sdwBob
+		sdwY = sdwTY + sdwTH - sdwSH - 1 - sdwBob
+		IF sdwX >= sdwAx THEN
+			sdwX = sdwAx: sdwY = sdwTY + sdwTH - sdwSH - 1
+			sdwMode = 1: sdwDir = 1: sdwBob = 0
+			sdwNxt = TIMER + .4 + RND * .6
+		END IF
+	ELSE
+		'----- pacing ALONG the wall as stair-steps -- one tick moves x, the
+		'----- next moves y (right,up,... going out; down,left,... coming
+		'----- back) so the silhouette steps instead of sliding
+		sdwBob = 1 - sdwBob
+		IF sdwDir > 0 THEN
+			IF sdwBob = 1 THEN sdwX = sdwX + 1 ELSE sdwY = sdwY - 1
+		ELSE
+			IF sdwBob = 1 THEN sdwY = sdwY + 1 ELSE sdwX = sdwX - 1
+		END IF
+		IF sdwY <= sdwTY + sdwTH - sdwSH - 1 - sdwDp THEN
+			sdwX = sdwAx + sdwDp: sdwY = sdwTY + sdwTH - sdwSH - 1 - sdwDp
+			sdwDir = -1: sdwBob = 0: sdwNxt = TIMER + .6 + RND * .9
+		END IF
+		IF sdwX <= sdwAx AND sdwDir < 0 THEN
+			sdwX = sdwAx: sdwY = sdwTY + sdwTH - sdwSH - 1
+			sdwDir = 1: sdwBob = 0: sdwNxt = TIMER + .6 + RND * .9
+		END IF
+	END IF
+	'----- draw: lit base -> shadow -> clip to the light -> restore outside
+	PUT (sdwTX, sdwTY), sdwDat(sdwOLt), PSET
+	IF sdwDir > 0 THEN
+		PUT (sdwX, sdwY), sdwDat(sdwOSR), AND
+	ELSE
+		PUT (sdwX, sdwY), sdwDat(sdwOSL), AND
+	END IF
+	PUT (sdwTX, sdwTY), sdwDat(sdwOKp), AND
+	PUT (sdwTX, sdwTY), sdwDat(sdwOBg), OR
 END SUB

@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME2.BAS: secondary module for the multi-module split (
@@ -27,6 +27,42 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, 
                 nfon, hzon$, klon, wksen, qkon, rvon
  0030   0006    COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
+ 0030   0006    DECLARE SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%
+                )
+ 0030   0006    
+ 0030   0006    '----- shadow-door (room2 west wall): warning light + pacing si
+                lhouette, gated
+ 0030   0006    '----- on the killer-schedule lookahead ("would walking through
+                 this door kill
+ 0030   0006    '----- me"). Data = SHADW2.PAC (tools\build_shadow_art.ps1): 7 
+                GET blocks in
+ 0030   0006    '----- one packed pool -- each keeps its own w*2/h PUT header, 
+                so drawing is
+ 0030   0006    '----- PUT (x, y), sdwDat(offset). Static module array: seconda
+                ry modules never
+ 0030   0006    '----- run module-level code, so a REDIM here would never execu
+                te.
+ 0030   0006    DIM SHARED sdwDat(400) AS INTEGER
+ 0030   0006    DIM SHARED sdwOn AS INTEGER, sdwHave AS INTEGER, sdwArm AS INTE
+                GER, sdwWant AS INTEGER
+ 0030   0006    DIM SHARED sdwODr AS INTEGER, sdwOId AS INTEGER, sdwOLt AS INTE
+                GER, sdwOKp AS INTEGER
+ 0030   0006    DIM SHARED sdwOBg AS INTEGER, sdwOSR AS INTEGER, sdwOSL AS INTE
+                GER
+ 0030   0006    DIM SHARED sdwTX AS INTEGER, sdwTY AS INTEGER, sdwTW AS INTEGER
+                , sdwTH AS INTEGER
+ 0030   0006    DIM SHARED sdwDX AS INTEGER, sdwDY AS INTEGER, sdwSW AS INTEGER
+                , sdwSH AS INTEGER
+ 0030   0006    DIM SHARED sdwX AS INTEGER, sdwDir AS INTEGER, sdwBob AS INTEGE
+                R, sdwXMx AS INTEGER
+ 0030   0006    DIM SHARED sdwY AS INTEGER, sdwMode AS INTEGER, sdwAx AS INTEGE
+                R, sdwDp AS INTEGER
+                                                                      PAGE   2
+                                                                      11 Aug 26
+                                                                      16:32:45
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    DIM SHARED sdwNxt AS SINGLE, sdwDst$
  0030   0006    
  0030   0006    '----- DeathMusic: play one of four random dirges, note by note
                  so a keypress
@@ -34,1049 +70,1248 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 ced on a skip
  0030   0006    '----- since the tunes rely on balanced <...> pairs)
  0030   0006    SUB DeathMusic
- 0040   0006            DIM mr AS RegType, mo AS RegType
- 0040   0006            DIM tn$, nt$, ch$
- 0040   0006            DIM i AS INTEGER, shf AS INTEGER, skp AS INTEGER
- 0040   0006            RANDOMIZE TIMER
- 0040   0006            mt = INT(RND * 4)
- 0040   0006            IF mt = 1 THEN tn$ = "<<<g-2g8a+8f+8e8d-3e4f+5f+5e-5e3>
+ 0040   0366            DIM mr AS RegType, mo AS RegType
+ 0040   0366            DIM tn$, nt$, ch$
+ 0040   0366            DIM i AS INTEGER, shf AS INTEGER, skp AS INTEGER
+ 0040   0366            RANDOMIZE TIMER
+ 0040   0366            mt = INT(RND * 4)
+ 0040   0366            IF mt = 1 THEN tn$ = "<<<g-2g8a+8f+8e8d-3e4f+5f+5e-5e3>
                 d2>>"
- 0099   0006            IF mt = 2 THEN tn$ = "<<<d+8e-8<a8g8f3b8g8f+8e3g-2g8a8f
+ 0099   0366            IF mt = 2 THEN tn$ = "<<<d+8e-8<a8g8f3b8g8f+8e3g-2g8a8f
                 +8e8d-3e4f+5c8c8c3>>>"
- 00BC   0006            IF mt = 3 THEN tn$ = "<<<c3c3d-5d-5c3c3<b-5a-5>c3c3d-5e
+ 00BC   0366            IF mt = 3 THEN tn$ = "<<<c3c3d-5d-5c3c3<b-5a-5>c3c3d-5e
                 -5c3c3>>>"
- 00DF   0006            IF tn$ = "" THEN tn$ = "<g8a8b-8b8<c8g8a8b-8a8a8b8a8>>"
- 00FE   0006            PLAY "MF"
- 0107   0006            i = 1: shf = 0: skp = 0
- 0107   0006            DO WHILE i <= LEN(tn$)
- 0116   0006                    '----- gather octave shifts (and skip spaces) o
+ 00DF   0366            IF tn$ = "" THEN tn$ = "<g8a8b-8b8<c8g8a8b-8a8a8b8a8>>"
+ 00FE   0366            PLAY "MF"
+ 0107   0366            i = 1: shf = 0: skp = 0
+ 0107   0366            DO WHILE i <= LEN(tn$)
+ 0116   0366                    '----- gather octave shifts (and skip spaces) o
                 nto the next note
- 0116   0006                    nt$ = ""
- 0116   0006                    DO WHILE i <= LEN(tn$)
- 0134   0006                            ch$ = MID$(tn$, i, 1)
- 0134   0006                            IF ch$ <> "<" AND ch$ <> ">" AND ch$ <>
+ 0116   0366                    nt$ = ""
+ 0116   0366                    DO WHILE i <= LEN(tn$)
+ 0134   0366                            ch$ = MID$(tn$, i, 1)
+ 0134   0366                            IF ch$ <> "<" AND ch$ <> ">" AND ch$ <>
                  " " THEN EXIT DO
- 01AF   0006                            IF ch$ = "<" THEN nt$ = nt$ + ch$: shf 
-                                                                      PAGE   2
-                                                                      02 Aug 26
-                                                                      13:38:35
-Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
-
+ 01AF   0366                            IF ch$ = "<" THEN nt$ = nt$ + ch$: shf 
                 = shf + 1
- 01DB   0006                            IF ch$ = ">" THEN nt$ = nt$ + ch$: shf 
+ 01DB   0366                            IF ch$ = ">" THEN nt$ = nt$ + ch$: shf 
                 = shf - 1
- 0207   0006                            i = i + 1
- 0207   0006                    LOOP
- 020E   0006                    IF i > LEN(tn$) THEN
- 020E   0006                            IF nt$ <> "" THEN PLAY nt$: shf = 0
- 023F   0006                            EXIT DO
- 023F   0006                    END IF
- 0242   0006                    '----- the note letter plus accidentals / lengt
+ 0207   0366                            i = i + 1
+ 0207   0366                    LOOP
+ 020E   0366                    IF i > LEN(tn$) THEN
+ 020E   0366                            IF nt$ <> "" THEN PLAY nt$: shf = 0
+ 023F   0366                            EXIT DO
+ 023F   0366                    END IF
+ 0242   0366                    '----- the note letter plus accidentals / lengt
                 h digits / dots
- 0242   0006                    nt$ = nt$ + MID$(tn$, i, 1): i = i + 1
- 0242   0006                    DO WHILE i <= LEN(tn$)
- 026A   0006                            ch$ = MID$(tn$, i, 1)
- 026A   0006                            IF (ch$ < "0" OR ch$ > "9") AND ch$ <> 
+ 0242   0366                    nt$ = nt$ + MID$(tn$, i, 1): i = i + 1
+ 0242   0366                    DO WHILE i <= LEN(tn$)
+ 026A   0366                            ch$ = MID$(tn$, i, 1)
+ 026A   0366                            IF (ch$ < "0" OR ch$ > "9") AND ch$ <> 
                 "+" AND ch$ <> "-" AND ch$ <> "#" AND ch$ <> "." THEN EXIT DO
- 0336   0006                            nt$ = nt$ + ch$: i = i + 1
- 0336   0006                    LOOP
- 0354   0006                    PLAY nt$
- 035D   0006                    '----- a key or click skips the rest of the dir
+ 0336   0366                            nt$ = nt$ + ch$: i = i + 1
+ 0336   0366                    LOOP
+ 0354   0366                    PLAY nt$
+ 035D   0366                    '----- a key or click skips the rest of the dir
                 ge
- 035D   0006                    IF INKEY$ <> "" THEN skp = 1
- 0376   0006                    IF skp = 0 AND msen = 1 THEN
- 0376   0006                            mr.ax = 3: CALL INTERRUPT(mvint, mr, mo
-                )
- 03B8   0006                            IF (mo.bx AND 1) <> 0 THEN skp = 1
- 03CA   0006                    END IF
- 03CA   0006                    IF skp = 1 THEN
- 03CA   0006                            IF shf > 0 THEN PLAY STRING$(shf, ">")
- 03EE   0006                            IF shf < 0 THEN PLAY STRING$(-shf, "<")
- 040C   0006                            '----- signal the caller: the skip pres
-                s also ends the death screen
- 040C   0006                            mt = -1
- 040C   0006                            EXIT DO
- 040C   0006                    END IF
- 041B   0006            LOOP
- 041E   0006    END SUB
- 0441   0006    
- 0441   0006    '----- joystick poll (moved from GAME.BAS -- 64K ceiling): read
-                 STICK, set the
- 0441   0006    '----- movement direction into a2$; any direction cancels a pen
-                ding verb (vk2$)
- 0441   0006    SUB JoyPoll (a2$, vk2$)
- 044C   0006            DIM js0 AS SINGLE, js1 AS SINGLE
- 044C   0006            IF jsen <> 1 THEN EXIT SUB
- 0462   0006            js0 = STICK(0)
- 0462   0006            js1 = STICK(1)
- 0462   0006            IF js1 = 0# AND js0 = 0 THEN EXIT SUB
- 04C0   0006            IF js0 < 40 THEN a2$ = "4"
- 04E1   0006            IF js0 > 120 THEN a2$ = "6"
- 0502   0006            IF js1 < 40 THEN a2$ = "8"
- 0523   0006            IF js1 > 120 THEN a2$ = "2"
- 0544   0006            IF js1 < 40 AND js0 > 120 THEN a2$ = "9"
- 0587   0006            IF js1 < 40 AND js0 < 40 THEN a2$ = "7"
+ 035D   0366                    IF INKEY$ <> "" THEN skp = 1
+ 0376   0366                    IF skp = 0 AND msen = 1 THEN
                                                                       PAGE   3
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 05CA   0006            IF js0 > 120 AND js1 > 120 THEN a2$ = "3"
- 060D   0006            IF js0 < 40 AND js1 > 120 THEN a2$ = "1"
- 0650   0006            IF LEN(a2$) = 1 THEN
- 0650   0006                    IF INSTR("123456789", a2$) > 0 THEN vk2$ = ""
- 067F   0006            END IF
- 067F   0006    END SUB
- 0687   0006    
- 0687   0006    '----- sound effect 1
- 0687   0006    SUB Snd1
- 0692   0006            SOUND f6, 1: SOUND f3, .5: SOUND f7, 1: SOUND f2, .1: S
-                OUND f8, .5
- 070A   0006    END SUB
- 0712   0006    
- 0712   0006    '----- sound effect 2
- 0712   0006    SUB Snd2
- 071D   0006            FOR sa = 1 TO 5: SOUND f3, .2: SOUND 32676, 3: NEXT
- 0773   0006    END SUB
- 077B   0006    
- 077B   0006    '----- sound effect 3
- 077B   0006    SUB Snd3
- 0786   0006            SOUND f6, .1: SOUND f3, .5
- 07B6   0006            FOR sb = 100 TO 600 STEP 100: SOUND sb, .1: NEXT
- 07FA   0006            SOUND f8, .5: SOUND f5, .5
- 082A   0006    END SUB
- 0832   0006    
- 0832   0006    '----- sound effect 4
- 0832   0006    SUB Snd4
- 083D   0006            FOR sc = 50 TO 100 STEP 5: SOUND sc, .5: SOUND f9, .1: 
-                NEXT
- 089A   0006            FOR sc = 100 TO 50 STEP -5: SOUND sc, .5: SOUND f9, .1:
-                 NEXT
- 08F6   0006            SOUND 32676, .5: SOUND f1, .5
- 091F   0006    END SUB
- 0927   0006    
- 0927   0006    '----- sound effect 5
- 0927   0006    SUB Snd5
- 0932   0006            FOR sc = 50 TO 80: SOUND f3, .1: SOUND sc, .1: NEXT
- 098E   0006            PLAY "p10"
- 0997   0006            FOR sc = 1 TO 300 STEP 20: SOUND (RND * 300) + 50, .1: 
-                NEXT
- 09EB   0006            SOUND f3, .2: SOUND 32676, 2: SOUND f3, .2: SOUND 32676
-                , 2
- 0A3D   0006    END SUB
- 0A45   0006    
- 0A45   0006    '----- debug readout (moved from GAME.BAS -- 64K ceiling): raw 
-                mouse xy, snapped hit
- 0A45   0006    '----- point, and the object+verb a click here resolves to
- 0A45   0006    SUB MxyTick (mx%, my%, bx, ay, snr2, ox%(), oy%(), oi%(), ky$()
+ 0376   0366                            mr.ax = 3: CALL INTERRUPT(mvint, mr, mo
                 )
- 0A50   0006            oi2% = 0
- 0A50   0006            mind% = snr2 * snr2 + 1
- 0A50   0006            FOR i% = 1 TO 257
- 0A72   0006                    IF oy%(i%) = 0 THEN EXIT FOR
- 0A8A   0006                    dx% = mx% - ox%(i%)
+ 03B8   0366                            IF (mo.bx AND 1) <> 0 THEN skp = 1
+ 03CA   0366                    END IF
+ 03CA   0366                    IF skp = 1 THEN
+ 03CA   0366                            IF shf > 0 THEN PLAY STRING$(shf, ">")
+ 03EE   0366                            IF shf < 0 THEN PLAY STRING$(-shf, "<")
+ 040C   0366                            '----- signal the caller: the skip pres
+                s also ends the death screen
+ 040C   0366                            mt = -1
+ 040C   0366                            EXIT DO
+ 040C   0366                    END IF
+ 041B   0366            LOOP
+ 041E   0366    END SUB
+ 0441   0366    
+ 0441   0366    '----- joystick poll (moved from GAME.BAS -- 64K ceiling): read
+                 STICK, set the
+ 0441   0366    '----- movement direction into a2$; any direction cancels a pen
+                ding verb (vk2$)
+ 0441   0366    SUB JoyPoll (a2$, vk2$)
+ 044C   0366            DIM js0 AS SINGLE, js1 AS SINGLE
+ 044C   0366            IF jsen <> 1 THEN EXIT SUB
+ 0462   0366            js0 = STICK(0)
+ 0462   0366            js1 = STICK(1)
+ 0462   0366            IF js1 = 0# AND js0 = 0 THEN EXIT SUB
+ 04C0   0366            IF js0 < 40 THEN a2$ = "4"
+ 04E1   0366            IF js0 > 120 THEN a2$ = "6"
+ 0502   0366            IF js1 < 40 THEN a2$ = "8"
+ 0523   0366            IF js1 > 120 THEN a2$ = "2"
+ 0544   0366            IF js1 < 40 AND js0 > 120 THEN a2$ = "9"
+ 0587   0366            IF js1 < 40 AND js0 < 40 THEN a2$ = "7"
+ 05CA   0366            IF js0 > 120 AND js1 > 120 THEN a2$ = "3"
+ 060D   0366            IF js0 < 40 AND js1 > 120 THEN a2$ = "1"
+ 0650   0366            IF LEN(a2$) = 1 THEN
+ 0650   0366                    IF INSTR("123456789", a2$) > 0 THEN vk2$ = ""
+ 067F   0366            END IF
+ 067F   0366    END SUB
+ 0687   0366    
+ 0687   0366    '----- sound effect 1
+ 0687   0366    SUB Snd1
+ 0692   0366            SOUND f6, 1: SOUND f3, .5: SOUND f7, 1: SOUND f2, .1: S
+                OUND f8, .5
+ 070A   0366    END SUB
+ 0712   0366    
+ 0712   0366    '----- sound effect 2
+ 0712   0366    SUB Snd2
+ 071D   0366            FOR sa = 1 TO 5: SOUND f3, .2: SOUND 32676, 3: NEXT
+ 0773   0366    END SUB
+ 077B   0366    
+ 077B   0366    '----- sound effect 3
+ 077B   0366    SUB Snd3
+ 0786   0366            SOUND f6, .1: SOUND f3, .5
+ 07B6   0366            FOR sb = 100 TO 600 STEP 100: SOUND sb, .1: NEXT
+ 07FA   0366            SOUND f8, .5: SOUND f5, .5
                                                                       PAGE   4
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 0A8A   0006                    dy% = my% - oy%(i%)
- 0A8A   0006                    IF ABS(dx%) <= snr2 AND ABS(dy%) <= snr2 THEN
- 0A8A   0006                            dd% = dx% * dx% + dy% * dy%
- 0A8A   0006                            IF dd% < mind% THEN mind% = dd%: oi2% =
+ 082A   0366    END SUB
+ 0832   0366    
+ 0832   0366    '----- sound effect 4
+ 0832   0366    SUB Snd4
+ 083D   0366            FOR sc = 50 TO 100 STEP 5: SOUND sc, .5: SOUND f9, .1: 
+                NEXT
+ 089A   0366            FOR sc = 100 TO 50 STEP -5: SOUND sc, .5: SOUND f9, .1:
+                 NEXT
+ 08F6   0366            SOUND 32676, .5: SOUND f1, .5
+ 091F   0366    END SUB
+ 0927   0366    
+ 0927   0366    '----- sound effect 5
+ 0927   0366    SUB Snd5
+ 0932   0366            FOR sc = 50 TO 80: SOUND f3, .1: SOUND sc, .1: NEXT
+ 098E   0366            PLAY "p10"
+ 0997   0366            FOR sc = 1 TO 300 STEP 20: SOUND (RND * 300) + 50, .1: 
+                NEXT
+ 09EB   0366            SOUND f3, .2: SOUND 32676, 2: SOUND f3, .2: SOUND 32676
+                , 2
+ 0A3D   0366    END SUB
+ 0A45   0366    
+ 0A45   0366    '----- debug readout (moved from GAME.BAS -- 64K ceiling): raw 
+                mouse xy, snapped hit
+ 0A45   0366    '----- point, and the object+verb a click here resolves to
+ 0A45   0366    SUB MxyTick (mx%, my%, bx, ay, snr2, ox%(), oy%(), oi%(), ky$()
+                )
+ 0A50   0366            oi2% = 0
+ 0A50   0366            mind% = snr2 * snr2 + 1
+ 0A50   0366            FOR i% = 1 TO 257
+ 0A72   0366                    IF oy%(i%) = 0 THEN EXIT FOR
+ 0A8A   0366                    dx% = mx% - ox%(i%)
+ 0A8A   0366                    dy% = my% - oy%(i%)
+ 0A8A   0366                    IF ABS(dx%) <= snr2 AND ABS(dy%) <= snr2 THEN
+ 0A8A   0366                            dd% = dx% * dx% + dy% * dy%
+ 0A8A   0366                            IF dd% < mind% THEN mind% = dd%: oi2% =
                  oi%(i%)
- 0B3A   0006                    END IF
- 0B3A   0006            NEXT
- 0B49   0006            v$ = "-"
- 0B49   0006            IF oi2% >= 1 AND oi2% <= 25 THEN v$ = ky$(oi2%)
- 0B8A   0006            IF v$ = "" THEN v$ = "-"
- 0BA9   0006            LOCATE 24, 1
- 0BA9   0006            PRINT USING "mxy ### ### hit ### ### obj ## v="; mx%; m
+ 0B3A   0366                    END IF
+ 0B3A   0366            NEXT
+ 0B49   0366            v$ = "-"
+ 0B49   0366            IF oi2% >= 1 AND oi2% <= 25 THEN v$ = ky$(oi2%)
+ 0B8A   0366            IF v$ = "" THEN v$ = "-"
+ 0BA9   0366            LOCATE 24, 1
+ 0BA9   0366            PRINT USING "mxy ### ### hit ### ### obj ## v="; mx%; m
                 y%; bx; ay; oi2%;
- 0BA9   0006            PRINT v$; "  ";
- 0BA9   0006    END SUB
- 0C26   0006    
- 0C26   0006    '----- hit-zone debug overlay (moved from GAME.BAS): ring each 
+ 0BA9   0366            PRINT v$; "  ";
+ 0BA9   0366    END SUB
+ 0C26   0366    
+ 0C26   0366    '----- hit-zone debug overlay (moved from GAME.BAS): ring each 
                 hotspot's snr click-zone
- 0C26   0006    '----- coloured by verb (look=blue, action=brown, get/use=gray)
+ 0C26   0366    '----- coloured by verb (look=blue, action=brown, get/use=gray)
                  + dot its hit point
- 0C26   0006    SUB HitZones (hz$, snr2, ox%(), oy%(), oi%(), ky$())
- 0C31   0006            IF hz$ = "" OR snr2 <= 0 THEN EXIT SUB
- 0C66   0006            FOR i% = 1 TO 257
- 0C6C   0006                    IF oy%(i%) = 0 THEN EXIT FOR
- 0C84   0006                    v$ = ky$(oi%(i%))
- 0C84   0006                    IF v$ <> "" AND INSTR(hz$, v$) > 0 THEN
- 0C84   0006                            c% = 2
- 0C84   0006                            IF v$ = "a" THEN c% = 3
- 0CFD   0006                            IF v$ = "g" THEN c% = 1
- 0D14   0006                            IF v$ = "u" THEN c% = 1
- 0D2B   0006                            CIRCLE (ox%(i%), oy%(i%)), snr2, c%
- 0D61   0006                            PSET (ox%(i%), oy%(i%)), c%
- 0D61   0006                    END IF
- 0D8F   0006            NEXT
- 0D9E   0006    END SUB
- 0DAF   0006    
- 0DAF   0006    '----- parse an anim frames field like "0;1;2" into fsq(1..nfr2
-                ) frame indices
- 0DAF   0006    SUB AnimParse (s$, fsq%(), nfr2%)
- 0DBA   0006            nfr2% = 0
- 0DBA   0006            t$ = s$ + ";"
- 0DBA   0006            sp% = 1
- 0DBA   0006            FOR i% = 1 TO LEN(t$)
- 0DEE   0006                    IF MID$(t$, i%, 1) = ";" THEN
- 0DEE   0006                            IF i% > sp% AND nfr2% < 30 THEN
- 0DEE   0006                                    nfr2% = nfr2% + 1
- 0DEE   0006                                    fsq%(nfr2%) = VAL(MID$(t$, sp%,
-                 i% - sp%))
- 0DEE   0006                            END IF
- 0E63   0006                            sp% = i% + 1
- 0E63   0006                    END IF
- 0E6A   0006            NEXT
- 0E79   0006    END SUB
- 0E8A   0006    
+ 0C26   0366    SUB HitZones (hz$, snr2, ox%(), oy%(), oi%(), ky$())
+ 0C31   0366            IF hz$ = "" OR snr2 <= 0 THEN EXIT SUB
+ 0C66   0366            FOR i% = 1 TO 257
                                                                       PAGE   5
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 0E8A   0006    '----- pause rate2*0.05s between animation frames (TIMER-based,
+ 0C6C   0366                    IF oy%(i%) = 0 THEN EXIT FOR
+ 0C84   0366                    v$ = ky$(oi%(i%))
+ 0C84   0366                    IF v$ <> "" AND INSTR(hz$, v$) > 0 THEN
+ 0C84   0366                            c% = 2
+ 0C84   0366                            IF v$ = "a" THEN c% = 3
+ 0CFD   0366                            IF v$ = "g" THEN c% = 1
+ 0D14   0366                            IF v$ = "u" THEN c% = 1
+ 0D2B   0366                            CIRCLE (ox%(i%), oy%(i%)), snr2, c%
+ 0D61   0366                            PSET (ox%(i%), oy%(i%)), c%
+ 0D61   0366                    END IF
+ 0D8F   0366            NEXT
+ 0D9E   0366    END SUB
+ 0DAF   0366    
+ 0DAF   0366    '----- parse an anim frames field like "0;1;2" into fsq(1..nfr2
+                ) frame indices
+ 0DAF   0366    SUB AnimParse (s$, fsq%(), nfr2%)
+ 0DBA   0366            nfr2% = 0
+ 0DBA   0366            t$ = s$ + ";"
+ 0DBA   0366            sp% = 1
+ 0DBA   0366            FOR i% = 1 TO LEN(t$)
+ 0DEE   0366                    IF MID$(t$, i%, 1) = ";" THEN
+ 0DEE   0366                            IF i% > sp% AND nfr2% < 30 THEN
+ 0DEE   0366                                    nfr2% = nfr2% + 1
+ 0DEE   0366                                    fsq%(nfr2%) = VAL(MID$(t$, sp%,
+                 i% - sp%))
+ 0DEE   0366                            END IF
+ 0E63   0366                            sp% = i% + 1
+ 0E63   0366                    END IF
+ 0E6A   0366            NEXT
+ 0E79   0366    END SUB
+ 0E8A   0366    
+ 0E8A   0366    '----- pause rate2*0.05s between animation frames (TIMER-based,
                  midnight-safe)
- 0E8A   0006    SUB AnimWait (rate2)
- 0E95   0006            t! = TIMER
- 0E95   0006            DO
- 0EA6   0006                    IF TIMER < t! THEN EXIT SUB
- 0EC0   0006            LOOP WHILE TIMER < t! + rate2 * .05
- 0EC0   0006    END SUB
- 0EEA   0006    
- 0EEA   0006    '----- inventory combine: which recipe do items s% (top) + c% (
+ 0E8A   0366    SUB AnimWait (rate2)
+ 0E95   0366            t! = TIMER
+ 0E95   0366            DO
+ 0EA6   0366                    IF TIMER < t! THEN EXIT SUB
+ 0EC0   0366            LOOP WHILE TIMER < t! + rate2 * .05
+ 0EC0   0366    END SUB
+ 0EEA   0366    
+ 0EEA   0366    '----- inventory combine: which recipe do items s% (top) + c% (
                 bottom) match? 0 = none.
- 0EEA   0006    '----- 1: 18+28 -> 22 · 2: formula halves 11+24 -> unreadable 5
-                2 · 4: 52 + book 25 ->
- 0EEA   0006    '----- complete formula 36 · 3: syringe 29 + drug 34 -> loaded 
-                syringe 35
- 0EEA   0006    SUB CombChk (s%, c%, r%)
- 0EF5   0006            r% = 0
- 0EF5   0006            IF (s% = 18 AND c% = 28) OR (s% = 28 AND c% = 18) THEN 
+ 0EEA   0366    '----- 1: 18+28 -> 22 ï¿½ 2: formula halves 11+24 -> unreadable
+                 52 ï¿½ 4: 52 + book 25 ->
+ 0EEA   0366    '----- complete formula 36 ï¿½ 3: syringe 29 + drug 34 -> loade
+                d syringe 35
+ 0EEA   0366    SUB CombChk (s%, c%, r%)
+ 0EF5   0366            r% = 0
+ 0EF5   0366            IF (s% = 18 AND c% = 28) OR (s% = 28 AND c% = 18) THEN 
                 r% = 1
- 0F3A   0006            IF (s% = 11 AND c% = 24) OR (s% = 24 AND c% = 11) THEN 
+ 0F3A   0366            IF (s% = 11 AND c% = 24) OR (s% = 24 AND c% = 11) THEN 
                 r% = 2
- 0F78   0006            IF (s% = 52 AND c% = 25) OR (s% = 25 AND c% = 52) THEN 
+ 0F78   0366            IF (s% = 52 AND c% = 25) OR (s% = 25 AND c% = 52) THEN 
                 r% = 4
- 0FB6   0006            IF (s% = 29 AND c% = 34) OR (s% = 34 AND c% = 29) THEN 
-                r% = 3
- 0FF4   0006    END SUB
- 0FFC   0006    
- 0FFC   0006    '----- apply combine recipe r%: swap the ingredient ob() flags 
-                for the result, and
- 0FFC   0006    '----- re-derive 33 (ready to mix) since 36 may just have appea
-                red
- 0FFC   0006    SUB CombDo2 (r%, ob(), cn%)
- 1007   0006            '----- ingredients become state 2 ("used up"): out of t
-                he inventory but
- 1007   0006            '----- still counting as taken, so their pickup spots n
-                ever re-arm
- 1007   0006            cn% = 0
- 1007   0006            IF r% = 1 THEN ob(18) = 2: ob(28) = 2: ob(22) = 1: cn% 
-                = 22
- 105F   0006            IF r% = 2 THEN ob(24) = 2: ob(11) = 2: ob(52) = 1: cn% 
-                = 52
- 10B0   0006            IF r% = 3 THEN ob(29) = 2: ob(34) = 2: ob(35) = 1: cn% 
-                = 35
- 1101   0006            IF r% = 4 THEN ob(52) = 2: ob(36) = 1: cn% = 36
- 113E   0006            IF ob(32) = 1 AND ob(36) = 1 THEN ob(33) = 1
- 119E   0006    END SUB
- 11A6   0006    
- 11A6   0006    '----- keyboard/joystick navigation for the inventory screen. Z
-                ones: 0 = item grid,
- 11A6   0006    '----- 1 = tabs (left pane), 2 = bottom buttons. k$ = U/D/L/R m
-                ove, E = activate.
- 11A6   0006    '----- Grid: left off column 0 -> tabs (active tab first); movi
-                ng toward the inactive
- 11A6   0006    '----- tab ACTIVATES it; down off the grid (or from the tabs) -
                                                                       PAGE   6
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 0FB6   0366            IF (s% = 29 AND c% = 34) OR (s% = 34 AND c% = 29) THEN 
+                r% = 3
+ 0FF4   0366    END SUB
+ 0FFC   0366    
+ 0FFC   0366    '----- apply combine recipe r%: swap the ingredient ob() flags 
+                for the result, and
+ 0FFC   0366    '----- re-derive 33 (ready to mix) since 36 may just have appea
+                red
+ 0FFC   0366    SUB CombDo2 (r%, ob(), cn%)
+ 1007   0366            '----- ingredients become state 2 ("used up"): out of t
+                he inventory but
+ 1007   0366            '----- still counting as taken, so their pickup spots n
+                ever re-arm
+ 1007   0366            cn% = 0
+ 1007   0366            IF r% = 1 THEN ob(18) = 2: ob(28) = 2: ob(22) = 1: cn% 
+                = 22
+ 105F   0366            IF r% = 2 THEN ob(24) = 2: ob(11) = 2: ob(52) = 1: cn% 
+                = 52
+ 10B0   0366            IF r% = 3 THEN ob(29) = 2: ob(34) = 2: ob(35) = 1: cn% 
+                = 35
+ 1101   0366            IF r% = 4 THEN ob(52) = 2: ob(36) = 1: cn% = 36
+ 113E   0366            IF ob(32) = 1 AND ob(36) = 1 THEN ob(33) = 1
+ 119E   0366    END SUB
+ 11A6   0366    
+ 11A6   0366    '----- keyboard/joystick navigation for the inventory screen. Z
+                ones: 0 = item grid,
+ 11A6   0366    '----- 1 = tabs (left pane), 2 = bottom buttons. k$ = U/D/L/R m
+                ove, E = activate.
+ 11A6   0366    '----- Grid: left off column 0 -> tabs (active tab first); movi
+                ng toward the inactive
+ 11A6   0366    '----- tab ACTIVATES it; down off the grid (or from the tabs) -
                 > the buttons.
- 11A6   0006    '----- Returns the cursor park spot for the focus in mx2%/my2% 
+ 11A6   0366    '----- Returns the cursor park spot for the focus in mx2%/my2% 
                 and act%:
- 11A6   0006    '----- 1 selection changed | 2 tab switched | 3 focus moved | 4
+ 11A6   0366    '----- 1 selection changed | 2 tab switched | 3 focus moved | 4
                  quit | 5 save/load |
- 11A6   0006    '----- 6 exit | 7 combine (grid E on combine tab) | 8 examine (
+ 11A6   0366    '----- 6 exit | 7 combine (grid E on combine tab) | 8 examine (
                 grid E on info tab)
- 11A6   0006    SUB InvNav (k$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, mx2%
+ 11A6   0366    SUB InvNav (k$, nvz, nvb, isel, cic, invtab, ivscr, ivmax, mx2%
                 , my2%, act%)
- 11B1   0006            act% = 3
- 11B1   0006            IF nvz = 0 THEN
- 11B1   0006                    IF k$ = "L" THEN
- 11B1   0006                            IF cic = 0 OR (INT(isel) MOD 4) = 0 THE
+ 11B1   0366            act% = 3
+ 11B1   0366            IF nvz = 0 THEN
+ 11B1   0366                    IF k$ = "L" THEN
+ 11B1   0366                            IF cic = 0 OR (INT(isel) MOD 4) = 0 THE
                 N nvz = 1 ELSE isel = isel - 1: act% = 1
- 125A   0006                    ELSEIF k$ = "R" THEN
- 125D   0006                            IF (INT(isel) MOD 4) < 3 AND isel + 1 <
+ 125A   0366                    ELSEIF k$ = "R" THEN
+ 125D   0366                            IF (INT(isel) MOD 4) < 3 AND isel + 1 <
                  cic THEN isel = isel + 1: act% = 1
- 12DA   0006                    ELSEIF k$ = "U" THEN
- 12DD   0006                            IF isel - 4 >= 0 THEN isel = isel - 4: 
+ 12DA   0366                    ELSEIF k$ = "U" THEN
+ 12DD   0366                            IF isel - 4 >= 0 THEN isel = isel - 4: 
                 act% = 1 ELSE nvz = 1
- 132E   0006                    ELSEIF k$ = "D" THEN
- 1331   0006                            IF isel + 4 < cic THEN isel = isel + 4:
+ 132E   0366                    ELSEIF k$ = "D" THEN
+ 1331   0366                            IF isel + 4 < cic THEN isel = isel + 4:
                  act% = 1 ELSE nvz = 2
- 1383   0006                    ELSEIF k$ = "E" THEN
- 1386   0006                            IF invtab = 1 THEN act% = 7 ELSE act% =
-                 8
- 13BF   0006                    END IF
- 13BF   0006            ELSEIF nvz = 1 THEN
- 13C2   0006                    IF k$ = "L" THEN
- 13C2   0006                            IF invtab = 1 THEN invtab = 0: act% = 2
- 1412   0006                    ELSEIF k$ = "R" THEN
- 1415   0006                            IF invtab = 0 THEN invtab = 1: act% = 2
-                 ELSE nvz = 0
- 145E   0006                    ELSEIF k$ = "D" THEN
- 1461   0006                            nvz = 2
- 1461   0006                    END IF
- 147F   0006            ELSE
- 1482   0006                    '----- bottom row is just Close now (quit butto
-                n removed -- q key quits)
- 1482   0006                    nvb = 0
- 1482   0006                    IF k$ = "U" THEN
- 1482   0006                            IF cic > 0 THEN nvz = 0 ELSE nvz = 1
- 14D4   0006                    ELSEIF k$ = "E" THEN
- 14D7   0006                            act% = 6
- 14D7   0006                    END IF
- 14EF   0006            END IF
- 14EF   0006            '----- scroll the selected row into view, then park the
-                 cursor on the focus:
- 14EF   0006            '----- items get it at their lower-right, tabs/buttons 
-                near their right edge
- 14EF   0006            IF nvz = 0 THEN
- 14EF   0006                    IF INT(isel / 4) < ivscr THEN ivscr = INT(isel 
-                / 4)
- 153E   0006                    IF INT(isel / 4) > ivscr + 1 THEN ivscr = INT(i
                                                                       PAGE   7
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 1383   0366                    ELSEIF k$ = "E" THEN
+ 1386   0366                            IF invtab = 1 THEN act% = 7 ELSE act% =
+                 8
+ 13BF   0366                    END IF
+ 13BF   0366            ELSEIF nvz = 1 THEN
+ 13C2   0366                    IF k$ = "L" THEN
+ 13C2   0366                            IF invtab = 1 THEN invtab = 0: act% = 2
+ 1412   0366                    ELSEIF k$ = "R" THEN
+ 1415   0366                            IF invtab = 0 THEN invtab = 1: act% = 2
+                 ELSE nvz = 0
+ 145E   0366                    ELSEIF k$ = "D" THEN
+ 1461   0366                            nvz = 2
+ 1461   0366                    END IF
+ 147F   0366            ELSE
+ 1482   0366                    '----- bottom row is just Close now (quit butto
+                n removed -- q key quits)
+ 1482   0366                    nvb = 0
+ 1482   0366                    IF k$ = "U" THEN
+ 1482   0366                            IF cic > 0 THEN nvz = 0 ELSE nvz = 1
+ 14D4   0366                    ELSEIF k$ = "E" THEN
+ 14D7   0366                            act% = 6
+ 14D7   0366                    END IF
+ 14EF   0366            END IF
+ 14EF   0366            '----- scroll the selected row into view, then park the
+                 cursor on the focus:
+ 14EF   0366            '----- items get it at their lower-right, tabs/buttons 
+                near their right edge
+ 14EF   0366            IF nvz = 0 THEN
+ 14EF   0366                    IF INT(isel / 4) < ivscr THEN ivscr = INT(isel 
+                / 4)
+ 153E   0366                    IF INT(isel / 4) > ivscr + 1 THEN ivscr = INT(i
                 sel / 4) - 1
- 1580   0006                    '----- arrow TIP just inside the 45x54 icon's l
+ 1580   0366                    '----- arrow TIP just inside the 45x54 icon's l
                 ower-right quadrant
- 1580   0006                    mx2% = 112 + (INT(isel) MOD 4) * 47 + 36
- 1580   0006                    my2% = 31 + (INT(isel / 4) - ivscr) * 56 + 44
- 1580   0006                    IF cic = 0 THEN mx2% = 150: my2% = 85
- 1602   0006            ELSEIF nvz = 1 THEN
- 1605   0006                    '----- tab art: Info 14-52, Combine 53-98, both
+ 1580   0366                    mx2% = 112 + (INT(isel) MOD 4) * 47 + 36
+ 1580   0366                    my2% = 31 + (INT(isel / 4) - ivscr) * 56 + 44
+ 1580   0366                    IF cic = 0 THEN mx2% = 150: my2% = 85
+ 1602   0366            ELSEIF nvz = 1 THEN
+ 1605   0366                    '----- tab art: Info 14-52, Combine 53-98, both
                  y28-42
- 1605   0006                    IF invtab = 0 THEN mx2% = 46 ELSE mx2% = 92
- 1644   0006                    my2% = 39
- 1644   0006            ELSE
- 164E   0006                    '----- button art: Close ~268-306, y169-181
- 164E   0006                    mx2% = 300
- 164E   0006                    my2% = 178
- 164E   0006            END IF
- 165C   0006    END SUB
- 1664   0006    
- 1664   0006    '----- joystick -> inventory nav letter (same 40/120 thresholds
+ 1605   0366                    IF invtab = 0 THEN mx2% = 46 ELSE mx2% = 92
+ 1644   0366                    my2% = 39
+ 1644   0366            ELSE
+ 164E   0366                    '----- button art: Close ~268-306, y169-181
+ 164E   0366                    mx2% = 300
+ 164E   0366                    my2% = 178
+ 164E   0366            END IF
+ 165C   0366    END SUB
+ 1664   0366    
+ 1664   0366    '----- joystick -> inventory nav letter (same 40/120 thresholds
                  as the game's joy
- 1664   0006    '----- poll); the latch releases-to-repeat so holding the stick
+ 1664   0366    '----- poll); the latch releases-to-repeat so holding the stick
                  doesn't flood
- 1664   0006    SUB JoyNav (d$) STATIC
- 166F   0006            d$ = ""
- 166F   0006            nd$ = ""
- 166F   0006            js0% = STICK(0)
- 166F   0006            js1% = STICK(1)
- 166F   0006            IF js0% < 40 THEN nd$ = "L"
- 16B6   000E            IF js0% > 120 THEN nd$ = "R"
- 16CD   000E            IF js1% < 40 THEN nd$ = "U"
- 16E4   000E            IF js1% > 120 THEN nd$ = "D"
- 16FB   000E            IF STRIG(1) <> 0 THEN nd$ = "E"
- 1718   000E            IF nd$ = ld$ THEN EXIT SUB
- 172A   0012            ld$ = nd$
- 172A   0012            d$ = nd$
- 172A   0012    END SUB
- 174B   0012    
- 174B   0012    '----- reselect the inventory item picked last time (lv%); the 
-                grid order can shift
- 174B   0012    '----- between opens, so match by ITEM NUMBER and scroll its ro
-                w into view
- 174B   0012    SUB InvReSel (cilist%(), cic2, lv%, is2, iv2, ivm)
- 1756   0012            IF lv% <= 0 THEN EXIT SUB
- 1761   0012            FOR i% = 0 TO cic2 - 1
- 177A   0012                    IF cilist%(i%) = lv% THEN is2 = i%
- 17A4   0012            NEXT
- 17B0   0012            iv2 = INT(is2 / 4)
- 17B0   0012            IF iv2 > ivm THEN iv2 = ivm
- 17E7   0012    END SUB
- 17EF   0012    
- 17EF   0012    '----- set a room palette (COLOR + the 3 attribute maps); idemp
-                otent
- 17EF   0012    SUB RmPal (co2, p1, p2, p3)
- 17FA   0012            COLOR co2
+ 1664   0366    SUB JoyNav (d$) STATIC
                                                                       PAGE   8
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 17FA   0012            PALETTE 1, p1
- 17FA   0012            PALETTE 2, p2
- 17FA   0012            PALETTE 3, p3
- 17FA   0012    END SUB
- 185D   0012    
- 185D   0012    '----- LoadFade: palette fade-in after loading a game -- steps 
+ 166F   0366            d$ = ""
+ 166F   0366            nd$ = ""
+ 166F   0366            js0% = STICK(0)
+ 166F   0366            js1% = STICK(1)
+ 166F   0366            IF js0% < 40 THEN nd$ = "L"
+ 16B6   036E            IF js0% > 120 THEN nd$ = "R"
+ 16CD   036E            IF js1% < 40 THEN nd$ = "U"
+ 16E4   036E            IF js1% > 120 THEN nd$ = "D"
+ 16FB   036E            IF STRIG(1) <> 0 THEN nd$ = "E"
+ 1718   036E            IF nd$ = ld$ THEN EXIT SUB
+ 172A   0372            ld$ = nd$
+ 172A   0372            d$ = nd$
+ 172A   0372    END SUB
+ 174B   0372    
+ 174B   0372    '----- reselect the inventory item picked last time (lv%); the 
+                grid order can shift
+ 174B   0372    '----- between opens, so match by ITEM NUMBER and scroll its ro
+                w into view
+ 174B   0372    SUB InvReSel (cilist%(), cic2, lv%, is2, iv2, ivm)
+ 1756   0372            IF lv% <= 0 THEN EXIT SUB
+ 1761   0372            FOR i% = 0 TO cic2 - 1
+ 177A   0372                    IF cilist%(i%) = lv% THEN is2 = i%
+ 17A4   0372            NEXT
+ 17B0   0372            iv2 = INT(is2 / 4)
+ 17B0   0372            IF iv2 > ivm THEN iv2 = ivm
+ 17E7   0372    END SUB
+ 17EF   0372    
+ 17EF   0372    '----- set a room palette (COLOR + the 3 attribute maps); idemp
+                otent
+ 17EF   0372    SUB RmPal (co2, p1, p2, p3)
+ 17FA   0372            COLOR co2
+ 17FA   0372            PALETTE 1, p1
+ 17FA   0372            PALETTE 2, p2
+ 17FA   0372            PALETTE 3, p3
+ 17FA   0372    END SUB
+ 185D   0372    
+ 185D   0372    '----- LoadFade: palette fade-in after loading a game -- steps 
                 the whole room
- 185D   0012    '----- through black, dark gray, light gray and white, then the
+ 185D   0372    '----- through black, dark gray, light gray and white, then the
                  room palette
- 185D   0012    SUB LoadFade (co2, p1, p2, p3)
- 1868   0012            DIM fi AS INTEGER, fc AS INTEGER
- 1868   0012            DIM ft AS SINGLE, fd AS SINGLE
- 1868   0012            FOR fi = 1 TO 4
- 186E   0012                    fc = 0
- 186E   0012                    IF fi = 2 THEN fc = 8
- 1880   0012                    IF fi = 3 THEN fc = 7
- 188E   0012                    IF fi = 4 THEN fc = 15
- 189C   0012                    PALETTE 1, fc: PALETTE 2, fc: PALETTE 3, fc
- 189C   0012                    ft = TIMER
- 189C   0012                    DO
- 18E0   0012                            fd = TIMER - ft
- 18E0   0012                            IF fd < 0 THEN fd = fd + 86400
- 1918   0012                    LOOP WHILE fd < .13
- 1918   0012            NEXT
- 1939   0012            CALL RmPal(co2, p1, p2, p3)
- 194A   0012    END SUB
- 1952   0012    
- 1952   0012    '----- does the player's 31x31 box intersect rect x1..x2 / y1..
-                y2? (np = nopl close-up)
- 1952   0012    SUB OvPlayer (x1, y1, x2, y2, pjx2, pjy2, np, ov%)
- 195D   0012            ov% = 0
- 195D   0012            IF np = 1 THEN EXIT SUB
- 197B   0012            IF x1 < pjx2 + 31 AND x2 >= pjx2 AND y1 < pjy2 + 31 AND
-                 y2 >= pjy2 THEN ov% = 1
- 19FD   0012    END SUB
- 1A05   0012    
- 1A05   0012    '----- walkout/exit direction letter -> numpad facing digit (""
-                 = not a direction)
- 1A05   0012    SUB DirDigit (l$, d$)
- 1A10   0012            d$ = ""
- 1A10   0012            IF l$ = "s" THEN d$ = "1"
- 1A39   0012            IF l$ = "n" THEN d$ = "2"
- 1A56   0012            IF l$ = "e" THEN d$ = "3"
- 1A73   0012            IF l$ = "w" THEN d$ = "4"
- 1A90   0012    END SUB
- 1A98   0012    
- 1A98   0012    '----- fps counter (moved from GAME.BAS -- 64K ceiling): fpsc/f
-                pst ride in COMMON
- 1A98   0012    SUB FpsTick
- 1AA3   0012            fpsc = fpsc + 1
- 1AA3   0012            fd! = TIMER - fpst
- 1AA3   0012            IF fd! < 0 OR fd! >= 2 THEN
- 1AA3   0012                    fpst = TIMER
- 1AA3   0012                    fpsc = 0
+ 185D   0372    SUB LoadFade (co2, p1, p2, p3)
+ 1868   0372            DIM fi AS INTEGER, fc AS INTEGER
+ 1868   0372            DIM ft AS SINGLE, fd AS SINGLE
+ 1868   0372            FOR fi = 1 TO 4
+ 186E   0372                    fc = 0
+ 186E   0372                    IF fi = 2 THEN fc = 8
+ 1880   0372                    IF fi = 3 THEN fc = 7
+ 188E   0372                    IF fi = 4 THEN fc = 15
+ 189C   0372                    PALETTE 1, fc: PALETTE 2, fc: PALETTE 3, fc
+ 189C   0372                    ft = TIMER
+ 189C   0372                    DO
+ 18E0   0372                            fd = TIMER - ft
+ 18E0   0372                            IF fd < 0 THEN fd = fd + 86400
+ 1918   0372                    LOOP WHILE fd < .13
                                                                       PAGE   9
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 1AA3   0012            ELSEIF fd! >= 1 THEN
- 1B20   0012                    fv! = fpsc / fd!
- 1B20   0012                    IF fv! > 99999 THEN fv! = 99999
- 1B64   0012                    LOCATE 1, 35
- 1B64   0012                    PRINT USING "#####"; fv!;
- 1B64   0012                    fpst = TIMER
- 1B64   0012                    fpsc = 0
- 1B64   0012            END IF
- 1BAD   0012    END SUB
- 1BB5   0012    
- 1BB5   0012    '----- lookmiss brain (moved from GAME.BAS -- 64K ceiling): out
+ 1918   0372            NEXT
+ 1939   0372            CALL RmPal(co2, p1, p2, p3)
+ 194A   0372    END SUB
+ 1952   0372    
+ 1952   0372    '----- does the player's 31x31 box intersect rect x1..x2 / y1..
+                y2? (np = nopl close-up)
+ 1952   0372    SUB OvPlayer (x1, y1, x2, y2, pjx2, pjy2, np, ov%)
+ 195D   0372            ov% = 0
+ 195D   0372            IF np = 1 THEN EXIT SUB
+ 197B   0372            IF x1 < pjx2 + 31 AND x2 >= pjx2 AND y1 < pjy2 + 31 AND
+                 y2 >= pjy2 THEN ov% = 1
+ 19FD   0372    END SUB
+ 1A05   0372    
+ 1A05   0372    '----- walkout/exit direction letter -> numpad facing digit (""
+                 = not a direction)
+ 1A05   0372    SUB DirDigit (l$, d$)
+ 1A10   0372            d$ = ""
+ 1A10   0372            IF l$ = "s" THEN d$ = "1"
+ 1A39   0372            IF l$ = "n" THEN d$ = "2"
+ 1A56   0372            IF l$ = "e" THEN d$ = "3"
+ 1A73   0372            IF l$ = "w" THEN d$ = "4"
+ 1A90   0372    END SUB
+ 1A98   0372    
+ 1A98   0372    '----- fps counter (moved from GAME.BAS -- 64K ceiling): fpsc/f
+                pst ride in COMMON
+ 1A98   0372    SUB FpsTick
+ 1AA3   0372            fpsc = fpsc + 1
+ 1AA3   0372            fd! = TIMER - fpst
+ 1AA3   0372            IF fd! < 0 OR fd! >= 2 THEN
+ 1AA3   0372                    fpst = TIMER
+ 1AA3   0372                    fpsc = 0
+ 1AA3   0372            ELSEIF fd! >= 1 THEN
+ 1B20   0372                    fv! = fpsc / fd!
+ 1B20   0372                    IF fv! > 99999 THEN fv! = 99999
+ 1B64   0372                    LOCATE 1, 35
+ 1B64   0372                    PRINT USING "#####"; fv!;
+ 1B64   0372                    fpst = TIMER
+ 1B64   0372                    fpsc = 0
+ 1B64   0372            END IF
+ 1BAD   0372    END SUB
+ 1BB5   0372    
+ 1BB5   0372    '----- lookmiss brain (moved from GAME.BAS -- 64K ceiling): out
                 $ = "" when there's
- 1BB5   0012    '----- nothing to say. A click on any hit point resets; 3 looks
+ 1BB5   0372    '----- nothing to say. A click on any hit point resets; 3 looks
                  at the same empty
- 1BB5   0012    '----- cell picks a random, non-repeating "nothing to see" line
- 1BB5   0012    SUB LookMissLine (bx%, ay%, ox%(), oy%(), nf$(), out$) STATIC
- 1BC0   0012            out$ = ""
- 1BC0   0012            FOR i% = 1 TO 257
- 1BD2   0012                    IF oy%(i%) = 0 THEN EXIT FOR
- 1BEA   0012                    IF ox%(i%) = bx% AND oy%(i%) = ay% THEN lc% = 0
+ 1BB5   0372    '----- cell picks a random, non-repeating "nothing to see" line
+ 1BB5   0372    SUB LookMissLine (bx%, ay%, ox%(), oy%(), nf$(), out$) STATIC
+ 1BC0   0372            out$ = ""
+ 1BC0   0372            FOR i% = 1 TO 257
+ 1BD2   0372                    IF oy%(i%) = 0 THEN EXIT FOR
+ 1BEA   0372                    IF ox%(i%) = bx% AND oy%(i%) = ay% THEN lc% = 0
                 : EXIT SUB
- 1C34   0016            NEXT
- 1C40   0016            IF bx% = lx% AND ay% = ly% THEN
- 1C40   0016                    lc% = lc% + 1
- 1C40   0016            ELSE
- 1C6E   001A                    lc% = 1: lx% = bx%: ly% = ay%
- 1C6E   001A            END IF
- 1C84   001A            IF lc% < 3 THEN EXIT SUB
- 1C8E   001A            IF lsd% = 0 THEN RANDOMIZE TIMER: lsd% = 1
- 1CB7   001C            DO
- 1CB8   001C                    p% = INT(RND * 25) + 1
- 1CB8   001C            LOOP WHILE p% = h1% OR p% = h2% OR p% = h3%
- 1CB8   001C            h3% = h2%: h2% = h1%: h1% = p%
- 1CB8   001C            out$ = nf$(p%)
- 1CB8   001C    END SUB
- 1D30   0024    
- 1D30   0024    '----- derive cache slot acs's frame count. k frames interleave
-                 word0 x k then
- 1D30   0024    '----- height x k -- but when width*2 = height the leading-equa
-                l count OVERSHOOTS
- 1D30   0024    '----- (a 3x6 frame reads 6,6,6,6...). Validate candidates down
-                ward: the k whose
- 1D30   0024    '----- frame geometry exactly tiles the file wins; fall back to
-                 the raw count.
- 1D30   0024    SUB AnimK (acPct%(), acN%(), acs, kk%)
- 1D3B   0024            kk% = 1
- 1D3B   0024            anf% = acN%(acs)
- 1D3B   0024            IF anf% < 2 THEN EXIT SUB
- 1D68   0024            ld% = 0
- 1D68   0024            DO WHILE ld% < anf%
- 1D6E   0024                    IF acPct%(acs, ld% + 1) <> acPct%(acs, 1) THEN 
-                EXIT DO
- 1DCF   0024                    ld% = ld% + 1
- 1DCF   0024            LOOP
+ 1C34   0376            NEXT
+ 1C40   0376            IF bx% = lx% AND ay% = ly% THEN
                                                                       PAGE  10
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 1DD4   0024            IF ld% < 1 THEN ld% = 1
- 1DE2   0024            w0& = acPct%(acs, 1)
- 1DE2   0024            IF w0& < 0 THEN w0& = w0& + 65536
- 1E37   0024            FOR k% = ld% TO 1 STEP -1
- 1E3E   0024                    IF (anf% MOD k%) = 0 THEN
- 1E3E   0024                            h& = acPct%(acs, k% + 1)
- 1E3E   0024                            IF h& < 0 THEN h& = h& + 65536
- 1EA7   0024                            IF h& >= 1 AND h& <= 140 AND w0& >= 2 A
+ 1C40   0376                    lc% = lc% + 1
+ 1C40   0376            ELSE
+ 1C6E   037A                    lc% = 1: lx% = bx%: ly% = ay%
+ 1C6E   037A            END IF
+ 1C84   037A            IF lc% < 3 THEN EXIT SUB
+ 1C8E   037A            IF lsd% = 0 THEN RANDOMIZE TIMER: lsd% = 1
+ 1CB7   037C            DO
+ 1CB8   037C                    p% = INT(RND * 25) + 1
+ 1CB8   037C            LOOP WHILE p% = h1% OR p% = h2% OR p% = h3%
+ 1CB8   037C            h3% = h2%: h2% = h1%: h1% = p%
+ 1CB8   037C            out$ = nf$(p%)
+ 1CB8   037C    END SUB
+ 1D30   0384    
+ 1D30   0384    '----- derive cache slot acs's frame count. k frames interleave
+                 word0 x k then
+ 1D30   0384    '----- height x k -- but when width*2 = height the leading-equa
+                l count OVERSHOOTS
+ 1D30   0384    '----- (a 3x6 frame reads 6,6,6,6...). Validate candidates down
+                ward: the k whose
+ 1D30   0384    '----- frame geometry exactly tiles the file wins; fall back to
+                 the raw count.
+ 1D30   0384    SUB AnimK (acPct%(), acN%(), acs, kk%)
+ 1D3B   0384            kk% = 1
+ 1D3B   0384            anf% = acN%(acs)
+ 1D3B   0384            IF anf% < 2 THEN EXIT SUB
+ 1D68   0384            ld% = 0
+ 1D68   0384            DO WHILE ld% < anf%
+ 1D6E   0384                    IF acPct%(acs, ld% + 1) <> acPct%(acs, 1) THEN 
+                EXIT DO
+ 1DCF   0384                    ld% = ld% + 1
+ 1DCF   0384            LOOP
+ 1DD4   0384            IF ld% < 1 THEN ld% = 1
+ 1DE2   0384            w0& = acPct%(acs, 1)
+ 1DE2   0384            IF w0& < 0 THEN w0& = w0& + 65536
+ 1E37   0384            FOR k% = ld% TO 1 STEP -1
+ 1E3E   0384                    IF (anf% MOD k%) = 0 THEN
+ 1E3E   0384                            h& = acPct%(acs, k% + 1)
+ 1E3E   0384                            IF h& < 0 THEN h& = h& + 65536
+ 1EA7   0384                            IF h& >= 1 AND h& <= 140 AND w0& >= 2 A
                 ND w0& <= 280 THEN
- 1EA7   0024                                    per& = 2 + INT((INT((w0& + 7) /
+ 1EA7   0384                                    per& = 2 + INT((INT((w0& + 7) /
                  8) * h& + 1) / 2)
- 1EA7   0024                                    IF per& * k% = anf% THEN kk% = 
+ 1EA7   0384                                    IF per& * k% = anf% THEN kk% = 
                 k%: EXIT SUB
- 1F96   0024                            END IF
- 1F96   0024                    END IF
- 1F96   0024            NEXT
- 1FA5   0024            kk% = ld%
- 1FA5   0024    END SUB
- 1FB5   0024    
- 1FB5   0024    '----- measure cache slot acs's frame size in pixels (moved fro
+ 1F96   0384                            END IF
+ 1F96   0384                    END IF
+ 1F96   0384            NEXT
+ 1FA5   0384            kk% = ld%
+ 1FA5   0384    END SUB
+ 1FB5   0384    
+ 1FB5   0384    '----- measure cache slot acs's frame size in pixels (moved fro
                 m GAME.BAS): frame
- 1FB5   0024    '----- count via AnimK; capped so the region fits a 150-int sav
+ 1FB5   0384    '----- count via AnimK; capped so the region fits a 150-int sav
                 e-under slot
- 1FB5   0024    SUB AnimDims (acPct%(), acN%(), acs, adw, adh)
- 1FC0   0024            adw = 31: adh = 31
- 1FC0   0024            IF acN%(acs) < 2 THEN EXIT SUB
- 1FFD   0024            CALL AnimK(acPct%(), acN%(), acs, kk%)
- 200F   0024            w% = acPct%(acs, 1) \ 2
- 200F   0024            h% = acPct%(acs, kk% + 1)
- 200F   0024            IF w% < 1 OR h% < 1 THEN EXIT SUB
- 2083   0024            '----- any shape is fine as long as the region fits a 2
-                10-int save-under slot
- 2083   0024            IF ((w% * 2 + 7) \ 8) * h% > 416 THEN EXIT SUB
- 209C   0024            adw = w%: adh = h%
- 209C   0024    END SUB
- 20C4   0024    
- 20C4   0024    '----- parse a move-anim script into 1px step arrays (max 60 st
-                eps).
- 20C4   0024    '----- Tokens split on ";": letters u/d/l/r combine into a dire
-                ction (ul = up-left),
- 20C4   0024    '----- a trailing number repeats it ("ul5"); "p" (no direction 
-                letters) = a pause
- 20C4   0024    '----- step in place ("p6" holds 6 steps). Example: "u;d;u;d;u;
-                d;p6;ul5;dr2"
- 20C4   0024    SUB MovParse (s$, mdx%(), mdy%(), mn%, bx1%, by1%, bx2%, by2%)
- 20CF   0024            mn% = 0
- 20CF   0024            t$ = LCASE$(s$) + ";"
- 20CF   0024            sp% = 1
- 20CF   0024            FOR i% = 1 TO LEN(t$)
- 210A   0024                    IF MID$(t$, i%, 1) = ";" THEN
- 210A   0024                            w$ = MID$(t$, sp%, i% - sp%)
- 210A   0024                            sp% = i% + 1
- 210A   0024                            IF w$ <> "" THEN
- 210A   0024                                    dx% = 0: dy% = 0: rp% = 0
                                                                       PAGE  11
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 210A   0024                                    FOR j% = 1 TO LEN(w$)
- 2180   0024                                            c$ = MID$(w$, j%, 1)
- 2180   0024                                            IF c$ = "u" THEN dy% = 
+ 1FB5   0384    SUB AnimDims (acPct%(), acN%(), acs, adw, adh)
+ 1FC0   0384            adw = 31: adh = 31
+ 1FC0   0384            IF acN%(acs) < 2 THEN EXIT SUB
+ 1FFD   0384            CALL AnimK(acPct%(), acN%(), acs, kk%)
+ 200F   0384            w% = acPct%(acs, 1) \ 2
+ 200F   0384            h% = acPct%(acs, kk% + 1)
+ 200F   0384            IF w% < 1 OR h% < 1 THEN EXIT SUB
+ 2083   0384            '----- any shape is fine as long as the region fits a 2
+                10-int save-under slot
+ 2083   0384            IF ((w% * 2 + 7) \ 8) * h% > 416 THEN EXIT SUB
+ 209C   0384            adw = w%: adh = h%
+ 209C   0384    END SUB
+ 20C4   0384    
+ 20C4   0384    '----- parse a move-anim script into 1px step arrays (max 60 st
+                eps).
+ 20C4   0384    '----- Tokens split on ";": letters u/d/l/r combine into a dire
+                ction (ul = up-left),
+ 20C4   0384    '----- a trailing number repeats it ("ul5"); "p" (no direction 
+                letters) = a pause
+ 20C4   0384    '----- step in place ("p6" holds 6 steps). Example: "u;d;u;d;u;
+                d;p6;ul5;dr2"
+ 20C4   0384    SUB MovParse (s$, mdx%(), mdy%(), mn%, bx1%, by1%, bx2%, by2%)
+ 20CF   0384            mn% = 0
+ 20CF   0384            t$ = LCASE$(s$) + ";"
+ 20CF   0384            sp% = 1
+ 20CF   0384            FOR i% = 1 TO LEN(t$)
+ 210A   0384                    IF MID$(t$, i%, 1) = ";" THEN
+ 210A   0384                            w$ = MID$(t$, sp%, i% - sp%)
+ 210A   0384                            sp% = i% + 1
+ 210A   0384                            IF w$ <> "" THEN
+ 210A   0384                                    dx% = 0: dy% = 0: rp% = 0
+ 210A   0384                                    FOR j% = 1 TO LEN(w$)
+ 2180   0384                                            c$ = MID$(w$, j%, 1)
+ 2180   0384                                            IF c$ = "u" THEN dy% = 
                 dy% - 1
- 21AF   0024                                            IF c$ = "d" THEN dy% = 
+ 21AF   0384                                            IF c$ = "d" THEN dy% = 
                 dy% + 1
- 21C4   0024                                            IF c$ = "l" THEN dx% = 
+ 21C4   0384                                            IF c$ = "l" THEN dx% = 
                 dx% - 1
- 21D9   0024                                            IF c$ = "r" THEN dx% = 
+ 21D9   0384                                            IF c$ = "r" THEN dx% = 
                 dx% + 1
- 21EE   0024                                            IF c$ >= "0" AND c$ <= 
+ 21EE   0384                                            IF c$ >= "0" AND c$ <= 
                 "9" THEN rp% = rp% * 10 + VAL(c$)
- 2244   0024                                    NEXT
- 2253   0024                                    IF rp% < 1 THEN rp% = 1
- 2261   0024                                    FOR j% = 1 TO rp%
- 226E   0024                                            IF mn% < 60 THEN mn% = 
+ 2244   0384                                    NEXT
+ 2253   0384                                    IF rp% < 1 THEN rp% = 1
+ 2261   0384                                    FOR j% = 1 TO rp%
+ 226E   0384                                            IF mn% < 60 THEN mn% = 
                 mn% + 1: mdx%(mn%) = dx%: mdy%(mn%) = dy%
- 22A1   0024                                    NEXT
- 22AD   0024                            END IF
- 22AD   0024                    END IF
- 22AD   0024            NEXT
- 22BC   0024            '----- path bounds (cumulative offsets) for player-over
+ 22A1   0384                                    NEXT
+ 22AD   0384                            END IF
+ 22AD   0384                    END IF
+ 22AD   0384            NEXT
+ 22BC   0384            '----- path bounds (cumulative offsets) for player-over
                 lap tests during the travel
- 22BC   0024            bx1% = 0: by1% = 0: bx2% = 0: by2% = 0
- 22BC   0024            cx% = 0: cy% = 0
- 22BC   0024            FOR i% = 1 TO mn%
- 22F0   0024                    cx% = cx% + mdx%(i%): cy% = cy% + mdy%(i%)
- 22F0   0024                    IF cx% < bx1% THEN bx1% = cx%
- 2328   0024                    IF cx% > bx2% THEN bx2% = cx%
- 233A   0024                    IF cy% < by1% THEN by1% = cy%
- 234C   0024                    IF cy% > by2% THEN by2% = cy%
- 235E   0024            NEXT
- 236A   0024    END SUB
- 238D   0024    
- 238D   0024    '----- fill the lookmiss "nothing to see" lines (25); lives her
-                e because GAME.BAS
- 238D   0024    '----- is at its 64K code-segment ceiling
- 238D   0024    SUB LoadMsgs (nf$())
- 2398   0024            nf$(1) = "There is nothing to see here."
- 2398   0024            nf$(2) = "Nothing catches your eye."
- 2398   0024            nf$(3) = "You see nothing unusual."
- 2398   0024            nf$(4) = "Nothing worth a closer look."
- 2398   0024            nf$(5) = "You find nothing of interest."
- 2398   0024            nf$(6) = "Nothing remarkable here."
- 2398   0024            nf$(7) = "You look closer, but find nothing."
- 2398   0024            nf$(8) = "There's nothing special about it."
- 2398   0024            nf$(9) = "You see only the ordinary."
- 2398   0024            nf$(10) = "Nothing stands out to you."
- 2398   0024            nf$(11) = "There's nothing here to examine."
- 2398   0024            nf$(12) = "It holds no secrets for you."
- 2398   0024            nf$(13) = "Nothing draws your attention."
- 2398   0024            nf$(14) = "You don't see anything useful."
- 2398   0024            nf$(15) = "Nothing of note here."
- 2398   0024            nf$(16) = "Whatever you sought, it isn't here."
                                                                       PAGE  12
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 2398   0024            nf$(17) = "Nothing worth mentioning."
- 2398   0024            nf$(18) = "There's nothing here for you."
- 2398   0024            nf$(19) = "Just as it looks - nothing more."
- 2398   0024            nf$(20) = "Your eyes find nothing of value."
- 2398   0024            nf$(21) = "Nothing but dust and shadow."
- 2398   0024            nf$(22) = "There's nothing here to help you."
- 2398   0024            nf$(23) = "You peer closer. Still nothing."
- 2398   0024            nf$(24) = "Nothing reveals itself to you."
- 2398   0024            nf$(25) = "The shadows hide nothing here."
- 2398   0024    END SUB
- 257B   0024    
- 257B   0024    '----- pick a random, non-repeating reply for a use that did no
+ 22BC   0384            bx1% = 0: by1% = 0: bx2% = 0: by2% = 0
+ 22BC   0384            cx% = 0: cy% = 0
+ 22BC   0384            FOR i% = 1 TO mn%
+ 22F0   0384                    cx% = cx% + mdx%(i%): cy% = cy% + mdy%(i%)
+ 22F0   0384                    IF cx% < bx1% THEN bx1% = cx%
+ 2328   0384                    IF cx% > bx2% THEN bx2% = cx%
+ 233A   0384                    IF cy% < by1% THEN by1% = cy%
+ 234C   0384                    IF cy% > by2% THEN by2% = cy%
+ 235E   0384            NEXT
+ 236A   0384    END SUB
+ 238D   0384    
+ 238D   0384    '----- fill the lookmiss "nothing to see" lines (25); lives her
+                e because GAME.BAS
+ 238D   0384    '----- is at its 64K code-segment ceiling
+ 238D   0384    SUB LoadMsgs (nf$())
+ 2398   0384            nf$(1) = "There is nothing to see here."
+ 2398   0384            nf$(2) = "Nothing catches your eye."
+ 2398   0384            nf$(3) = "You see nothing unusual."
+ 2398   0384            nf$(4) = "Nothing worth a closer look."
+ 2398   0384            nf$(5) = "You find nothing of interest."
+ 2398   0384            nf$(6) = "Nothing remarkable here."
+ 2398   0384            nf$(7) = "You look closer, but find nothing."
+ 2398   0384            nf$(8) = "There's nothing special about it."
+ 2398   0384            nf$(9) = "You see only the ordinary."
+ 2398   0384            nf$(10) = "Nothing stands out to you."
+ 2398   0384            nf$(11) = "There's nothing here to examine."
+ 2398   0384            nf$(12) = "It holds no secrets for you."
+ 2398   0384            nf$(13) = "Nothing draws your attention."
+ 2398   0384            nf$(14) = "You don't see anything useful."
+ 2398   0384            nf$(15) = "Nothing of note here."
+ 2398   0384            nf$(16) = "Whatever you sought, it isn't here."
+ 2398   0384            nf$(17) = "Nothing worth mentioning."
+ 2398   0384            nf$(18) = "There's nothing here for you."
+ 2398   0384            nf$(19) = "Just as it looks - nothing more."
+ 2398   0384            nf$(20) = "Your eyes find nothing of value."
+ 2398   0384            nf$(21) = "Nothing but dust and shadow."
+ 2398   0384            nf$(22) = "There's nothing here to help you."
+ 2398   0384            nf$(23) = "You peer closer. Still nothing."
+ 2398   0384            nf$(24) = "Nothing reveals itself to you."
+ 2398   0384            nf$(25) = "The shadows hide nothing here."
+ 2398   0384    END SUB
+ 257B   0384    
+ 257B   0384    '----- pick a random, non-repeating reply for a use that did no
                 thing. sel = the item
- 257B   0024    '----- being used; wantbs = an item some hit use point wanted i
+ 257B   0384    '----- being used; wantbs = an item some hit use point wanted i
                 nstead (0 = none).
- 257B   0024    '----- Specials: a key on a lock wanting a DIFFERENT key -> key
+ 257B   0384    '----- Specials: a key on a lock wanting a DIFFERENT key -> key
                  lines; the paper
- 257B   0024    '----- clip (27) on a keyed lock -> too-tough-to-pick lines; th
+ 257B   0384    '----- clip (27) on a keyed lock -> too-tough-to-pick lines; th
                 e bar (6) where the
- 257B   0024    '----- poker's (2) reach is needed -> too-short lines. Keys: 5,
+ 257B   0384    '----- poker's (2) reach is needed -> too-short lines. Keys: 5,
                  8, 13, 22.
- 257B   0024    SUB UseMissLine (sel, wantbs, out$) STATIC
- 2586   0024            DIM us$(12), km$(6), pc$(2), rc$(2)
- 2586   008C            IF umini = 0 THEN
- 2586   008C                    umini = 1
- 2586   008C                    us$(1) = "That doesn't work."
- 2586   008C                    us$(2) = "You can't use that there."
- 2586   008C                    us$(3) = "Nothing happens."
- 2586   008C                    us$(4) = "That's not going to work."
- 2586   008C                    us$(5) = "You try, but it does nothing."
- 2586   008C                    us$(6) = "That has no effect."
- 2586   008C                    us$(7) = "It doesn't seem to fit."
- 2586   008C                    us$(8) = "You can't find a way to use it here."
- 2586   008C                    us$(9) = "That won't help here."
- 2586   008C                    us$(10) = "Try as you might, nothing happens."
- 2586   008C                    us$(11) = "That accomplishes nothing."
- 2586   008C                    us$(12) = "No matter how you try, it won't work
-                ."
- 2586   008C                    km$(1) = "The key doesn't fit the lock."
- 2586   008C                    km$(2) = "The key goes in but refuses to turn."
- 2586   008C                    km$(3) = "It's the wrong key for this lock."
- 2586   008C                    km$(4) = "The key rattles but will not turn."
- 2586   008C                    km$(5) = "That's not the key for this lock."
- 2586   008C                    km$(6) = "No use - this key will never turn it.
-                "
- 2586   008C                    pc$(1) = "The lock is too tough to pick. You'll
-                   need the key."
- 2586   008C                    pc$(2) = "Too sturdy to pick - this one needs i
-                ts key."
- 2586   008C                    rc$(1) = "You need something a little longer to
-                   reach it."
- 2586   008C                    rc$(2) = "You can't quite reach it with that."
- 2586   008C                    RANDOMIZE TIMER
- 2586   008C            END IF
+ 257B   0384    SUB UseMissLine (sel, wantbs, out$) STATIC
+ 2586   0384            DIM us$(12), km$(6), pc$(2), rc$(2)
                                                                       PAGE  13
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 26DF   0090            kk = 0
- 26DF   0090            IF wantbs > 0 AND wantbs <> sel THEN
- 26DF   0090                    wk = 0
- 26DF   0090                    IF wantbs = 5 OR wantbs = 8 OR wantbs = 13 OR w
+ 2586   03EC            IF umini = 0 THEN
+ 2586   03EC                    umini = 1
+ 2586   03EC                    us$(1) = "That doesn't work."
+ 2586   03EC                    us$(2) = "You can't use that there."
+ 2586   03EC                    us$(3) = "Nothing happens."
+ 2586   03EC                    us$(4) = "That's not going to work."
+ 2586   03EC                    us$(5) = "You try, but it does nothing."
+ 2586   03EC                    us$(6) = "That has no effect."
+ 2586   03EC                    us$(7) = "It doesn't seem to fit."
+ 2586   03EC                    us$(8) = "You can't find a way to use it here."
+ 2586   03EC                    us$(9) = "That won't help here."
+ 2586   03EC                    us$(10) = "Try as you might, nothing happens."
+ 2586   03EC                    us$(11) = "That accomplishes nothing."
+ 2586   03EC                    us$(12) = "No matter how you try, it won't work
+                ."
+ 2586   03EC                    km$(1) = "The key doesn't fit the lock."
+ 2586   03EC                    km$(2) = "The key goes in but refuses to turn."
+ 2586   03EC                    km$(3) = "It's the wrong key for this lock."
+ 2586   03EC                    km$(4) = "The key rattles but will not turn."
+ 2586   03EC                    km$(5) = "That's not the key for this lock."
+ 2586   03EC                    km$(6) = "No use - this key will never turn it.
+                "
+ 2586   03EC                    pc$(1) = "The lock is too tough to pick. You'll
+                   need the key."
+ 2586   03EC                    pc$(2) = "Too sturdy to pick - this one needs i
+                ts key."
+ 2586   03EC                    rc$(1) = "You need something a little longer to
+                   reach it."
+ 2586   03EC                    rc$(2) = "You can't quite reach it with that."
+ 2586   03EC                    RANDOMIZE TIMER
+ 2586   03EC            END IF
+ 26DF   03F0            kk = 0
+ 26DF   03F0            IF wantbs > 0 AND wantbs <> sel THEN
+ 26DF   03F0                    wk = 0
+ 26DF   03F0                    IF wantbs = 5 OR wantbs = 8 OR wantbs = 13 OR w
                 antbs = 22 THEN wk = 1
- 27A3   0098                    IF wk = 1 THEN
- 27A3   0098                            IF sel = 5 OR sel = 8 OR sel = 13 OR se
+ 27A3   03F8                    IF wk = 1 THEN
+ 27A3   03F8                            IF sel = 5 OR sel = 8 OR sel = 13 OR se
                 l = 22 THEN kk = 1
- 282F   0098                            IF sel = 27 THEN kk = 2
- 2852   0098                    END IF
- 2852   0098                    IF sel = 6 AND wantbs = 2 THEN kk = 3
- 2899   0098            END IF
- 2899   0098            IF kk = 2 THEN
- 2899   0098                    pch = (pch MOD 2) + 1
- 2899   0098                    out$ = pc$(pch)
- 2899   0098            ELSEIF kk = 3 THEN
- 28F6   009C                    rch = (rch MOD 2) + 1
- 28F6   009C                    out$ = rc$(rch)
- 28F6   009C            ELSEIF kk = 1 THEN
- 2953   00A0                    DO
- 296A   00A0                            ump = INT(RND * 6) + 1
- 296A   00A0                    LOOP WHILE ump = kh1 OR ump = kh2
- 296A   00A0                    kh2 = kh1
- 296A   00A0                    kh1 = ump
- 296A   00A0                    out$ = km$(ump)
- 296A   00A0            ELSE
- 29F8   00AC                    DO
- 29F8   00AC                            ump = INT(RND * 12) + 1
- 29F8   00AC                    LOOP WHILE ump = uh1 OR ump = uh2 OR ump = uh3
- 29F8   00AC                    uh3 = uh2
- 29F8   00AC                    uh2 = uh1
- 29F8   00AC                    uh1 = ump
- 29F8   00AC                    out$ = us$(ump)
- 29F8   00AC            END IF
- 2AAA   00B8    END SUB
- 2AB2   00B8    
- 2AB2   00B8    '----- create/read dark.ini settings (showfps, joystick)
- 2AB2   00B8    SUB LoadConfig
- 2ABD   00B8            CLOSE
- 2ABD   00B8            OPEN "dark.ini" FOR APPEND AS #1
- 2ABD   00B8            IF LOF(1) = 0 THEN
- 2ABD   00B8                    PRINT #1, "; Dark Visions settings"
- 2ABD   00B8                    PRINT #1, "; showfps=1 shows main loop speed to
-                p right + intro pace"
- 2ABD   00B8                    PRINT #1, "showfps=0"
- 2ABD   00B8                    PRINT #1, "; joystick=1 enables joystick/gamepa
-                d control (off avoids stray input)"
- 2ABD   00B8                    PRINT #1, "joystick=0"
- 2ABD   00B8                    PRINT #1, "; mouse=1 enables mouse cursor + har
-                dware pointer (needs a mouse driver)"
- 2ABD   00B8                    PRINT #1, "mouse=0"
- 2ABD   00B8                    PRINT #1, "; mousecursor: 0 driver default, 1 a
-                rrow, 2 crosshair, 3 box, 4 crosshair(xor)"
- 2ABD   00B8                    PRINT #1, "mousecursor=1"
+ 282F   03F8                            IF sel = 27 THEN kk = 2
+ 2852   03F8                    END IF
+ 2852   03F8                    IF sel = 6 AND wantbs = 2 THEN kk = 3
+ 2899   03F8            END IF
+ 2899   03F8            IF kk = 2 THEN
+ 2899   03F8                    pch = (pch MOD 2) + 1
+ 2899   03F8                    out$ = pc$(pch)
+ 2899   03F8            ELSEIF kk = 3 THEN
+ 28F6   03FC                    rch = (rch MOD 2) + 1
+ 28F6   03FC                    out$ = rc$(rch)
+ 28F6   03FC            ELSEIF kk = 1 THEN
+ 2953   0400                    DO
+ 296A   0400                            ump = INT(RND * 6) + 1
+ 296A   0400                    LOOP WHILE ump = kh1 OR ump = kh2
+ 296A   0400                    kh2 = kh1
                                                                       PAGE  14
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 2ABD   00B8                    PRINT #1, "; mousesnap: click pulls to nearest 
+ 296A   0400                    kh1 = ump
+ 296A   0400                    out$ = km$(ump)
+ 296A   0400            ELSE
+ 29F8   040C                    DO
+ 29F8   040C                            ump = INT(RND * 12) + 1
+ 29F8   040C                    LOOP WHILE ump = uh1 OR ump = uh2 OR ump = uh3
+ 29F8   040C                    uh3 = uh2
+ 29F8   040C                    uh2 = uh1
+ 29F8   040C                    uh1 = ump
+ 29F8   040C                    out$ = us$(ump)
+ 29F8   040C            END IF
+ 2AAA   0418    END SUB
+ 2AB2   0418    
+ 2AB2   0418    '----- create/read dark.ini settings (showfps, joystick)
+ 2AB2   0418    SUB LoadConfig
+ 2ABD   0418            CLOSE
+ 2ABD   0418            OPEN "dark.ini" FOR APPEND AS #1
+ 2ABD   0418            IF LOF(1) = 0 THEN
+ 2ABD   0418                    PRINT #1, "; Dark Visions settings"
+ 2ABD   0418                    PRINT #1, "; showfps=1 shows main loop speed to
+                p right + intro pace"
+ 2ABD   0418                    PRINT #1, "showfps=0"
+ 2ABD   0418                    PRINT #1, "; joystick=1 enables joystick/gamepa
+                d control (off avoids stray input)"
+ 2ABD   0418                    PRINT #1, "joystick=0"
+ 2ABD   0418                    PRINT #1, "; mouse=1 enables mouse cursor + har
+                dware pointer (needs a mouse driver)"
+ 2ABD   0418                    PRINT #1, "mouse=0"
+ 2ABD   0418                    PRINT #1, "; mousecursor: 0 driver default, 1 a
+                rrow, 2 crosshair, 3 box, 4 crosshair(xor)"
+ 2ABD   0418                    PRINT #1, "mousecursor=1"
+ 2ABD   0418                    PRINT #1, "; mousesnap: click pulls to nearest 
                 hotspot within N pixels (0=off/exact)"
- 2ABD   00B8                    PRINT #1, "mousesnap=6"
- 2ABD   00B8                    PRINT #1, "; exitcursor=1 changes the pointer t
+ 2ABD   0418                    PRINT #1, "mousesnap=6"
+ 2ABD   0418                    PRINT #1, "; exitcursor=1 changes the pointer t
                 o a direction arrow near room exits"
- 2ABD   00B8                    PRINT #1, "exitcursor=1"
- 2ABD   00B8                    PRINT #1, "; mousexy=1 shows live mouse x,y + s
+ 2ABD   0418                    PRINT #1, "exitcursor=1"
+ 2ABD   0418                    PRINT #1, "; mousexy=1 shows live mouse x,y + s
                 napped hit point bottom row (debug; needs mouse=1)"
- 2ABD   00B8                    PRINT #1, "mousexy=0"
- 2ABD   00B8                    PRINT #1, "; lookmiss=1 shows a random 'nothing
+ 2ABD   0418                    PRINT #1, "mousexy=0"
+ 2ABD   0418                    PRINT #1, "; lookmiss=1 shows a random 'nothing
                  to see' line after looking 3x at an empty"
- 2ABD   00B8                    PRINT #1, "; spot, and a random 'that doesn't w
+ 2ABD   0418                    PRINT #1, "; spot, and a random 'that doesn't w
                 ork' line when a use action does nothing"
- 2ABD   00B8                    PRINT #1, "lookmiss=1"
- 2ABD   00B8                    PRINT #1, "; killers=0 turns off the roaming ki
+ 2ABD   0418                    PRINT #1, "lookmiss=1"
+ 2ABD   0418                    PRINT #1, "; killers=0 turns off the roaming ki
                 llers (for testing; scripted deaths still happen)"
- 2ABD   00B8                    PRINT #1, "killers=1"
- 2ABD   00B8                    PRINT #1, "; walkto=1 walks the player over to 
+ 2ABD   0418                    PRINT #1, "killers=1"
+ 2ABD   0418                    PRINT #1, "; walkto=1 walks the player over to 
                 an item before get/use actions fire (0=instant, as the original
                 )"
- 2ABD   00B8                    PRINT #1, "walkto=1"
- 2ABD   00B8                    PRINT #1, "; intro=1 plays the opening cutscene
+ 2ABD   0418                    PRINT #1, "walkto=1"
+ 2ABD   0418                    PRINT #1, "; intro=1 plays the opening cutscene
                  (set 0 to skip it)"
- 2ABD   00B8                    PRINT #1, "intro=1"
- 2ABD   00B8                    PRINT #1, "; quickstart=1 jumps straight into t
+                                                                      PAGE  15
+                                                                      11 Aug 26
+                                                                      16:32:45
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 2ABD   0418                    PRINT #1, "intro=1"
+ 2ABD   0418                    PRINT #1, "; quickstart=1 jumps straight into t
                 he game - no intro, title or instructions prompt (testing)"
- 2ABD   00B8                    PRINT #1, "quickstart=0"
- 2ABD   00B8                    PRINT #1, "; revive=1 auto-saves when a timed-d
+ 2ABD   0418                    PRINT #1, "quickstart=0"
+ 2ABD   0418                    PRINT #1, "; revive=1 auto-saves when a timed-d
                 eath room arms and, after dying there,"
- 2ABD   00B8                    PRINT #1, "; restores that save with a message 
+ 2ABD   0418                    PRINT #1, "; restores that save with a message 
                 instead of the Load screen"
- 2ABD   00B8                    PRINT #1, "revive=0"
- 2ABD   00B8                            PRINT #1, "; hit-zone debug overlay (ne
+ 2ABD   0418                    PRINT #1, "revive=0"
+ 2ABD   0418                            PRINT #1, "; hit-zone debug overlay (ne
                 eds mouse=1): ring hotspot click-zones, 1=show 0=hide (look=blu
                 e action=brown get/use=gray)"
- 2ABD   00B8                            PRINT #1, "hitzone_look=0"
- 2ABD   00B8                            PRINT #1, "hitzone_get=0"
- 2ABD   00B8                            PRINT #1, "hitzone_use=0"
- 2ABD   00B8                            PRINT #1, "hitzone_action=0"
- 2ABD   00B8            END IF
- 2D58   00B8            CLOSE
- 2D58   00B8    
- 2D58   00B8            snr = 6
- 2D58   00B8            exsen = 1
- 2D58   00B8            nfon = 1
- 2D58   00B8            inon = 1
- 2D58   00B8            klon = 1
- 2D58   00B8            wksen = 1
- 2D58   00B8            qkon = 0
- 2D58   00B8            rvon = 0
- 2D58   00B8            hzon$ = ""
- 2D58   00B8            OPEN "dark.ini" FOR INPUT AS #1
- 2D58   00B8            DO WHILE NOT EOF(1)
- 2DE2   00B8                    LINE INPUT #1, ln$
-                                                                      PAGE  15
-                                                                      02 Aug 26
-                                                                      13:38:35
-Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
-
- 2DFD   00B8                    ln$ = LTRIM$(RTRIM$(ln$))
- 2DFD   00B8                    c$ = LEFT$(ln$, 1)
- 2DFD   00B8                    IF ln$ <> "" AND c$ <> ";" AND c$ <> "#" AND c$
+ 2ABD   0418                            PRINT #1, "hitzone_look=0"
+ 2ABD   0418                            PRINT #1, "hitzone_get=0"
+ 2ABD   0418                            PRINT #1, "hitzone_use=0"
+ 2ABD   0418                            PRINT #1, "hitzone_action=0"
+ 2ABD   0418            END IF
+ 2D58   0418            CLOSE
+ 2D58   0418    
+ 2D58   0418            snr = 6
+ 2D58   0418            exsen = 1
+ 2D58   0418            nfon = 1
+ 2D58   0418            inon = 1
+ 2D58   0418            klon = 1
+ 2D58   0418            wksen = 1
+ 2D58   0418            qkon = 0
+ 2D58   0418            rvon = 0
+ 2D58   0418            hzon$ = ""
+ 2D58   0418            OPEN "dark.ini" FOR INPUT AS #1
+ 2D58   0418            DO WHILE NOT EOF(1)
+ 2DE2   0418                    LINE INPUT #1, ln$
+ 2DFD   0418                    ln$ = LTRIM$(RTRIM$(ln$))
+ 2DFD   0418                    c$ = LEFT$(ln$, 1)
+ 2DFD   0418                    IF ln$ <> "" AND c$ <> ";" AND c$ <> "#" AND c$
                  <> "'" AND c$ <> "[" THEN
- 2DFD   00B8                            eq = INSTR(ln$, "=")
- 2DFD   00B8                            IF eq >= 2 THEN
- 2DFD   00B8                                    k$ = LCASE$(LTRIM$(RTRIM$(LEFT$
+ 2DFD   0418                            eq = INSTR(ln$, "=")
+ 2DFD   0418                            IF eq >= 2 THEN
+ 2DFD   0418                                    k$ = LCASE$(LTRIM$(RTRIM$(LEFT$
                 (ln$, eq - 1))))
- 2DFD   00B8                                    v$ = LCASE$(LTRIM$(RTRIM$(MID$(
+ 2DFD   0418                                    v$ = LCASE$(LTRIM$(RTRIM$(MID$(
                 ln$, eq + 1))))
- 2DFD   00B8                                    tv = 0
- 2DFD   00B8                                    IF v$ = "1" OR v$ = "true" OR v
+ 2DFD   0418                                    tv = 0
+ 2DFD   0418                                    IF v$ = "1" OR v$ = "true" OR v
                 $ = "yes" OR v$ = "on" THEN tv = 1
- 2FE2   00B8                                    IF k$ = "showfps" THEN sfps = t
+ 2FE2   0418                                    IF k$ = "showfps" THEN sfps = t
                 v
- 2FFF   00B8                                    IF k$ = "joystick" THEN jsen = 
+ 2FFF   0418                                    IF k$ = "joystick" THEN jsen = 
                 tv
- 301C   00B8                                    IF k$ = "mouse" THEN msen = tv
- 3039   00B8                                    IF k$ = "mousecursor" THEN mcur
+ 301C   0418                                    IF k$ = "mouse" THEN msen = tv
+ 3039   0418                                    IF k$ = "mousecursor" THEN mcur
                  = VAL(v$)
- 3061   00B8                                    IF k$ = "mousesnap" THEN snr = 
+ 3061   0418                                    IF k$ = "mousesnap" THEN snr = 
                 VAL(v$)
- 3088   00B8                                    IF k$ = "exitcursor" THEN exsen
-                 = tv
- 30A5   00B8                                    IF k$ = "mousexy" THEN mxyon = 
-                tv
- 30C2   00B8                                    IF k$ = "lookmiss" THEN nfon = 
-                tv
- 30DF   00B8                                    IF k$ = "killers" THEN klon = t
-                v
- 30FC   00B8                                    IF k$ = "walkto" THEN wksen = t
-                v
- 3119   00B8                                    IF k$ = "intro" THEN inon = tv
- 3136   00B8                                    IF k$ = "quickstart" THEN qkon 
-                = tv
- 3153   00B8                                    IF k$ = "revive" THEN rvon = tv
- 3170   00B8                                    IF k$ = "hitzone_look" AND tv =
-                 1 THEN hzon$ = hzon$ + "l"
- 31BB   00B8                                    IF k$ = "hitzone_get" AND tv = 
-                1 THEN hzon$ = hzon$ + "g"
- 3206   00B8                                    IF k$ = "hitzone_use" AND tv = 
-                1 THEN hzon$ = hzon$ + "u"
- 3251   00B8                                    IF k$ = "hitzone_action" AND tv
-                 = 1 THEN hzon$ = hzon$ + "a"
- 329C   00B8                            END IF
- 329C   00B8                    END IF
- 329C   00B8            LOOP
- 32A0   00B8            CLOSE
- 32A0   00B8    
- 32A0   00B8            fpst = TIMER
- 32A0   00B8            fpsc = 0
- 32A0   00B8            mvint = &H33
- 32A0   00B8    END SUB
- 32F7   00B8    
+ 3088   0418                                    IF k$ = "exitcursor" THEN exsen
                                                                       PAGE  16
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 32F7   00B8    '----- OvReg: register a foreground overlay ("fg" anim mode) --
+                 = tv
+ 30A5   0418                                    IF k$ = "mousexy" THEN mxyon = 
+                tv
+ 30C2   0418                                    IF k$ = "lookmiss" THEN nfon = 
+                tv
+ 30DF   0418                                    IF k$ = "killers" THEN klon = t
+                v
+ 30FC   0418                                    IF k$ = "walkto" THEN wksen = t
+                v
+ 3119   0418                                    IF k$ = "intro" THEN inon = tv
+ 3136   0418                                    IF k$ = "quickstart" THEN qkon 
+                = tv
+ 3153   0418                                    IF k$ = "revive" THEN rvon = tv
+ 3170   0418                                    IF k$ = "hitzone_look" AND tv =
+                 1 THEN hzon$ = hzon$ + "l"
+ 31BB   0418                                    IF k$ = "hitzone_get" AND tv = 
+                1 THEN hzon$ = hzon$ + "g"
+ 3206   0418                                    IF k$ = "hitzone_use" AND tv = 
+                1 THEN hzon$ = hzon$ + "u"
+ 3251   0418                                    IF k$ = "hitzone_action" AND tv
+                 = 1 THEN hzon$ = hzon$ + "a"
+ 329C   0418                            END IF
+ 329C   0418                    END IF
+ 329C   0418            LOOP
+ 32A0   0418            CLOSE
+ 32A0   0418    
+ 32A0   0418            fpst = TIMER
+ 32A0   0418            fpsc = 0
+ 32A0   0418            mvint = &H33
+ 32A0   0418    END SUB
+ 32F7   0418    
+ 32F7   0418    '----- OvReg: register a foreground overlay ("fg" anim mode) --
                  copy the frame
- 32F7   00B8    '----- animframe just decoded (afrm/amfrm, anpf ints) into ovf(
+ 32F7   0418    '----- animframe just decoded (afrm/amfrm, anpf ints) into ovf(
                 ) after the meta
- 32F7   00B8    '----- header, so GAME5 OvTop can re-stamp it over the player (
+ 32F7   0418    '----- header, so GAME5 OvTop can re-stamp it over the player (
                 body here, not in
- 32F7   00B8    '----- GAME.BAS -- 64K code ceiling). ovh=1 when a mask exists;
+ 32F7   0418    '----- GAME.BAS -- 64K code ceiling). ovh=1 when a mask exists;
                  ovnext = next
- 32F7   00B8    '----- free element (by ref).
- 32F7   00B8    SUB OvReg (ovf%(), afrm%(), amfrm%(), anpf!, ovh!, ovnext!, PX!
+ 32F7   0418    '----- free element (by ref).
+ 32F7   0418    SUB OvReg (ovf%(), afrm%(), amfrm%(), anpf!, ovh!, ovnext!, PX!
                 , PY!)
- 3302   00B8            IF ovf%(0) >= 4 THEN EXIT SUB
- 3318   00B8            IF ovnext! + anpf! * 2 > 1500 THEN EXIT SUB
- 333A   00B8            ovf%(0) = ovf%(0) + 1
- 333A   00B8            ovb% = 1 + (ovf%(0) - 1) * 4
- 333A   00B8            ovf%(ovb%) = PX!: ovf%(ovb% + 1) = PY!
- 333A   00B8            ovf%(ovb% + 2) = ovnext!
- 333A   00B8            ovf%(ovb% + 3) = 0
- 333A   00B8            FOR aj% = 0 TO anpf! - 1: ovf%(ovnext! + aj%) = afrm%(a
+ 3302   0418            IF ovf%(0) >= 4 THEN EXIT SUB
+ 3318   0418            IF ovnext! + anpf! * 2 > 1500 THEN EXIT SUB
+ 333A   0418            ovf%(0) = ovf%(0) + 1
+ 333A   0418            ovb% = 1 + (ovf%(0) - 1) * 4
+ 333A   0418            ovf%(ovb%) = PX!: ovf%(ovb% + 1) = PY!
+ 333A   0418            ovf%(ovb% + 2) = ovnext!
+ 333A   0418            ovf%(ovb% + 3) = 0
+ 333A   0418            FOR aj% = 0 TO anpf! - 1: ovf%(ovnext! + aj%) = afrm%(a
                 j%): NEXT
- 3429   00B8            ovnext! = ovnext! + anpf!
- 3429   00B8            IF ovh! = 1 THEN
- 3429   00B8                    ovf%(ovb% + 3) = ovnext!
- 3429   00B8                    FOR aj% = 0 TO anpf! - 1: ovf%(ovnext! + aj%) =
-                 amfrm%(aj%): NEXT
- 34CB   00B8                    ovnext! = ovnext! + anpf!
- 34CB   00B8            END IF
- 34DC   00B8    END SUB
- 34E4   00B8    '----- LookDir: 8-way facing digit from the player's eyes (px+1
-                5, py+5) toward
- 34E4   00B8    '----- the click (bx, ay), with x/y dead zones; both in the zon
-                e -> face down.
- 34E4   00B8    '----- (moved from GAME.BAS lookdir -- 64K code ceiling)
- 34E4   00B8    SUB LookDir (bx!, ay!, px2!, py2!, d2$)
- 34EF   00B8            ldx! = bx! - (px2! + 15)
- 34EF   00B8            ldy! = ay! - (py2! + 5)
- 34EF   00B8            lxs% = 0
- 34EF   00B8            IF ldx! < -10 THEN lxs% = -1
- 3542   00B8            IF ldx! > 10 THEN lxs% = 1
- 355C   00B8            lys% = 0
- 355C   00B8            IF ldy! < -8 THEN lys% = -1
- 357B   00B8            IF ldy! > 8 THEN lys% = 1
- 3595   00B8            d2$ = "2"
- 3595   00B8            IF lxs% = -1 AND lys% = -1 THEN d2$ = "7"
- 35CA   00B8            IF lxs% = 0 AND lys% = -1 THEN d2$ = "8"
- 35F3   00B8            IF lxs% = 1 AND lys% = -1 THEN d2$ = "9"
- 361C   00B8            IF lxs% = -1 AND lys% = 0 THEN d2$ = "4"
- 3645   00B8            IF lxs% = 1 AND lys% = 0 THEN d2$ = "6"
- 366E   00B8            IF lxs% = -1 AND lys% = 1 THEN d2$ = "1"
- 3697   00B8            IF lxs% = 1 AND lys% = 1 THEN d2$ = "3"
- 36C0   00B8    END SUB
- 36C8   00B8    '----- KillChk: which roaming killer owns room q2 + $ at step c
-                ount w --
- 36C8   00B8    '----- bit 1 = wilb window, bit 2 = golf window (moved verbatim
+ 3429   0418            ovnext! = ovnext! + anpf!
+ 3429   0418            IF ovh! = 1 THEN
+ 3429   0418                    ovf%(ovb% + 3) = ovnext!
                                                                       PAGE  17
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 3429   0418                    FOR aj% = 0 TO anpf! - 1: ovf%(ovnext! + aj%) =
+                 amfrm%(aj%): NEXT
+ 34CB   0418                    ovnext! = ovnext! + anpf!
+ 34CB   0418            END IF
+ 34DC   0418    END SUB
+ 34E4   0418    '----- LookDir: 8-way facing digit from the player's eyes (px+1
+                5, py+5) toward
+ 34E4   0418    '----- the click (bx, ay), with x/y dead zones; both in the zon
+                e -> face down.
+ 34E4   0418    '----- (moved from GAME.BAS lookdir -- 64K code ceiling)
+ 34E4   0418    SUB LookDir (bx!, ay!, px2!, py2!, d2$)
+ 34EF   0418            ldx! = bx! - (px2! + 15)
+ 34EF   0418            ldy! = ay! - (py2! + 5)
+ 34EF   0418            lxs% = 0
+ 34EF   0418            IF ldx! < -10 THEN lxs% = -1
+ 3542   0418            IF ldx! > 10 THEN lxs% = 1
+ 355C   0418            lys% = 0
+ 355C   0418            IF ldy! < -8 THEN lys% = -1
+ 357B   0418            IF ldy! > 8 THEN lys% = 1
+ 3595   0418            d2$ = "2"
+ 3595   0418            IF lxs% = -1 AND lys% = -1 THEN d2$ = "7"
+ 35CA   0418            IF lxs% = 0 AND lys% = -1 THEN d2$ = "8"
+ 35F3   0418            IF lxs% = 1 AND lys% = -1 THEN d2$ = "9"
+ 361C   0418            IF lxs% = -1 AND lys% = 0 THEN d2$ = "4"
+ 3645   0418            IF lxs% = 1 AND lys% = 0 THEN d2$ = "6"
+ 366E   0418            IF lxs% = -1 AND lys% = 1 THEN d2$ = "1"
+ 3697   0418            IF lxs% = 1 AND lys% = 1 THEN d2$ = "3"
+ 36C0   0418    END SUB
+ 36C8   0418    '----- KillChk: which roaming killer owns room q2 + $ at step c
+                ount w --
+ 36C8   0418    '----- bit 1 = wilb window, bit 2 = golf window (moved verbatim
                  from
- 36C8   00B8    '----- GAME.BAS events: -- that module is at the 64K code ceili
+ 36C8   0418    '----- GAME.BAS events: -- that module is at the 64K code ceili
                 ng).
- 36C8   00B8    SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
- 36D3   00B8            kw% = 0
- 36D3   00B8            IF q2$ = "room7" AND w! > 0 AND w! < 8 THEN kw% = kw% O
+ 36C8   0418    SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
+ 36D3   0418            kw% = 0
+ 36D3   0418            IF q2$ = "room7" AND w! > 0 AND w! < 8 THEN kw% = kw% O
                 R 1
- 372F   00B8            IF q2$ = "room6" AND w! > 8 AND w! < 20 THEN kw% = kw% 
+ 372F   0418            IF q2$ = "room6" AND w! > 8 AND w! < 20 THEN kw% = kw% 
                 OR 1
- 3787   00B8            IF q2$ = "room8" AND w! > 20 AND w! < 35 THEN kw% = kw%
+ 3787   0418            IF q2$ = "room8" AND w! > 20 AND w! < 35 THEN kw% = kw%
                  OR 1
- 37DF   00B8            IF q2$ = "room9" AND w! > 35 AND w! < 47 THEN kw% = kw%
+ 37DF   0418            IF q2$ = "room9" AND w! > 35 AND w! < 47 THEN kw% = kw%
                  OR 1
- 3837   00B8            IF q2$ = "room7" AND w! > 47 AND w! < h9b! THEN kw% = k
+ 3837   0418            IF q2$ = "room7" AND w! > 47 AND w! < h9b! THEN kw% = k
                 w% OR 1
- 3890   00B8            IF q2$ = "room11" AND w! > h9b! AND w! < t1b! THEN kw% 
+ 3890   0418            IF q2$ = "room11" AND w! > h9b! AND w! < t1b! THEN kw% 
                 = kw% OR 1
- 38EA   00B8            IF q2$ = "room4" AND w! > t1b! AND w! < t2b! THEN kw% =
+ 38EA   0418            IF q2$ = "room4" AND w! > t1b! AND w! < t2b! THEN kw% =
                  kw% OR 1
- 3944   00B8            IF q2$ = "room10" AND w! > t2b! AND w! < t3b! THEN kw% 
+ 3944   0418            IF q2$ = "room10" AND w! > t2b! AND w! < t3b! THEN kw% 
                 = kw% OR 1
- 399E   00B8            IF q2$ = "room11" AND w! > t3b! AND w! < f3b! THEN kw% 
+ 399E   0418            IF q2$ = "room11" AND w! > t3b! AND w! < f3b! THEN kw% 
                 = kw% OR 1
- 39F8   00B8            IF q2$ = "room2" AND w! > 0 AND w! < 8 THEN kw% = kw% O
-                R 2
- 3A50   00B8            IF q2$ = "room1" AND w! > 8 AND w! < 20 THEN kw% = kw% 
-                OR 2
- 3AA8   00B8            IF q2$ = "room5" AND w! > 20 AND w! < 35 THEN kw% = kw%
-                 OR 2
- 3B00   00B8            IF q2$ = "room5" AND w! > 35 AND w! < 47 THEN kw% = kw%
-                 OR 2
- 3B58   00B8            IF q2$ = "room4" AND w! > 47 AND w! < h9b! THEN kw% = k
-                w% OR 2
- 3BB1   00B8            IF q2$ = "room1" AND w! > h9b! AND w! < t1b! THEN kw% =
-                 kw% OR 2
- 3C0B   00B8            IF q2$ = "room9" AND w! > t1b! AND w! < t2b! THEN kw% =
-                 kw% OR 2
- 3C65   00B8            IF q2$ = "room1" AND w! > t2b! AND w! < t3b! THEN kw% =
-                 kw% OR 2
- 3CBF   00B8            IF q2$ = "room4" AND w! > t3b! AND w! < f3b! THEN kw% =
-                 kw% OR 2
- 3D19   00B8    END SUB
- 3D21   00B8    
- 3D21   00B8    '----- CursorPats: build the 5 software-cursor pixel grids (0=N
-                W pointer,
- 3D21   00B8    '----- 1=up 2=down 3=right 4=left exit arrows) into px/py/pc/np
-                ix.
- 3D21   00B8    '----- Moved VERBATIM from GAME.BAS setgrid/grdnw..grdlf (64K c
-                eiling).
- 3D21   00B8    '----- X = outline pixel (pc 1), 0 = fill pixel (pc 2), . = cle
-                ar
- 3D21   00B8    SUB CursorPats (px!(), py!(), pc!(), npix!())
- 3D2C   00B8            DIM ar$(15)
- 3D44   00B8            FOR s% = 0 TO 4
                                                                       PAGE  18
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 3D4A   00B8                    FOR mr% = 0 TO 15
- 3D50   00B8                            ar$(mr%) = "................"
- 3D50   00B8                    NEXT
- 3D73   00B8                    SELECT CASE s%
- 3D73   00B8                    CASE 0
- 3D73   00B8                            ar$(0) = "X..............."
- 3D73   00B8                            ar$(1) = "XX.............."
- 3D73   00B8                            ar$(2) = "X0X............."
- 3D73   00B8                            ar$(3) = "X00X............"
- 3D73   00B8                            ar$(4) = "X000X..........."
- 3D73   00B8                            ar$(5) = "X0XX............"
- 3D73   00B8                            ar$(6) = "XX.............."
- 3D73   00B8                    CASE 1
- 3E09   00B8                            ar$(0) = "...X............"
- 3E09   00B8                            ar$(1) = "..X0X..........."
- 3E09   00B8                            ar$(2) = "..X0X..........."
- 3E09   00B8                            ar$(3) = ".X000X.........."
- 3E09   00B8                            ar$(4) = "X00000X........."
- 3E09   00B8                            ar$(5) = "..X0X..........."
- 3E09   00B8                            ar$(6) = "..X0X..........."
- 3E09   00B8                            ar$(7) = "..X0X..........."
- 3E09   00B8                    CASE 2
- 3EAC   00B8                            ar$(0) = "..X0X..........."
- 3EAC   00B8                            ar$(1) = "..X0X..........."
- 3EAC   00B8                            ar$(2) = "..X0X..........."
- 3EAC   00B8                            ar$(3) = "X00000X........."
- 3EAC   00B8                            ar$(4) = ".X000X.........."
- 3EAC   00B8                            ar$(5) = "..X0X..........."
- 3EAC   00B8                            ar$(6) = "..X0X..........."
- 3EAC   00B8                            ar$(7) = "...X............"
- 3EAC   00B8                    CASE 3
- 3F4F   00B8                            ar$(0) = "...X............"
- 3F4F   00B8                            ar$(1) = "...0X..........."
- 3F4F   00B8                            ar$(2) = "XXX00XX........."
- 3F4F   00B8                            ar$(3) = "0000000X........"
- 3F4F   00B8                            ar$(4) = "XXX00XX........."
- 3F4F   00B8                            ar$(5) = "...0X..........."
- 3F4F   00B8                            ar$(6) = "...X............"
- 3F4F   00B8                    CASE 4
- 3FDF   00B8                            ar$(0) = "....X..........."
- 3FDF   00B8                            ar$(1) = "...X0..........."
- 3FDF   00B8                            ar$(2) = ".XX00XXX........"
- 3FDF   00B8                            ar$(3) = "X0000000........"
- 3FDF   00B8                            ar$(4) = ".XX00XXX........"
- 3FDF   00B8                            ar$(5) = "...X0..........."
- 3FDF   00B8                            ar$(6) = "....X..........."
- 3FDF   00B8                    END SELECT
- 406F   00B8                    npc% = 0
- 406F   00B8                    FOR mr% = 0 TO 15
- 407A   00B8                            FOR mc% = 0 TO 15
- 4080   00B8                                    mch$ = MID$(ar$(mr%), mc% + 1, 
-                1)
- 4080   00B8                                    IF mch$ = "X" THEN px(s%, npc%)
-                 = mc%: py(s%, npc%) = mr%: pc(s%, npc%) = 1: npc% = npc% + 1
+ 39F8   0418            IF q2$ = "room2" AND w! > 0 AND w! < 8 THEN kw% = kw% O
+                R 2
+ 3A50   0418            IF q2$ = "room1" AND w! > 8 AND w! < 20 THEN kw% = kw% 
+                OR 2
+ 3AA8   0418            IF q2$ = "room5" AND w! > 20 AND w! < 35 THEN kw% = kw%
+                 OR 2
+ 3B00   0418            IF q2$ = "room5" AND w! > 35 AND w! < 47 THEN kw% = kw%
+                 OR 2
+ 3B58   0418            IF q2$ = "room4" AND w! > 47 AND w! < h9b! THEN kw% = k
+                w% OR 2
+ 3BB1   0418            IF q2$ = "room1" AND w! > h9b! AND w! < t1b! THEN kw% =
+                 kw% OR 2
+ 3C0B   0418            IF q2$ = "room9" AND w! > t1b! AND w! < t2b! THEN kw% =
+                 kw% OR 2
+ 3C65   0418            IF q2$ = "room1" AND w! > t2b! AND w! < t3b! THEN kw% =
+                 kw% OR 2
+ 3CBF   0418            IF q2$ = "room4" AND w! > t3b! AND w! < f3b! THEN kw% =
+                 kw% OR 2
+ 3D19   0418    END SUB
+ 3D21   0418    
+ 3D21   0418    '----- CursorPats: build the 5 software-cursor pixel grids (0=N
+                W pointer,
+ 3D21   0418    '----- 1=up 2=down 3=right 4=left exit arrows) into px/py/pc/np
+                ix.
+ 3D21   0418    '----- Moved VERBATIM from GAME.BAS setgrid/grdnw..grdlf (64K c
+                eiling).
+ 3D21   0418    '----- X = outline pixel (pc 1), 0 = fill pixel (pc 2), . = cle
+                ar
+ 3D21   0418    SUB CursorPats (px!(), py!(), pc!(), npix!())
+ 3D2C   0418            DIM ar$(15)
+ 3D44   0418            FOR s% = 0 TO 4
+ 3D4A   0418                    FOR mr% = 0 TO 15
+ 3D50   0418                            ar$(mr%) = "................"
+ 3D50   0418                    NEXT
+ 3D73   0418                    SELECT CASE s%
+ 3D73   0418                    CASE 0
+ 3D73   0418                            ar$(0) = "X..............."
+ 3D73   0418                            ar$(1) = "XX.............."
+ 3D73   0418                            ar$(2) = "X0X............."
+ 3D73   0418                            ar$(3) = "X00X............"
+ 3D73   0418                            ar$(4) = "X000X..........."
+ 3D73   0418                            ar$(5) = "X0XX............"
+ 3D73   0418                            ar$(6) = "XX.............."
+ 3D73   0418                    CASE 1
+ 3E09   0418                            ar$(0) = "...X............"
+ 3E09   0418                            ar$(1) = "..X0X..........."
+ 3E09   0418                            ar$(2) = "..X0X..........."
+ 3E09   0418                            ar$(3) = ".X000X.........."
+ 3E09   0418                            ar$(4) = "X00000X........."
+ 3E09   0418                            ar$(5) = "..X0X..........."
+ 3E09   0418                            ar$(6) = "..X0X..........."
+ 3E09   0418                            ar$(7) = "..X0X..........."
+ 3E09   0418                    CASE 2
+ 3EAC   0418                            ar$(0) = "..X0X..........."
                                                                       PAGE  19
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 413C   00B8                                    IF mch$ = "0" THEN px(s%, npc%)
+ 3EAC   0418                            ar$(1) = "..X0X..........."
+ 3EAC   0418                            ar$(2) = "..X0X..........."
+ 3EAC   0418                            ar$(3) = "X00000X........."
+ 3EAC   0418                            ar$(4) = ".X000X.........."
+ 3EAC   0418                            ar$(5) = "..X0X..........."
+ 3EAC   0418                            ar$(6) = "..X0X..........."
+ 3EAC   0418                            ar$(7) = "...X............"
+ 3EAC   0418                    CASE 3
+ 3F4F   0418                            ar$(0) = "...X............"
+ 3F4F   0418                            ar$(1) = "...0X..........."
+ 3F4F   0418                            ar$(2) = "XXX00XX........."
+ 3F4F   0418                            ar$(3) = "0000000X........"
+ 3F4F   0418                            ar$(4) = "XXX00XX........."
+ 3F4F   0418                            ar$(5) = "...0X..........."
+ 3F4F   0418                            ar$(6) = "...X............"
+ 3F4F   0418                    CASE 4
+ 3FDF   0418                            ar$(0) = "....X..........."
+ 3FDF   0418                            ar$(1) = "...X0..........."
+ 3FDF   0418                            ar$(2) = ".XX00XXX........"
+ 3FDF   0418                            ar$(3) = "X0000000........"
+ 3FDF   0418                            ar$(4) = ".XX00XXX........"
+ 3FDF   0418                            ar$(5) = "...X0..........."
+ 3FDF   0418                            ar$(6) = "....X..........."
+ 3FDF   0418                    END SELECT
+ 406F   0418                    npc% = 0
+ 406F   0418                    FOR mr% = 0 TO 15
+ 407A   0418                            FOR mc% = 0 TO 15
+ 4080   0418                                    mch$ = MID$(ar$(mr%), mc% + 1, 
+                1)
+ 4080   0418                                    IF mch$ = "X" THEN px(s%, npc%)
+                 = mc%: py(s%, npc%) = mr%: pc(s%, npc%) = 1: npc% = npc% + 1
+ 413C   0418                                    IF mch$ = "0" THEN px(s%, npc%)
                  = mc%: py(s%, npc%) = mr%: pc(s%, npc%) = 2: npc% = npc% + 1
- 41D5   00B8                            NEXT
- 41E4   00B8                    NEXT
- 41F3   00B8                    npix(s%) = npc%
- 41F3   00B8            NEXT
- 4220   00B8    END SUB
- 423A   00B8    
- 4241   00B8    
+ 41D5   0418                            NEXT
+ 41E4   0418                    NEXT
+ 41F3   0418                    npix(s%) = npc%
+ 41F3   0418            NEXT
+ 4220   0418    END SUB
+ 423A   0418    
+ 423A   0418    '----- ShadLoad: parse SHADW2.PAC from the ALREADY-OPEN #3 (GAM
+                E.BAS shadload
+ 423A   0418    '----- does the guarded OPEN so a missing file just leaves the 
+                feature off).
+ 423A   0418    '----- Header line, then 7 arrays each preceded by its int coun
+                t, in order:
+ 423A   0418    '----- door stamp (PSET), idle rect (PSET), lit rect (PSET), ke
+                ep-lit (AND),
+ 423A   0418    '----- outside-light restore (OR), shadow right (AND), shadow l
+                eft (AND).
+ 423A   0418    SUB ShadLoad
+ 4245   0418            DIM sv AS INTEGER, sn2 AS INTEGER, si2 AS INTEGER, sof 
+                AS INTEGER, sar AS INTEGER
+ 4245   0418            sdwOn = 0
+ 4245   0418            INPUT #3, sv, sdwTX, sdwTY, sdwTW, sdwTH, sdwDX, sdwDY,
+                                                                      PAGE  20
+                                                                      11 Aug 26
+                                                                      16:32:45
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                 sdwSW, sdwSH
+ 4254   0418            IF sv <> 1 THEN CLOSE #3: EXIT SUB
+ 42DE   0418            sof = 0
+ 42DE   0418            FOR sar = 1 TO 7
+ 42EA   0418                    INPUT #3, sn2
+ 42F3   0418                    IF sof + sn2 > 400 THEN CLOSE #3: EXIT SUB
+ 4322   0418                    IF sar = 1 THEN sdwODr = sof
+ 4331   0418                    IF sar = 2 THEN sdwOId = sof
+ 4340   0418                    IF sar = 3 THEN sdwOLt = sof
+ 434F   0418                    IF sar = 4 THEN sdwOKp = sof
+ 435E   0418                    IF sar = 5 THEN sdwOBg = sof
+ 436D   0418                    IF sar = 6 THEN sdwOSR = sof
+ 437C   0418                    IF sar = 7 THEN sdwOSL = sof
+ 438B   0418                    FOR si2 = 1 TO sn2
+ 4398   0418                            INPUT #3, sdwDat(sof)
+ 43A1   0418                            sof = sof + 1
+ 43A1   0418                    NEXT
+ 43C9   0418            NEXT
+ 43D8   0418            CLOSE #3
+ 43D8   0418            sdwDst$ = "room8"
+ 43D8   0418            '----- right walk bound: the shadow's LEFT edge stays u
+                nder the door's base
+ 43D8   0418            '----- (door width read from the bgDoor GET header = sd
+                wDat(ODr) \ 2)
+ 43D8   0418            sdwXMx = sdwDX + sdwDat(sdwODr) \ 2 - 1
+ 43D8   0418            '----- pace ALONG the wall (base line runs up-right in 
+                this perspective):
+ 43D8   0418            '----- anchor = tucked at the door's lower base corner 
+                (doorX + 2), a few
+ 43D8   0418            '----- stair-steps up-right and back. Kept SHORT so the
+                 whole silhouette
+ 43D8   0418            '----- hangs at the doorway instead of wandering into t
+                he pool.
+ 43D8   0418            sdwAx = sdwDX + 2
+ 43D8   0418            sdwDp = 3
+ 43D8   0418            IF sdwDp > sdwTH - sdwSH - 2 THEN sdwDp = sdwTH - sdwSH
+                 - 2
+ 442F   0418            IF sdwAx + sdwDp > sdwXMx THEN sdwDp = sdwXMx - sdwAx
+ 4449   0418            sdwOn = 1
+ 4449   0418    END SUB
+ 4457   0418    
+ 4457   0418    '----- ShadRoom: loadroom hook -- reset state; on room2, stamp 
+                the closed west
+ 4457   0418    '----- door over the open doorway. Runs BEFORE the player save-
+                under GET, so a
+ 4457   0418    '----- player spawning at the door restores door pixels, not do
+                orway pixels.
+ 4457   0418    SUB ShadRoom (q2$)
+ 4462   0418            sdwHave = 0: sdwArm = 0: sdwWant = 0
+ 4462   0418            IF sdwOn = 0 THEN EXIT SUB
+ 447E   0418            IF q2$ <> "room2" THEN EXIT SUB
+ 448F   0418            sdwHave = 1
+ 448F   0418            PUT (sdwDX, sdwDY), sdwDat(sdwODr), PSET
+ 448F   0418            sdwX = sdwTX: sdwDir = 1: sdwBob = 0: sdwNxt = 0
+                                                                      PAGE  21
+                                                                      11 Aug 26
+                                                                      16:32:45
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 448F   0418            sdwMode = 0: sdwY = sdwTY + sdwTH - sdwSH - 1
+ 448F   0418    END SUB
+ 44F9   0418    
+ 44F9   0418    '----- ShadTick: idle-loop driver. Recomputes the lookahead eve
+                ry pass (cheap
+ 44F9   0418    '----- KillChk table scan -- and polling self-heals across load
+                /death), applies
+ 44F9   0418    '----- pending light toggles, and paces the shadow: 1px steps w
+                ith a 1px bob,
+ 44F9   0418    '----- direction flip + pause at the light's edges (the right e
+                dge lets it slip
+ 44F9   0418    '----- mostly past the pool before turning). Holds like animtic
+                k while the
+ 44F9   0418    '----- player box or the cursor overlaps the rect so no save-un
+                der goes stale.
+ 44F9   0418    '----- Lookahead: leaving NOW costs +8 (the exit click) +30 (th
+                e transition)
+ 44F9   0418    '----- ticks, so the arrival step is INT((cl + 38) / 60) -- hot
+                 when KillChk
+ 44F9   0418    '----- says a killer owns the room behind the door at that step
+                .
+ 44F9   0418    SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, 
+                pjyv!, bv!, av!)
+ 4504   0418            DIM w2 AS SINGLE, kw2 AS INTEGER
+ 4504   0418            IF sdwOn = 0 OR sdwHave = 0 THEN EXIT SUB
+ 4523   0418            IF q2$ <> "room2" THEN EXIT SUB
+ 4534   0418            sdwWant = 0
+ 4534   0418            IF klon <> 0 THEN
+ 4534   0418                    '----- the lit-curtain endgame owns room4: neve
+                r spoil that encounter
+ 4534   0418                    IF sdwDst$ <> "room4" OR ob43% <> 1 THEN
+ 4534   0418                            w2 = INT((clv! + 38) / 60)
+ 4534   0418                            CALL KillChk(sdwDst$, w2, h9b!, t1b!, t
+                2b!, t3b!, f3, kw2)
+ 45B6   0418                            IF kw2 <> 0 THEN sdwWant = 1
+ 45C5   0418                    END IF
+ 45C5   0418            END IF
+ 45C5   0418            IF pjxv! < sdwTX + sdwTW AND pjxv! + 31 > sdwTX AND pjy
+                v! < sdwTY + sdwTH AND pjyv! + 31 > sdwTY THEN EXIT SUB
+ 4653   0418            IF sdwTX < bv! + 12 AND sdwTX + sdwTW > bv! - 6 AND sdw
+                TY < av! + 12 AND sdwTY + sdwTH > av! - 6 THEN EXIT SUB
+ 46EE   0418            IF sdwWant <> sdwArm THEN
+ 46EE   0418                    IF sdwWant = 1 THEN
+ 46EE   0418                            PUT (sdwTX, sdwTY), sdwDat(sdwOLt), PSE
+                T
+ 46EE   0418                            sdwX = sdwTX: sdwDir = 1: sdwBob = 0
+ 46EE   0418                            sdwMode = 0: sdwY = sdwTY + sdwTH - sdw
+                SH - 1
+ 46EE   0418                            sdwNxt = TIMER + .5
+ 46EE   0418                    ELSE
+ 476D   0418                            PUT (sdwTX, sdwTY), sdwDat(sdwOId), PSE
+                T
+ 476D   0418                    END IF
+ 4796   0418                    sdwArm = sdwWant
+                                                                      PAGE  22
+                                                                      11 Aug 26
+                                                                      16:32:45
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 4796   0418                    EXIT SUB
+ 4796   0418            END IF
+ 479F   0418            IF sdwArm = 0 THEN EXIT SUB
+ 47A9   0418            IF TIMER < sdwNxt - 5 THEN sdwNxt = TIMER
+ 47DA   0418            IF TIMER < sdwNxt THEN EXIT SUB
+ 47F5   0418            sdwNxt = TIMER + .12
+ 47F5   0418            IF sdwMode = 0 THEN
+ 47F5   0418                    '----- entry: slide out from behind the door, l
+                eft to right along the
+ 47F5   0418                    '----- pool's bottom row, with the 1px bob; han
+                d off at the anchor
+ 47F5   0418                    sdwX = sdwX + 1
+ 47F5   0418                    sdwBob = 1 - sdwBob
+ 47F5   0418                    sdwY = sdwTY + sdwTH - sdwSH - 1 - sdwBob
+ 47F5   0418                    IF sdwX >= sdwAx THEN
+ 47F5   0418                            sdwX = sdwAx: sdwY = sdwTY + sdwTH - sd
+                wSH - 1
+ 47F5   0418                            sdwMode = 1: sdwDir = 1: sdwBob = 0
+ 47F5   0418                            sdwNxt = TIMER + .4 + RND * .6
+ 47F5   0418                    END IF
+ 488F   0418            ELSE
+ 4892   0418                    '----- pacing ALONG the wall as stair-steps -- 
+                one tick moves x, the
+ 4892   0418                    '----- next moves y (right,up,... going out; do
+                wn,left,... coming
+ 4892   0418                    '----- back) so the silhouette steps instead of
+                 sliding
+ 4892   0418                    sdwBob = 1 - sdwBob
+ 4892   0418                    IF sdwDir > 0 THEN
+ 4892   0418                            IF sdwBob = 1 THEN sdwX = sdwX + 1 ELSE
+                 sdwY = sdwY - 1
+ 48B9   0418                    ELSE
+ 48BC   0418                            IF sdwBob = 1 THEN sdwY = sdwY + 1 ELSE
+                 sdwX = sdwX - 1
+ 48D1   0418                    END IF
+ 48D1   0418                    IF sdwY <= sdwTY + sdwTH - sdwSH - 1 - sdwDp TH
+                EN
+ 48D1   0418                            sdwX = sdwAx + sdwDp: sdwY = sdwTY + sd
+                wTH - sdwSH - 1 - sdwDp
+ 48D1   0418                            sdwDir = -1: sdwBob = 0: sdwNxt = TIMER
+                 + .6 + RND * .9
+ 48D1   0418                    END IF
+ 4931   0418                    IF sdwX <= sdwAx AND sdwDir < 0 THEN
+ 4931   0418                            sdwX = sdwAx: sdwY = sdwTY + sdwTH - sd
+                wSH - 1
+ 4931   0418                            sdwDir = 1: sdwBob = 0: sdwNxt = TIMER 
+                + .6 + RND * .9
+ 4931   0418                    END IF
+ 4998   0418            END IF
+ 4998   0418            '----- draw: lit base -> shadow -> clip to the light ->
+                 restore outside
+ 4998   0418            PUT (sdwTX, sdwTY), sdwDat(sdwOLt), PSET
+ 4998   0418            IF sdwDir > 0 THEN
+ 4998   0418                    PUT (sdwX, sdwY), sdwDat(sdwOSR), AND
+                                                                      PAGE  23
+                                                                      11 Aug 26
+                                                                      16:32:45
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 4998   0418            ELSE
+ 49F7   0418                    PUT (sdwX, sdwY), sdwDat(sdwOSL), AND
+ 49F7   0418            END IF
+ 4A20   0418            PUT (sdwTX, sdwTY), sdwDat(sdwOKp), AND
+ 4A20   0418            PUT (sdwTX, sdwTY), sdwDat(sdwOBg), OR
+ 4A20   0418    END SUB
+ 4A79   0418    
+ 4A80   0418    
 
 43949 Bytes Available
-27347 Bytes Free
+26027 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

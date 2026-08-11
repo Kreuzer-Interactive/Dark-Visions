@@ -61,6 +61,9 @@ DECLARE SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
 DECLARE SUB OvReg (ovf%(), afrm%(), amfrm%(), anpf!, ovh!, ovnext!, PX!, PY!)
 DECLARE SUB ClimbSeq (up%, x!, y0!, y1!, sfrq!, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
 DECLARE SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
+DECLARE SUB ShadLoad ()
+DECLARE SUB ShadRoom (q2$)
+DECLARE SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!)
 DECLARE SUB LookDir (bx!, ay!, px2!, py2!, d2$)
 DECLARE SUB DialGame (sf3!, sf4!, ob() AS SINGLE)
 DECLARE SUB BurnShow ()
@@ -294,6 +297,7 @@ SCREEN 1
 CLS
 CLOSE
 GOSUB loadanims
+GOSUB shadload
 CALL LoadWalks(cwa(), cmwa(), cwb(), cmwb())
 
 '----- quickstart=1 (dark.ini): drop straight into the game for testing
@@ -653,6 +657,7 @@ mainloop:
 	GOSUB joy
 	GOSUB mousepoll
 	GOSUB animtick
+	CALL ShadTick(q$, cl, h9, t1, t2, t3, CINT(ob(43)), pjx, pjy, b, a)
 	IF ob(43) = 1 AND tk$ = "" THEN cv = CINT(cl): tk$ = "y"
 	IF tk$ = "y" AND cv + 120 < cl THEN GOTO burn
 	IF a$ <> "" THEN GOTO 7300
@@ -789,6 +794,20 @@ loadanims:
 	CLOSE #3
 	ON ERROR GOTO errhand
 	RETURN
+
+'----- shadload: guarded open for the shadow-door data (SHADW2.PAC); GAME2
+'----- ShadLoad parses from the open #3. A missing file lands in shadeof and
+'----- the feature simply stays off (old QA folders keep working).
+shadload:
+	ON ERROR GOTO shadeof
+	CLOSE #3
+	OPEN "SHADW2.PAC" FOR INPUT AS #3
+	CALL ShadLoad
+	shadend:
+	ON ERROR GOTO errhand
+	RETURN
+	shadeof:
+	RESUME shadend
 
 '----- animframe: draw 1-based frame FN of sprite source SRC$ at (PX,PY); mask if .msk present, else PSET
 '----- cached: the .pct/.msk files are parsed ONCE into a slot (animload), then every frame draw
@@ -1542,6 +1561,7 @@ loadroom:
 	KEY OFF
 	DEF SEG
 	GOSUB animdraw
+	CALL ShadRoom(q$)
 	GOSUB rmpal
 	GET (1, 8)-(9, 18), bk: GET (1, 8)-(9, 18), bk2
 	'----- bottom Use-item HUD, drawn BEFORE the player save-under GET so

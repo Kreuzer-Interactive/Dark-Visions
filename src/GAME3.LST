@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME3.BAS: variable-width small-font renderer (from ART/
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  02CF   0026                            FOR i = 1 TO LEN(lineText)
  0300   0026                                    IF MID$(lineText, i, 1) = "1" T
                                                                       PAGE   2
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 HEN pat = pat + pw2(LEN(lineText) - i)
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  054A   0026            NEXT ux
  055F   0026    END SUB
                                                                       PAGE   3
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0567   0026    
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  07A2   0026                    END IF
  07AC   0026            NEXT i
                                                                       PAGE   4
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  07BB   0026            textWidth = tot
@@ -235,8 +235,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0A46   0026    '----- space right of INVMAIN's baked "Progress"/"Time" labels.
                  Heavy code lives here (GAME3 has room).
                                                                       PAGE   5
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0A46   0026    SUB drawStats (ob() AS SINGLE, cl AS SINGLE, cr AS SINGLE, font
@@ -294,8 +294,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0DDA   0026            CALL drawText(3 + textWidth("U", fontData()), 192, "se 
                 = " + it$, 1, fontData())
                                                                       PAGE   6
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0E53   0026    END SUB
@@ -353,8 +353,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  109E   0026                    bt = bt + " liberty of hiding the rest so they 
                 do not get"
                                                                       PAGE   7
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  109E   0026                    bt = bt + " greedy and steal it. The money is n
@@ -412,8 +412,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  12F2   0026                    bt = bt + " practice to the attic, hidden behin
                 d a pit of"
                                                                       PAGE   8
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  12F2   0026                    bt = bt + " ash that only an electric circuit w
@@ -471,8 +471,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 ry (longest text)
  1596   0026            '----- still fits 200 rows because paragraph blanks adv
                                                                       PAGE   9
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 ance half a line
@@ -530,8 +530,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 orting shadows of"
  163D   0026            PRINT " your uncle's residence"
                                                                       PAGE  10
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  163D   0026            PRINT " PRESS ANY KEY TO CONTINUE "
@@ -589,8 +589,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1BA6   0026            GOSUB 15660
  1BAE   0026            FOR e3 = 1 TO 20: SOUND 32761, 1: NEXT e3
                                                                       PAGE  11
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1BE8   0026            GOSUB 15650
@@ -647,8 +647,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1F71   0026    
  1F90   0026    
                                                                       PAGE  12
-                                                                      02 Aug 26
-                                                                      13:38:35
+                                                                      11 Aug 26
+                                                                      16:32:45
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
 
