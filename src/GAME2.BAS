@@ -14,6 +14,8 @@ TYPE RegType
 	es AS INTEGER
 END TYPE
 DECLARE SUB INTERRUPT (intnum AS INTEGER, inreg AS RegType, outreg AS RegType)
+DECLARE SUB drawcur ()
+DECLARE SUB erasecur ()
 COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon, rvon
 COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
 DECLARE SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
@@ -909,7 +911,6 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 	'----- the strip under him stays stale (he covers it) and is repainted
 	'----- via sdwDty once he steps clear
 	DIM po AS INTEGER, sl2 AS LONG, co AS INTEGER, ai AS INTEGER
-	DIM mr AS RegType, mo AS RegType
 	IF sdwOn = 0 OR sdwHave = 0 THEN EXIT SUB
 	'----- an action just ran (cl moved): face/PStand may have stamped a
 	'----- STALE save-under box over a lit pool -- at his NEW stand, or at
@@ -973,17 +974,18 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 		'----- player overlap: draws still happen, banded around him (ShadBlt)
 		po = 0
 		IF pjxv! < sdwTX(sdi) + sdwTW(sdi) AND pjxv! + 31 > sdwTX(sdi) AND pjyv! < sdwTY(sdi) + sdwTH(sdi) AND pjyv! + 31 > sdwTY(sdi) THEN po = 1
-		'----- cursor overlap: with the INT33 mouse cursor, HIDE it around this
-		'----- watcher's draws (show again at sdnext) -- a parked cursor used
-		'----- to hold the watcher frozen forever (the north rect covers the
-		'----- room center where the cursor idles). Keyboard XOR cursor mode
-		'----- keeps the old hold (its save-under lives in GAME.BAS).
+		'----- cursor overlap: the mouse cursor is a SOFTWARE sprite (drawcur/
+		'----- erasecur in GAME.BAS, 16x10 glyph + save-under) -- a blit under
+		'----- it stamps it out, and its own restore later stamps stale art.
+		'----- Bracket: erase LAZILY at this watcher's first real draw (GOSUB
+		'----- curoff at every blit site -- never up front, else a parked
+		'----- cursor strobes on draw-free passes), redraw at sdnext. Both
+		'----- re-sample the save-under, so neither goes stale. Keyboard XOR
+		'----- cursor mode keeps the old hold (its save-under is in GAME.BAS).
 		co = 0
-		IF sdwTX(sdi) < bv! + 12 AND sdwTX(sdi) + sdwTW(sdi) > bv! AND sdwTY(sdi) < av! + 12 AND sdwTY(sdi) + sdwTH(sdi) > av! THEN
+		IF sdwTX(sdi) < bv! + 16 AND sdwTX(sdi) + sdwTW(sdi) > bv! AND sdwTY(sdi) < av! + 10 AND sdwTY(sdi) + sdwTH(sdi) > av! THEN
 			IF msen = 1 THEN
 				co = 1
-				mr.ax = 2
-				CALL INTERRUPT(&H33, mr, mo)
 			ELSE
 				GOTO sdnext
 			END IF
@@ -991,6 +993,7 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 		'----- stale strip under a player who has stepped clear: repaint
 		IF sdwDty(sdi) = 1 AND po = 0 THEN
 			sdwDty(sdi) = 0
+			GOSUB curoff
 			IF sdwArm(sdi) = 2 THEN
 				sdwNxt(sdi) = 0
 			ELSEIF sdwArm(sdi) = 1 THEN
@@ -1145,6 +1148,7 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 			CALL ShadFbg(fbg%(), sdwTX(sdi), sdwTY(sdi), rw, rb)
 			CALL ShadPCmp(bs, bo, sdwTX(sdi), sdwTY(sdi), rw, rb, bop$)
 		END IF
+		GOSUB curoff
 		sl2 = bo: IF sl2 < 0 THEN sl2 = sl2 + 65536
 		IF po = 1 AND sdwPRdy = 1 THEN
 			'----- he's IN the frame: full-rect blit, no bands
@@ -1154,17 +1158,15 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 		END IF
 		sdwDty(sdi) = po
 		sdnext:
-		IF co = 1 THEN
-			co = 0
-			mr.ax = 1
-			CALL INTERRUPT(&H33, mr, mo)
-		END IF
+		IF co = 2 THEN CALL drawcur
+		co = 0
 	NEXT
 	EXIT SUB
 	'----- local: draw the state block at pool offset so2 -- composed with
 	'----- the player + full blit when he overlaps (a banded state blit left
 	'----- a cleared band around him), plain/banded blit otherwise
 	sdtog:
+	GOSUB curoff
 	IF po = 1 AND sdwPRdy = 1 THEN
 		rb = sdwRB(sdi): rw = sdwTH(sdi)
 		bs = VARSEG(sdwBuf(0)): bo = VARPTR(sdwBuf(0))
@@ -1178,6 +1180,14 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 	ELSE
 		sl2 = VARPTR(sdt%(so2)): IF sl2 < 0 THEN sl2 = sl2 + 65536
 		CALL ShadBlt(VARSEG(sdt%(so2)), sl2, sdwTX(sdi), sdwTY(sdi), sdwTH(sdi), sdwRB(sdi), CINT(pjxv!), CINT(pjyv!), blt$)
+	END IF
+	RETURN
+	'----- local: first real draw this pass while the software cursor overlaps
+	'----- the rect -- erase it once (co 1 -> 2); sdnext redraws it on top
+	curoff:
+	IF co = 1 THEN
+		co = 2
+		CALL erasecur
 	END IF
 	RETURN
 END SUB

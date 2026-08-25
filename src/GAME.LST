@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    REM $DYNAMIC
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    DECLARE SUB CombDo2 (r%, ob(), cn%)
  0030   0006    DECLARE SUB initAllFonts (fontData() AS INTEGER, font3Data() AS
                                                                       PAGE   2
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                  INTEGER, fontbData() AS INTEGER)
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006            cx AS INTEGER
  0030   0006            dx AS INTEGER
                                                                       PAGE   3
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006            bp AS INTEGER
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  004D   014C    DIM SHARED mreg AS RegType, mout AS RegType
  004D   016C    DIM SHARED mhsx AS INTEGER, mhsy AS INTEGER, mxor, mraw
                                                                       PAGE   4
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  004D   0178    DIM SHARED mregx AS RegTypeX, moutx AS RegTypeX
@@ -235,8 +235,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 "-2,obj,x,y,dir"
  038F   0444    '----- records): feet-center x/y (spx=-1 none) + facing digit (
                                                                       PAGE   5
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 0 = auto lookdir)
@@ -294,8 +294,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  069D   069C    DIM SHARED nLoop AS INTEGER
  069D   069E    DIM SHARED liAnim(4) AS INTEGER, liX(4) AS INTEGER, liY(4) AS I
                                                                       PAGE   6
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 NTEGER, liCur(4) AS INTEGER, liRate(4) AS INTEGER
@@ -353,8 +353,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0979   08D0    DIM SHARED tg$(150)
  0991   08E2    DIM SHARED dn$(65)
                                                                       PAGE   7
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  09A9   08F4    DIM SHARED sn$(65)
@@ -412,8 +412,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                  early but the
  0B2E   09F8    '      game runs instead of crashing to DOS.  (Throttle work re
                                                                       PAGE   8
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 stores it.)
@@ -471,8 +471,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0DB8   09F8    '----- enter the game
  0DB8   09F8    qstart:
                                                                       PAGE   9
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0DB8   09F8    b = 122
@@ -530,8 +530,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1076   0A04            NEXT
  109A   0A04            PRINT "    EDITING"
                                                                       PAGE  10
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  109A   0A04            PRINT "--JON KREUZER--"
@@ -589,8 +589,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  12AB   0A04            a$ = INPUT$(1)
  12AB   0A04            SYSTEM
                                                                       PAGE  11
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  12AB   0A04    
@@ -648,8 +648,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  177C   0A10    
  177C   0A10    '----- Apply state change and print message (get/use first walk
                                                                       PAGE  12
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                  the player over)
@@ -707,8 +707,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1B9C   0A2E    '----- Play follow-up sound and run any deferred action
  1B9C   0A2E            6740 IF st(i) = 47 OR st(i) = 41 THEN CALL Snd4
                                                                       PAGE  13
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1C0E   0A2E            IF st(i) = 19 THEN CALL Snd5
@@ -766,8 +766,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1FFB   0A3C            sl$ = "z"
  1FFB   0A3C            cl = cl + 30
                                                                       PAGE  14
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1FFB   0A3C            '----- a stand-point exit (no walkout tag) arrives with
@@ -825,8 +825,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  2366   0A44            GOSUB loadroom
  2373   0A44            IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
                                                                       PAGE  15
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  23A7   0A44            '----- mid-fight inventory trip (e.g. grabbing the syri
@@ -884,8 +884,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  264C   0A4E            GOSUB reanim
  2654   0A4E            FOR iaq = 1 TO 36
                                                                       PAGE  16
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  265C   0A4E                    IF ob(iord(iaq)) = 1 AND aqo(iord(iaq)) = 0 THE
@@ -943,8 +943,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  2B00   0A54            7300 IF msen <> 1 THEN PUT (b, a), d, XOR
  2B48   0A54            IF a$ = CHR$(0) + CHR$(72) THEN a$ = "8"
                                                                       PAGE  17
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  2B7C   0A54            IF a$ = CHR$(0) + CHR$(80) THEN a$ = "2"
@@ -1002,8 +1002,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  2FF3   0A54                    GOSUB events
  2FFB   0A54                    GOSUB trigger
                                                                       PAGE  18
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  3003   0A54                    IF a$ = "l" AND nfon = 1 THEN GOSUB lookmiss
@@ -1061,8 +1061,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 ks a random line and
  3272   0A60    '----- answers a key-on-the-wrong-lock with key lines (doesn't 
                                                                       PAGE  19
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 fit / won't turn)
@@ -1120,8 +1120,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  34D6   0A60            CLOSE #3
  34D6   0A60            '----- the blitter routines first (BINARY open CREATES 
                                                                       PAGE  20
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 a missing file as
@@ -1179,8 +1179,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  38CE   0A8A            ELSE
  3924   0A92                    PUT (PX, PY), afrm, PSET
                                                                       PAGE  21
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  3924   0A92            END IF
@@ -1238,8 +1238,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  3C32   0AA4    
  3C32   0AA4    animwait:
                                                                       PAGE  22
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  3C46   0AA8            CALL AnimWait(awrate)
@@ -1297,8 +1297,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  4010   0AD8                    bgnext:
  4010   0AD8            NEXT
                                                                       PAGE  23
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  403C   0AD8            '----- sprite pass
@@ -1356,8 +1356,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  4540   0AFA                            ELSE
  4543   0AFA                                    '----- idle at the START spot; 
                                                                       PAGE  24
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 keep the background under the frame so
@@ -1415,8 +1415,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 aidx), 6) = "random" THEN
  492D   0AFA                            IF nLoop < 4 THEN
                                                                       PAGE  25
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  492D   0AFA                                    nLoop = nLoop + 1
@@ -1474,8 +1474,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  4DBB   0B02                    END IF
  4DBB   0B02                    adnext:
                                                                       PAGE  26
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  4DBB   0B02            NEXT
@@ -1533,8 +1533,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 redrawing under it, else the restore
  5204   0B16                            '----- eats half the cursor and the nex
                                                                       PAGE  27
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 t XOR-off leaves garbage pixels
@@ -1592,8 +1592,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  56DA   0B1A    '----- Clear of it (ovl%=0): leave him alone -- NO per-frame re
                 draw (no flicker) --
                                                                       PAGE  28
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  56DA   0B1A    '----- and turn him to WATCH the animation (lookdir toward its 
@@ -1651,8 +1651,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 -enter the room to see it
  59CA   0B44                    IF anMode$(aidx) <> "static" THEN GOTO ranotsta
                                                                       PAGE  29
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 t
@@ -1710,8 +1710,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  5F10   0B54                    PY = plY(pp)
  5F10   0B54                    awrate = anRate(aidx)
                                                                       PAGE  30
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  5F10   0B54                    '----- lift the player before the save-under GE
@@ -1769,8 +1769,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  652E   0B58                    mvy = plY(pp)
  652E   0B58                    awrate = anRate(aidx)
                                                                       PAGE  31
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  652E   0B58                    GOSUB animdims
@@ -1828,8 +1828,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  6ACC   0B64                    GET (PX, PY)-(PX + adw - 1, PY + adh - 1), wbg
  6ACC   0B64                    '----- overlapping player stays VISIBLE through
                                                                       PAGE  32
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                  the play: re-drawn over each
@@ -1887,8 +1887,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  6EEF   0B84            dwt = TIMER
  6EEF   0B84            dwl1:
                                                                       PAGE  33
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  6F05   0B88            dwd = TIMER - dwt
@@ -1946,8 +1946,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  7167   0B9E    gplook:
  7178   0B9E            FOR gpp = 1 TO nPlace
                                                                       PAGE  34
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  7194   0BA2                    IF plAnim(gpp) = gpi THEN gpx = plX(gpp): gpy =
@@ -2005,8 +2005,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  75B0   0BDA            gpx = 221: gpy = 126: gpi = 48: GOSUB gplook: gtx = gpx
                 : gty = gpy
                                                                       PAGE  35
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  75F4   0BE2            gpx = 210: gpy = 124: gpi = 50: GOSUB gplook: lux = gpx
@@ -2064,8 +2064,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                  -- keep the raised
  7A8A   0BFA                    '----- lever painted through the whole coil-up 
                                                                       PAGE  36
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 (no-op on frames 1-2)
@@ -2123,8 +2123,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  800B   0C02            objok:
  800B   0C02            ON ERROR GOTO errhand
                                                                       PAGE  37
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  801A   0C02            nPlace = 0
@@ -2182,8 +2182,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  83F0   0C16                    COLOR 0
  83F0   0C16                    PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
                                                                       PAGE  38
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  83F0   0C16            ELSE
@@ -2241,8 +2241,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  8784   0C18    
  8784   0C18            '----- erase the standing player, then walk out via GAM
                                                                       PAGE  39
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 E5 walkTo from
@@ -2300,8 +2300,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  895D   0C20    '----- stay instant); look is always instant; close-up scenes (
                 nopl) never
                                                                       PAGE  40
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  895D   0C20    '----- walk. Called from the action fire point.
@@ -2359,8 +2359,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  8D8D   0C2A    '----- head, ~5px into the sprite) toward the click point (b,a)
                 . Replaces the
                                                                       PAGE  41
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  8D8D   0C2A    '----- directions hardcoded in the room data, which assumed a c
@@ -2418,8 +2418,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                  0 THEN GOTO 9900
  93C6   0C2A            a$ = "4"
                                                                       PAGE  42
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  93C6   0C2A    
@@ -2477,8 +2477,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  96D7   0C2A            IF rvon = 1 AND doc = 0 AND rvSnap = 1 THEN rvArm = 1
  9744   0C2A            OPEN "golf.pct" FOR INPUT AS #1
                                                                       PAGE  43
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  9744   0C2A            FOR i = 0 TO 125
@@ -2536,8 +2536,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  9B50   0C42            10840 IF klon = 0 THEN GOTO 11570
  9B6B   0C42            '----- which roamer owns this room at this step count: 
                                                                       PAGE  44
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 table in GAME2
@@ -2595,8 +2595,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  9D4C   0C48            GOTO strigoff
  9D4C   0C48            12430 a$ = "u"
                                                                       PAGE  45
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  9D4F   0C48            vk$ = "u"
@@ -2654,8 +2654,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  A035   0C6C            IF mout.ax = 0 THEN msen = 0
  A04B   0C6C            mlb = 0
                                                                       PAGE  46
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  A04B   0C6C            mrb = 0
@@ -2713,8 +2713,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  A0E4   0C6C            IF nmx < 0 THEN nmx = 0
  A106   0C6C            IF nmx > 304 THEN nmx = 304
                                                                       PAGE  47
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  A117   0C6C            IF nmy < 0 THEN nmy = 0
@@ -2772,8 +2772,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  A421   0C6C    '----- VERB-AWARE: only weighs hotpoints whose object verb = a$
                 , so a look-click snaps to
                                                                       PAGE  48
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  A421   0C6C    '----- the nearest LOOK point, never a closer get/action point 
@@ -2831,8 +2831,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  A7F4   0C98                            hvy = my - oy(hvi)
  A7F4   0C98                            IF ABS(hvx) <= hovr AND ABS(hvy) <= hov
                                                                       PAGE  49
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 r THEN
@@ -2890,8 +2890,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  ADAF   0CA8            GOTO 14090
  ADAF   0CA8            14120 GOTO 14250
                                                                       PAGE  50
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  ADB1   0CA8            14250 CALL Credits(CINT(ob(43)))
@@ -2949,8 +2949,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  B06E   0CAE            IF mt = -1 THEN GOTO 14660
  B084   0CAE            14600 IF (TIMER - ti) <= tmo THEN GOTO 14620
                                                                       PAGE  51
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  B0A9   0CAE            GOTO 14630
@@ -3008,8 +3008,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  B36B   0CB6            CALL LoadFade(co, pa1, pa2, pa3)
  B38C   0CB6            t0 = TIMER
                                                                       PAGE  52
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  B38C   0CB6            GOTO 14570
@@ -3067,8 +3067,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  B5C5   0CB6            DIM r2(130) AS INTEGER
  B5DD   0CB6            DIM mr1(130) AS INTEGER
                                                                       PAGE  53
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  B5F5   0CB6            DIM mr2(130) AS INTEGER
@@ -3126,8 +3126,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  B924   0CB6            17280 SOUND 32676, .04
  B957   0CB6                    tc = tc + 1
                                                                       PAGE  54
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  B957   0CB6                    IF tc <= 2 THEN GOTO 17280
@@ -3185,8 +3185,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  BCF9   0CB6            GOTO 17640
  BCF9   0CB6            GOTO 17780
                                                                       PAGE  55
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  BCF9   0CB6    
@@ -3244,8 +3244,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  C013   0CB6            PALETTE pi, 8
  C013   0CB6            18120 IF tc <> 4 THEN GOTO 18140
                                                                       PAGE  56
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  C044   0CB6            PALETTE pi, 0
@@ -3303,8 +3303,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  C338   0CB6            IF INKEY$ = "s" THEN GOTO 18640
  C3E5   0CB6            IF it0 >= 0 THEN ifc = ifc + 1
                                                                       PAGE  57
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  C40C   0CB6            GOSUB 17850
@@ -3362,8 +3362,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  C7F7   0CB6    
  C7F7   0CB6    
                                                                       PAGE  58
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  C7F7   0CB6    '----- LoadConfig moved to GAME2.BAS (multi-module split)
@@ -3421,8 +3421,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  CBF2   0CB6            BLOAD "INVTIL1.PIC", 0
  CBF2   0CB6            DEF SEG
                                                                       PAGE  59
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  CBF2   0CB6            FOR ivk = 0 TO 20
@@ -3480,8 +3480,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  D2A3   0CB6            GET (182, 40)-(199, 58), exmico
  D2A3   0CB6            LINE (182, 40)-(199, 58), 0, BF
                                                                       PAGE  60
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  D2A3   0CB6            GET (279, 21)-(283, 25), starr
@@ -3539,8 +3539,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  DA63   0CB6                            IF mx >= 112 AND mx <= 297 AND my >= 31
                  AND my <= 140 THEN
                                                                       PAGE  61
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  DA63   0CB6                                    nsel = ivscr * 4 + ((my - 31) \
@@ -3598,8 +3598,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  DFAD   0CB6                    IF act% = 8 THEN IF exf = 1 THEN GOSUB doexam
  DFD5   0CB6                    IF act% = 1 OR act% = 2 THEN GOSUB invredraw
                                                                       PAGE  62
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  DFFC   0CB6                    IF msen = 1 THEN
@@ -3657,8 +3657,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  E356   0CB6            IF msen = 1 THEN CALL drawcur
  E371   0CB6            RETURN
                                                                       PAGE  63
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  E371   0CB6    
@@ -3716,8 +3716,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  EBCF   0CB6            CALL drawStats(ob(), cl, cr, fontData())
  EBE4   0CB6            IF cic > 0 THEN sel = cilist(isel)
                                                                       PAGE  64
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  EC20   0CB6            RETURN
@@ -3775,8 +3775,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  F125   0CB6            CALL CombDo2(CINT(crec), ob(), cnw%)
  F14B   0CB6            cnew% = cnw%
                                                                       PAGE  65
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  F14B   0CB6            IF cnew% > 0 THEN aqc = aqc + 1: aqo(cnew%) = aqc
@@ -3834,8 +3834,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  F4F4   0CB6            exwt:
  F4F4   0CB6            ek$ = INKEY$: IF ek$ <> "" THEN GOTO exret
                                                                       PAGE  66
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  F51C   0CB6            IF msen = 1 THEN mreg.ax = 3: CALL INTERRUPT(mvint, mre
@@ -3893,8 +3893,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 re-order/new-flags (mirrors the old reload: path)
  F84C   0CB6    SUB LoadGame (slot AS INTEGER)
                                                                       PAGE  67
-                                                                      24 Aug 26
-                                                                      21:28:04
+                                                                      25 Aug 26
+                                                                      17:32:09
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  F857   0CB6            DIM slz AS INTEGER

@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME2.BAS: secondary module for the multi-module split (
@@ -23,6 +23,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    END TYPE
  0030   0006    DECLARE SUB INTERRUPT (intnum AS INTEGER, inreg AS RegType, out
                 reg AS RegType)
+ 0030   0006    DECLARE SUB drawcur ()
+ 0030   0006    DECLARE SUB erasecur ()
  0030   0006    COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, 
                 sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, 
                 nfon, hzon$, klon, wksen, qkon, rvon
@@ -55,13 +57,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 e below)
  0030   0006    DIM SHARED sdwOn AS INTEGER, sdwHave AS INTEGER, sdwN AS INTEGE
                 R, sdwSd AS INTEGER
- 0030   0006    DIM SHARED sdwNAct AS INTEGER, sdwAct(4) AS INTEGER
- 0030   0006    DIM SHARED sdwRm$(20)
                                                                       PAGE   2
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 0030   0006    DIM SHARED sdwNAct AS INTEGER, sdwAct(4) AS INTEGER
+ 0030   0006    DIM SHARED sdwRm$(20)
  0030   0006    DIM SHARED sdwOId(20) AS INTEGER, sdwOLt(20) AS INTEGER, sdwOKp
                 (20) AS INTEGER, sdwOBg(20) AS INTEGER
  0030   0006    DIM SHARED sdwOSU(20) AS INTEGER, sdwOSD(20) AS INTEGER
@@ -114,13 +116,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    '----- or mouse click skips the rest (octave shifts are rebalan
                 ced on a skip
  0030   0006    '----- since the tunes rely on balanced <...> pairs)
- 0030   0006    SUB DeathMusic
- 0040   0CA4            DIM mr AS RegType, mo AS RegType
                                                                       PAGE   3
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 0030   0006    SUB DeathMusic
+ 0040   0CA4            DIM mr AS RegType, mo AS RegType
  0040   0CA4            DIM tn$, nt$, ch$
  0040   0CA4            DIM i AS INTEGER, shf AS INTEGER, skp AS INTEGER
  0040   0CA4            RANDOMIZE TIMER
@@ -173,13 +175,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  03CA   0CA4                    IF skp = 1 THEN
  03CA   0CA4                            IF shf > 0 THEN PLAY STRING$(shf, ">")
  03EE   0CA4                            IF shf < 0 THEN PLAY STRING$(-shf, "<")
- 040C   0CA4                            '----- signal the caller: the skip pres
-                s also ends the death screen
                                                                       PAGE   4
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 040C   0CA4                            '----- signal the caller: the skip pres
+                s also ends the death screen
  040C   0CA4                            mt = -1
  040C   0CA4                            EXIT DO
  040C   0CA4                    END IF
@@ -232,13 +234,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  083D   0CA4            FOR sc = 50 TO 100 STEP 5: SOUND sc, .5: SOUND f9, .1: 
                 NEXT
  089A   0CA4            FOR sc = 100 TO 50 STEP -5: SOUND sc, .5: SOUND f9, .1:
-                 NEXT
- 08F6   0CA4            SOUND 32676, .5: SOUND f1, .5
                                                                       PAGE   5
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                 NEXT
+ 08F6   0CA4            SOUND 32676, .5: SOUND f1, .5
  091F   0CA4    END SUB
  0927   0CA4    
  0927   0CA4    '----- sound effect 5
@@ -291,13 +293,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0C84   0CA4                            IF v$ = "a" THEN c% = 3
  0CFD   0CA4                            IF v$ = "g" THEN c% = 1
  0D14   0CA4                            IF v$ = "u" THEN c% = 1
- 0D2B   0CA4                            CIRCLE (ox%(i%), oy%(i%)), snr2, c%
- 0D61   0CA4                            PSET (ox%(i%), oy%(i%)), c%
                                                                       PAGE   6
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 0D2B   0CA4                            CIRCLE (ox%(i%), oy%(i%)), snr2, c%
+ 0D61   0CA4                            PSET (ox%(i%), oy%(i%)), c%
  0D61   0CA4                    END IF
  0D8F   0CA4            NEXT
  0D9E   0CA4    END SUB
@@ -350,13 +352,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0FFC   0CA4    '----- apply combine recipe r%: swap the ingredient ob() flags 
                 for the result, and
  0FFC   0CA4    '----- re-derive 33 (ready to mix) since 36 may just have appea
-                red
- 0FFC   0CA4    SUB CombDo2 (r%, ob(), cn%)
                                                                       PAGE   7
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                red
+ 0FFC   0CA4    SUB CombDo2 (r%, ob(), cn%)
  1007   0CA4            '----- ingredients become state 2 ("used up"): out of t
                 he inventory but
  1007   0CA4            '----- still counting as taken, so their pickup spots n
@@ -409,13 +411,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  13BF   0CA4            ELSEIF nvz = 1 THEN
  13C2   0CA4                    IF k$ = "L" THEN
  13C2   0CA4                            IF invtab = 1 THEN invtab = 0: act% = 2
- 1412   0CA4                    ELSEIF k$ = "R" THEN
- 1415   0CA4                            IF invtab = 0 THEN invtab = 1: act% = 2
                                                                       PAGE   8
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 1412   0CA4                    ELSEIF k$ = "R" THEN
+ 1415   0CA4                            IF invtab = 0 THEN invtab = 1: act% = 2
                  ELSE nvz = 0
  145E   0CA4                    ELSEIF k$ = "D" THEN
  1461   0CA4                            nvz = 2
@@ -468,13 +470,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  166F   0CA4            IF js0% < 40 THEN nd$ = "L"
  16B6   0CAC            IF js0% > 120 THEN nd$ = "R"
  16CD   0CAC            IF js1% < 40 THEN nd$ = "U"
- 16E4   0CAC            IF js1% > 120 THEN nd$ = "D"
- 16FB   0CAC            IF STRIG(1) <> 0 THEN nd$ = "E"
                                                                       PAGE   9
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 16E4   0CAC            IF js1% > 120 THEN nd$ = "D"
+ 16FB   0CAC            IF STRIG(1) <> 0 THEN nd$ = "E"
  1718   0CAC            IF nd$ = ld$ THEN EXIT SUB
  172A   0CB0            ld$ = nd$
  172A   0CB0            d$ = nd$
@@ -527,13 +529,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1952   0CB0    '----- does the player's 31x31 box intersect rect x1..x2 / y1..
                 y2? (np = nopl close-up)
  1952   0CB0    SUB OvPlayer (x1, y1, x2, y2, pjx2, pjy2, np, ov%)
- 195D   0CB0            ov% = 0
- 195D   0CB0            IF np = 1 THEN EXIT SUB
                                                                       PAGE  10
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 195D   0CB0            ov% = 0
+ 195D   0CB0            IF np = 1 THEN EXIT SUB
  197B   0CB0            IF x1 < pjx2 + 31 AND x2 >= pjx2 AND y1 < pjy2 + 31 AND
                  y2 >= pjy2 THEN ov% = 1
  19FD   0CB0    END SUB
@@ -586,13 +588,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1C84   0CB8            IF lc% < 3 THEN EXIT SUB
  1C8E   0CB8            IF lsd% = 0 THEN RANDOMIZE TIMER: lsd% = 1
  1CB7   0CBA            DO
- 1CB8   0CBA                    p% = INT(RND * 25) + 1
- 1CB8   0CBA            LOOP WHILE p% = h1% OR p% = h2% OR p% = h3%
                                                                       PAGE  11
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 1CB8   0CBA                    p% = INT(RND * 25) + 1
+ 1CB8   0CBA            LOOP WHILE p% = h1% OR p% = h2% OR p% = h3%
  1CB8   0CBA            h3% = h2%: h2% = h1%: h1% = p%
  1CB8   0CBA            out$ = nf$(p%)
  1CB8   0CBA    END SUB
@@ -645,13 +647,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  200F   0CC2            w% = acPct%(acs, 1) \ 2
  200F   0CC2            h% = acPct%(acs, kk% + 1)
  200F   0CC2            IF w% < 1 OR h% < 1 THEN EXIT SUB
- 2083   0CC2            '----- any shape is fine as long as the region fits a 2
-                10-int save-under slot
                                                                       PAGE  12
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 2083   0CC2            '----- any shape is fine as long as the region fits a 2
+                10-int save-under slot
  2083   0CC2            IF ((w% * 2 + 7) \ 8) * h% > 416 THEN EXIT SUB
  209C   0CC2            adw = w%: adh = h%
  209C   0CC2    END SUB
@@ -704,13 +706,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  22F0   0CC2                    IF cx% < bx1% THEN bx1% = cx%
  2328   0CC2                    IF cx% > bx2% THEN bx2% = cx%
  233A   0CC2                    IF cy% < by1% THEN by1% = cy%
- 234C   0CC2                    IF cy% > by2% THEN by2% = cy%
- 235E   0CC2            NEXT
                                                                       PAGE  13
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 234C   0CC2                    IF cy% > by2% THEN by2% = cy%
+ 235E   0CC2            NEXT
  236A   0CC2    END SUB
  238D   0CC2    
  238D   0CC2    '----- fill the lookmiss "nothing to see" lines (25); lives her
@@ -763,13 +765,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  2586   0D2A                    us$(3) = "Nothing happens."
  2586   0D2A                    us$(4) = "That's not going to work."
  2586   0D2A                    us$(5) = "You try, but it does nothing."
- 2586   0D2A                    us$(6) = "That has no effect."
- 2586   0D2A                    us$(7) = "It doesn't seem to fit."
                                                                       PAGE  14
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 2586   0D2A                    us$(6) = "That has no effect."
+ 2586   0D2A                    us$(7) = "It doesn't seem to fit."
  2586   0D2A                    us$(8) = "You can't find a way to use it here."
  2586   0D2A                    us$(9) = "That won't help here."
  2586   0D2A                    us$(10) = "Try as you might, nothing happens."
@@ -822,13 +824,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  29F8   0D4A                            ump = INT(RND * 12) + 1
  29F8   0D4A                    LOOP WHILE ump = uh1 OR ump = uh2 OR ump = uh3
  29F8   0D4A                    uh3 = uh2
- 29F8   0D4A                    uh2 = uh1
- 29F8   0D4A                    uh1 = ump
                                                                       PAGE  15
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 29F8   0D4A                    uh2 = uh1
+ 29F8   0D4A                    uh1 = ump
  29F8   0D4A                    out$ = us$(ump)
  29F8   0D4A            END IF
  2AAA   0D56    END SUB
@@ -881,13 +883,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  2ABD   0D56                    PRINT #1, "; revive=1 auto-saves when a timed-d
                 eath room arms and, after dying there,"
  2ABD   0D56                    PRINT #1, "; restores that save with a message 
-                instead of the Load screen"
- 2ABD   0D56                    PRINT #1, "revive=0"
                                                                       PAGE  16
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                instead of the Load screen"
+ 2ABD   0D56                    PRINT #1, "revive=0"
  2ABD   0D56                            PRINT #1, "; hit-zone debug overlay (ne
                 eds mouse=1): ring hotspot click-zones, 1=show 0=hide (look=blu
                 e action=brown get/use=gray)"
@@ -940,13 +942,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 tv
  30DF   0D56                                    IF k$ = "killers" THEN klon = t
                 v
- 30FC   0D56                                    IF k$ = "walkto" THEN wksen = t
-                v
                                                                       PAGE  17
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 30FC   0D56                                    IF k$ = "walkto" THEN wksen = t
+                v
  3119   0D56                                    IF k$ = "intro" THEN inon = tv
  3136   0D56                                    IF k$ = "quickstart" THEN qkon 
                 = tv
@@ -999,13 +1001,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  34DC   0D56    END SUB
  34E4   0D56    '----- LookDir: 8-way facing digit from the player's eyes (px+1
                 5, py+5) toward
- 34E4   0D56    '----- the click (bx, ay), with x/y dead zones; both in the zon
-                e -> face down.
                                                                       PAGE  18
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 34E4   0D56    '----- the click (bx, ay), with x/y dead zones; both in the zon
+                e -> face down.
  34E4   0D56    '----- (moved from GAME.BAS lookdir -- 64K code ceiling)
  34E4   0D56    SUB LookDir (bx!, ay!, px2!, py2!, d2$)
  34EF   0D56            ldx! = bx! - (px2! + 15)
@@ -1058,13 +1060,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  3AA8   0D56            IF q2$ = "room5" AND w! > 20 AND w! < 35 THEN kw% = kw%
                  OR 2
  3B00   0D56            IF q2$ = "room5" AND w! > 35 AND w! < 47 THEN kw% = kw%
-                 OR 2
- 3B58   0D56            IF q2$ = "room4" AND w! > 47 AND w! < h9b! THEN kw% = k
                                                                       PAGE  19
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                 OR 2
+ 3B58   0D56            IF q2$ = "room4" AND w! > 47 AND w! < h9b! THEN kw% = k
                 w% OR 2
  3BB1   0D56            IF q2$ = "room1" AND w! > h9b! AND w! < t1b! THEN kw% =
                  kw% OR 2
@@ -1117,13 +1119,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  3EAC   0D56                            ar$(5) = "..X0X..........."
  3EAC   0D56                            ar$(6) = "..X0X..........."
  3EAC   0D56                            ar$(7) = "...X............"
- 3EAC   0D56                    CASE 3
- 3F4F   0D56                            ar$(0) = "...X............"
                                                                       PAGE  20
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 3EAC   0D56                    CASE 3
+ 3F4F   0D56                            ar$(0) = "...X............"
  3F4F   0D56                            ar$(1) = "...0X..........."
  3F4F   0D56                            ar$(2) = "XXX00XX........."
  3F4F   0D56                            ar$(3) = "0000000X........"
@@ -1176,13 +1178,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  425A   0D56            IF sv <> 6 OR sdwN < 1 OR sdwN > 20 THEN CLOSE #3: sdwN
                  = 0: EXIT SUB
  42B8   0D56            sof = 0
- 42B8   0D56            FOR sdi = 1 TO sdwN
- 42CA   0D56                    INPUT #3, sdwRm$(sdi), sdwTX(sdi), sdwTY(sdi), 
                                                                       PAGE  21
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 42B8   0D56            FOR sdi = 1 TO sdwN
+ 42CA   0D56                    INPUT #3, sdwRm$(sdi), sdwTX(sdi), sdwTY(sdi), 
                 sdwTW(sdi), sdwTH(sdi), sdwAx(sdi), sdwYLo(sdi), sdwDp(sdi), sd
                 wMir(sdi), sdwAxs(sdi), sdwSBW(sdi), sdwSPH(sdi), sdwDst$(sdi)
  42D3   0D56                    '----- derived: bytes per rect row; ints per sh
@@ -1235,13 +1237,13 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  4633   0D56            sdwHave = 1
  4633   0D56            '----- the game seeds RANDOMIZE 0# at init (determinist
                 ic); reseed once
- 4633   0D56            '----- so the shadow's pauses differ between playthroug
-                hs (nfseed pattern)
                                                                       PAGE  22
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 4633   0D56            '----- so the shadow's pauses differ between playthroug
+                hs (nfseed pattern)
  4633   0D56            IF sdwSd = 0 THEN RANDOMIZE TIMER: sdwSd = 1
  4662   0D56    END SUB
  466A   0D56    
@@ -1280,7 +1282,6 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  4675   0D56            '----- via sdwDty once he steps clear
  4675   0D56            DIM po AS INTEGER, sl2 AS LONG, co AS INTEGER, ai AS IN
                 TEGER
- 4675   0D56            DIM mr AS RegType, mo AS RegType
  4675   0D56            IF sdwOn = 0 OR sdwHave = 0 THEN EXIT SUB
  4694   0D56            '----- an action just ran (cl moved): face/PStand may h
                 ave stamped a
@@ -1295,12 +1296,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  4694   0D56            '----- forced tick (position kept), static states re-to
                 ggle (idempotent).
  4694   0D56            IF clv! <> sdwLCl THEN
- 4694   0D56                    sdwLCl = clv!
                                                                       PAGE  23
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 4694   0D56                    sdwLCl = clv!
  4694   0D56                    FOR ai = 1 TO sdwNAct
  46C2   0D56                            sdi = sdwAct(ai)
  46C2   0D56                            po = 0
@@ -1354,12 +1355,12 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  4961   0D56                                            sdwWant(sdi) = 2
  4961   0D56                                            sdwOfs(sdi) = 0
  4961   0D56                                            FOR si3 = 1 TO 3
- 4982   0D56                                                    CALL KillChk(sd
                                                                       PAGE  24
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 4982   0D56                                                    CALL KillChk(sd
                 wDst$(sdi), w2 + si3, h9b!, t1b!, t2b!, t3b!, f3, kw3)
  49BA   0D56                                                    IF kw3 = 0 THEN
                  sdwOfs(sdi) = 3 * (4 - si3): EXIT FOR
@@ -1381,682 +1382,701 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  4A55   0D56                    IF pjxv! < sdwTX(sdi) + sdwTW(sdi) AND pjxv! + 
                 31 > sdwTX(sdi) AND pjyv! < sdwTY(sdi) + sdwTH(sdi) AND pjyv! +
                  31 > sdwTY(sdi) THEN po = 1
- 4AFD   0D56                    '----- cursor overlap: with the INT33 mouse cur
-                sor, HIDE it around this
- 4AFD   0D56                    '----- watcher's draws (show again at sdnext) -
-                - a parked cursor used
- 4AFD   0D56                    '----- to hold the watcher frozen forever (the 
-                north rect covers the
- 4AFD   0D56                    '----- room center where the cursor idles). Key
-                board XOR cursor mode
- 4AFD   0D56                    '----- keeps the old hold (its save-under lives
-                 in GAME.BAS).
+ 4AFD   0D56                    '----- cursor overlap: the mouse cursor is a SO
+                FTWARE sprite (drawcur/
+ 4AFD   0D56                    '----- erasecur in GAME.BAS, 16x10 glyph + save
+                -under) -- a blit under
+ 4AFD   0D56                    '----- it stamps it out, and its own restore la
+                ter stamps stale art.
+ 4AFD   0D56                    '----- Bracket: erase LAZILY at this watcher's 
+                first real draw (GOSUB
+ 4AFD   0D56                    '----- curoff at every blit site -- never up fr
+                ont, else a parked
+ 4AFD   0D56                    '----- cursor strobes on draw-free passes), red
+                raw at sdnext. Both
+ 4AFD   0D56                    '----- re-sample the save-under, so neither goe
+                s stale. Keyboard XOR
+ 4AFD   0D56                    '----- cursor mode keeps the old hold (its save
+                -under is in GAME.BAS).
  4AFD   0D56                    co = 0
- 4AFD   0D56                    IF sdwTX(sdi) < bv! + 12 AND sdwTX(sdi) + sdwTW
-                (sdi) > bv! AND sdwTY(sdi) < av! + 12 AND sdwTY(sdi) + sdwTH(sd
+ 4AFD   0D56                    IF sdwTX(sdi) < bv! + 16 AND sdwTX(sdi) + sdwTW
+                (sdi) > bv! AND sdwTY(sdi) < av! + 10 AND sdwTY(sdi) + sdwTH(sd
                 i) > av! THEN
  4AFD   0D56                            IF msen = 1 THEN
  4AFD   0D56                                    co = 1
- 4AFD   0D56                                    mr.ax = 2
- 4AFD   0D56                                    CALL INTERRUPT(&H33, mr, mo)
- 4BD0   0D56                            ELSE
- 4BD3   0D56                                    GOTO sdnext
- 4BD3   0D56                            END IF
- 4BD6   0D56                    END IF
- 4BD6   0D56                    '----- stale strip under a player who has stepp
+ 4AFD   0D56                            ELSE
+ 4BB8   0D56                                    GOTO sdnext
+ 4BB8   0D56                            END IF
+ 4BBB   0D56                    END IF
+ 4BBB   0D56                    '----- stale strip under a player who has stepp
                 ed clear: repaint
- 4BD6   0D56                    IF sdwDty(sdi) = 1 AND po = 0 THEN
- 4BD6   0D56                            sdwDty(sdi) = 0
- 4BD6   0D56                            IF sdwArm(sdi) = 2 THEN
- 4BD6   0D56                                    sdwNxt(sdi) = 0
- 4BD6   0D56                            ELSEIF sdwArm(sdi) = 1 THEN
- 4C1F   0D56                                    sl2 = VARPTR(sdt%(sdwOLt(sdi)))
-                : IF sl2 < 0 THEN sl2 = sl2 + 65536
- 4C6D   0D56                                    CALL ShadBlt(VARSEG(sdt%(sdwOLt
-                (sdi))), sl2, sdwTX(sdi), sdwTY(sdi), sdwTH(sdi), sdwRB(sdi), -
+ 4BBB   0D56                    IF sdwDty(sdi) = 1 AND po = 0 THEN
+ 4BBB   0D56                            sdwDty(sdi) = 0
+ 4BBB   0D56                            GOSUB curoff
+ 4BEC   0D56                            IF sdwArm(sdi) = 2 THEN
                                                                       PAGE  25
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
-                99, -99, blt$)
- 4CC4   0D56                            ELSE
- 4CC7   0D56                                    sl2 = VARPTR(sdt%(sdwOId(sdi)))
+ 4BEC   0D56                                    sdwNxt(sdi) = 0
+ 4BEC   0D56                            ELSEIF sdwArm(sdi) = 1 THEN
+ 4C11   0D56                                    sl2 = VARPTR(sdt%(sdwOLt(sdi)))
                 : IF sl2 < 0 THEN sl2 = sl2 + 65536
- 4D0B   0D56                                    CALL ShadBlt(VARSEG(sdt%(sdwOId
+ 4C5F   0D56                                    CALL ShadBlt(VARSEG(sdt%(sdwOLt
                 (sdi))), sl2, sdwTX(sdi), sdwTY(sdi), sdwTH(sdi), sdwRB(sdi), -
                 99, -99, blt$)
- 4D62   0D56                            END IF
- 4D62   0D56                    END IF
- 4D62   0D56                    IF sdwWant(sdi) <> sdwArm(sdi) THEN
- 4D62   0D56                            IF sdwWant(sdi) = 0 THEN
- 4D62   0D56                                    so2 = sdwOId(sdi)
- 4D62   0D56                                    GOSUB sdtog
- 4D8A   0D56                                    sdwDty(sdi) = po
- 4D8A   0D56                            ELSEIF sdwWant(sdi) = 1 THEN
- 4D99   0D56                                    '----- warning: the light snaps
+ 4CB6   0D56                            ELSE
+ 4CB9   0D56                                    sl2 = VARPTR(sdt%(sdwOId(sdi)))
+                : IF sl2 < 0 THEN sl2 = sl2 + 65536
+ 4CFD   0D56                                    CALL ShadBlt(VARSEG(sdt%(sdwOId
+                (sdi))), sl2, sdwTX(sdi), sdwTY(sdi), sdwTH(sdi), sdwRB(sdi), -
+                99, -99, blt$)
+ 4D54   0D56                            END IF
+ 4D54   0D56                    END IF
+ 4D54   0D56                    IF sdwWant(sdi) <> sdwArm(sdi) THEN
+ 4D54   0D56                            IF sdwWant(sdi) = 0 THEN
+ 4D54   0D56                                    so2 = sdwOId(sdi)
+ 4D54   0D56                                    GOSUB sdtog
+ 4D7C   0D56                                    sdwDty(sdi) = po
+ 4D7C   0D56                            ELSEIF sdwWant(sdi) = 1 THEN
+ 4D8B   0D56                                    '----- warning: the light snaps
                  on over an EMPTY pool
- 4D99   0D56                                    so2 = sdwOLt(sdi)
- 4D99   0D56                                    GOSUB sdtog
- 4DB7   0D56                                    sdwDty(sdi) = po
- 4DB7   0D56                            ELSE
- 4DC6   0D56                                    '----- killer just arrived next
+ 4D8B   0D56                                    so2 = sdwOLt(sdi)
+ 4D8B   0D56                                    GOSUB sdtog
+ 4DA9   0D56                                    sdwDty(sdi) = po
+ 4DA9   0D56                            ELSE
+ 4DB8   0D56                                    '----- killer just arrived next
                  door: begin the entrance
- 4DC6   0D56                                    so2 = sdwOLt(sdi)
- 4DC6   0D56                                    GOSUB sdtog
- 4DDA   0D56                                    sdwDty(sdi) = po
- 4DDA   0D56                                    IF sdwAxs(sdi) = 1 THEN
- 4DDA   0D56                                            '----- N/S walls: no wa
+ 4DB8   0D56                                    so2 = sdwOLt(sdi)
+ 4DB8   0D56                                    GOSUB sdtog
+ 4DCC   0D56                                    sdwDty(sdi) = po
+ 4DCC   0D56                                    IF sdwAxs(sdi) = 1 THEN
+ 4DCC   0D56                                            '----- N/S walls: no wa
                 lk-in phase -- pacing starts at a
- 4DDA   0D56                                            '----- hidden side (MIR
+ 4DCC   0D56                                            '----- hidden side (MIR
                  1 = the right one)
- 4DDA   0D56                                            sdwMode(sdi) = 1: sdwY(
+ 4DCC   0D56                                            sdwMode(sdi) = 1: sdwY(
                 sdi) = sdwYLo(sdi)
- 4DDA   0D56                                            IF sdwMir(sdi) = 1 THEN
- 4DDA   0D56                                                    sdwX(sdi) = sdw
+ 4DCC   0D56                                            IF sdwMir(sdi) = 1 THEN
+ 4DCC   0D56                                                    sdwX(sdi) = sdw
                 Ax(sdi) + sdwDp(sdi): sdwDir(sdi) = -1
- 4DDA   0D56                                            ELSE
- 4E1D   0D56                                                    sdwX(sdi) = sdw
+ 4DCC   0D56                                            ELSE
+ 4E0F   0D56                                                    sdwX(sdi) = sdw
                 Ax(sdi): sdwDir(sdi) = 1
- 4E1D   0D56                                            END IF
- 4E30   0D56                                            sdwBob(sdi) = 0
- 4E30   0D56                                    ELSE
- 4E3E   0D56                                            sdwX(sdi) = sdwAx(sdi):
+ 4E0F   0D56                                            END IF
+ 4E22   0D56                                            sdwBob(sdi) = 0
+ 4E22   0D56                                    ELSE
+ 4E30   0D56                                            sdwX(sdi) = sdwAx(sdi):
                  sdwY(sdi) = sdwYLo(sdi) - 8
- 4E3E   0D56                                            sdwMode(sdi) = 0: sdwDi
+ 4E30   0D56                                            sdwMode(sdi) = 0: sdwDi
                 r(sdi) = 1: sdwBob(sdi) = 0
- 4E3E   0D56                                    END IF
- 4E68   0D56                                    sdwNxt(sdi) = TIMER + .5
- 4E68   0D56                            END IF
- 4E85   0D56                            sdwArm(sdi) = sdwWant(sdi)
- 4E85   0D56                            GOTO sdnext
- 4E85   0D56                    END IF
- 4E95   0D56                    IF sdwArm(sdi) <> 2 THEN GOTO sdnext
- 4EA4   0D56                    IF TIMER < sdwNxt(sdi) - 5 THEN sdwNxt(sdi) = T
+ 4E30   0D56                                    END IF
+ 4E5A   0D56                                    sdwNxt(sdi) = TIMER + .5
                                                                       PAGE  26
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 4E5A   0D56                            END IF
+ 4E77   0D56                            sdwArm(sdi) = sdwWant(sdi)
+ 4E77   0D56                            GOTO sdnext
+ 4E77   0D56                    END IF
+ 4E87   0D56                    IF sdwArm(sdi) <> 2 THEN GOTO sdnext
+ 4E96   0D56                    IF TIMER < sdwNxt(sdi) - 5 THEN sdwNxt(sdi) = T
                 IMER
- 4EDC   0D56                    IF TIMER < sdwNxt(sdi) THEN GOTO sdnext
- 4EFE   0D56                    '----- gait jitter: every step lands a little o
+ 4ECE   0D56                    IF TIMER < sdwNxt(sdi) THEN GOTO sdnext
+ 4EF0   0D56                    '----- gait jitter: every step lands a little o
                 ff-beat
- 4EFE   0D56                    sdwNxt(sdi) = TIMER + .1 + RND * .05
- 4EFE   0D56                    IF sdwAxs(sdi) = 1 THEN
- 4EFE   0D56                            '----- N/S: horizontal pace with the 1p
+ 4EF0   0D56                    sdwNxt(sdi) = TIMER + .1 + RND * .05
+ 4EF0   0D56                    IF sdwAxs(sdi) = 1 THEN
+ 4EF0   0D56                            '----- N/S: horizontal pace with the 1p
                 x bob; the creep pinches
- 4EFE   0D56                            '----- the crossing span toward the doo
+ 4EF0   0D56                            '----- the crossing span toward the doo
                 r center. Same random
- 4EFE   0D56                            '----- stops/turnbacks as the diagonal 
+ 4EF0   0D56                            '----- stops/turnbacks as the diagonal 
                 walls.
- 4EFE   0D56                            IF RND < .04 THEN
- 4EFE   0D56                                    sdwNxt(sdi) = TIMER + .3 + RND 
+ 4EF0   0D56                            IF RND < .04 THEN
+ 4EF0   0D56                                    sdwNxt(sdi) = TIMER + .3 + RND 
                 * .9
- 4EFE   0D56                                    IF RND < .25 THEN sdwDir(sdi) =
+ 4EF0   0D56                                    IF RND < .25 THEN sdwDir(sdi) =
                  -sdwDir(sdi): sdwBob(sdi) = 0
- 4FB4   0D56                                    GOTO sdnext
- 4FB4   0D56                            END IF
- 4FB7   0D56                            sdwBob(sdi) = 1 - sdwBob(sdi)
- 4FB7   0D56                            sdwX(sdi) = sdwX(sdi) + sdwDir(sdi)
- 4FB7   0D56                            sdwY(sdi) = sdwYLo(sdi) - sdwBob(sdi)
- 4FB7   0D56                            IF sdwX(sdi) >= sdwAx(sdi) + sdwDp(sdi)
+ 4FA4   0D56                                    GOTO sdnext
+ 4FA4   0D56                            END IF
+ 4FA7   0D56                            sdwBob(sdi) = 1 - sdwBob(sdi)
+ 4FA7   0D56                            sdwX(sdi) = sdwX(sdi) + sdwDir(sdi)
+ 4FA7   0D56                            sdwY(sdi) = sdwYLo(sdi) - sdwBob(sdi)
+ 4FA7   0D56                            IF sdwX(sdi) >= sdwAx(sdi) + sdwDp(sdi)
                  - sdwOfs(sdi) THEN
- 4FB7   0D56                                    sdwX(sdi) = sdwAx(sdi) + sdwDp(
+ 4FA7   0D56                                    sdwX(sdi) = sdwAx(sdi) + sdwDp(
                 sdi) - sdwOfs(sdi)
- 4FB7   0D56                                    sdwDir(sdi) = -1: sdwBob(sdi) =
+ 4FA7   0D56                                    sdwDir(sdi) = -1: sdwBob(sdi) =
                  0
- 4FB7   0D56                                    sdwNxt(sdi) = TIMER + .4 + RND 
+ 4FA7   0D56                                    sdwNxt(sdi) = TIMER + .4 + RND 
                 * 2.6
- 4FB7   0D56                            END IF
- 502F   0D56                            IF sdwX(sdi) <= sdwAx(sdi) + sdwOfs(sdi
+ 4FA7   0D56                            END IF
+ 501F   0D56                            IF sdwX(sdi) <= sdwAx(sdi) + sdwOfs(sdi
                 ) THEN
- 502F   0D56                                    sdwX(sdi) = sdwAx(sdi) + sdwOfs
+ 501F   0D56                                    sdwX(sdi) = sdwAx(sdi) + sdwOfs
                 (sdi)
- 502F   0D56                                    sdwDir(sdi) = 1: sdwBob(sdi) = 
+ 501F   0D56                                    sdwDir(sdi) = 1: sdwBob(sdi) = 
                 0
- 502F   0D56                                    sdwNxt(sdi) = TIMER + .4 + RND 
+ 501F   0D56                                    sdwNxt(sdi) = TIMER + .4 + RND 
                 * 2.6
- 502F   0D56                            END IF
- 5084   0D56                    ELSEIF sdwMode(sdi) = 0 THEN
- 5087   0D56                            '----- walk-in from the doorway side: 2
+ 501F   0D56                            END IF
+ 5074   0D56                    ELSEIF sdwMode(sdi) = 0 THEN
+ 5077   0D56                            '----- walk-in from the doorway side: 2
                 px stride, 1px settle-back
- 5087   0D56                            '----- (net 1 toward the room), PURE ho
+ 5077   0D56                            '----- (net 1 toward the room), PURE ho
                 rizontal; the first pace
- 5087   0D56                            '----- leg then heads DOWN through the 
+ 5077   0D56                            '----- leg then heads DOWN through the 
                 pool
- 5087   0D56                            sdwBob(sdi) = 1 - sdwBob(sdi)
- 5087   0D56                            IF sdwBob(sdi) = 1 THEN
- 5087   0D56                                    sdwX(sdi) = sdwX(sdi) + 2 * ms
- 5087   0D56                            ELSE
- 50B7   0D56                                    sdwX(sdi) = sdwX(sdi) - ms
- 50B7   0D56                            END IF
- 50C3   0D56                            jx = sdwAx(sdi) + ms * (sdwOfs(sdi) + 8
+ 5077   0D56                            sdwBob(sdi) = 1 - sdwBob(sdi)
                                                                       PAGE  27
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+ 5077   0D56                            IF sdwBob(sdi) = 1 THEN
+ 5077   0D56                                    sdwX(sdi) = sdwX(sdi) + 2 * ms
+ 5077   0D56                            ELSE
+ 50A7   0D56                                    sdwX(sdi) = sdwX(sdi) - ms
+ 50A7   0D56                            END IF
+ 50B3   0D56                            jx = sdwAx(sdi) + ms * (sdwOfs(sdi) + 8
                 )
- 50C3   0D56                            IF (sdwX(sdi) - jx) * ms >= 0 THEN
- 50C3   0D56                                    sdwX(sdi) = jx: sdwY(sdi) = sdw
+ 50B3   0D56                            IF (sdwX(sdi) - jx) * ms >= 0 THEN
+ 50B3   0D56                                    sdwX(sdi) = jx: sdwY(sdi) = sdw
                 YLo(sdi) - 8
- 50C3   0D56                                    sdwMode(sdi) = 1: sdwDir(sdi) =
+ 50B3   0D56                                    sdwMode(sdi) = 1: sdwDir(sdi) =
                  -1: sdwBob(sdi) = 0
- 50C3   0D56                                    sdwNxt(sdi) = TIMER + .3
- 50C3   0D56                            END IF
- 512C   0D56                    ELSE
- 512F   0D56                            '----- unpredictability: occasional mid
+ 50B3   0D56                                    sdwNxt(sdi) = TIMER + .3
+ 50B3   0D56                            END IF
+ 511C   0D56                    ELSE
+ 511F   0D56                            '----- unpredictability: occasional mid
                 -walk stop, sometimes
- 512F   0D56                            '----- turning back, so the crossings n
+ 511F   0D56                            '----- turning back, so the crossings n
                 ever fall into a rhythm
- 512F   0D56                            IF RND < .04 THEN
- 512F   0D56                                    sdwNxt(sdi) = TIMER + .3 + RND 
+ 511F   0D56                            IF RND < .04 THEN
+ 511F   0D56                                    sdwNxt(sdi) = TIMER + .3 + RND 
                 * .9
- 512F   0D56                                    IF RND < .25 THEN sdwDir(sdi) =
+ 511F   0D56                                    IF RND < .25 THEN sdwDir(sdi) =
                  -sdwDir(sdi): sdwBob(sdi) = 0
- 51A9   0D56                                    GOTO sdnext
- 51A9   0D56                            END IF
- 51AC   0D56                            '----- stair-step pacing along the wall
+ 5199   0D56                                    GOTO sdnext
+ 5199   0D56                            END IF
+ 519C   0D56                            '----- stair-step pacing along the wall
                 : one tick moves x, the
- 51AC   0D56                            '----- next moves y, out-leg rises towa
+ 519C   0D56                            '----- next moves y, out-leg rises towa
                 rd the back corner
- 51AC   0D56                            sdwBob(sdi) = 1 - sdwBob(sdi)
- 51AC   0D56                            IF sdwDir(sdi) > 0 THEN
- 51AC   0D56                                    IF sdwBob(sdi) = 1 THEN sdwX(sd
+ 519C   0D56                            sdwBob(sdi) = 1 - sdwBob(sdi)
+ 519C   0D56                            IF sdwDir(sdi) > 0 THEN
+ 519C   0D56                                    IF sdwBob(sdi) = 1 THEN sdwX(sd
                 i) = sdwX(sdi) + ms ELSE sdwY(sdi) = sdwY(sdi) - 1
- 51E3   0D56                            ELSE
- 51E6   0D56                                    IF sdwBob(sdi) = 1 THEN sdwY(sd
+ 51D3   0D56                            ELSE
+ 51D6   0D56                                    IF sdwBob(sdi) = 1 THEN sdwY(sd
                 i) = sdwY(sdi) + 1 ELSE sdwX(sdi) = sdwX(sdi) - ms
- 5208   0D56                            END IF
- 5208   0D56                            IF sdwY(sdi) <= sdwYLo(sdi) - sdwDp(sdi
+ 51F8   0D56                            END IF
+ 51F8   0D56                            IF sdwY(sdi) <= sdwYLo(sdi) - sdwDp(sdi
                 ) THEN
- 5208   0D56                                    sdwX(sdi) = sdwAx(sdi) + ms * (
+ 51F8   0D56                                    sdwX(sdi) = sdwAx(sdi) + ms * (
                 sdwOfs(sdi) + sdwDp(sdi))
- 5208   0D56                                    sdwY(sdi) = sdwYLo(sdi) - sdwDp
+ 51F8   0D56                                    sdwY(sdi) = sdwYLo(sdi) - sdwDp
                 (sdi)
- 5208   0D56                                    sdwDir(sdi) = -1: sdwBob(sdi) =
+ 51F8   0D56                                    sdwDir(sdi) = -1: sdwBob(sdi) =
                  0
- 5208   0D56                                    sdwNxt(sdi) = TIMER + .4 + RND 
+ 51F8   0D56                                    sdwNxt(sdi) = TIMER + .4 + RND 
                 * 2.6
- 5208   0D56                            END IF
- 5274   0D56                            IF (sdwX(sdi) - (sdwAx(sdi) + ms * sdwO
+ 51F8   0D56                            END IF
+ 5264   0D56                            IF (sdwX(sdi) - (sdwAx(sdi) + ms * sdwO
                 fs(sdi))) * ms <= 0 AND sdwDir(sdi) < 0 THEN
- 5274   0D56                                    sdwX(sdi) = sdwAx(sdi) + ms * s
+ 5264   0D56                                    sdwX(sdi) = sdwAx(sdi) + ms * s
                 dwOfs(sdi): sdwY(sdi) = sdwYLo(sdi)
- 5274   0D56                                    sdwDir(sdi) = 1: sdwBob(sdi) = 
-                0
- 5274   0D56                                    sdwNxt(sdi) = TIMER + .4 + RND 
-                * 2.6
- 5274   0D56                            END IF
- 52FC   0D56                    END IF
- 52FC   0D56                    '----- draw via the asm blitters: compose the w
+ 5264   0D56                                    sdwDir(sdi) = 1: sdwBob(sdi) = 
                                                                       PAGE  28
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                0
+ 5264   0D56                                    sdwNxt(sdi) = TIMER + .4 + RND 
+                * 2.6
+ 5264   0D56                            END IF
+ 52EC   0D56                    END IF
+ 52EC   0D56                    '----- draw via the asm blitters: compose the w
                 hole frame off-screen
- 52FC   0D56                    '----- (lit copy -> shifted sprite AND -> keep 
+ 52EC   0D56                    '----- (lit copy -> shifted sprite AND -> keep 
                 AND -> clipBg OR) in
- 52FC   0D56                    '----- sdwBuf, then ONE SHADBLT to B800 -- no v
+ 52EC   0D56                    '----- sdwBuf, then ONE SHADBLT to B800 -- no v
                 isible intermediate
- 52FC   0D56                    '----- states, so no flicker by construction
- 52FC   0D56                    rb = sdwRB(sdi): rw = sdwTH(sdi)
- 52FC   0D56                    bs = VARSEG(sdwBuf(0)): bo = VARPTR(sdwBuf(0))
- 52FC   0D56                    DEF SEG = VARSEG(bop$)
- 52FC   0D56                    CALL ABSOLUTE(BYVAL VARSEG(sdt%(sdwOLt(sdi))), 
+ 52EC   0D56                    '----- states, so no flicker by construction
+ 52EC   0D56                    rb = sdwRB(sdi): rw = sdwTH(sdi)
+ 52EC   0D56                    bs = VARSEG(sdwBuf(0)): bo = VARPTR(sdwBuf(0))
+ 52EC   0D56                    DEF SEG = VARSEG(bop$)
+ 52EC   0D56                    CALL ABSOLUTE(BYVAL VARSEG(sdt%(sdwOLt(sdi))), 
                 BYVAL VARPTR(sdt%(sdwOLt(sdi))), BYVAL bs, BYVAL bo, BYVAL rw, 
                 BYVAL rb, BYVAL rb, BYVAL rb, BYVAL 0, SADD(bop$))
- 536A   0D56                    '----- sprite: pick up/down slot + the pre-shif
+ 5358   0D56                    '----- sprite: pick up/down slot + the pre-shif
                 ted variant for x AND 3.
- 536A   0D56                    '----- jx = rows clipped off the sprite TOP if 
+ 5358   0D56                    '----- jx = rows clipped off the sprite TOP if 
                 it pokes above the rect
- 536A   0D56                    '----- (a negative row offset here once compose
+ 5358   0D56                    '----- (a negative row offset here once compose
                 d into DGROUP memory
- 536A   0D56                    '----- BEFORE the buffer -- never trust tuning 
+ 5358   0D56                    '----- BEFORE the buffer -- never trust tuning 
                 to keep sprites inside)
- 536A   0D56                    so2 = sdwOSD(sdi)
- 536A   0D56                    IF sdwMode(sdi) = 1 AND sdwDir(sdi) > 0 THEN so
+ 5358   0D56                    so2 = sdwOSD(sdi)
+ 5358   0D56                    IF sdwMode(sdi) = 1 AND sdwDir(sdi) > 0 THEN so
                 2 = sdwOSU(sdi)
- 539C   0D56                    sv2 = sdwX(sdi) AND 3
- 539C   0D56                    so2 = so2 + sv2 * sdwVI(sdi)
- 539C   0D56                    jx = sdwY(sdi) - sdwTY(sdi)
- 539C   0D56                    sv2 = 0
- 539C   0D56                    IF jx < 0 THEN sv2 = -jx: jx = 0
- 53D3   0D56                    IF sv2 < sdwSPH(sdi) THEN
- 53D3   0D56                            d2 = bo
- 53D3   0D56                            IF d2 < 0 THEN d2 = d2 + 65536
- 5415   0D56                            d2 = d2 + jx * rb + (sdwX(sdi) \ 4 - sd
+ 538A   0D56                    sv2 = sdwX(sdi) AND 3
+ 538A   0D56                    so2 = so2 + sv2 * sdwVI(sdi)
+ 538A   0D56                    jx = sdwY(sdi) - sdwTY(sdi)
+ 538A   0D56                    sv2 = 0
+ 538A   0D56                    IF jx < 0 THEN sv2 = -jx: jx = 0
+ 53C1   0D56                    IF sv2 < sdwSPH(sdi) THEN
+ 53C1   0D56                            d2 = bo
+ 53C1   0D56                            IF d2 < 0 THEN d2 = d2 + 65536
+ 5403   0D56                            d2 = d2 + jx * rb + (sdwX(sdi) \ 4 - sd
                 wTX(sdi) \ 4)
- 5415   0D56                            IF d2 > 32767 THEN d2 = d2 - 65536
- 547D   0D56                            sl2 = VARPTR(sdt%(so2))
- 547D   0D56                            IF sl2 < 0 THEN sl2 = sl2 + 65536
- 54BB   0D56                            sl2 = sl2 + sv2 * CLNG(sdwSBW(sdi))
- 54BB   0D56                            IF sl2 > 32767 THEN sl2 = sl2 - 65536
- 5506   0D56                            CALL ABSOLUTE(BYVAL VARSEG(sdt%(so2)), 
+ 5403   0D56                            IF d2 > 32767 THEN d2 = d2 - 65536
+ 5467   0D56                            sl2 = VARPTR(sdt%(so2))
+ 5467   0D56                            IF sl2 < 0 THEN sl2 = sl2 + 65536
+ 54A5   0D56                            sl2 = sl2 + sv2 * CLNG(sdwSBW(sdi))
+ 54A5   0D56                            IF sl2 > 32767 THEN sl2 = sl2 - 65536
+ 54F0   0D56                            CALL ABSOLUTE(BYVAL VARSEG(sdt%(so2)), 
                 BYVAL CINT(sl2), BYVAL bs, BYVAL CINT(d2), BYVAL sdwSPH(sdi) - 
                 sv2, BYVAL sdwSBW(sdi), BYVAL sdwSBW(sdi), BYVAL rb, BYVAL 1, S
                 ADD(bop$))
- 5554   0D56                    END IF
- 5554   0D56                    CALL ABSOLUTE(BYVAL VARSEG(sdt%(sdwOKp(sdi))), 
+ 553C   0D56                    END IF
+ 553C   0D56                    CALL ABSOLUTE(BYVAL VARSEG(sdt%(sdwOKp(sdi))), 
                 BYVAL VARPTR(sdt%(sdwOKp(sdi))), BYVAL bs, BYVAL bo, BYVAL rw, 
                 BYVAL rb, BYVAL rb, BYVAL rb, BYVAL 1, SADD(bop$))
- 55A2   0D56                    CALL ABSOLUTE(BYVAL VARSEG(sdt%(sdwOBg(sdi))), 
+ 5588   0D56                    CALL ABSOLUTE(BYVAL VARSEG(sdt%(sdwOBg(sdi))), 
                 BYVAL VARPTR(sdt%(sdwOBg(sdi))), BYVAL bs, BYVAL bo, BYVAL rw, 
-                BYVAL rb, BYVAL rb, BYVAL rb, BYVAL 2, SADD(bop$))
- 55F0   0D56                    '----- overlapping player: FIRST refresh his sa
-                ve-under from the
- 55F0   0D56                    '----- composed background (so any later engine
-                 erase stamps CURRENT
- 55F0   0D56                    '----- pixels, never a pre-light box), THEN com
                                                                       PAGE  29
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                BYVAL rb, BYVAL rb, BYVAL rb, BYVAL 2, SADD(bop$))
+ 55D4   0D56                    '----- overlapping player: FIRST refresh his sa
+                ve-under from the
+ 55D4   0D56                    '----- composed background (so any later engine
+                 erase stamps CURRENT
+ 55D4   0D56                    '----- pixels, never a pre-light box), THEN com
                 pose him into the frame
- 55F0   0D56                    IF po = 1 AND sdwPRdy = 1 THEN
- 55F0   0D56                            CALL ShadFbg(fbg%(), sdwTX(sdi), sdwTY(
+ 55D4   0D56                    IF po = 1 AND sdwPRdy = 1 THEN
+ 55D4   0D56                            CALL ShadFbg(fbg%(), sdwTX(sdi), sdwTY(
                 sdi), rw, rb)
- 562F   0D56                            CALL ShadPCmp(bs, bo, sdwTX(sdi), sdwTY
+ 5613   0D56                            CALL ShadPCmp(bs, bo, sdwTX(sdi), sdwTY
                 (sdi), rw, rb, bop$)
- 5658   0D56                    END IF
- 5658   0D56                    sl2 = bo: IF sl2 < 0 THEN sl2 = sl2 + 65536
- 5689   0D56                    IF po = 1 AND sdwPRdy = 1 THEN
- 5689   0D56                            '----- he's IN the frame: full-rect bli
+ 563C   0D56                    END IF
+ 563C   0D56                    GOSUB curoff
+ 5644   0D56                    sl2 = bo: IF sl2 < 0 THEN sl2 = sl2 + 65536
+ 5675   0D56                    IF po = 1 AND sdwPRdy = 1 THEN
+ 5675   0D56                            '----- he's IN the frame: full-rect bli
                 t, no bands
- 5689   0D56                            CALL ShadBlt(bs, sl2, sdwTX(sdi), sdwTY
+ 5675   0D56                            CALL ShadBlt(bs, sl2, sdwTX(sdi), sdwTY
                 (sdi), rw, rb, -99, -99, blt$)
- 56E6   0D56                    ELSE
- 56E9   0D56                            CALL ShadBlt(bs, sl2, sdwTX(sdi), sdwTY
+ 56CE   0D56                    ELSE
+ 56D1   0D56                            CALL ShadBlt(bs, sl2, sdwTX(sdi), sdwTY
                 (sdi), rw, rb, CINT(pjxv!), CINT(pjyv!), blt$)
- 573A   0D56                    END IF
- 573A   0D56                    sdwDty(sdi) = po
- 573A   0D56                    sdnext:
- 5746   0D56                    IF co = 1 THEN
- 5746   0D56                            co = 0
- 5746   0D56                            mr.ax = 1
- 5746   0D56                            CALL INTERRUPT(&H33, mr, mo)
- 5776   0D56                    END IF
- 5776   0D56            NEXT
- 5785   0D56            EXIT SUB
- 5785   0D56            '----- local: draw the state block at pool offset so2 -
+ 571E   0D56                    END IF
+ 571E   0D56                    sdwDty(sdi) = po
+ 571E   0D56                    sdnext:
+ 572A   0D56                    IF co = 2 THEN CALL drawcur
+ 573D   0D56                    co = 0
+ 573D   0D56            NEXT
+ 5751   0D56            EXIT SUB
+ 5751   0D56            '----- local: draw the state block at pool offset so2 -
                 - composed with
- 5785   0D56            '----- the player + full blit when he overlaps (a bande
+ 5751   0D56            '----- the player + full blit when he overlaps (a bande
                 d state blit left
- 5785   0D56            '----- a cleared band around him), plain/banded blit ot
+ 5751   0D56            '----- a cleared band around him), plain/banded blit ot
                 herwise
- 5785   0D56            sdtog:
- 5788   0D56            IF po = 1 AND sdwPRdy = 1 THEN
- 5788   0D56                    rb = sdwRB(sdi): rw = sdwTH(sdi)
- 5788   0D56                    bs = VARSEG(sdwBuf(0)): bo = VARPTR(sdwBuf(0))
- 5788   0D56                    DEF SEG = VARSEG(bop$)
- 5788   0D56                    CALL ABSOLUTE(BYVAL VARSEG(sdt%(so2)), BYVAL VA
+ 5751   0D56            sdtog:
+ 5754   0D56            GOSUB curoff
+ 5761   0D56            IF po = 1 AND sdwPRdy = 1 THEN
+ 5761   0D56                    rb = sdwRB(sdi): rw = sdwTH(sdi)
+ 5761   0D56                    bs = VARSEG(sdwBuf(0)): bo = VARPTR(sdwBuf(0))
+ 5761   0D56                    DEF SEG = VARSEG(bop$)
+ 5761   0D56                    CALL ABSOLUTE(BYVAL VARSEG(sdt%(so2)), BYVAL VA
                 RPTR(sdt%(so2)), BYVAL bs, BYVAL bo, BYVAL rw, BYVAL rb, BYVAL 
                 rb, BYVAL rb, BYVAL 0, SADD(bop$))
- 5818   0D56                    DEF SEG
- 5818   0D56                    CALL ShadFbg(fbg%(), sdwTX(sdi), sdwTY(sdi), rw
+ 57EA   0D56                    DEF SEG
+ 57EA   0D56                    CALL ShadFbg(fbg%(), sdwTX(sdi), sdwTY(sdi), rw
                 , rb)
- 583E   0D56                    CALL ShadPCmp(bs, bo, sdwTX(sdi), sdwTY(sdi), r
+ 5810   0D56                    CALL ShadPCmp(bs, bo, sdwTX(sdi), sdwTY(sdi), r
                 w, rb, bop$)
- 5867   0D56                    sl2 = bo: IF sl2 < 0 THEN sl2 = sl2 + 65536
- 5898   0D56                    CALL ShadBlt(bs, sl2, sdwTX(sdi), sdwTY(sdi), r
+ 5839   0D56                    sl2 = bo: IF sl2 < 0 THEN sl2 = sl2 + 65536
+ 586A   0D56                    CALL ShadBlt(bs, sl2, sdwTX(sdi), sdwTY(sdi), r
                 w, rb, -99, -99, blt$)
- 58D7   0D56            ELSE
- 58DA   0D56                    sl2 = VARPTR(sdt%(so2)): IF sl2 < 0 THEN sl2 = 
+ 58A5   0D56            ELSE
+                                                                      PAGE  30
+                                                                      25 Aug 26
+                                                                      17:32:10
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 58A8   0D56                    sl2 = VARPTR(sdt%(so2)): IF sl2 < 0 THEN sl2 = 
                 sl2 + 65536
- 5918   0D56                    CALL ShadBlt(VARSEG(sdt%(so2)), sl2, sdwTX(sdi)
+ 58E6   0D56                    CALL ShadBlt(VARSEG(sdt%(so2)), sl2, sdwTX(sdi)
                 , sdwTY(sdi), sdwTH(sdi), sdwRB(sdi), CINT(pjxv!), CINT(pjyv!),
                  blt$)
-                                                                      PAGE  30
-                                                                      24 Aug 26
-                                                                      21:28:06
-Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
-
- 5984   0D56            END IF
- 5984   0D56            RETURN
- 5984   0D56    END SUB
- 5991   0D56    
- 5991   0D56    '----- ShadBlt: send composed linear rows (ss:so, stride rb) to
+ 594C   0D56            END IF
+ 594C   0D56            RETURN
+ 594C   0D56            '----- local: first real draw this pass while the softw
+                are cursor overlaps
+ 594C   0D56            '----- the rect -- erase it once (co 1 -> 2); sdnext re
+                draws it on top
+ 594C   0D56            curoff:
+ 5951   0D56            IF co = 1 THEN
+ 5951   0D56                    co = 2
+ 5951   0D56                    CALL erasecur
+ 5969   0D56            END IF
+ 5969   0D56            RETURN
+ 5969   0D56    END SUB
+ 5976   0D56    
+ 5976   0D56    '----- ShadBlt: send composed linear rows (ss:so, stride rb) to
                  the screen at
- 5991   0D56    '----- (tx,ty) -- as ONE blit normally, or as bands that SKIP t
+ 5976   0D56    '----- (tx,ty) -- as ONE blit normally, or as bands that SKIP t
                 he standing
- 5991   0D56    '----- player's 31x31 box when it overlaps (full-width bands ab
+ 5976   0D56    '----- player's 31x31 box when it overlaps (full-width bands ab
                 ove/below, the
- 5991   0D56    '----- overlap rows as two column strips; the skip widens to by
+ 5976   0D56    '----- overlap rows as two column strips; the skip widens to by
                 te bounds).
- 5991   0D56    '----- so arrives UNWRAPPED (0-65535); pass pjx2 = -99 to force
+ 5976   0D56    '----- so arrives UNWRAPPED (0-65535); pass pjx2 = -99 to force
                  a full blit.
- 5991   0D56    SUB ShadBlt (ss AS INTEGER, so AS LONG, tx AS INTEGER, ty AS IN
+ 5976   0D56    SUB ShadBlt (ss AS INTEGER, so AS LONG, tx AS INTEGER, ty AS IN
                 TEGER, rw AS INTEGER, rb AS INTEGER, pjx2 AS INTEGER, pjy2 AS I
                 NTEGER, blt$)
- 599C   0D56            DIM oy1 AS INTEGER, oy2 AS INTEGER, cb1 AS INTEGER, cb2
+ 5981   0D56            DIM oy1 AS INTEGER, oy2 AS INTEGER, cb1 AS INTEGER, cb2
                  AS INTEGER
- 599C   0D56            DIM rx1 AS INTEGER, nr AS INTEGER, b2 AS LONG, ov AS IN
+ 5981   0D56            DIM rx1 AS INTEGER, nr AS INTEGER, b2 AS LONG, ov AS IN
                 TEGER
- 599C   0D56            rx1 = tx \ 4
- 599C   0D56            ov = 1
- 599C   0D56            IF pjx2 + 30 < tx OR pjx2 > tx + rb * 4 - 1 THEN ov = 0
- 59E5   0D56            IF pjy2 + 30 < ty OR pjy2 > ty + rw - 1 THEN ov = 0
- 5A18   0D56            DEF SEG = VARSEG(blt$)
- 5A18   0D56            IF ov = 0 THEN
- 5A18   0D56                    b2 = so: IF b2 > 32767 THEN b2 = b2 - 65536
- 5A5F   0D56                    CALL ABSOLUTE(BYVAL ss, BYVAL CINT(b2), BYVAL r
+ 5981   0D56            rx1 = tx \ 4
+ 5981   0D56            ov = 1
+ 5981   0D56            IF pjx2 + 30 < tx OR pjx2 > tx + rb * 4 - 1 THEN ov = 0
+ 59CA   0D56            IF pjy2 + 30 < ty OR pjy2 > ty + rw - 1 THEN ov = 0
+ 59FD   0D56            DEF SEG = VARSEG(blt$)
+ 59FD   0D56            IF ov = 0 THEN
+ 59FD   0D56                    b2 = so: IF b2 > 32767 THEN b2 = b2 - 65536
+ 5A44   0D56                    CALL ABSOLUTE(BYVAL ss, BYVAL CINT(b2), BYVAL r
                 x1, BYVAL ty, BYVAL rw, BYVAL rb, BYVAL rb, BYVAL 0, SADD(blt$)
                 )
- 5A93   0D56                    DEF SEG
- 5A93   0D56                    EXIT SUB
- 5A93   0D56            END IF
- 5A9B   0D56            '----- skip only the VISIBLE body span (~cols +7..+23 o
+ 5A78   0D56                    DEF SEG
+ 5A78   0D56                    EXIT SUB
+ 5A78   0D56            END IF
+ 5A80   0D56            '----- skip only the VISIBLE body span (~cols +7..+23 o
                 f the 31px frame),
- 5A9B   0D56            '----- not the whole box -- a skip as wide as the box s
+ 5A80   0D56            '----- not the whole box -- a skip as wide as the box s
                 tarves small pools
- 5A9B   0D56            '----- (the north fan) that sit almost entirely inside 
+ 5A80   0D56            '----- (the north fan) that sit almost entirely inside 
+                                                                      PAGE  31
+                                                                      25 Aug 26
+                                                                      17:32:10
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
                 it
- 5A9B   0D56            oy1 = pjy2: IF oy1 < ty THEN oy1 = ty
- 5AB2   0D56            oy2 = pjy2 + 30: IF oy2 > ty + rw - 1 THEN oy2 = ty + r
+ 5A80   0D56            oy1 = pjy2: IF oy1 < ty THEN oy1 = ty
+ 5A97   0D56            oy2 = pjy2 + 30: IF oy2 > ty + rw - 1 THEN oy2 = ty + r
                 w - 1
- 5AD2   0D56            cb1 = (pjx2 + 7) \ 4: IF cb1 < rx1 THEN cb1 = rx1
- 5AF1   0D56            cb2 = (pjx2 + 23) \ 4: IF cb2 > rx1 + rb - 1 THEN cb2 =
+ 5AB7   0D56            cb1 = (pjx2 + 7) \ 4: IF cb1 < rx1 THEN cb1 = rx1
+ 5AD6   0D56            cb2 = (pjx2 + 23) \ 4: IF cb2 > rx1 + rb - 1 THEN cb2 =
                  rx1 + rb - 1
- 5B15   0D56            nr = oy1 - ty
- 5B15   0D56            IF nr > 0 THEN
- 5B15   0D56                    b2 = so: IF b2 > 32767 THEN b2 = b2 - 65536
- 5B5D   0D56                    CALL ABSOLUTE(BYVAL ss, BYVAL CINT(b2), BYVAL r
+ 5AFA   0D56            nr = oy1 - ty
+ 5AFA   0D56            IF nr > 0 THEN
+ 5AFA   0D56                    b2 = so: IF b2 > 32767 THEN b2 = b2 - 65536
+ 5B42   0D56                    CALL ABSOLUTE(BYVAL ss, BYVAL CINT(b2), BYVAL r
                 x1, BYVAL ty, BYVAL nr, BYVAL rb, BYVAL rb, BYVAL 0, SADD(blt$)
                 )
- 5B8F   0D56            END IF
- 5B8F   0D56            nr = oy2 - oy1 + 1
-                                                                      PAGE  31
-                                                                      24 Aug 26
-                                                                      21:28:06
-Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
-
- 5B8F   0D56            IF cb1 > rx1 THEN
- 5B8F   0D56                    b2 = so + (oy1 - ty) * CLNG(rb)
- 5B8F   0D56                    IF b2 > 32767 THEN b2 = b2 - 65536
- 5BF2   0D56                    CALL ABSOLUTE(BYVAL ss, BYVAL CINT(b2), BYVAL r
+ 5B74   0D56            END IF
+ 5B74   0D56            nr = oy2 - oy1 + 1
+ 5B74   0D56            IF cb1 > rx1 THEN
+ 5B74   0D56                    b2 = so + (oy1 - ty) * CLNG(rb)
+ 5B74   0D56                    IF b2 > 32767 THEN b2 = b2 - 65536
+ 5BD7   0D56                    CALL ABSOLUTE(BYVAL ss, BYVAL CINT(b2), BYVAL r
                 x1, BYVAL oy1, BYVAL nr, BYVAL cb1 - rx1, BYVAL rb, BYVAL 0, SA
                 DD(blt$))
- 5C27   0D56            END IF
- 5C27   0D56            IF cb2 < rx1 + rb - 1 THEN
- 5C27   0D56                    b2 = so + (oy1 - ty) * CLNG(rb) + (cb2 + 1 - rx
+ 5C0C   0D56            END IF
+ 5C0C   0D56            IF cb2 < rx1 + rb - 1 THEN
+ 5C0C   0D56                    b2 = so + (oy1 - ty) * CLNG(rb) + (cb2 + 1 - rx
                 1)
- 5C27   0D56                    IF b2 > 32767 THEN b2 = b2 - 65536
- 5C9B   0D56                    CALL ABSOLUTE(BYVAL ss, BYVAL CINT(b2), BYVAL c
+ 5C0C   0D56                    IF b2 > 32767 THEN b2 = b2 - 65536
+ 5C80   0D56                    CALL ABSOLUTE(BYVAL ss, BYVAL CINT(b2), BYVAL c
                 b2 + 1, BYVAL oy1, BYVAL nr, BYVAL rx1 + rb - 1 - cb2, BYVAL rb
                 , BYVAL 0, SADD(blt$))
- 5CD6   0D56            END IF
- 5CD6   0D56            nr = ty + rw - 1 - oy2
- 5CD6   0D56            IF nr > 0 THEN
- 5CD6   0D56                    b2 = so + (oy2 + 1 - ty) * CLNG(rb)
- 5CD6   0D56                    IF b2 > 32767 THEN b2 = b2 - 65536
- 5D3C   0D56                    CALL ABSOLUTE(BYVAL ss, BYVAL CINT(b2), BYVAL r
+ 5CBB   0D56            END IF
+ 5CBB   0D56            nr = ty + rw - 1 - oy2
+ 5CBB   0D56            IF nr > 0 THEN
+ 5CBB   0D56                    b2 = so + (oy2 + 1 - ty) * CLNG(rb)
+ 5CBB   0D56                    IF b2 > 32767 THEN b2 = b2 - 65536
+ 5D21   0D56                    CALL ABSOLUTE(BYVAL ss, BYVAL CINT(b2), BYVAL r
                 x1, BYVAL oy2 + 1, BYVAL nr, BYVAL rb, BYVAL rb, BYVAL 0, SADD(
                 blt$))
- 5D6E   0D56            END IF
- 5D6E   0D56            DEF SEG
- 5D6E   0D56    END SUB
- 5D7B   0D56    
- 5D7B   0D56    '----- ShadPCmp: compose the standing player INTO the work buff
+ 5D53   0D56            END IF
+ 5D53   0D56            DEF SEG
+ 5D53   0D56    END SUB
+ 5D60   0D56    
+ 5D60   0D56    '----- ShadPCmp: compose the standing player INTO the work buff
                 er (mask AND,
- 5D7B   0D56    '----- art OR, both 2D-clipped to the rect) -- shared by tick d
+ 5D60   0D56    '----- art OR, both 2D-clipped to the rect) -- shared by tick d
                 raws and the
- 5D7B   0D56    '----- toggle path. Uses the per-stand shifted pair (sdwPSh/PMh
+ 5D60   0D56    '----- toggle path. Uses the per-stand shifted pair (sdwPSh/PMh
                 , 10-byte rows).
- 5D7B   0D56    SUB ShadPCmp (bs AS INTEGER, bo AS INTEGER, tx AS INTEGER, ty A
+ 5D60   0D56    SUB ShadPCmp (bs AS INTEGER, bo AS INTEGER, tx AS INTEGER, ty A
                 S INTEGER, rw AS INTEGER, rb AS INTEGER, bop$)
- 5D86   0D56            DIM jx AS INTEGER, sv2 AS INTEGER, so2 AS INTEGER
- 5D86   0D56            DIM kw2 AS INTEGER, kw3 AS INTEGER, si3 AS INTEGER
- 5D86   0D56            DIM d2 AS LONG, sl2 AS LONG
- 5D86   0D56            jx = sdwPLY - ty
- 5D86   0D56            sv2 = 0
- 5D86   0D56            IF jx < 0 THEN sv2 = -jx: jx = 0
- 5DA7   0D56            so2 = 31 - sv2
- 5DA7   0D56            IF jx + so2 > rw THEN so2 = rw - jx
- 5DC5   0D56            IF so2 <= 0 THEN EXIT SUB
- 5DCE   0D56            kw2 = sdwPLX \ 4 - tx \ 4
- 5DCE   0D56            kw3 = 0: si3 = 9
- 5DCE   0D56            IF kw2 < 0 THEN kw3 = -kw2: si3 = si3 - kw3: kw2 = 0
- 5E06   0D56            IF kw2 + si3 > rb THEN si3 = rb - kw2
- 5E1E   0D56            IF si3 <= 0 THEN EXIT SUB
- 5E27   0D56            d2 = bo: IF d2 < 0 THEN d2 = d2 + 65536
- 5E5A   0D56            d2 = d2 + jx * rb + kw2
- 5E5A   0D56            IF d2 > 32767 THEN d2 = d2 - 65536
- 5EA7   0D56            DEF SEG = VARSEG(bop$)
- 5EA7   0D56            sl2 = VARPTR(sdwPMh(0)): IF sl2 < 0 THEN sl2 = sl2 + 65
-                536
+ 5D6B   0D56            DIM jx AS INTEGER, sv2 AS INTEGER, so2 AS INTEGER
+ 5D6B   0D56            DIM kw2 AS INTEGER, kw3 AS INTEGER, si3 AS INTEGER
+ 5D6B   0D56            DIM d2 AS LONG, sl2 AS LONG
+ 5D6B   0D56            jx = sdwPLY - ty
+ 5D6B   0D56            sv2 = 0
                                                                       PAGE  32
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 5EE0   0D56            sl2 = sl2 + sv2 * 10 + kw3
- 5EE0   0D56            IF sl2 > 32767 THEN sl2 = sl2 - 65536
- 5F2B   0D56            CALL ABSOLUTE(BYVAL VARSEG(sdwPMh(0)), BYVAL CINT(sl2),
+ 5D6B   0D56            IF jx < 0 THEN sv2 = -jx: jx = 0
+ 5D8C   0D56            so2 = 31 - sv2
+ 5D8C   0D56            IF jx + so2 > rw THEN so2 = rw - jx
+ 5DAA   0D56            IF so2 <= 0 THEN EXIT SUB
+ 5DB3   0D56            kw2 = sdwPLX \ 4 - tx \ 4
+ 5DB3   0D56            kw3 = 0: si3 = 9
+ 5DB3   0D56            IF kw2 < 0 THEN kw3 = -kw2: si3 = si3 - kw3: kw2 = 0
+ 5DEB   0D56            IF kw2 + si3 > rb THEN si3 = rb - kw2
+ 5E03   0D56            IF si3 <= 0 THEN EXIT SUB
+ 5E0C   0D56            d2 = bo: IF d2 < 0 THEN d2 = d2 + 65536
+ 5E3F   0D56            d2 = d2 + jx * rb + kw2
+ 5E3F   0D56            IF d2 > 32767 THEN d2 = d2 - 65536
+ 5E8C   0D56            DEF SEG = VARSEG(bop$)
+ 5E8C   0D56            sl2 = VARPTR(sdwPMh(0)): IF sl2 < 0 THEN sl2 = sl2 + 65
+                536
+ 5EC5   0D56            sl2 = sl2 + sv2 * 10 + kw3
+ 5EC5   0D56            IF sl2 > 32767 THEN sl2 = sl2 - 65536
+ 5F10   0D56            CALL ABSOLUTE(BYVAL VARSEG(sdwPMh(0)), BYVAL CINT(sl2),
                  BYVAL bs, BYVAL CINT(d2), BYVAL so2, BYVAL si3, BYVAL 10, BYVA
                 L rb, BYVAL 1, SADD(bop$))
- 5F62   0D56            sl2 = VARPTR(sdwPSh(0)): IF sl2 < 0 THEN sl2 = sl2 + 65
+ 5F47   0D56            sl2 = VARPTR(sdwPSh(0)): IF sl2 < 0 THEN sl2 = sl2 + 65
                 536
- 5F93   0D56            sl2 = sl2 + sv2 * 10 + kw3
- 5F93   0D56            IF sl2 > 32767 THEN sl2 = sl2 - 65536
- 5FDE   0D56            CALL ABSOLUTE(BYVAL VARSEG(sdwPSh(0)), BYVAL CINT(sl2),
+ 5F78   0D56            sl2 = sl2 + sv2 * 10 + kw3
+ 5F78   0D56            IF sl2 > 32767 THEN sl2 = sl2 - 65536
+ 5FC3   0D56            CALL ABSOLUTE(BYVAL VARSEG(sdwPSh(0)), BYVAL CINT(sl2),
                  BYVAL bs, BYVAL CINT(d2), BYVAL so2, BYVAL si3, BYVAL 10, BYVA
                 L rb, BYVAL 2, SADD(bop$))
- 6015   0D56            DEF SEG
- 6015   0D56    END SUB
- 6022   0D56    
- 6022   0D56    '----- ShadFbg: refresh the player's standing save-under (fbg) 
+ 5FFA   0D56            DEF SEG
+ 5FFA   0D56    END SUB
+ 6007   0D56    
+ 6007   0D56    '----- ShadFbg: refresh the player's standing save-under (fbg) 
                 from the
- 6022   0D56    '----- composed BACKGROUND buffer -- must run BEFORE ShadPCmp a
+ 6007   0D56    '----- composed BACKGROUND buffer -- must run BEFORE ShadPCmp a
                 dds him, so
- 6022   0D56    '----- fbg holds exactly what is under him. Any later engine er
+ 6007   0D56    '----- fbg holds exactly what is under him. Any later engine er
                 ase (walk
- 6022   0D56    '----- start, action face) then stamps CURRENT pixels, never a 
+ 6007   0D56    '----- start, action face) then stamps CURRENT pixels, never a 
                 stale box.
- 6022   0D56    '----- Row-granular: only rows inside the rect refresh; skipped
+ 6007   0D56    '----- Row-granular: only rows inside the rect refresh; skipped
                  when his box
- 6022   0D56    '----- sticks out horizontally (rare; old behavior applies). Le
+ 6007   0D56    '----- sticks out horizontally (rare; old behavior applies). Le
                 ft-shifts the
- 6022   0D56    '----- byte-aligned buffer span back to pjx's GET packing phase
+ 6007   0D56    '----- byte-aligned buffer span back to pjx's GET packing phase
                 .
- 6022   0D56    SUB ShadFbg (fbg%(), tx AS INTEGER, ty AS INTEGER, rw AS INTEGE
+ 6007   0D56    SUB ShadFbg (fbg%(), tx AS INTEGER, ty AS INTEGER, rw AS INTEGE
                 R, rb AS INTEGER)
- 602D   0D56            DIM r1 AS INTEGER, r2 AS INTEGER, r AS INTEGER, k AS IN
+ 6012   0D56            DIM r1 AS INTEGER, r2 AS INTEGER, r AS INTEGER, k AS IN
                 TEGER
- 602D   0D56            DIM sh AS INTEGER, c1 AS INTEGER, fi AS INTEGER
- 602D   0D56            DIM b0 AS INTEGER, b1 AS INTEGER, ob AS INTEGER
- 602D   0D56            DIM shl2 AS INTEGER, shr2 AS INTEGER
- 602D   0D56            DIM bofs AS LONG, t2 AS LONG, t3 AS LONG
- 602D   0D56            c1 = sdwPLX \ 4 - tx \ 4
- 602D   0D56            IF c1 < 0 THEN EXIT SUB
- 604E   0D56            IF c1 + 9 > rb THEN EXIT SUB
- 605E   0D56            r1 = ty - sdwPLY
- 605E   0D56            IF r1 < 0 THEN r1 = 0
- 6076   0D56            r2 = ty + rw - 1 - sdwPLY
- 6076   0D56            IF r2 > 30 THEN r2 = 30
- 6095   0D56            IF r2 < r1 THEN EXIT SUB
- 60A0   0D56            sh = sdwPLX AND 3
- 60A0   0D56            shl2 = 1
- 60A0   0D56            FOR k = 1 TO sh * 2
- 60BA   0D56                    shl2 = shl2 * 2
- 60BA   0D56            NEXT
- 60D0   0D56            shr2 = 256 \ shl2
- 60D0   0D56            bofs = VARPTR(sdwBuf(0))
- 60D0   0D56            IF bofs < 0 THEN bofs = bofs + 65536
- 610B   0D56            DEF SEG = VARSEG(sdwBuf(0))
+ 6012   0D56            DIM sh AS INTEGER, c1 AS INTEGER, fi AS INTEGER
+ 6012   0D56            DIM b0 AS INTEGER, b1 AS INTEGER, ob AS INTEGER
+ 6012   0D56            DIM shl2 AS INTEGER, shr2 AS INTEGER
+ 6012   0D56            DIM bofs AS LONG, t2 AS LONG, t3 AS LONG
+ 6012   0D56            c1 = sdwPLX \ 4 - tx \ 4
+ 6012   0D56            IF c1 < 0 THEN EXIT SUB
                                                                       PAGE  33
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 610B   0D56            FOR r = r1 TO r2
- 6120   0D56                    t2 = bofs + (sdwPLY + r - ty) * CLNG(rb) + c1
- 6120   0D56                    b0 = PEEK(t2)
- 6120   0D56                    FOR k = 0 TO 7
- 6170   0D56                            b1 = PEEK(t2 + k + 1)
- 6170   0D56                            ob = ((b0 * shl2) AND 255) OR (b1 \ shr
+ 6033   0D56            IF c1 + 9 > rb THEN EXIT SUB
+ 6043   0D56            r1 = ty - sdwPLY
+ 6043   0D56            IF r1 < 0 THEN r1 = 0
+ 605B   0D56            r2 = ty + rw - 1 - sdwPLY
+ 605B   0D56            IF r2 > 30 THEN r2 = 30
+ 607A   0D56            IF r2 < r1 THEN EXIT SUB
+ 6085   0D56            sh = sdwPLX AND 3
+ 6085   0D56            shl2 = 1
+ 6085   0D56            FOR k = 1 TO sh * 2
+ 609E   0D56                    shl2 = shl2 * 2
+ 609E   0D56            NEXT
+ 60B4   0D56            shr2 = 256 \ shl2
+ 60B4   0D56            bofs = VARPTR(sdwBuf(0))
+ 60B4   0D56            IF bofs < 0 THEN bofs = bofs + 65536
+ 60EF   0D56            DEF SEG = VARSEG(sdwBuf(0))
+ 60EF   0D56            FOR r = r1 TO r2
+ 6104   0D56                    t2 = bofs + (sdwPLY + r - ty) * CLNG(rb) + c1
+ 6104   0D56                    b0 = PEEK(t2)
+ 6104   0D56                    FOR k = 0 TO 7
+ 6154   0D56                            b1 = PEEK(t2 + k + 1)
+ 6154   0D56                            ob = ((b0 * shl2) AND 255) OR (b1 \ shr
                 2)
- 6170   0D56                            b0 = b1
- 6170   0D56                            fi = 2 + r * 4 + k \ 2
- 6170   0D56                            t3 = fbg%(fi)
- 6170   0D56                            IF t3 < 0 THEN t3 = t3 + 65536
- 6201   0D56                            IF k AND 1 THEN
- 6201   0D56                                    t3 = (t3 AND 255) + CLNG(ob) * 
+ 6154   0D56                            b0 = b1
+ 6154   0D56                            fi = 2 + r * 4 + k \ 2
+ 6154   0D56                            t3 = fbg%(fi)
+ 6154   0D56                            IF t3 < 0 THEN t3 = t3 + 65536
+ 61E5   0D56                            IF k AND 1 THEN
+ 61E5   0D56                                    t3 = (t3 AND 255) + CLNG(ob) * 
                 256
- 6201   0D56                            ELSE
- 6240   0D56                                    t3 = (t3 AND 65280) + ob
- 6240   0D56                            END IF
- 6262   0D56                            IF t3 > 32767 THEN t3 = t3 - 65536
- 628A   0D56                            fbg%(fi) = t3
- 628A   0D56                    NEXT
- 62AD   0D56            NEXT
- 62BC   0D56            DEF SEG
- 62BC   0D56    END SUB
- 62C9   0D56    
- 62C9   0D56    '----- PGrab: copy the CURRENT facing's standing sprite pair (a
+ 61E5   0D56                            ELSE
+ 6224   0D56                                    t3 = (t3 AND 65280) + ob
+ 6224   0D56                            END IF
+ 6246   0D56                            IF t3 > 32767 THEN t3 = t3 - 65536
+ 626E   0D56                            fbg%(fi) = t3
+ 626E   0D56                    NEXT
+ 6291   0D56            NEXT
+ 62A0   0D56            DEF SEG
+ 62A0   0D56    END SUB
+ 62AD   0D56    
+ 62AD   0D56    '----- PGrab: copy the CURRENT facing's standing sprite pair (a
                 rt + mask)
- 62C9   0D56    '----- into GAME2's player-compose slots. GAME.BAS calls this w
+ 62AD   0D56    '----- into GAME2's player-compose slots. GAME.BAS calls this w
                 henever lf$
- 62C9   0D56    '----- changes (a 17-arg call, but only on facing changes).
- 62C9   0D56    SUB PGrab (lf2$, fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), f
+ 62AD   0D56    '----- changes (a 17-arg call, but only on facing changes).
+ 62AD   0D56    SUB PGrab (lf2$, fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), f
                 l%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%()
                 , fur%(), mfur%())
- 62D4   0D56            DIM i AS INTEGER
- 62D4   0D56            FOR i = 0 TO 125
- 62DA   0D56                    SELECT CASE lf2$
- 62DA   0D56                            CASE "2": sdwPS(i) = fd%(i): sdwPM(i) =
+ 62B8   0D56            DIM i AS INTEGER
+ 62B8   0D56            FOR i = 0 TO 125
+ 62BE   0D56                    SELECT CASE lf2$
+ 62BE   0D56                            CASE "2": sdwPS(i) = fd%(i): sdwPM(i) =
                  mfd%(i)
- 62DA   0D56                            CASE "8": sdwPS(i) = fu%(i): sdwPM(i) =
+ 62BE   0D56                            CASE "8": sdwPS(i) = fu%(i): sdwPM(i) =
                  mfu%(i)
- 6328   0D56                            CASE "6": sdwPS(i) = fr%(i): sdwPM(i) =
-                 mfr%(i)
- 636A   0D56                            CASE "4": sdwPS(i) = fl%(i): sdwPM(i) =
-                 mfl%(i)
- 63AC   0D56                            CASE "1": sdwPS(i) = fdl%(i): sdwPM(i) 
-                = mfdl%(i)
- 63EE   0D56                            CASE "3": sdwPS(i) = fdr%(i): sdwPM(i) 
-                = mfdr%(i)
- 6430   0D56                            CASE "7": sdwPS(i) = ful%(i): sdwPM(i) 
-                = mful%(i)
- 6472   0D56                            CASE "9": sdwPS(i) = fur%(i): sdwPM(i) 
-                = mfur%(i)
- 64B4   0D56                            CASE ELSE: sdwPS(i) = fd%(i): sdwPM(i) 
-                = mfd%(i)
- 64F6   0D56                    END SELECT
                                                                       PAGE  34
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
- 6523   0D56            NEXT
- 6532   0D56            sdwPNew = 1
- 6532   0D56    END SUB
- 6549   0D56    
- 6549   0D56    '----- PShiftB: rebuild the byte-phase-shifted player pair for 
+ 630C   0D56                            CASE "6": sdwPS(i) = fr%(i): sdwPM(i) =
+                 mfr%(i)
+ 634E   0D56                            CASE "4": sdwPS(i) = fl%(i): sdwPM(i) =
+                 mfl%(i)
+ 6390   0D56                            CASE "1": sdwPS(i) = fdl%(i): sdwPM(i) 
+                = mfdl%(i)
+ 63D2   0D56                            CASE "3": sdwPS(i) = fdr%(i): sdwPM(i) 
+                = mfdr%(i)
+ 6414   0D56                            CASE "7": sdwPS(i) = ful%(i): sdwPM(i) 
+                = mful%(i)
+ 6456   0D56                            CASE "9": sdwPS(i) = fur%(i): sdwPM(i) 
+                = mfur%(i)
+ 6498   0D56                            CASE ELSE: sdwPS(i) = fd%(i): sdwPM(i) 
+                = mfd%(i)
+ 64DA   0D56                    END SELECT
+ 6507   0D56            NEXT
+ 6516   0D56            sdwPNew = 1
+ 6516   0D56    END SUB
+ 652D   0D56    
+ 652D   0D56    '----- PShiftB: rebuild the byte-phase-shifted player pair for 
                 the current
- 6549   0D56    '----- stand position (shift = pjx AND 3). Source = 31x31 GET a
+ 652D   0D56    '----- stand position (shift = pjx AND 3). Source = 31x31 GET a
                 rrays (2
- 6549   0D56    '----- header ints + 8 bytes/row); dest = headerless 10-byte ro
+ 652D   0D56    '----- header ints + 8 bytes/row); dest = headerless 10-byte ro
                 ws (9 data +
- 6549   0D56    '----- even pad). Mask rows fill vacated/pad bits with 1s (AND-
+ 652D   0D56    '----- even pad). Mask rows fill vacated/pad bits with 1s (AND-
                 neutral),
- 6549   0D56    '----- art rows with 0s (OR-neutral).
- 6549   0D56    SUB PShiftB (sh AS INTEGER)
- 6554   0D56            DIM r AS INTEGER, k AS INTEGER, bi AS INTEGER, v AS INT
+ 652D   0D56    '----- art rows with 0s (OR-neutral).
+ 652D   0D56    SUB PShiftB (sh AS INTEGER)
+ 6538   0D56            DIM r AS INTEGER, k AS INTEGER, bi AS INTEGER, v AS INT
                 EGER
- 6554   0D56            DIM lomask AS INTEGER, shr2 AS INTEGER, shl2 AS INTEGER
- 6554   0D56            DIM pb AS INTEGER, cb AS INTEGER, fillm AS INTEGER, fil
+ 6538   0D56            DIM lomask AS INTEGER, shr2 AS INTEGER, shl2 AS INTEGER
+ 6538   0D56            DIM pb AS INTEGER, cb AS INTEGER, fillm AS INTEGER, fil
                 ls AS INTEGER
- 6554   0D56            DIM db AS INTEGER, si AS INTEGER, t2 AS LONG
- 6554   0D56            shr2 = 1
- 6554   0D56            FOR k = 1 TO sh * 2
- 656A   0D56                    shr2 = shr2 * 2
- 656A   0D56            NEXT
- 6580   0D56            lomask = shr2 - 1
- 6580   0D56            shl2 = 256 \ shr2
- 6580   0D56            fillm = 255: fills = 0
- 6580   0D56            FOR r = 0 TO 30
- 65A0   0D56                    pb = fillm: cb = fills
- 65A0   0D56                    FOR k = 0 TO 9
- 65B2   0D56                            '----- source byte k of this row (8 rea
+ 6538   0D56            DIM db AS INTEGER, si AS INTEGER, t2 AS LONG
+ 6538   0D56            shr2 = 1
+ 6538   0D56            FOR k = 1 TO sh * 2
+ 654E   0D56                    shr2 = shr2 * 2
+ 654E   0D56            NEXT
+ 6564   0D56            lomask = shr2 - 1
+ 6564   0D56            shl2 = 256 \ shr2
+ 6564   0D56            fillm = 255: fills = 0
+ 6564   0D56            FOR r = 0 TO 30
+ 6584   0D56                    pb = fillm: cb = fills
+ 6584   0D56                    FOR k = 0 TO 9
+ 6596   0D56                            '----- source byte k of this row (8 rea
                 l bytes, then fill).
- 65B2   0D56                            '----- UNSIGNED split via LONG: QB's \ 
+ 6596   0D56                            '----- UNSIGNED split via LONG: QB's \ 
                 truncates toward zero, so
- 65B2   0D56                            '----- -1 \ 256 = 0 -- the high byte of
+ 6596   0D56                            '----- -1 \ 256 = 0 -- the high byte of
                  a negative int must be
- 65B2   0D56                            '----- extracted after a +65536 wrap or
+ 6596   0D56                            '----- extracted after a +65536 wrap or
                  FF reads as 00
- 65B2   0D56                            IF k < 8 THEN
- 65B2   0D56                                    si = 2 + r * 4 + k \ 2
- 65B2   0D56                                    t2 = sdwPM(si)
- 65B2   0D56                                    IF t2 < 0 THEN t2 = t2 + 65536
- 6606   0D56                                    IF k AND 1 THEN v = t2 \ 256 EL
-                SE v = t2 AND 255
- 6639   0D56                            ELSE
- 663C   0D56                                    v = 255
- 663C   0D56                            END IF
- 6641   0D56                            db = ((pb AND lomask) * shl2) AND 255
- 6641   0D56                            IF sh = 0 THEN db = 0
- 6660   0D56                            db = db OR (v \ shr2)
- 6660   0D56                            pb = v
- 6660   0D56                            bi = r * 5 + k \ 2
- 6660   0D56                            IF k AND 1 THEN
- 6660   0D56                                    '----- LONG for the high byte: 
+ 6596   0D56                            IF k < 8 THEN
                                                                       PAGE  35
-                                                                      24 Aug 26
-                                                                      21:28:06
+                                                                      25 Aug 26
+                                                                      17:32:10
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
-                db * 256 overflows INTEGER for
- 6660   0D56                                    '----- db >= 128 (error 6 was b
-                eing eaten by errhand, leaving
- 6660   0D56                                    '----- 0x00 = force-black bytes
-                 in the mask)
- 6660   0D56                                    t2 = CLNG(db) * 256 + (sdwPMh(b
-                i) AND 255)
- 6660   0D56                                    IF t2 > 32767 THEN t2 = t2 - 65
-                536
- 66F1   0D56                                    sdwPMh(bi) = t2
- 66F1   0D56                            ELSE
- 6700   0D56                                    sdwPMh(bi) = db
- 6700   0D56                            END IF
- 670C   0D56                    NEXT
- 671B   0D56                    pb = 0
- 671B   0D56                    FOR k = 0 TO 9
- 6726   0D56                            IF k < 8 THEN
- 6726   0D56                                    si = 2 + r * 4 + k \ 2
- 6726   0D56                                    t2 = sdwPS(si)
- 6726   0D56                                    IF t2 < 0 THEN t2 = t2 + 65536
- 677A   0D56                                    IF k AND 1 THEN v = t2 \ 256 EL
+ 6596   0D56                                    si = 2 + r * 4 + k \ 2
+ 6596   0D56                                    t2 = sdwPM(si)
+ 6596   0D56                                    IF t2 < 0 THEN t2 = t2 + 65536
+ 65EA   0D56                                    IF k AND 1 THEN v = t2 \ 256 EL
                 SE v = t2 AND 255
- 67AD   0D56                            ELSE
- 67B0   0D56                                    v = 0
- 67B0   0D56                            END IF
- 67B5   0D56                            db = ((pb AND lomask) * shl2) AND 255
- 67B5   0D56                            IF sh = 0 THEN db = 0
- 67D4   0D56                            db = db OR (v \ shr2)
- 67D4   0D56                            pb = v
- 67D4   0D56                            bi = r * 5 + k \ 2
- 67D4   0D56                            IF k AND 1 THEN
- 67D4   0D56                                    t2 = CLNG(db) * 256 + (sdwPSh(b
+ 661D   0D56                            ELSE
+ 6620   0D56                                    v = 255
+ 6620   0D56                            END IF
+ 6625   0D56                            db = ((pb AND lomask) * shl2) AND 255
+ 6625   0D56                            IF sh = 0 THEN db = 0
+ 6644   0D56                            db = db OR (v \ shr2)
+ 6644   0D56                            pb = v
+ 6644   0D56                            bi = r * 5 + k \ 2
+ 6644   0D56                            IF k AND 1 THEN
+ 6644   0D56                                    '----- LONG for the high byte: 
+                db * 256 overflows INTEGER for
+ 6644   0D56                                    '----- db >= 128 (error 6 was b
+                eing eaten by errhand, leaving
+ 6644   0D56                                    '----- 0x00 = force-black bytes
+                 in the mask)
+ 6644   0D56                                    t2 = CLNG(db) * 256 + (sdwPMh(b
                 i) AND 255)
- 67D4   0D56                                    IF t2 > 32767 THEN t2 = t2 - 65
+ 6644   0D56                                    IF t2 > 32767 THEN t2 = t2 - 65
                 536
- 6865   0D56                                    sdwPSh(bi) = t2
- 6865   0D56                            ELSE
- 6874   0D56                                    sdwPSh(bi) = db
- 6874   0D56                            END IF
- 6880   0D56                    NEXT
- 688F   0D56            NEXT
- 689E   0D56            sdwPRdy = 1
- 689E   0D56    END SUB
- 68AC   0D56    
- 68B3   0D56    
+ 66D5   0D56                                    sdwPMh(bi) = t2
+ 66D5   0D56                            ELSE
+ 66E4   0D56                                    sdwPMh(bi) = db
+ 66E4   0D56                            END IF
+ 66F0   0D56                    NEXT
+ 66FF   0D56                    pb = 0
+ 66FF   0D56                    FOR k = 0 TO 9
+ 670A   0D56                            IF k < 8 THEN
+ 670A   0D56                                    si = 2 + r * 4 + k \ 2
+ 670A   0D56                                    t2 = sdwPS(si)
+ 670A   0D56                                    IF t2 < 0 THEN t2 = t2 + 65536
+ 675E   0D56                                    IF k AND 1 THEN v = t2 \ 256 EL
+                SE v = t2 AND 255
+ 6791   0D56                            ELSE
+ 6794   0D56                                    v = 0
+ 6794   0D56                            END IF
+ 6799   0D56                            db = ((pb AND lomask) * shl2) AND 255
+ 6799   0D56                            IF sh = 0 THEN db = 0
+ 67B8   0D56                            db = db OR (v \ shr2)
+ 67B8   0D56                            pb = v
+ 67B8   0D56                            bi = r * 5 + k \ 2
+ 67B8   0D56                            IF k AND 1 THEN
+ 67B8   0D56                                    t2 = CLNG(db) * 256 + (sdwPSh(b
+                i) AND 255)
+ 67B8   0D56                                    IF t2 > 32767 THEN t2 = t2 - 65
+                536
+ 6849   0D56                                    sdwPSh(bi) = t2
+ 6849   0D56                            ELSE
+ 6858   0D56                                    sdwPSh(bi) = db
+ 6858   0D56                            END IF
+                                                                      PAGE  36
+                                                                      25 Aug 26
+                                                                      17:32:10
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 6864   0D56                    NEXT
+ 6873   0D56            NEXT
+ 6882   0D56            sdwPRdy = 1
+ 6882   0D56    END SUB
+ 6890   0D56    
+ 6897   0D56    
 
 43949 Bytes Available
-21737 Bytes Free
+21707 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)
