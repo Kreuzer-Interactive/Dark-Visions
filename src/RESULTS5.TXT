@@ -1,0 +1,19 @@
+instances: 18 
+ 1 room2rb 14 bad 0 of 238 first-1 
+ 2 room2rb 14 bad 0 of 238 first-1 
+ 3 room2rb 16 bad 0 of 248 first-1 
+ 4 room2rb 22 bad 0 of 220 first-1 
+ 5 room1rb 15 bad 0 of 255 first-1 
+ 6 room3rb 22 bad 0 of 220 first-1 
+ 7 room3rb 16 bad 0 of 248 first-1 
+ 8 room3rb 14 bad 0 of 238 first-1 
+ 9 room6rb 22 bad 0 of 220 first-1 
+ 10 room6rb 15 bad 0 of 255 first-1 
+ 11 room7rb 14 bad 0 of 238 first-1 
+ 12 room7rb 17 bad 0 of 263 first-1 
+ 13 room8rb 15 bad 0 of 255 first-1 
+ 14 room8rb 14 bad 0 of 238 first-1 
+ 15 room9rb 14 bad 0 of 238 first-1 
+ 16 room9rb 23 bad 0 of 230 first-1 
+ 17 room10rb 17 bad 0 of 263 first-1 
+ 18 room11rb 14 bad 0 of 238 first-1 

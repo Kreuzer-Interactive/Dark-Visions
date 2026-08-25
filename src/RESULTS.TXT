@@ -1,0 +1,5 @@
+composite mismatch ints: 0 of 48
+odd-width mismatch ints: 0 of 20
+qb put x300: .5500488 s
+asm     x300: .1699219 s
+speedup: x 3.237069 

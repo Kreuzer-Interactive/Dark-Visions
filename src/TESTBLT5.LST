@@ -1,0 +1,92 @@
+                                                                      PAGE   1
+                                                                      24 Aug 26
+                                                                      20:41:44
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    ' TESTBLT5.BAS -- v6 equivalence: for EVERY instance in SHADW2.
+                PAC, blit its
+ 0030   0006    ' lit rect to screen via SHADBLT and GET-compare against the po
+                ol bytes.
+ 0030   0006    ' Catches stride/geometry bugs per instance. Writes RESULTS5.TX
+                T.
+ 0030   0006    REM $DYNAMIC
+ 0030   0006    DEFINT A-Z
+ 0030   0006    DECLARE SUB TLoad (sdt%())
+ 0030   0006    REDIM SHARED pool(27000) AS INTEGER
+ 004D   0018    DIM SHARED tN AS INTEGER
+ 004D   001A    DIM SHARED tRm$(20), tDst$(20)
+ 007D   003E    DIM SHARED tTX(20) AS INTEGER, tTY(20) AS INTEGER, tTW(20) AS I
+                NTEGER, tTH(20) AS INTEGER
+ 00DD   0086    DIM SHARED tOLt(20) AS INTEGER, tRB(20) AS INTEGER
+ 010D   00AA    DIM g(700) AS INTEGER
+ 0125   00BC    DIM sl AS LONG
+ 0125   00C0    
+ 0125   00C0    OPEN "SHADBLT.OVL" FOR BINARY AS #1
+ 0125   00C0    blt$ = SPACE$(LOF(1)): GET #1, 1, blt$: CLOSE #1
+ 0125   00C0    OPEN "SHADW2.PAC" FOR INPUT AS #3
+ 0125   00C0    CALL TLoad(pool())
+ 0194   00C4    
+ 0194   00C4    SCREEN 1: CLS
+ 0194   00C4    OPEN "RESULTS5.TXT" FOR OUTPUT AS #2
+ 0194   00C4    PRINT #2, "instances:"; tN
+ 0194   00C4    FOR t = 1 TO tN
+ 01E8   00C6            CLS
+ 01E8   00C6            sl = VARPTR(pool(tOLt(t)))
+ 01E8   00C6            IF sl < 0 THEN sl = sl + 65536
+ 0245   00C8            DEF SEG = VARSEG(blt$)
+ 0245   00C8            CALL ABSOLUTE(BYVAL VARSEG(pool(tOLt(t))), BYVAL CINT(s
+                l), BYVAL tTX(t) \ 4, BYVAL tTY(t), BYVAL tTH(t), BYVAL tRB(t),
+                 BYVAL tRB(t), BYVAL 0, SADD(blt$))
+ 02DF   00CA            DEF SEG
+ 02DF   00CA            GET (tTX(t), tTY(t))-(tTX(t) + tTW(t) - 1, tTY(t) + tTH
+                (t) - 1), g
+ 02DF   00CA            bad = 0: fb = -1
+ 02DF   00CA            n = tRB(t) * tTH(t)
+ 02DF   00CA            n2 = n \ 2
+ 02DF   00CA            FOR i = 0 TO n2 - 1
+ 03B0   00D4                    IF g(i + 2) <> pool(tOLt(t) + i) THEN
+ 03B0   00D4                            bad = bad + 1
+ 03B0   00D4                            IF fb < 0 THEN fb = i
+ 0406   00D6                    END IF
+ 0406   00D6            NEXT
+ 0413   00D6            PRINT #2, t; tRm$(t); "rb"; tRB(t); "bad"; bad; "of"; n
+                2; "first"; fb
+ 0413   00D6    NEXT
+ 049F   00D6    CLOSE #2
+ 049F   00D6    SYSTEM
+ 049F   00D6    
+ 049F   00D6    SUB TLoad (sdt%())
+ 04BC   00D6            DIM sv AS INTEGER, sn2 AS INTEGER, si2 AS INTEGER, sof 
+                                                                      PAGE   2
+                                                                      24 Aug 26
+                                                                      20:41:44
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                AS INTEGER, sar AS INTEGER, sdi AS INTEGER
+ 04BC   00D6            DIM d1 AS INTEGER, d2 AS INTEGER, d3 AS INTEGER, d4 AS 
+                INTEGER, d5 AS INTEGER, d6 AS INTEGER, d7 AS INTEGER
+ 04BC   00D6            INPUT #3, sv, tN
+ 04C5   00D6            sof = 0
+ 04C5   00D6            FOR sdi = 1 TO tN
+ 04F4   00D6                    INPUT #3, tRm$(sdi), tTX(sdi), tTY(sdi), tTW(sd
+                i), tTH(sdi), d1, d2, d3, d4, d5, d6, d7, tDst$(sdi)
+ 04FD   00D6                    tRB(sdi) = tTW(sdi) \ 4
+ 04FD   00D6                    FOR sar = 1 TO 6
+ 060A   00D6                            INPUT #3, sn2
+ 0613   00D6                            IF sar = 2 THEN tOLt(sdi) = sof
+ 0641   00D6                            FOR si2 = 1 TO sn2
+ 064E   00D6                                    INPUT #3, sdt%(sof)
+ 0657   00D6                                    sof = sof + 1
+ 0657   00D6                            NEXT
+ 0680   00D6                    NEXT
+ 068F   00D6            NEXT
+ 069E   00D6            CLOSE #3
+ 069E   00D6    END SUB
+ 06B3   00D6    
+ 06BA   00D6    
+
+43917 Bytes Available
+41235 Bytes Free
+
+    0 Warning Error(s)
+    0 Severe  Error(s)

@@ -1,0 +1,194 @@
+                                                                      PAGE   1
+                                                                      24 Aug 26
+                                                                      00:36:39
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    ' TESTBLT4.BAS -- blit ALL FOUR v5 instances (incl. the odd sta
+                rt row of the
+ 0030   0006    ' north rect) and run one full compose (lit + sprite AND + keep
+                 AND + bg OR)
+ 0030   0006    ' for the north instance, verifying everything against BASIC-co
+                mputed bytes.
+ 0030   0006    REM $DYNAMIC
+ 0030   0006    DEFINT A-Z
+ 0030   0006    DECLARE SUB TLoad (sdt%())
+ 0030   0006    REDIM SHARED pool(5800) AS INTEGER
+ 004D   0018    DIM SHARED tN AS INTEGER
+ 004D   001A    DIM SHARED tTX(4) AS INTEGER, tTY(4) AS INTEGER, tTW(4) AS INTE
+                GER, tTH(4) AS INTEGER
+ 00AD   0062    DIM SHARED tOId(4) AS INTEGER, tOLt(4) AS INTEGER, tOKp(4) AS I
+                NTEGER, tOBg(4) AS INTEGER
+ 010D   00AA    DIM SHARED tOSU(4) AS INTEGER, tOSD(4) AS INTEGER
+ 013D   00CE    DIM SHARED tRB(4) AS INTEGER, tVI(4) AS INTEGER, tSBW(4) AS INT
+                EGER, tSPH(4) AS INTEGER
+ 019D   0116    DIM SHARED tDst$(4)
+ 01B2   0128    DIM buf(300) AS INTEGER, g(700) AS INTEGER, exp1(700) AS INTEGE
+                R
+ 01FA   015E    DIM d2 AS LONG
+ 01FA   0162    
+ 01FA   0162    OPEN "SHADBOP.OVL" FOR BINARY AS #1
+ 01FA   0162    bop$ = SPACE$(LOF(1)): GET #1, 1, bop$: CLOSE #1
+ 01FA   0162    OPEN "SHADBLT.OVL" FOR BINARY AS #1
+ 01FA   0162    blt$ = SPACE$(LOF(1)): GET #1, 1, blt$: CLOSE #1
+ 01FA   0162    OPEN "SHADW2.PAC" FOR INPUT AS #3
+ 01FA   0162    CALL TLoad(pool())
+ 02BA   016A    
+ 02BA   016A    SCREEN 1: CLS
+ 02BA   016A    OPEN "RESULTS4.TXT" FOR OUTPUT AS #1
+ 02BA   016A    
+ 02BA   016A    ' ---- part 1: direct lit blits of all four instances, compare 
+                payloads
+ 02BA   016A    DEF SEG = VARSEG(blt$)
+ 02BA   016A    FOR k = 1 TO tN
+ 02FA   016C            CALL ABSOLUTE(BYVAL VARSEG(pool(tOLt(k))), BYVAL VARPTR
+                (pool(tOLt(k))), BYVAL tTX(k) \ 4, BYVAL tTY(k), BYVAL tTH(k), 
+                BYVAL tRB(k), BYVAL tRB(k), BYVAL 0, SADD(blt$))
+ 03A2   0170    NEXT
+ 03B2   0170    DEF SEG
+ 03B2   0170    FOR k = 1 TO tN
+ 03C4   0172            GET (tTX(k), tTY(k))-(tTX(k) + tTW(k) - 1, tTY(k) + tTH
+                (k) - 1), g
+ 03C4   0172            bad = 0: n = tRB(k) * tTH(k) \ 2
+ 03C4   0172            FOR i = 0 TO n - 1
+ 0484   0178                    IF g(i + 2) <> pool(tOLt(k) + i) THEN bad = bad
+                 + 1
+ 04CA   017A            NEXT
+ 04D7   017A            PRINT #1, "inst"; k; "rect("; tTX(k); tTY(k); ") mismat
+                ches:"; bad; "of"; n
+ 04D7   017A    NEXT
+ 055F   017A    
+                                                                      PAGE   2
+                                                                      24 Aug 26
+                                                                      00:36:39
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 055F   017A    ' ---- part 2: full compose for the NORTH instance (k=3), sprit
+                e mid-pool
+ 055F   017A    k = 3
+ 055F   017A    rb = tRB(k): rw = tTH(k)
+ 055F   017A    bs = VARSEG(buf(0)): bo = VARPTR(buf(0))
+ 055F   017A    sx = tTX(k) + 21: sy = tTY(k) + 5
+ 055F   017A    DEF SEG = VARSEG(bop$)
+ 055F   017A    CALL ABSOLUTE(BYVAL VARSEG(pool(tOLt(k))), BYVAL VARPTR(pool(tO
+                Lt(k))), BYVAL bs, BYVAL bo, BYVAL rw, BYVAL rb, BYVAL rb, BYVA
+                L rb, BYVAL 0, SADD(bop$))
+ 064C   0188    so2 = tOSU(k) + (sx AND 3) * tVI(k)
+ 064C   0188    d2 = bo
+ 064C   0188    IF d2 < 0 THEN d2 = d2 + 65536
+ 06BA   018A    d2 = d2 + (sy - tTY(k)) * rb + (sx \ 4 - tTX(k) \ 4)
+ 06BA   018A    IF d2 > 32767 THEN d2 = d2 - 65536
+ 0743   018A    CALL ABSOLUTE(BYVAL VARSEG(pool(so2)), BYVAL VARPTR(pool(so2)),
+                 BYVAL bs, BYVAL CINT(d2), BYVAL tSPH(k), BYVAL tSBW(k), BYVAL 
+                tSBW(k), BYVAL rb, BYVAL 1, SADD(bop$))
+ 07B2   018C    CALL ABSOLUTE(BYVAL VARSEG(pool(tOKp(k))), BYVAL VARPTR(pool(tO
+                Kp(k))), BYVAL bs, BYVAL bo, BYVAL rw, BYVAL rb, BYVAL rb, BYVA
+                L rb, BYVAL 1, SADD(bop$))
+ 0823   018E    CALL ABSOLUTE(BYVAL VARSEG(pool(tOBg(k))), BYVAL VARPTR(pool(tO
+                Bg(k))), BYVAL bs, BYVAL bo, BYVAL rw, BYVAL rb, BYVAL rb, BYVA
+                L rb, BYVAL 2, SADD(bop$))
+ 0894   0190    DEF SEG = VARSEG(blt$)
+ 0894   0190    CALL ABSOLUTE(BYVAL bs, BYVAL bo, BYVAL tTX(k) \ 4, BYVAL tTY(k
+                ), BYVAL rw, BYVAL rb, BYVAL rb, BYVAL 0, SADD(blt$))
+ 08F5   0192    DEF SEG
+ 08F5   0192    
+ 08F5   0192    ' BASIC-computed expectation of the same compose (int-wise ops 
+                on the pool)
+ 08F5   0192    n = rb * rw \ 2
+ 08F5   0192    FOR i = 0 TO n - 1
+ 0914   0194            exp1(i) = pool(tOLt(k) + i)
+ 0914   0194    NEXT
+ 0955   0194    ' sprite AND at byte granularity via masks over ints
+ 0955   0194    sbw = tSBW(k)
+ 0955   0194    FOR r = 0 TO tSPH(k) - 1
+ 0984   0198            FOR c = 0 TO sbw - 1
+ 0990   019A                    bofs = (sy - tTY(k) + r) * rb + (sx \ 4 - tTX(k
+                ) \ 4) + c
+ 0990   019A                    sofs = r * sbw + c
+ 0990   019A                    sv = pool(so2 + sofs \ 2)
+ 0990   019A                    IF sofs AND 1 THEN sb = (sv \ 256) AND 255 ELSE
+                 sb = sv AND 255
+ 0A37   01A6                    dv = exp1(bofs \ 2)
+ 0A37   01A6                    IF bofs AND 1 THEN
+ 0A37   01A6                            db = (dv \ 256) AND 255
+ 0A37   01A6                            db = db AND sb
+ 0A37   01A6                            exp1(bofs \ 2) = (dv AND 255) OR (db * 
+                256)
+ 0A37   01A6                    ELSE
+ 0A9E   01AA                            db = dv AND 255
+ 0A9E   01AA                            db = db AND sb
+                                                                      PAGE   3
+                                                                      24 Aug 26
+                                                                      00:36:39
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0A9E   01AA                            exp1(bofs \ 2) = ((dv \ 256) AND 255) *
+                 256 OR db
+ 0A9E   01AA                    END IF
+ 0AEB   01AA            NEXT
+ 0AFB   01AA    NEXT
+ 0B0B   01AA    FOR i = 0 TO n - 1
+ 0B18   01AC            kv = pool(tOKp(k) + i): bv = pool(tOBg(k) + i)
+ 0B18   01AC            lo = (exp1(i) AND 255) AND (kv AND 255) OR (bv AND 255)
+ 0B18   01AC            hi = ((exp1(i) \ 256) AND 255) AND ((kv \ 256) AND 255)
+                 OR ((bv \ 256) AND 255)
+ 0B18   01AC            exp1(i) = hi * 256 OR lo
+ 0B18   01AC    NEXT
+ 0BEB   01B4    GET (tTX(k), tTY(k))-(tTX(k) + tTW(k) - 1, tTY(k) + tTH(k) - 1)
+                , g
+ 0BEB   01B4    bad = 0: fb = -1
+ 0BEB   01B4    FOR i = 0 TO n - 1
+ 0C8A   01B8            gv = g(i + 2)
+ 0C8A   01B8            IF gv < 0 THEN gv = gv + 65536
+ 0CB1   01BA            ev = exp1(i)
+ 0CB1   01BA            IF ev < 0 THEN ev = ev + 65536
+ 0CD7   01BC            IF gv <> ev THEN
+ 0CD7   01BC                    bad = bad + 1
+ 0CD7   01BC                    IF fb < 0 THEN fb = i
+ 0CF7   01BC            END IF
+ 0CF7   01BC    NEXT
+ 0D04   01BC    PRINT #1, "north compose mismatches:"; bad; "of"; n; " first:";
+                 fb
+ 0D04   01BC    CLOSE #1
+ 0D04   01BC    SYSTEM
+ 0D04   01BC    
+ 0D04   01BC    SUB TLoad (sdt%())
+ 0D5D   01BC            DIM sv AS INTEGER, sn2 AS INTEGER, si2 AS INTEGER, sof 
+                AS INTEGER, sar AS INTEGER, sdi AS INTEGER
+ 0D5D   01BC            DIM d1 AS INTEGER, d2 AS INTEGER, d3 AS INTEGER, d4 AS 
+                INTEGER, d5 AS INTEGER
+ 0D5D   01BC            INPUT #3, sv, tN
+ 0D66   01BC            sof = 0
+ 0D66   01BC            FOR sdi = 1 TO tN
+ 0D94   01BC                    INPUT #3, tTX(sdi), tTY(sdi), tTW(sdi), tTH(sdi
+                ), d1, d2, d3, d4, d5, tSBW(sdi), tSPH(sdi), tDst$(sdi)
+ 0D9D   01BC                    tRB(sdi) = tTW(sdi) \ 4
+ 0D9D   01BC                    tVI(sdi) = (tSBW(sdi) * tSPH(sdi) + 1) \ 2
+ 0D9D   01BC                    FOR sar = 1 TO 6
+ 0EDE   01BC                            INPUT #3, sn2
+ 0EE7   01BC                            IF sar = 1 THEN tOId(sdi) = sof
+ 0F15   01BC                            IF sar = 2 THEN tOLt(sdi) = sof
+ 0F32   01BC                            IF sar = 3 THEN tOKp(sdi) = sof
+ 0F4F   01BC                            IF sar = 4 THEN tOBg(sdi) = sof
+ 0F6C   01BC                            IF sar = 5 THEN tOSU(sdi) = sof
+ 0F89   01BC                            IF sar = 6 THEN tOSD(sdi) = sof
+ 0FA6   01BC                            FOR si2 = 1 TO sn2
+ 0FB2   01BC                                    INPUT #3, sdt%(sof)
+ 0FBB   01BC                                    sof = sof + 1
+ 0FBB   01BC                            NEXT
+                                                                      PAGE   4
+                                                                      24 Aug 26
+                                                                      00:36:39
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0FE4   01BC                    NEXT
+ 0FF3   01BC            NEXT
+ 1002   01BC            CLOSE #3
+ 1002   01BC    END SUB
+ 1017   01BC    
+ 101E   01BC    
+
+43917 Bytes Available
+40149 Bytes Free
+
+    0 Warning Error(s)
+    0 Severe  Error(s)

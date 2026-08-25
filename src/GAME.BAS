@@ -61,9 +61,10 @@ DECLARE SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
 DECLARE SUB OvReg (ovf%(), afrm%(), amfrm%(), anpf!, ovh!, ovnext!, PX!, PY!)
 DECLARE SUB ClimbSeq (up%, x!, y0!, y1!, sfrq!, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
 DECLARE SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
-DECLARE SUB ShadLoad ()
+DECLARE SUB ShadLoad (sdt%())
 DECLARE SUB ShadRoom (q2$)
-DECLARE SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!)
+DECLARE SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, sdt%(), bop$, blt$, fbg%())
+DECLARE SUB PGrab (lf2$, fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%())
 DECLARE SUB LookDir (bx!, ay!, px2!, py2!, d2$)
 DECLARE SUB DialGame (sf3!, sf4!, ob() AS SINGLE)
 DECLARE SUB BurnShow ()
@@ -191,6 +192,11 @@ DIM SHARED acSrc$(6), acN(6) AS INTEGER, acM(6) AS INTEGER
 REDIM SHARED ovf(1500) AS INTEGER
 '----- room9 gateopen cutscene save-under (union of the rope overlay rects)
 REDIM SHARED gsv(2100) AS INTEGER
+'----- shadow-door watcher pixel pool (SHADW2.PAC v5 raw blocks; parsed/drawn
+'----- by GAME2 ShadLoad/ShadTick -- far heap, 4 watchers outgrew DGROUP) +
+'----- the two CALL ABSOLUTE blitter routines (velocity-style .OVL strings)
+REDIM SHARED sdwDat(27000) AS INTEGER
+DIM SHARED sdwB1$, sdwB2$, sdwlf$
 '----- active loop-animation instances for the current room (idle-loop tick)
 DIM SHARED nLoop AS INTEGER
 DIM SHARED liAnim(4) AS INTEGER, liX(4) AS INTEGER, liY(4) AS INTEGER, liCur(4) AS INTEGER, liRate(4) AS INTEGER
@@ -657,7 +663,8 @@ mainloop:
 	GOSUB joy
 	GOSUB mousepoll
 	GOSUB animtick
-	CALL ShadTick(q$, cl, h9, t1, t2, t3, CINT(ob(43)), pjx, pjy, b, a)
+	IF lf$ <> sdwlf$ THEN sdwlf$ = lf$: CALL PGrab(lf$, fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur())
+	CALL ShadTick(q$, cl, h9, t1, t2, t3, CINT(ob(43)), pjx, pjy, b, a, sdwDat(), sdwB1$, sdwB2$, fbg())
 	IF ob(43) = 1 AND tk$ = "" THEN cv = CINT(cl): tk$ = "y"
 	IF tk$ = "y" AND cv + 120 < cl THEN GOTO burn
 	IF a$ <> "" THEN GOTO 7300
@@ -801,8 +808,19 @@ loadanims:
 shadload:
 	ON ERROR GOTO shadeof
 	CLOSE #3
+	'----- the blitter routines first (BINARY open CREATES a missing file as
+	'----- 0 bytes, so length-check instead of relying on an open error)
+	OPEN "SHADBOP.OVL" FOR BINARY AS #3
+	sdwB1$ = SPACE$(LOF(3))
+	GET #3, 1, sdwB1$
+	CLOSE #3
+	OPEN "SHADBLT.OVL" FOR BINARY AS #3
+	sdwB2$ = SPACE$(LOF(3))
+	GET #3, 1, sdwB2$
+	CLOSE #3
+	IF LEN(sdwB1$) < 10 OR LEN(sdwB2$) < 10 THEN GOTO shadend
 	OPEN "SHADW2.PAC" FOR INPUT AS #3
-	CALL ShadLoad
+	CALL ShadLoad(sdwDat())
 	shadend:
 	ON ERROR GOTO errhand
 	RETURN

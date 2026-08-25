@@ -1,0 +1,5 @@
+inst 1 rect( 48  134 ) mismatches: 0 of 238 
+inst 2 rect( 204  134 ) mismatches: 0 of 238 
+inst 3 rect( 120  123 ) mismatches: 0 of 240 
+inst 4 rect( 108  170 ) mismatches: 0 of 220 
+north compose mismatches: 0 of 240  first:-1 
