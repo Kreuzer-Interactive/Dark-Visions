@@ -72,6 +72,9 @@ DECLARE SUB CursorPats (px!(), py!(), pc!(), npix!())
 DECLARE SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 DECLARE SUB PicSeq (sq$, fr$, rate%, sn2$)
 DECLARE SUB ShowRules ()
+DECLARE SUB LogoShow ()
+DECLARE SUB ManualShow (msen AS SINGLE)
+DECLARE SUB ShowInstructions (msen AS SINGLE)
 
 '----- assembly interrupt support (INT 33h mouse)
 TYPE RegType
@@ -110,7 +113,7 @@ DIM SHARED pt AS SINGLE
 DIM SHARED q$, a$, done$, tt$, lf$, sl$, dop$, vk$, tk$, m$, sf$, sy$
 DIM SHARED cl, h9, h10, h11, hr, mn, t1, t2, t3, cv
 DIM SHARED gw, gy, gx, sel, doc, sn, di, dn1, dn2, dn3
-COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon, rvon
+COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon, rvon, lgon
 COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
 DIM SHARED pk, jx, jy, dx2, dy2, co, co2, pa1, pa2, pa3
 DIM SHARED oh, ohs, pz, j, pc, pp2, gm, tmo, wk, js0, js1
@@ -282,6 +285,8 @@ CALL initAllFonts(fontData(), font3Data(), fontbData())
 '      bails out of the cutscene to introDone -- the intro ends early but the
 '      game runs instead of crashing to DOS.  (Throttle work restores it.)
 ON ERROR GOTO introSkip
+'----- tenthplay logo (GAME6, VGA/VESA via uGL) runs first, under the same skips as the intro + its own logo= key
+IF inon <> 0 AND qkon = 0 AND lgon <> 0 THEN CALL LogoShow
 IF inon <> 0 AND qkon = 0 THEN CALL Intro
 introDone:
 ON ERROR GOTO 0
@@ -327,7 +332,7 @@ IF sfps = 1 AND itt > .5 THEN LOCATE 3, 1: PRINT USING "Intro: ### steps in ###.
 400 a$ = INKEY$
 IF a$ <> "" THEN GOTO 430
 GOTO 400
-430 IF a$ = "Y" OR a$ = "y" THEN CALL ShowRules
+430 IF a$ = "Y" OR a$ = "y" THEN CALL ShowInstructions(msen)
 
 '----- enter the game
 qstart:
@@ -586,6 +591,13 @@ doinv:
 	CALL invhi
 	GOTO invret
 
+'----- VGA manual (Tab): GAME6 ManualShow switches to 640x480x256 and back;
+'----- shares invret so the room is reloaded after the mode switch
+domanual:
+	IF msen = 1 THEN CALL erasecur
+	CALL ManualShow(msen)
+	GOTO invret
+
 '----- map screen ("m" / auto-open on pickup): GAME4 MapView shows MAP1.PIC once
 '----- the map (16) is held, a plain black placeholder before; shares doinv's
 '----- return path (reload the room, player stays where he stood via lrq$)
@@ -716,6 +728,7 @@ mainloop:
 	IF a$ <> "i" THEN GOTO 7620
 	GOSUB doinv: GOTO mainloop
 	7620 IF a$ = "m" THEN GOSUB domap: GOTO mainloop
+	IF a$ = CHR$(9) THEN GOSUB domanual: GOTO mainloop
 	7630 IF doc <> 1 THEN GOTO 7660
 	GOSUB fight
 	GOTO mainloop

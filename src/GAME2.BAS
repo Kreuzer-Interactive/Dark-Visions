@@ -16,7 +16,7 @@ END TYPE
 DECLARE SUB INTERRUPT (intnum AS INTEGER, inreg AS RegType, outreg AS RegType)
 DECLARE SUB drawcur ()
 DECLARE SUB erasecur ()
-COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon, rvon
+COMMON SHARED f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, sa, sb, sc, mt, sfps, fpsc, fpst, jsen, inon, msen, snr, exsen, mxyon, nfon, hzon$, klon, wksen, qkon, rvon, lgon
 COMMON SHARED mcur AS INTEGER, mvint AS INTEGER
 DECLARE SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
 DECLARE SUB ShadBlt (ss AS INTEGER, so AS LONG, tx AS INTEGER, ty AS INTEGER, rw AS INTEGER, rb AS INTEGER, pjx2 AS INTEGER, pjy2 AS INTEGER, blt$)
@@ -637,6 +637,8 @@ SUB LoadConfig
 		PRINT #1, "walkto=1"
 		PRINT #1, "; intro=1 plays the opening cutscene (set 0 to skip it)"
 		PRINT #1, "intro=1"
+		PRINT #1, "; logo=1 shows the tenthplay logo (VGA/VESA, falls back to 320x200) before the intro; 0 skips just the logo"
+		PRINT #1, "logo=1"
 		PRINT #1, "; quickstart=1 jumps straight into the game - no intro, title or instructions prompt (testing)"
 		PRINT #1, "quickstart=0"
 		PRINT #1, "; revive=1 auto-saves when a timed-death room arms and, after dying there,"
@@ -654,6 +656,7 @@ SUB LoadConfig
 	exsen = 1
 	nfon = 1
 	inon = 1
+	lgon = 1
 	klon = 1
 	wksen = 1
 	qkon = 0
@@ -682,6 +685,7 @@ SUB LoadConfig
 				IF k$ = "killers" THEN klon = tv
 				IF k$ = "walkto" THEN wksen = tv
 				IF k$ = "intro" THEN inon = tv
+				IF k$ = "logo" THEN lgon = tv
 				IF k$ = "quickstart" THEN qkon = tv
 				IF k$ = "revive" THEN rvon = tv
 				IF k$ = "hitzone_look" AND tv = 1 THEN hzon$ = hzon$ + "l"

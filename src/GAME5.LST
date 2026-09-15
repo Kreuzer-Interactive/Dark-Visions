@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      25 Aug 26
-                                                                      17:32:12
+                                                                      15 Sep 26
+                                                                      18:43:56
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME5.BAS: player rendering module (walk-to movement pha
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    
  0030   0006    '----- wfb: the walk stride phase (0=frame A, 1=frame B). Modul
                                                                       PAGE   2
-                                                                      25 Aug 26
-                                                                      17:32:12
+                                                                      15 Sep 26
+                                                                      18:43:56
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 e-level so it
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 ), mwb%(), wbg%(), ovf%())
  05D0   0008            GET (x!, y!)-(x! + 30, y! + 30), wbg%(0)
                                                                       PAGE   3
-                                                                      25 Aug 26
-                                                                      17:32:12
+                                                                      15 Sep 26
+                                                                      18:43:56
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  05D0   0008            IF fb% = 0 THEN
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  08E2   0008    '-----   triggering action's message stays readable through the
                  play.
                                                                       PAGE   4
-                                                                      25 Aug 26
-                                                                      17:32:12
+                                                                      15 Sep 26
+                                                                      18:43:56
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  08E2   0008    '-----   sn2$ non-empty = PLAY string fired at the start ("MB..
@@ -235,8 +235,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 = px! + SGN(tx! - px!) * 4
  0C86   0008                    CALL PStep(px!, py!, wfb%, sfrq!, 1.12, d% * 15
                                                                       PAGE   5
-                                                                      25 Aug 26
-                                                                      17:32:12
+                                                                      15 Sep 26
+                                                                      18:43:56
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 1, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
@@ -294,16 +294,16 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0FB8   0008                    NEXT
  0FCF   0008            END IF
                                                                       PAGE   6
-                                                                      25 Aug 26
-                                                                      17:32:12
+                                                                      15 Sep 26
+                                                                      18:43:56
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0FCF   0008    END SUB
  0FD7   0008    
  0FDE   0008    
 
-43949 Bytes Available
-37962 Bytes Free
+43917 Bytes Available
+37930 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

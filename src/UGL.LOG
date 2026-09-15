@@ -1,0 +1,88 @@
+UGL {
+	uglInit {
+		mem_Init {
+		}
+		bnk_Init {
+		}
+		ems_Init {
+		}
+		b8_Init {
+		}
+		b15_Init {
+		}
+		b16_Init {
+		}
+		b32_Init {
+		}
+	}
+	uglSetVideo {
+		set
+		b8_SetMode {
+			pow2
+			set
+			vbeSetMode {
+				find
+				set
+				bps
+				set_bps {
+					serv_02
+				}
+				windows
+			}
+			set332pal {
+				8-bit DAC
+			}
+		}
+		new
+		uglNewEx {
+			DC
+			LL New
+			bnk_New {
+			}
+		}
+	}
+	uglNew {
+		DC
+		calcBPS {
+		}
+		LL New
+		mem_New {
+			alloc
+		}
+	}
+	uglNew {
+		DC
+		calcBPS {
+		}
+		LL New
+		mem_New {
+			alloc
+		}
+	}
+	uglNew {
+		DC
+		calcBPS {
+		}
+		LL New
+		mem_New {
+			alloc
+		}
+	}
+	uglNew {
+		DC
+		calcBPS {
+		}
+		LL New
+		mem_New {
+			alloc
+		}
+	}
+	uglNew {
+		DC
+		calcBPS {
+		}
+		LL New
+		mem_New {
+			alloc
+		}
+	}

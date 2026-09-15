@@ -4,8 +4,8 @@ Microsoft (R) QuickBASIC Compiler Version 4.50
 All rights reserved.
 Simultaneously published in the U.S. and Canada.
 
-43949 Bytes Available
-11946 Bytes Free
+43917 Bytes Available
+11748 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)
@@ -15,8 +15,8 @@ Microsoft (R) QuickBASIC Compiler Version 4.50
 All rights reserved.
 Simultaneously published in the U.S. and Canada.
 
-43949 Bytes Available
-21707 Bytes Free
+43917 Bytes Available
+21491 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)
@@ -26,8 +26,8 @@ Microsoft (R) QuickBASIC Compiler Version 4.50
 All rights reserved.
 Simultaneously published in the U.S. and Canada.
 
-43949 Bytes Available
-32948 Bytes Free
+43917 Bytes Available
+32916 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)
@@ -37,8 +37,8 @@ Microsoft (R) QuickBASIC Compiler Version 4.50
 All rights reserved.
 Simultaneously published in the U.S. and Canada.
 
-43949 Bytes Available
-30415 Bytes Free
+43917 Bytes Available
+30383 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)
@@ -48,8 +48,19 @@ Microsoft (R) QuickBASIC Compiler Version 4.50
 All rights reserved.
 Simultaneously published in the U.S. and Canada.
 
-43949 Bytes Available
-37962 Bytes Free
+43917 Bytes Available
+37930 Bytes Free
+
+    0 Warning Error(s)
+    0 Severe  Error(s)
+=== BC GAME6 ===
+Microsoft (R) QuickBASIC Compiler Version 4.50
+(C) Copyright Microsoft Corporation 1982-1988.
+All rights reserved.
+Simultaneously published in the U.S. and Canada.
+
+43917 Bytes Available
+ 6451 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)
@@ -57,5 +68,6 @@ Simultaneously published in the U.S. and Canada.
 
 Microsoft (R) Overlay Linker  Version 3.69   
 Copyright (C) Microsoft Corp 1983-1988.  All rights reserved.
+
 
 === DONE ===

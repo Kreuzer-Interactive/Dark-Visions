@@ -1,0 +1,460 @@
+                                                                      PAGE   1
+                                                                      15 Sep 26
+                                                                      19:11:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    '----- INSTALL.BAS - Dark Visions setup (DOS text-mode installe
+                r, QB4.5).
+ 0030   0006    '----- Disk 1 carries INSTALL.EXE + GAME.ZIP + PKUNZIP.EXE and 
+                installs the game.
+ 0030   0006    '----- If the player chooses the manual, it asks for Disk 2 (MA
+                NUAL.ZIP) and
+ 0030   0006    '----- installs the 640x480 illustrated manual into the same fo
+                lder.
+ 0030   0006    '----- PKUNZIP is copied to the target with QB file I/O (NOT th
+                e DOS COPY command,
+ 0030   0006    '----- which errors on real MS-DOS) so it is present after the 
+                Disk 2 swap. PKUNZIP
+ 0030   0006    '----- output is shown on screen (no redirection) for maximum D
+                OS compatibility.
+ 0030   0006    DEFINT A-Z
+ 0030   0006    TYPE RegTypeX
+ 0030   0006            ax AS INTEGER
+ 0030   0006            bx AS INTEGER
+ 0030   0006            cx AS INTEGER
+ 0030   0006            dx AS INTEGER
+ 0030   0006            bp AS INTEGER
+ 0030   0006            si AS INTEGER
+ 0030   0006            di AS INTEGER
+ 0030   0006            flags AS INTEGER
+ 0030   0006            ds AS INTEGER
+ 0030   0006            es AS INTEGER
+ 0030   0006    END TYPE
+ 0030   0006    DECLARE SUB INTERRUPTX (intnum AS INTEGER, inreg AS RegTypeX, o
+                utreg AS RegTypeX)
+ 0030   0006    DECLARE SUB VbeInt (rx AS RegTypeX)
+ 0030   0006    DECLARE FUNCTION ManualOK% ()
+ 0030   0006    DECLARE FUNCTION VBb% (i AS INTEGER)
+ 0030   0006    DECLARE FUNCTION VBw& (i AS INTEGER)
+ 0030   0006    DECLARE SUB Backdrop ()
+ 0030   0006    DECLARE SUB Panel (r1, c1, r2, c2, tit$)
+ 0030   0006    DECLARE SUB Cent (r, s$)
+ 0030   0006    DECLARE SUB At (r, c, s$)
+ 0030   0006    DECLARE SUB Status (s$)
+ 0030   0006    DECLARE SUB WaitKey ()
+ 0030   0006    DECLARE SUB Quit ()
+ 0030   0006    DECLARE SUB CopyFile (src$, dst$)
+ 0030   0006    DECLARE FUNCTION Exists% (f$)
+ 0030   0006    DECLARE FUNCTION YesNo% (r, defyes)
+ 0030   0006    DECLARE FUNCTION GetPath$ (defp$)
+ 0030   0006    
+ 0030   0006    DIM SHARED erflag AS INTEGER
+ 0030   0006    DIM SHARED vbuf(0 TO 255) AS INTEGER
+ 0030   0006    DIM dest AS STRING, wantman AS INTEGER, k AS STRING, ok AS INTE
+                GER
+ 0030   0006    
+ 0030   0006    '============ WELCOME ============
+ 0030   0006    CALL Backdrop
+ 0035   0214    CALL Panel(6, 15, 19, 66, " Setup ")
+ 007C   0220    CALL Cent(8, "D A R K   V I S I O N S")
+                                                                      PAGE   2
+                                                                      15 Sep 26
+                                                                      19:11:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 00A5   0226    CALL Cent(10, "Setup Program")
+ 00CE   022C    CALL Cent(12, "This installs Dark Visions on your hard disk.")
+ 00F7   0232    CALL Cent(13, "You will need about 7 MB of free space.")
+ 0120   0238    CALL Cent(16, "Press ENTER to continue  --  ESC to quit")
+ 0149   023E    CALL Status("ENTER = continue     ESC = quit")
+ 0168   0242    DO
+ 0168   0242            k = INKEY$
+ 0177   0242            IF k = CHR$(13) THEN EXIT DO
+ 0192   0242            IF k = CHR$(27) THEN CALL Quit
+ 01AF   0242    LOOP
+ 01B2   0242    
+ 01B2   0242    '============ INSTALL LOCATION ============
+ 01B2   0242    CALL Backdrop
+ 01B7   0242    CALL Panel(7, 12, 16, 69, " Install Location ")
+ 01FE   024E    CALL Cent(9, "Where should Dark Visions be installed?")
+ 0227   0254    dest = GetPath$("C:\DARKV")
+ 025D   025C    
+ 025D   025C    '============ MANUAL CHOICE (only if the video card can show it
+                ) ============
+ 025D   025C    CALL Backdrop
+ 0262   025C    CALL Panel(7, 11, 18, 70, " Instruction Manual ")
+ 02A9   0268    IF ManualOK% THEN
+ 02BB   026A            CALL Cent(9, "Your video card supports the illustrated 
+                manual.")
+ 02E4   0270            CALL Cent(11, "Install it?  (640x480, 10 pages -- on Di
+                sk 2.)")
+ 030D   0276            wantman = YesNo%(14, -1)
+ 032F   027C    ELSE
+ 0332   027C            wantman = 0
+ 0338   027C            CALL Cent(9, "This video card does not support the 640x
+                480")
+ 0361   0282            CALL Cent(10, "SVGA/VESA graphics the illustrated manua
+                l needs.")
+ 038A   0288            CALL Cent(12, "The manual will be skipped.  The game st
+                ill shows")
+ 03B3   028E            CALL Cent(13, "text instructions if you answer YES at t
+                he start.")
+ 03DC   0294            CALL Cent(16, "Press any key to continue.")
+ 0405   029A            CALL Status("Manual not supported on this system -- ski
+                pping")
+ 0424   029E            CALL WaitKey
+ 0429   029E    END IF
+ 0429   029E    
+ 0429   029E    '============ INSTALL GAME ============
+ 0429   029E    CALL Backdrop
+ 042E   029E    CALL Panel(8, 14, 13, 67, " Installing ")
+ 0475   02AA    CALL Cent(10, "Installing Dark Visions to")
+ 049E   02B0    COLOR 14, 1
+ 04B4   02B0    CALL Cent(11, dest)
+ 04C7   02B2    COLOR 7, 1
+ 04DD   02B2    CALL Status("Please wait ...")
+ 04FC   02B6    '----- make the target folder (ignore "already exists")
+ 04FC   02B6    erflag = 0
+ 0502   02B6    ON ERROR GOTO fhandler
+                                                                      PAGE   3
+                                                                      15 Sep 26
+                                                                      19:11:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 050C   02B6    MKDIR dest
+ 0515   02B6    ON ERROR GOTO 0
+ 051F   02B6    '----- copy PKUNZIP to the hard disk with QB I/O so it survives
+                 the disk swap
+ 051F   02B6    CALL CopyFile("A:\PKUNZIP.EXE", dest + "\PKUNZIP.EXE")
+ 0562   02BE    IF Exists%(dest + "\PKUNZIP.EXE") = 0 THEN
+ 0598   02C4            CALL Backdrop
+ 059D   02C4            CALL Panel(8, 11, 15, 70, " Error ")
+ 05E4   02D0            CALL Cent(10, "Could not read PKUNZIP.EXE from drive A:
+                .")
+ 060D   02D6            CALL Cent(12, "Put Disk 1 in drive A: and run  INSTALL 
+                 again.")
+ 0636   02DC            CALL Status("Press any key to quit")
+ 0655   02E0            CALL WaitKey
+ 065A   02E0            CALL Quit
+ 065F   02E0    END IF
+ 065F   02E0    '----- extract the game (PKUNZIP output shown on a clean screen
+                , classic style)
+ 065F   02E0    COLOR 7, 0: CLS
+ 0680   02E0    COLOR 15, 0: PRINT " Installing Dark Visions game files, please
+                 wait ..."
+ 06A1   02E0    PRINT
+ 06AA   02E0    COLOR 7, 0
+ 06C2   02E0    SHELL dest + "\PKUNZIP.EXE -o A:\GAME.ZIP " + dest + "\"
+ 06E9   02E0    IF Exists%(dest + "\GAME.EXE") = 0 THEN
+ 071F   02E6            CALL Backdrop
+ 0724   02E6            CALL Panel(8, 11, 15, 70, " Error ")
+ 076B   02F2            CALL Cent(10, "The game did not install.")
+ 0794   02F8            CALL Cent(12, "Put Disk 1 in drive A: and run  INSTALL 
+                 again.")
+ 07BD   02FE            CALL Status("Press any key to quit")
+ 07DC   0302            CALL WaitKey
+ 07E1   0302            CALL Quit
+ 07E6   0302    END IF
+ 07E6   0302    
+ 07E6   0302    '============ MANUAL (Disk 2) ============
+ 07E6   0302    IF wantman THEN
+ 07F0   0302            CALL Backdrop
+ 07F5   0302            CALL Panel(7, 9, 16, 72, " Instruction Manual  (Disk 2)
+                 ")
+ 083C   030E            CALL Cent(10, "Remove Disk 1, insert DISK 2 in drive A:
+                ,")
+ 0865   0314            CALL Cent(11, "then press ENTER.     ( ESC skips the ma
+                nual )")
+ 088E   031A            CALL Status("Insert Disk 2, then press ENTER")
+ 08AD   031E            ok = 0
+ 08B3   031E            DO
+ 08B4   031E                    k = INKEY$
+ 08C3   031E                    IF k = CHR$(27) THEN EXIT DO
+ 08DE   031E                    IF k = CHR$(13) THEN
+ 08F6   031E                            IF Exists%("A:\MANUAL.ZIP") THEN
+ 0922   0324                                    ok = -1: EXIT DO
+ 092B   0324                            ELSE
+ 092E   0324                                    CALL Cent(13, "MANUAL.ZIP not f
+                                                                      PAGE   4
+                                                                      15 Sep 26
+                                                                      19:11:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                ound on A: -- please insert Disk 2.")
+ 0957   032A                            END IF
+ 0957   032A                    END IF
+ 0957   032A            LOOP
+ 095A   032A            IF ok THEN
+ 0964   032A                    COLOR 7, 0: CLS
+ 0985   032A                    COLOR 15, 0: PRINT " Installing the illustrated
+                 manual, please wait ..."
+ 09A6   032A                    PRINT
+ 09AF   032A                    COLOR 7, 0
+ 09C7   032A                    SHELL dest + "\PKUNZIP.EXE -o A:\MANUAL.ZIP " +
+                 dest + "\"
+ 09EE   032A            END IF
+ 09EE   032A    END IF
+ 09EE   032A    
+ 09EE   032A    '============ DONE ============
+ 09EE   032A    CALL Backdrop
+ 09F3   032A    CALL Panel(7, 13, 18, 68, " Complete ")
+ 0A3A   0336    CALL Cent(9, "Dark Visions is installed.")
+ 0A63   033C    CALL Cent(11, "To play, type:")
+ 0A8C   0342    COLOR 14, 1
+ 0AA2   0342    CALL Cent(13, "CD " + dest)
+ 0AD5   0348    CALL Cent(14, "DARKV")
+ 0AFE   034E    COLOR 7, 1
+ 0B14   034E    CALL Cent(16, "Enjoy -- and mind the shadows.")
+ 0B3D   0354    CALL Status("Press any key to exit")
+ 0B5C   0358    CALL WaitKey
+ 0B61   0358    CALL Quit
+ 0B66   0358    
+ 0B66   0358    '----- module-level error trap (reached only via ON ERROR)
+ 0B66   0358    fhandler:
+ 0B66   0358            erflag = -1
+ 0B6C   0358            RESUME NEXT
+ 0B71   0358    
+ 0B71   0358    '==================== helpers ====================
+ 0B71   0358    SUB At (r, c, s$)
+ 0B7C   0358            COLOR 7, 1
+ 0B92   0358            LOCATE r, c: PRINT s$;
+ 0BB2   0358    END SUB
+ 0BBA   0358    
+ 0BBA   0358    SUB Backdrop
+ 0BC5   0358            COLOR 7, 1: CLS
+ 0BE4   0358            COLOR 15, 3
+ 0BFD   0358            LOCATE 1, 1: PRINT SPACE$(80);
+ 0C1C   0358            LOCATE 1, 3: PRINT "DARK VISIONS  --  Setup";
+ 0C38   0358            LOCATE 1, 62: PRINT "(c) 1993, 2026";
+ 0C54   0358            COLOR 7, 1
+ 0C6A   0358    END SUB
+ 0C72   0358    
+ 0C72   0358    SUB Cent (r, s$)
+ 0C7D   0358            COLOR 15, 1
+ 0C93   0358            LOCATE r, (80 - LEN(s$)) \ 2 + 1: PRINT s$;
+ 0CC5   0358            COLOR 7, 1
+ 0CDB   0358    END SUB
+                                                                      PAGE   5
+                                                                      15 Sep 26
+                                                                      19:11:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0CE3   0358    
+ 0CE3   0358    '----- copy a file with QB binary I/O (no DOS COPY; real MS-DOS
+                 rejects some COPY forms)
+ 0CE3   0358    SUB CopyFile (src$, dst$)
+ 0CEE   0358            DIM total AS LONG
+ 0CEE   0358            DIM bpos AS LONG
+ 0CEE   0358            erflag = 0
+ 0CF4   0358            ON ERROR GOTO fhandler
+ 0CFE   0358            fh1 = FREEFILE
+ 0D06   0358            OPEN src$ FOR BINARY ACCESS READ AS #fh1
+ 0D19   0358            IF erflag THEN
+ 0D23   0358                    ON ERROR GOTO 0
+ 0D2D   0358                    EXIT SUB
+ 0D30   0358            END IF
+ 0D30   0358            total = LOF(fh1)
+ 0D3E   0358            fh2 = FREEFILE
+ 0D46   0358            OPEN dst$ FOR OUTPUT AS #fh2
+ 0D59   0358            CLOSE #fh2
+ 0D65   0358            OPEN dst$ FOR BINARY AS #fh2
+ 0D78   0358            bpos = 1
+ 0D82   0358            DO WHILE bpos <= total
+ 0D98   0358                    chunk = 16384
+ 0D9D   0358                    IF total - bpos + 1 < chunk THEN chunk = CINT(t
+                otal - bpos + 1)
+ 0DD6   0358                    buf$ = SPACE$(chunk)
+ 0DE8   0358                    GET #fh1, bpos, buf$
+ 0E00   0358                    PUT #fh2, bpos, buf$
+ 0E18   0358                    bpos = bpos + chunk
+ 0E28   0358            LOOP
+ 0E2C   0358            CLOSE #fh1
+ 0E38   0358            CLOSE #fh2
+ 0E44   0358            ON ERROR GOTO 0
+ 0E4E   0358    END SUB
+ 0E5F   0358    
+ 0E5F   0358    '----- editable path field with a default
+ 0E5F   0358    FUNCTION GetPath$ (defp$)
+ 0E6A   0358            DIM p$, k$
+ 0E6A   0358            p$ = defp$
+ 0E76   0358            COLOR 15, 1: LOCATE 12, 22: PRINT "Path:";
+ 0EAE   0358            DO
+ 0EAE   0358                    COLOR 14, 1: LOCATE 12, 28: PRINT p$ + "_" + SP
+                ACE$(40 - LEN(p$));
+ 0F0B   0358                    CALL Status("Type a path   BKSP = edit   ENTER 
+                = accept")
+ 0F2A   0358                    DO: k$ = INKEY$: LOOP WHILE k$ = ""
+ 0F48   0358                    IF k$ = CHR$(13) THEN
+ 0F60   0358                            IF LEN(p$) > 0 THEN EXIT DO
+ 0F73   0358                    ELSEIF k$ = CHR$(8) THEN
+ 0F8E   0358                            IF LEN(p$) > 0 THEN p$ = LEFT$(p$, LEN(
+                p$) - 1)
+ 0FBC   0358                    ELSEIF k$ = CHR$(27) THEN
+ 0FD7   0358                            CALL Quit
+ 0FDC   0358                    ELSEIF LEN(k$) = 1 THEN
+ 0FF0   0358                            IF k$ >= " " AND LEN(p$) < 40 THEN p$ =
+                                                                      PAGE   6
+                                                                      15 Sep 26
+                                                                      19:11:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                 p$ + UCASE$(k$)
+ 1041   0358                    END IF
+ 1041   0358            LOOP
+ 1044   0358            GetPath$ = p$
+ 1051   0358    END FUNCTION
+ 1074   0358    
+ 1074   0358    SUB Panel (r1, c1, r2, c2, tit$)
+ 107F   0358            DIM r, w
+ 107F   0358            w = c2 - c1 + 1
+ 108D   0358            COLOR 15, 1
+ 10A3   0358            LOCATE r1, c1: PRINT CHR$(201) + STRING$(w - 2, 205) + 
+                CHR$(187);
+ 10F1   0358            FOR r = r1 + 1 TO r2 - 1
+ 1104   0358                    LOCATE r, c1: PRINT CHR$(186) + SPACE$(w - 2) +
+                 CHR$(186);
+ 114C   0358            NEXT
+ 115B   0358            LOCATE r2, c1: PRINT CHR$(200) + STRING$(w - 2, 205) + 
+                CHR$(188);
+ 11A9   0358            IF LEN(tit$) > 0 THEN
+ 11B8   0358                    COLOR 14, 1
+ 11CE   0358                    LOCATE r1, c1 + (w - LEN(tit$)) \ 2: PRINT tit$
+                ;
+ 1204   0358            END IF
+ 1204   0358            COLOR 7, 1
+ 121A   0358    END SUB
+ 1222   0358    
+ 1222   0358    SUB Quit
+ 122D   0358            COLOR 7, 0: CLS
+ 124E   0358            SCREEN 0: WIDTH 80
+ 126B   0358            SYSTEM
+ 1270   0358    END SUB
+ 1278   0358    
+ 1278   0358    SUB Status (s$)
+ 1283   0358            COLOR 15, 3
+ 129C   0358            LOCATE 25, 1: PRINT SPACE$(79);
+ 12C1   0358            LOCATE 25, 3: PRINT s$;
+ 12E2   0358            COLOR 7, 1
+ 12F8   0358    END SUB
+ 1300   0358    
+ 1300   0358    SUB WaitKey
+ 130B   0358            DO: LOOP WHILE INKEY$ <> ""
+ 131D   0358            DO: LOOP WHILE INKEY$ = ""
+ 132F   0358    END SUB
+ 1337   0358    
+ 1337   0358    '----- highlighted Yes / No selector (arrows + ENTER, or Y/N)
+ 1337   0358    FUNCTION YesNo% (r, defyes)
+ 1342   0358            DIM sel, k$
+ 1342   0358            sel = defyes
+ 134A   0358            DO
+ 134A   0358                    IF sel THEN
+ 1354   0358                            COLOR 0, 7: LOCATE r, 31: PRINT "  Yes 
+                 ";
+ 138C   0358                            COLOR 15, 1: LOCATE r, 43: PRINT "  No 
+                 ";
+                                                                      PAGE   7
+                                                                      15 Sep 26
+                                                                      19:11:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 13C2   0358                    ELSE
+ 13C5   0358                            COLOR 15, 1: LOCATE r, 31: PRINT "  Yes
+                  ";
+ 13FB   0358                            COLOR 0, 7: LOCATE r, 43: PRINT "  No  
+                ";
+ 1433   0358                    END IF
+ 1433   0358                    COLOR 7, 1
+ 1449   0358                    CALL Status("LEFT / RIGHT to choose     ENTER t
+                o accept")
+ 1468   0358                    k$ = INKEY$
+ 1477   0358                    IF LEN(k$) = 2 THEN
+ 1488   0358                            IF ASC(RIGHT$(k$, 1)) = 75 THEN sel = -
+                1
+ 14A8   0358                            IF ASC(RIGHT$(k$, 1)) = 77 THEN sel = 0
+ 14C8   0358                    ELSEIF k$ = CHR$(13) THEN
+ 14E3   0358                            YesNo% = sel: EXIT FUNCTION
+ 14EC   0358                    ELSEIF k$ = "Y" OR k$ = "y" THEN
+ 1524   0358                            YesNo% = -1: EXIT FUNCTION
+ 152C   0358                    ELSEIF k$ = "N" OR k$ = "n" THEN
+ 1564   0358                            YesNo% = 0: EXIT FUNCTION
+ 156C   0358                    END IF
+ 156C   0358            LOOP
+ 156F   0358    END FUNCTION
+ 1583   0358    
+ 1583   0358    FUNCTION Exists% (f$)
+ 158E   0358            DIM fh
+ 158E   0358            fh = FREEFILE
+ 1596   0358            erflag = 0
+ 159C   0358            ON ERROR GOTO fhandler
+ 15A6   0358            OPEN f$ FOR INPUT AS #fh
+ 15B9   0358            ON ERROR GOTO 0
+ 15C3   0358            IF erflag = 0 THEN
+ 15CD   0358                    CLOSE #fh
+ 15D9   0358                    Exists% = -1
+ 15DE   0358            ELSE
+ 15E1   0358                    Exists% = 0
+ 15E6   0358            END IF
+ 15E6   0358    END FUNCTION
+ 15F1   0358    
+ 15F1   0358    '----- one VESA INT 10h call with ES:DI -> vbuf (the 256-byte i
+                nfo block)
+ 15F1   0358    SUB VbeInt (rx AS RegTypeX)
+ 15FC   0358            DIM rx2 AS RegTypeX, vi AS INTEGER
+ 15FC   0358            rx.bp = 0: rx.si = 0: rx.flags = 0: rx.ds = -1
+ 162C   0358            rx.es = VARSEG(vbuf(0)): rx.di = VARPTR(vbuf(0))
+ 1645   0358            vi = &H10
+ 164A   0358            CALL INTERRUPTX(vi, rx, rx2)
+ 165A   0358            rx.ax = rx2.ax: rx.bx = rx2.bx: rx.cx = rx2.cx: rx.dx =
+                 rx2.dx
+ 1689   0358    END SUB
+ 1691   0358    
+ 1691   0358    '----- byte / word i of vbuf (unsigned)
+ 1691   0358    FUNCTION VBb% (i AS INTEGER)
+ 169C   0358            DIM w AS LONG
+                                                                      PAGE   8
+                                                                      15 Sep 26
+                                                                      19:11:49
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 169C   0358            w = vbuf(i \ 2)
+ 16B6   0358            IF w < 0 THEN w = w + 65536
+ 16DD   0358            IF (i AND 1) THEN VBb% = w \ 256 ELSE VBb% = w AND 255
+ 1712   0358    END FUNCTION
+ 171D   0358    
+ 171D   0358    FUNCTION VBw& (i AS INTEGER)
+ 1728   0358            VBw& = VBb%(i) + 256& * VBb%(i + 1)
+ 176F   0358    END FUNCTION
+ 177D   0358    
+ 177D   0358    '----- TRUE if the card has VESA VBE with 640x480x256 (mode 101
+                h) = what the
+ 177D   0358    '----- illustrated manual needs. Non-destructive (query only, s
+                creen untouched).
+ 177D   0358    FUNCTION ManualOK%
+ 1788   0358            DIM rx AS RegTypeX, i AS INTEGER
+ 1788   0358            ManualOK% = 0
+ 178D   0358            '----- VBE present? (4F00h -> "VESA" signature, AL = 4F
+                h)
+ 178D   0358            FOR i = 0 TO 255: vbuf(i) = 0: NEXT
+ 17AB   0358            rx.ax = &H4F00: rx.bx = 0: rx.cx = 0: rx.dx = 0
+ 17BF   0358            CALL VbeInt(rx)
+ 17C8   0358            IF rx.ax <> &H4F THEN EXIT FUNCTION
+ 17D4   0358            IF VBb%(0) <> 86 OR VBb%(1) <> 69 OR VBb%(2) <> 83 OR V
+                Bb%(3) <> 65 THEN EXIT FUNCTION
+ 1850   0358            '----- mode 101h (640x480x256) present + supported by t
+                his hardware?
+ 1850   0358            FOR i = 0 TO 255: vbuf(i) = 0: NEXT
+ 186F   0358            rx.ax = &H4F01: rx.bx = 0: rx.cx = &H101: rx.dx = 0
+ 1883   0358            CALL VbeInt(rx)
+ 188C   0358            IF rx.ax <> &H4F THEN EXIT FUNCTION
+ 1898   0358            IF (VBw&(0) AND 1) = 0 THEN EXIT FUNCTION
+ 18CC   0358            IF VBw&(18) = 640 AND VBw&(20) = 480 AND VBb%(25) = 8 T
+                HEN ManualOK% = -1
+ 1951   0358    END FUNCTION
+ 195C   0358    
+ 1F2F   0358    
+
+43901 Bytes Available
+34773 Bytes Free
+
+    0 Warning Error(s)
+    0 Severe  Error(s)

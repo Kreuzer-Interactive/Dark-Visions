@@ -1,0 +1,34 @@
+--- 09-13-2026 08:44:08 from bios mode 3 far heap 51436 strings 28942
+uGL 640x480x256 2 pages: 0  1 page: 0  (-1 = ok, 0 = refused)
+EMS: none (not needed for uGL modes)
+4F00 info: ax 4F bx 0 cx 0 dx 0
+  sig VESA vbe 1.2 caps 0 total vram KB 1024
+  oem: Cirrus Logic GD-54xx VGA
+  modes: 14 10A 109 102 103 104 101 105 111 114 110 113 102 10F 112
+4F01 mode 101h: ax 4F bx 0 cx 101 dx 0
+  attr 1F winA attr 7 gran KB 4 win KB 64 winA seg A000
+  bytes/line 640 res 640 x 480 planes 1 bpp 8
+  banks 1 model 4 bank KB 0 extra pages 2
+4F02 set 101h: ax 4F bx 101 cx 101 dx 0
+4F06 get scanline (bx bytes, cx px, dx lines): ax 4F bx 280 cx 280 dx 666
+4F06 set scanline 1024 px: ax 4F bx 400 cx 400 dx 400
+4F06 get scanline again: ax 4F bx 400 cx 400 dx 400
+4F07 display start line 480: ax 4F bx 0 cx 0 dx 1E0
+4F07 get display start: ax 4F bx 1 cx 8800 dx 2
+--- 09-13-2026 08:44:29 from bios mode 4 far heap 43158 strings 21432
+uGL 640x480x256 2 pages: 0  1 page: 0  (-1 = ok, 0 = refused)
+EMS: none (not needed for uGL modes)
+4F00 info: ax 4F bx 0 cx 0 dx 0
+  sig VESA vbe 1.2 caps 0 total vram KB 1024
+  oem: Cirrus Logic GD-54xx VGA
+  modes: 14 10A 109 102 103 104 101 105 111 114 110 113 102 10F 112
+4F01 mode 101h: ax 4F bx 0 cx 101 dx 0
+  attr 1F winA attr 7 gran KB 4 win KB 64 winA seg A000
+  bytes/line 640 res 640 x 480 planes 1 bpp 8
+  banks 1 model 4 bank KB 0 extra pages 2
+4F02 set 101h: ax 4F bx 101 cx 101 dx 0
+4F06 get scanline (bx bytes, cx px, dx lines): ax 4F bx 280 cx 280 dx 666
+4F06 set scanline 1024 px: ax 4F bx 400 cx 400 dx 400
+4F06 get scanline again: ax 4F bx 400 cx 400 dx 400
+4F07 display start line 480: ax 4F bx 0 cx 0 dx 1E0
+4F07 get display start: ax 4F bx 1 cx 8800 dx 2
