@@ -77,6 +77,9 @@ CONST mCurW = 12, mCurH = 18
 '----- fixed UI palette slots (img2bmp8.ps1 -Reserve 8)
 CONST cBlack = 248, cWhite = 249, cLGray = 250, cMGray = 251, cDGray = 252, cParch = 253, cDParch = 254, cRed = 255
 CONST cMask = 227
+'----- fade/slide background = 1E1A20 (matches the dark background of the page art),
+'----- as 0-255 RGB; the fades settle to this instead of pure black
+CONST bgR = 30, bgG = 26, bgB = 32
 
 DECLARE FUNCTION VgaOpen& (pref AS INTEGER, xr AS INTEGER, yr AS INTEGER, np AS INTEGER)
 DECLARE SUB VgaDiag (r1 AS INTEGER, r2 AS INTEGER, full AS INTEGER)
@@ -101,17 +104,27 @@ DECLARE SUB ManualScroll (msen AS SINGLE)
 DECLARE FUNCTION FileExists% (fil AS STRING)
 DECLARE FUNCTION LoadView% (n AS INTEGER)
 DECLARE SUB PageTurn (n AS INTEGER)
+DECLARE SUB SlideTo (n AS INTEGER)
+DECLARE SUB ScrollX (px AS INTEGER)
+DECLARE FUNCTION CrtcR% (idx AS INTEGER)
+DECLARE SUB CrtcW (idx AS INTEGER, v AS INTEGER)
+DECLARE SUB SlideFrame (px AS INTEGER, f AS INTEGER)
+DECLARE SUB VgaPalCalc (f AS INTEGER)
 DECLARE SUB MouseRead (x AS INTEGER, y AS INTEGER, b AS INTEGER)
 
 '----- module state for the page-flip viewer (mPal / vbuf in the far heap via REDIM)
 REM $DYNAMIC
 DIM SHARED mPal(0 TO 255) AS tRGB
+DIM SHARED pBuf(0 TO 255) AS tRGB
 DIM SHARED vbuf(0 TO 255) AS INTEGER
 REM $STATIC
 DIM SHARED mv AS LONG
 DIM SHARED mPage AS INTEGER, mNPages AS INTEGER
 DIM SHARED mMouse AS INTEGER
 DIM SHARED mInit AS INTEGER, mMode AS INTEGER
+'----- horizontal page-slide state: framebuffer pitch, the CRTC addressing unit, and
+'----- whether the mode has an off-screen margin to slide into (set in ManualScroll)
+DIM SHARED gPitch AS LONG, gUnit AS INTEGER, gSlide AS INTEGER
 
 '----- bottom bar at VRAM lines 460..479 (shown directly, display start stays 0):
 '----- back / forward arrows and one dot per sub-page, the current one lit
@@ -356,14 +369,14 @@ SUB VgaHold (secs AS SINGLE)
 END SUB
 
 
-'----- mPal() scaled by f/16 into the DAC (16 = as loaded, 0 = black)
+'----- mPal() interpolated by f/16 into the DAC (16 = as loaded, 0 = the bg colour)
 SUB VgaPalApply (f AS INTEGER)
 	DIM i AS INTEGER
 	REDIM p(0 TO 255) AS tRGB
 	FOR i = 0 TO 255
-		p(i).red = CHR$(ASC(mPal(i).red) * f \ 16)
-		p(i).green = CHR$(ASC(mPal(i).green) * f \ 16)
-		p(i).blue = CHR$(ASC(mPal(i).blue) * f \ 16)
+		p(i).red = CHR$(bgR + ((ASC(mPal(i).red) - bgR) * f) \ 16)
+		p(i).green = CHR$(bgG + ((ASC(mPal(i).green) - bgG) * f) \ 16)
+		p(i).blue = CHR$(bgB + ((ASC(mPal(i).blue) - bgB) * f) \ 16)
 	NEXT
 	uglPalSetBuff 0, 256, p(0)
 END SUB
@@ -416,9 +429,12 @@ FUNCTION LoadView% (n AS INTEGER)
 	LoadView% = 0
 	IF NOT FileExists%(bmp) THEN EXIT FUNCTION
 	uglSetWrkPage 0
-	CALL VgaPalBlack
+	CALL VgaPalApply(0)
 	IF uglPutBMPEx(mv, 0, 0, bmp, BMPOPT.NO332) = 0 THEN EXIT FUNCTION
 	CALL VgaPalLoad(bmp)
+	'----- force index 0 (fills the off-screen margin the slide exposes) to the bg
+	'----- colour; several pages ship a light-grey index 0 that showed as a grey sliver
+	mPal(0).red = CHR$(bgR): mPal(0).green = CHR$(bgG): mPal(0).blue = CHR$(bgB)
 	mPage = n
 	LoadView% = -1
 END FUNCTION
@@ -429,11 +445,29 @@ SUB ManualScroll (msen AS SINGLE)
 	DIM mx AS INTEGER, my AS INTEGER, mb AS INTEGER, wasDown AS INTEGER
 	DIM r AS RegType, r2 AS RegType, mi AS INTEGER, lf2 AS INTEGER
 	REDIM mPal(0 TO 255) AS tRGB
+	REDIM pBuf(0 TO 255) AS tRGB
 	'----- no manual installed (SETUP skipped disk 2): quiet no-op, stay in the game
 	IF NOT FileExists%("manp00.bmp") THEN EXIT SUB
 	mv = VgaOpen&(640, xr, yr, np)
 	IF mv = 0 THEN EXIT SUB
 	IF xr <> 640 THEN CALL ManualSimple(mv, xr, np): EXIT SUB
+	'----- can we do the horizontal slide? needs a pitch wider than 640 (an off-screen
+	'----- margin to nudge the page into). If so, read the CRTC addressing unit. The
+	'----- slide itself is plain-VGA display-start writes, so it needs no coprocessor.
+	DIM inf AS TDC
+	uglDCGet mv, inf
+	gPitch = inf.bps
+	gSlide = 0
+	IF gPitch > 640 THEN
+		IF CrtcR%(&H14) AND &H40 THEN
+			gUnit = 4
+		ELSEIF CrtcR%(&H17) AND &H40 THEN
+			gUnit = 1
+		ELSE
+			gUnit = 2
+		END IF
+		gSlide = -1
+	END IF
 	'----- count the composed views MANP00.. on disk
 	mNPages = 0
 	FOR i = 0 TO 29
@@ -442,7 +476,7 @@ SUB ManualScroll (msen AS SINGLE)
 	IF mNPages = 0 THEN CALL VgaClose: EXIT SUB
 	uglSetWrkPage 0
 	uglSetVisPage 0
-	CALL VgaPalBlack
+	CALL VgaPalApply(0)
 	IF LoadView%(0) = 0 THEN CALL VgaClose: EXIT SUB
 	'----- MANOK.LOG: one line per open (views, mode, free heap) - field diagnostic
 	lf2 = FREEFILE
@@ -509,20 +543,93 @@ SUB MouseRead (x AS INTEGER, y AS INTEGER, b AS INTEGER)
 	IF y > 479 THEN y = 479
 END SUB
 
-'----- turn to view n with a fade through black (the page-flip effect)
+'----- turn to view n: horizontal nudge-slide where the mode allows it, else a fade
 SUB PageTurn (n AS INTEGER)
 	DIM i AS INTEGER
 	IF n < 0 OR n > mNPages - 1 OR n = mPage THEN EXIT SUB
+	IF gSlide THEN CALL SlideTo(n): EXIT SUB
+	'----- fallback (320x200, or a mode with no scroll margin): fade through the bg
 	FOR i = 10 TO 0 STEP -1
 		CALL VgaSync
 		CALL VgaPalApply(i * 16 \ 10)
 	NEXT
-	CALL VgaPalBlack
+	CALL VgaPalApply(0)
 	IF LoadView%(n) = 0 THEN i = LoadView%(mPage)
 	FOR i = 0 TO 10
 		CALL VgaSync
 		CALL VgaPalApply(i * 16 \ 10)
 	NEXT
+END SUB
+
+'----- the horizontal page turn (proven on the 486SX - FPU-free): nudge the current
+'----- page LEFT a few px while fading to black, load the next page unseen, then slide
+'----- it in from the left back to normal while fading up. ScrollX moves the display
+'----- start by direct CRTC writes (VESA's 4F07h is broken on the target Cirrus), and
+'----- a few px only needs the standard VGA CR0C/CR0D, so it works on any VGA card.
+SUB SlideTo (n AS INTEGER)
+	DIM i AS INTEGER, nud AS INTEGER, steps AS INTEGER
+	'----- nud = px of horizontal travel; steps = fade granularity. Fewer steps and no
+	'----- extra hold (SlideFrame is already retrace-paced) = a snappier turn. Tune here.
+	nud = 16: steps = 3
+	FOR i = 0 TO steps
+		CALL SlideFrame(nud * i \ steps, (steps - i) * 16 \ steps)
+	NEXT
+	IF LoadView%(n) = 0 THEN IF LoadView%(mPage) = 0 THEN EXIT SUB
+	FOR i = 0 TO steps
+		CALL SlideFrame(nud * (steps - i) \ steps, i * 16 \ steps)
+	NEXT
+	CALL ScrollX(0)
+END SUB
+
+'----- one flicker-free slide frame: compute the faded palette OFF-screen (the slow
+'----- part - string math over 256 colours), then in the vertical blank do ONLY the
+'----- fast register writes: move the display start (the scroll) and load the DAC. So
+'----- the palette never changes while the beam is drawing the picture.
+SUB SlideFrame (px AS INTEGER, f AS INTEGER)
+	DIM u AS INTEGER
+	CALL VgaPalCalc(f)
+	IF gUnit = 0 THEN gUnit = 1
+	u = px \ gUnit
+	WAIT &H3DA, 8, 8
+	WAIT &H3DA, 8
+	CALL CrtcW(&HC, (u \ 256) AND 255)
+	CALL CrtcW(&HD, u AND 255)
+	uglPalSetBuff 0, 256, pBuf(0)
+END SUB
+
+'----- scale mPal by f/16 into pBuf (no DAC write, no per-frame REDIM - both of which
+'----- would push the actual palette load out of the vertical blank and cause flicker)
+SUB VgaPalCalc (f AS INTEGER)
+	DIM i AS INTEGER
+	FOR i = 0 TO 255
+		pBuf(i).red = CHR$(bgR + ((ASC(mPal(i).red) - bgR) * f) \ 16)
+		pBuf(i).green = CHR$(bgG + ((ASC(mPal(i).green) - bgG) * f) \ 16)
+		pBuf(i).blue = CHR$(bgB + ((ASC(mPal(i).blue) - bgB) * f) \ 16)
+	NEXT
+END SUB
+
+'----- set the horizontal display start to pixel px (line 0) via the CRTC, waiting out
+'----- the retrace so it latches cleanly. Small offsets only touch CR0C/CR0D = plain
+'----- VGA (every card); gUnit is the mode's byte/word/dword addressing unit.
+SUB ScrollX (px AS INTEGER)
+	DIM u AS INTEGER
+	IF gUnit = 0 THEN gUnit = 1
+	u = px \ gUnit
+	WAIT &H3DA, 8, 8
+	CALL CrtcW(&HC, (u \ 256) AND 255)
+	CALL CrtcW(&HD, u AND 255)
+	WAIT &H3DA, 8
+END SUB
+
+'----- CRTC register read / write (index at 3D4h, data at 3D5h)
+FUNCTION CrtcR% (idx AS INTEGER)
+	OUT &H3D4, idx
+	CrtcR% = INP(&H3D5)
+END FUNCTION
+
+SUB CrtcW (idx AS INTEGER, v AS INTEGER)
+	OUT &H3D4, idx
+	OUT &H3D5, v
 END SUB
 
 '----- VgaOpen: uglInit once + remember the caller's BIOS mode, then set the mode.
@@ -541,9 +648,12 @@ FUNCTION VgaOpen& (pref AS INTEGER, xr AS INTEGER, yr AS INTEGER, np AS INTEGER)
 	CALL INTERRUPT(vi, r, r2)
 	mMode = r2.ax AND 255
 	IF pref = 640 THEN
-		'----- the manual: 640x480x256 one page, drops to 320x200 on a VESA miss
-		xr = 640: yr = 480: np = 1
+		'----- the manual: 640x480x256 TWO pages (the 1024-byte pitch gives the off-
+		'----- screen margin the horizontal page-slide nudges into) -> one page (fade
+		'----- turns) -> 320x200 (fade) on a VESA miss
+		xr = 640: yr = 480: np = 2
 		v = uglSetVideoDC(UGL.8BIT, xr, yr, np)
+		IF v = 0 THEN np = 1: v = uglSetVideoDC(UGL.8BIT, xr, yr, np)
 		IF v = 0 THEN xr = 320: yr = 200: np = 1: v = uglSetVideoDC(UGL.8BIT, xr, yr, np)
 		VgaOpen& = v
 		EXIT FUNCTION

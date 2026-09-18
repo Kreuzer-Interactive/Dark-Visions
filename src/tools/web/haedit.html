@@ -182,6 +182,12 @@
   #bgModal{gap:16px}
   .navarrow{flex:0 0 auto;align-self:center;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.28);font-size:30px;line-height:1;width:46px;height:72px;border-radius:9px;cursor:pointer;opacity:.75;transition:opacity .1s,background .1s}
   .navarrow:hover{opacity:1;background:rgba(255,255,255,.22)}
+  #manWrap{display:flex;flex-wrap:wrap;gap:14px;padding:12px}
+  .mancard{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:8px;width:324px}
+  .manimg{width:308px;height:231px;object-fit:contain;background:#1e1a20;display:block;border-radius:4px;image-rendering:pixelated}
+  .mancap{font:12px monospace;color:var(--muted);margin:6px 2px 4px}
+  .manbar{display:flex;gap:6px}
+  .manbar button{flex:1}
   .bgpal{display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;justify-content:center;font-size:11px;color:var(--muted)}
   .bgpal label{display:flex;flex-direction:column;gap:3px;align-items:center}
   .bgpal select{background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:4px;padding:3px 4px;font:inherit}
@@ -243,6 +249,7 @@
     <button data-tab="anim">Animations</button>
     <button data-tab="walk">Walking</button>
     <button data-tab="font">Font</button>
+    <button data-tab="manual">Manual</button>
   </nav>
   <main id="tab-hits">
     <div class="invbar" id="hitbar">
@@ -388,6 +395,15 @@
       <input type="file" id="newBgFile" accept="image/png" hidden>
     </div>
     <div id="bgWrap"></div>
+  </section>
+  <section id="tab-manual" hidden>
+    <div class="invbar">
+      <span>The illustrated manual pages (<code>MANP00.BMP</code> …) shown in the in-game page-flip manual — 640×480, 256&nbsp;colours. <b>Export</b> a page to a PNG to edit it, then <b>Import</b> it back (any image is fit to 640×480 and reduced to 256 colours the game can load).</span>
+      <span class="spacer"></span>
+      <button id="manReload" title="Re-read the pages from disk">↻ Reload</button>
+      <input type="file" id="manImportFile" accept="image/*" hidden>
+    </div>
+    <div id="manWrap"></div>
   </section>
   <section id="tab-spr" hidden>
     <div class="invbar">
@@ -2682,6 +2698,92 @@ window.addEventListener('keyup',e=>{
   if(!/^Arrow(Up|Down|Left|Right)$/.test(e.key)) return;
   if(wkKeys.delete(e.key) && activeTab==='walk') wkFromKeys();
 });
+// ==== Manual pages (MANP00..09.BMP — the 640x480 illustrated page-flip manual) ====
+async function manList(){
+  if(mode==='server'){ try{ const r=await fetch('api/bmps',{cache:'no-store'}); if(r.ok) return await r.json(); }catch(_){} }
+  return [];
+}
+async function buildManual(){
+  const wrap=document.getElementById('manWrap'); if(!wrap) return; wrap.innerHTML='';
+  if(mode!=='server'){ wrap.innerHTML='<p style="padding:12px;color:var(--muted)">The Manual tab needs the local server (run <code>run.bat</code> / <code>serve.ps1</code>) to read and write the <code>.BMP</code> files.</p>'; return; }
+  const names=await manList();
+  if(!names.length){ wrap.innerHTML='<p style="padding:12px;color:var(--muted)">No manual pages found (<code>MANP00.BMP</code> … in the <code>src</code> folder).</p>'; return; }
+  for(const nm of names){
+    const card=document.createElement('div'); card.className='mancard';
+    const img=new Image(); img.className='manimg'; img.alt=nm; img.src='api/bmp?name='+encodeURIComponent(nm)+'&t='+Date.now();
+    const cap=document.createElement('div'); cap.className='mancap'; cap.textContent=nm+'.BMP';
+    const bar=document.createElement('div'); bar.className='manbar';
+    const exp=document.createElement('button'); exp.textContent='Export PNG'; exp.title='Download this page as a PNG to edit'; exp.onclick=()=>manExport(nm,img);
+    const imp=document.createElement('button'); imp.textContent='Import…'; imp.title='Replace this page with an image (fit to 640×480, reduced to 256 colours)'; imp.onclick=()=>manImport(nm);
+    bar.appendChild(exp); bar.appendChild(imp);
+    card.appendChild(img); card.appendChild(cap); card.appendChild(bar);
+    wrap.appendChild(card);
+  }
+}
+function manExport(nm,img){
+  const c=document.createElement('canvas'); c.width=640; c.height=480;
+  const g=c.getContext('2d'); g.imageSmoothingEnabled=false;
+  g.fillStyle='#000'; g.fillRect(0,0,640,480);
+  if(img.complete && img.naturalWidth) g.drawImage(img,0,0,640,480);
+  c.toBlob(b=>{ const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=nm+'.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000); },'image/png');
+}
+let manImportTarget=null;
+function manImport(nm){ manImportTarget=nm; const fi=document.getElementById('manImportFile'); fi.value=''; fi.click(); }
+async function manDoImport(nm,file){
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  const ok=await new Promise(r=>{ img.onload=()=>r(true); img.onerror=()=>r(false); img.src=url; });
+  URL.revokeObjectURL(url);
+  if(!ok){ alert('Could not read that image.'); return; }
+  const c=document.createElement('canvas'); c.width=640; c.height=480;
+  const g=c.getContext('2d'); g.imageSmoothingEnabled=false;
+  g.fillStyle='#000'; g.fillRect(0,0,640,480);
+  g.drawImage(img,0,0,640,480);   // stretch to the page size
+  const bmp=canvasToBmp8(g.getImageData(0,0,640,480));
+  try{
+    const r=await fetch('api/bmp?name='+encodeURIComponent(nm),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:bmp});
+    if(!r.ok){ alert('Save failed ('+r.status+').'); return; }
+  }catch(_){ alert('Save failed — is the server running?'); return; }
+  buildManual();
+}
+// build an 8-bit (256-colour, uGL-compatible) BMP from RGBA image data
+function canvasToBmp8(id){
+  const W=id.width,H=id.height,px=id.data,N=W*H;
+  const idx=new Uint8Array(N), map=new Map(), pal=[]; let over=false;
+  for(let i=0;i<N;i++){ const r=px[i*4],g=px[i*4+1],b=px[i*4+2],k=(r<<16)|(g<<8)|b; let v=map.get(k); if(v===undefined){ if(pal.length>=256){ over=true; break; } v=pal.length; pal.push([r,g,b]); map.set(k,v); } idx[i]=v; }
+  let palette,indices;
+  if(!over){ palette=pal; indices=idx; }
+  else { const q=medianCut(px,N,256); palette=q.palette; indices=q.indices; }
+  const rowpad=(4-(W%4))%4, stride=W+rowpad, off=54+1024, size=off+stride*H;
+  const out=new Uint8Array(size), dv=new DataView(out.buffer);
+  out[0]=0x42; out[1]=0x4D; dv.setUint32(2,size,true); dv.setUint32(10,off,true);
+  dv.setUint32(14,40,true); dv.setInt32(18,W,true); dv.setInt32(22,H,true);
+  dv.setUint16(26,1,true); dv.setUint16(28,8,true); dv.setUint32(34,stride*H,true);
+  dv.setUint32(46,256,true); dv.setUint32(50,256,true);
+  for(let i=0;i<256;i++){ const c=palette[i]||[0,0,0], o=54+i*4; out[o]=c[2]; out[o+1]=c[1]; out[o+2]=c[0]; out[o+3]=0; }   // BGRA
+  for(let y=0;y<H;y++){ const src=(H-1-y)*W, dst=off+y*stride; for(let x=0;x<W;x++) out[dst+x]=indices[src+x]; }   // bottom-up
+  return out;
+}
+// median-cut quantiser (only used when an import has >256 unique colours) -> {palette,indices}
+function medianCut(px,N,max){
+  const hist=new Map();
+  for(let i=0;i<N;i++){ const k=(px[i*4]<<16)|(px[i*4+1]<<8)|px[i*4+2]; hist.set(k,(hist.get(k)||0)+1); }
+  let colors=[]; for(const [k,cnt] of hist) colors.push([(k>>16)&255,(k>>8)&255,k&255,cnt]);   // [r,g,b,count]
+  const ext=b=>{ let lo=[255,255,255],hi=[0,0,0]; for(const c of b) for(let k=0;k<3;k++){ if(c[k]<lo[k])lo[k]=c[k]; if(c[k]>hi[k])hi[k]=c[k]; } return [lo,hi]; };
+  let boxes=[colors];
+  while(boxes.length<max){
+    let bi=-1,best=-1;
+    for(let i=0;i<boxes.length;i++){ const b=boxes[i]; if(b.length<2)continue; const [lo,hi]=ext(b); const s=Math.max(hi[0]-lo[0],hi[1]-lo[1],hi[2]-lo[2]); if(s>best){ best=s; bi=i; } }
+    if(bi<0)break;
+    const b=boxes[bi],[lo,hi]=ext(b), ch=[0,1,2].reduce((a,k)=>(hi[k]-lo[k])>(hi[a]-lo[a])?k:a,0);
+    b.sort((p,q)=>p[ch]-q[ch]); const mid=b.length>>1;
+    boxes.splice(bi,1,b.slice(0,mid),b.slice(mid));
+  }
+  const palette=boxes.map(b=>{ let r=0,g=0,bl=0,w=0; for(const c of b){ r+=c[0]*c[3]; g+=c[1]*c[3]; bl+=c[2]*c[3]; w+=c[3]; } w=Math.max(1,w); return [Math.round(r/w),Math.round(g/w),Math.round(bl/w)]; });
+  const cache=new Map(), indices=new Uint8Array(N);
+  for(let i=0;i<N;i++){ const k=(px[i*4]<<16)|(px[i*4+1]<<8)|px[i*4+2]; let bj=cache.get(k); if(bj===undefined){ const r=px[i*4],g=px[i*4+1],b=px[i*4+2]; let bd=1e18; bj=0; for(let j=0;j<palette.length;j++){ const c=palette[j],dr=r-c[0],dg=g-c[1],db=b-c[2],d=dr*dr+dg*dg+db*db; if(d<bd){ bd=d; bj=j; } } cache.set(k,bj); } indices[i]=bj; }
+  return {palette,indices};
+}
 function setTab(t){
   activeTab=t;
   document.getElementById('tab-hits').hidden=(t!=='hits');
@@ -2692,6 +2794,7 @@ function setTab(t){
   document.getElementById('tab-anim').hidden=(t!=='anim');
   document.getElementById('tab-walk').hidden=(t!=='walk');
   document.getElementById('tab-font').hidden=(t!=='font');
+  document.getElementById('tab-manual').hidden=(t!=='manual');
   document.getElementById('hitctrls').hidden=(t!=='hits');
   document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
   if(t==='hits' && S){ placeFrameCache={}; ensurePlaceFrames().then(()=>{ renderPlacements(); draw(); }); }   // anims may have changed in the Animations tab (mode/frames/source) — rebuild the placement cards + markers
@@ -2702,9 +2805,12 @@ function setTab(t){
   if(t==='anim') buildAnims();
   if(t==='walk') wkEnter(); else wkStop();
   if(t==='font' && !document.getElementById('fontDirty').textContent) fLoad();   // fresh from disk each visit (unless mid-edit)
+  if(t==='manual') buildManual();
 }
 async function showInv(){ buildInvTable(); await ensureXref(); if(activeTab==='inv') buildInvTable(); }
 document.querySelectorAll('.tabs button').forEach(x=>x.onclick=()=>setTab(x.dataset.tab));
+document.getElementById('manReload').onclick=()=>buildManual();
+document.getElementById('manImportFile').onchange=e=>{ const f=e.target.files[0], nm=manImportTarget; manImportTarget=null; if(f&&nm) manDoImport(nm,f); };
 setTab('hits');
 
 // ---- boot ----

@@ -307,21 +307,15 @@ ON ERROR GOTO errhand
 SCREEN 1
 CLS
 CLOSE
-GOSUB loadanims
-GOSUB shadload
-CALL LoadWalks(cwa(), cmwa(), cwb(), cmwb())
-
-'----- quickstart=1 (dark.ini): drop straight into the game for testing
-'----- (joeface still runs -- it LOADS the 8 standing player sprites)
-IF qkon <> 0 THEN GOSUB joeface: GOTO qstart
+'----- quickstart=1 (dark.ini): drop straight into the game for testing.
+'----- loadgame does the big disk reads (anims, shadows, walk + face sprites)
+IF qkon <> 0 THEN GOSUB loadgame: GOTO qstart
 
 '----- title screen
 SCREEN 1
 PALETTE 3, 0
 LOCATE 10, 12
 PRINT "A Kreuzer Production"
-a$ = INKEY$
-GOSUB joeface
 a$ = INKEY$
 CALL introFadeCredit
 CLS
@@ -334,6 +328,10 @@ IF a$ <> "" THEN GOTO 430
 GOTO 400
 430 IF a$ = "Y" OR a$ = "y" THEN CALL ShowInstructions(msen)
 
+'----- do the game's big disk reads now, after instructions are shown or skipped, so
+'----- the credit + prompt appear immediately instead of waiting on them; the
+'----- quickstart path calls the same loadgame above
+GOSUB loadgame
 '----- enter the game
 qstart:
 b = 122
@@ -1708,6 +1706,23 @@ wlkitem:
 lookdir:
 	'----- body in GAME2 LookDir -- 64K ceiling
 	CALL LookDir(b, a, pjx, pjy, a$)
+	RETURN
+
+'----- loadgame: the big disk reads the game needs before the first room (animations,
+'----- shadows, walk sprites, face sprites). Called from the quickstart path and again
+'----- after the instructions prompt, so the title credit + prompt are not stuck
+'----- behind these reads.
+loadgame:
+	'----- a centred "Loading..." so the disk pause reads as intentional (SCREEN 1 =
+	'----- 40x25 text; the first room draw replaces it)
+	SCREEN 1
+	CLS
+	LOCATE 13, 16
+	PRINT "Loading...";
+	GOSUB loadanims
+	GOSUB shadload
+	CALL LoadWalks(cwa(), cmwa(), cwb(), cmwb())
+	GOSUB joeface
 	RETURN
 
 '----- joeface: load Joe face sprites, pick direction toward player

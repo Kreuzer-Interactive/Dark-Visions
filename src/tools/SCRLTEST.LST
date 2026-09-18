@@ -1,0 +1,1222 @@
+                                                                      PAGE   1
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    '----- SCRLTEST.BAS: hardware scrolling probe for the 486's Cir
+                rus Logic card.
+ 0030   0006    '----- The Cirrus VBE 1.2 BIOS says "ok" to INT 10h 4F07h (set 
+                display start) but
+ 0030   0006    '----- the picture does not move (VGA.LOG of 2026-09-13). This 
+                test scrolls the
+ 0030   0006    '----- 640x480x256 two-page screen (1024-byte pitch, page 1 at 
+                VRAM line 480) four
+ 0030   0006    '----- ways and logs the CRTC registers after each, so the log 
+                shows what the BIOS
+ 0030   0006    '----- really wrote and the viewer at the monitor sees which me
+                thod moves the
+ 0030   0006    '----- picture:
+ 0030   0006    '-----   phase 1 (one square top-left)    VESA 4F07h,   0 -> 48
+                0 -> 0 lines
+ 0030   0006    '-----   phase 2 (two squares)            direct CRTC,  0 -> 48
+                0 -> 0 lines
+ 0030   0006    '-----   phase 3 (three squares)          direct CRTC,  sideway
+                s 0 -> 384 -> 0 px
+ 0030   0006    '-----   phase 4 (four squares)           direct CRTC,  4 fast 
+                up/down cycles (timed)
+ 0030   0006    '----- Direct CRTC = CR0C/CR0D (start address, in the mode's by
+                te/word/dword unit,
+ 0030   0006    '----- read from CR14 bit 6 / CR17 bit 6) + Cirrus CR1B bits 0,
+                2,3 = address bits
+ 0030   0006    '----- 16,17,18 (+ CR1D bit 7 = bit 19 on GD5430 and later). Ci
+                rrus extensions are
+ 0030   0006    '----- unlocked with SR06 = 12h (reads back 12h; any other valu
+                e locks, reads 0Fh);
+ 0030   0006    '----- CR27 bits 7-2 = chip id (98h = GD5428, 9Ch = GD5429, A0h
+                 = GD5430,
+ 0030   0006    '----- A8h = GD5434, ACh = GD5436, B8h = GD5446).
+ 0030   0006    '----- Page 0 = colour bands + a white row marker every 60 line
+                s (n ticks = n*60),
+ 0030   0006    '----- page 1 = the same bands shifted by 8 colours + black mar
+                kers, so a scroll
+ 0030   0006    '----- from page 0 to page 1 is obvious. Writes SCRLTEST.LOG, a
+                uto-exits (~25 s).
+ 0030   0006    '----- Build/run: src\tools\scrltest.conf (DOSBox-X: proves pha
+                ses 1 and 2 on S3).
+ 0030   0006    DEFINT A-Z
+ 0030   0006    '$INCLUDE: 'UGL.BI'
+ 0030   0006    ''
+ 0030   0006    '' ugl.bi -- UGL routines
+ 0030   0006    ''
+ 0030   0006    
+ 0030   0006    Const UGL.TRUE%     = -1%
+ 0030   0006    Const UGL.FALSE%    = 0%
+ 0030   0006    
+ 0030   0006    Const DCTSIZE%      = 64%
+ 0030   0006    '' dc types:
+ 0030   0006    Const UGL.MEM%      = 0% * DCTSIZE%
+ 0030   0006    Const UGL.BNK%      = 1% * DCTSIZE%
+ 0030   0006    Const UGL.EMS%      = 2% * DCTSIZE%
+                                                                      PAGE   2
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    
+ 0030   0006    Const FMTSIZE%      = 128%
+ 0030   0006    '' color formats:
+ 0030   0006    Const UGL.8BIT%     = 0% * FMTSIZE%
+ 0030   0006    Const UGL.15BIT%    = 1% * FMTSIZE%
+ 0030   0006    Const UGL.16BIT%    = 2% * FMTSIZE%
+ 0030   0006    Const UGL.32BIT%    = 3% * FMTSIZE%
+ 0030   0006    
+ 0030   0006    '' buffer formats for uglRow Read/Write/SetPal routines
+ 0030   0006    Const UGL.BF.8BIT%  = 0% * 2%
+ 0030   0006    Const UGL.BF.15BIT% = 1% * 2%
+ 0030   0006    Const UGL.BF.16BIT% = 2% * 2%
+ 0030   0006    Const UGL.BF.32BIT% = 3% * 2%
+ 0030   0006    Const UGL.BF.24BIT% = 4% * 2%
+ 0030   0006    Const UGL.BF.IDX1%  = 5% * 2%
+ 0030   0006    Const UGL.BF.IDX4%  = 6% * 2%
+ 0030   0006    Const UGL.BF.IDX8%  = 7% * 2%
+ 0030   0006    
+ 0030   0006    '' flipping modes:
+ 0030   0006    Const UGL.VFLIP%    = 1%
+ 0030   0006    Const UGL.HFLIP%    = 2%
+ 0030   0006    Const UGL.VHFLIP%   = UGL.VFLIP% or UGL.HFLIP%
+ 0030   0006    
+ 0030   0006    '' Mask modes for uglTriT and uglQuadT
+ 0030   0006    const UGL.MASK.FALSE = 0
+ 0030   0006    const UGL.MASK.TRUE  = 2
+ 0030   0006    
+ 0030   0006    '' uglPalLoad's 'fmt' parameter:
+ 0030   0006    Const PALRGB% = 0%
+ 0030   0006    Const PALBGR% = 1%
+ 0030   0006    
+ 0030   0006    '' uglNew/PutBMPEx options:
+ 0030   0006    Const BMPOPT.NOOPT% = &h0000%
+ 0030   0006    Const BMPOPT.NO332% = &h0100%
+ 0030   0006    Const BMPOPT.MASK%  = &h0200%
+ 0030   0006        
+ 0030   0006    Type CLIPRECT
+ 0030   0006            xMin    As Integer
+ 0030   0006            yMin    As Integer
+ 0030   0006            xMax    As Integer
+ 0030   0006            yMax    As Integer
+ 0030   0006    End Type
+ 0030   0006    
+ 0030   0006    '' uglDCget's struct
+ 0030   0006    Type TDC
+ 0030   0006            fmt     As Integer                      '' color format
+                 (8BIT..32BIT)
+ 0030   0006            typ     As Integer                      '' type (MEM, E
+                MS, BNK)
+ 0030   0006            
+ 0030   0006            bpp     As String * 1                   '' bits per pix
+                el
+ 0030   0006            p2b     As String * 1                   '' pixel to byt
+                e conversion
+                                                                      PAGE   3
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006            xRes    As Integer                      '' width
+ 0030   0006            yRes    As Integer                      '' height
+ 0030   0006            bps     As Integer                      '' bytes per sc
+                anline
+ 0030   0006            pages   As Integer                      '' (only for BN
+                K DCs)
+ 0030   0006            startSL As Integer                      '' / start scan
+                line
+ 0030   0006            size    As Long                         '' yRes * bps
+ 0030   0006            
+ 0030   0006            cr      As CLIPRECT                     '' clipping rec
+                tangle
+ 0030   0006    End Type
+ 0030   0006    
+ 0030   0006    '' uglPoly*'s struct
+ 0030   0006    type PNT2D
+ 0030   0006            x       As Integer
+ 0030   0006            y       As Integer
+ 0030   0006    End Type
+ 0030   0006    
+ 0030   0006    Type PNT3D
+ 0030   0006            x       As Single
+ 0030   0006            y       As Single
+ 0030   0006            z       As Single
+ 0030   0006    End Type
+ 0030   0006    
+ 0030   0006    '' uglFxPoly*'s struct
+ 0030   0006    type PNT2DF
+ 0030   0006            x       As Long
+ 0030   0006            y       As Long
+ 0030   0006    End Type
+ 0030   0006    
+ 0030   0006    '' uglQuadricBez's struct
+ 0030   0006    Type QUADBEZ
+ 0030   0006            a       As PNT2D
+ 0030   0006            b       As PNT2D
+ 0030   0006            c       As PNT2D
+ 0030   0006    End Type 
+ 0030   0006    
+ 0030   0006    '' uglCubicBez's struct
+ 0030   0006    Type CUBICBEZ
+ 0030   0006            a       As PNT2D
+ 0030   0006            b       As PNT2D
+ 0030   0006            c       As PNT2D
+ 0030   0006            d       As PNT2D
+ 0030   0006    End Type 
+ 0030   0006    
+ 0030   0006    Type RECT
+ 0030   0006            x1      As Integer
+ 0030   0006            y1      As Integer
+ 0030   0006            x2      As Integer
+ 0030   0006            y2      As Integer
+ 0030   0006    End Type
+ 0030   0006    
+                                                                      PAGE   4
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    '' uglTri#/Quad#'s structs 
+ 0030   0006    type vector2i
+ 0030   0006            x       as integer
+ 0030   0006            y       as integer
+ 0030   0006            u       as integer
+ 0030   0006            v       as integer
+ 0030   0006            r       as integer
+ 0030   0006            g       as integer
+ 0030   0006            b       as integer
+ 0030   0006    end type
+ 0030   0006    
+ 0030   0006    type vector3f
+ 0030   0006            x       as single
+ 0030   0006            y       as single
+ 0030   0006            z       as single
+ 0030   0006            u       as single
+ 0030   0006            v       as single
+ 0030   0006            r       as single
+ 0030   0006            g       as single
+ 0030   0006            b       as single
+ 0030   0006    end type
+ 0030   0006    
+ 0030   0006    type TriType
+ 0030   0006            v1 as vector3f
+ 0030   0006            v2 as vector3f
+ 0030   0006            v3 as vector3f
+ 0030   0006    end type
+ 0030   0006    
+ 0030   0006    type QuadType
+ 0030   0006            v1 as vector3f
+ 0030   0006            v2 as vector3f
+ 0030   0006            v3 as vector3f
+ 0030   0006            v4 as vector3f
+ 0030   0006    end type        
+ 0030   0006            
+ 0030   0006    type tRGB
+ 0030   0006            red    as string * 1
+ 0030   0006            green  as string * 1
+ 0030   0006            blue   as string * 1
+ 0030   0006    end type
+ 0030   0006    
+ 0030   0006    Declare Function uglInit%       ()
+ 0030   0006        
+ 0030   0006    Declare Sub      uglEnd         ()
+ 0030   0006    
+ 0030   0006    Declare Sub      uglRestore     ()
+ 0030   0006    
+ 0030   0006    Declare Sub      uglVersion     (major As Integer, _
+ 0030   0006                                     minor As Integer, _
+ 0030   0006                                     stable As Integer, _
+ 0030   0006                                     build As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglSetVideoDC& (Byval fmt As Integer, _
+ 0030   0006                                     Byval xRes As Integer, _
+                                                                      PAGE   5
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006                                     Byval yRes As Integer, _ 
+ 0030   0006                                     Byval vidPages As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglGetVideoDC& ()
+ 0030   0006    
+ 0030   0006    Declare Sub      uglSetVisPage  (Byval visPage As Integer)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglSetWrkPage  (Byval wrkPage As Integer)
+ 0030   0006            
+ 0030   0006        
+ 0030   0006    Declare Function uglNew&        (Byval typ As Integer, _
+ 0030   0006                                     Byval fmt As Integer, _
+ 0030   0006                                     Byval xRes As Integer, _ 
+ 0030   0006                                     Byval yRes As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglNewMult%    (dcArray() As Long, _
+ 0030   0006                                     Byval dcs As Integer, _
+ 0030   0006                                     Byval typ As Integer, _
+ 0030   0006                                     Byval fmt As Integer, _
+ 0030   0006                                     Byval xRes As Integer, _ 
+ 0030   0006                                     Byval yRes As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglNewBMP&     (Byval typ As Integer, _
+ 0030   0006                                     Byval fmt As Integer, _
+ 0030   0006                                     flname As string)
+ 0030   0006    
+ 0030   0006    Declare Function uglNewBMPEx&   (Byval typ As Integer, _
+ 0030   0006                                     Byval fmt As Integer, _
+ 0030   0006                                     flname As string, _
+ 0030   0006                                     Byval opt As Integer)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglDel         (Seg dc As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglDelMult     (dcArray() As Long)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    Declare Sub      uglSetClipRect (Byval dc As Long, _
+ 0030   0006                                     Seg cr As CLIPRECT)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglGetClipRect (Byval dc As Long, _
+ 0030   0006                                     Seg cr As CLIPRECT)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglGetSetClipRect _
+ 0030   0006                                    (Byval dc As Long, _
+ 0030   0006                                     Seg inCr As CLIPRECT, _
+ 0030   0006                                     Seg outCr As CLIPRECT)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglDCGet       (Byval dc As Long, _
+ 0030   0006                                     Seg dcInfo As TDC)
+ 0030   0006    
+ 0030   0006    Declare Function uglDCAccessRd& (Byval dc As Long, _
+ 0030   0006                                     Byval y As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglDCAccessWr& (Byval dc As Long, _
+                                                                      PAGE   6
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006                                     Byval y As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglDCAccessRdWr& (Byval dc As Long, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     rdPtr As Long)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    Declare Function uglColor32&    (Byval red As Integer, _
+ 0030   0006                                     Byval green As Integer, _
+ 0030   0006                                     Byval blue As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglColor16&    (Byval red As Integer, _
+ 0030   0006                                     Byval green As Integer, _
+ 0030   0006                                     Byval blue As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglColor15&    (Byval red As Integer, _
+ 0030   0006                                     Byval green As Integer, _
+ 0030   0006                                     Byval blue As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglColor8&     (Byval red As Integer, _
+ 0030   0006                                     Byval green As Integer, _
+ 0030   0006                                     Byval blue As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglColor&      (Byval fmt As Integer, _
+ 0030   0006                                     Byval red As Integer, _
+ 0030   0006                                     Byval green As Integer, _
+ 0030   0006                                     Byval blue As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglColors&     (Byval fmt As Integer)
+ 0030   0006    
+ 0030   0006    Declare Function uglColorsEx&   (Byval dc As Long)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPSet        (Byval dc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _ 
+ 0030   0006                                     Byval clr As long)
+ 0030   0006    
+ 0030   0006    Declare Function uglPGet&       (Byval dc As Long, _ 
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer)
+ 0030   0006            
+ 0030   0006    
+ 0030   0006    Declare Sub      uglHLine       (Byval dc As Long, _
+ 0030   0006                                     Byval x1 As Integer, _ 
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval x2 As Integer, _
+ 0030   0006                                     Byval clr As long)
+ 0030   0006                    
+ 0030   0006    Declare Sub      uglVLine       (Byval dc As Long, _
+ 0030   0006                                     Byval x As Integer, _ 
+ 0030   0006                                     Byval y1 As Integer, _
+ 0030   0006                                     Byval y2 As Integer, _
+ 0030   0006                                     Byval clr As long)
+                                                                      PAGE   7
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    
+ 0030   0006    Declare Sub      uglLine        (Byval dc As Long, _
+ 0030   0006                                     Byval x1 As Integer, _ 
+ 0030   0006                                     Byval y1 As Integer, _
+ 0030   0006                                     Byval x2 As Integer, _
+ 0030   0006                                     Byval y2 As Integer, _
+ 0030   0006                                     Byval clr As long)
+ 0030   0006                    
+ 0030   0006    
+ 0030   0006    Declare Sub      uglRect        (Byval dc As Long, _
+ 0030   0006                                     Byval x1 As Integer, _
+ 0030   0006                                     Byval y1 As Integer, _
+ 0030   0006                                     Byval x2 As Integer, _
+ 0030   0006                                     Byval y2 As Integer, _
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglRectF       (Byval dc As Long, _
+ 0030   0006                                     Byval x1 As Integer, _
+ 0030   0006                                     Byval y1 As Integer, _
+ 0030   0006                                     Byval x2 As Integer, _
+ 0030   0006                                     Byval y2 As Integer, _
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    Declare Sub      uglCircle      (Byval dc As Long, _
+ 0030   0006                                     Byval cx As Integer, _ 
+ 0030   0006                                     Byval cy As Integer, _
+ 0030   0006                                     Byval radius As Long, _
+ 0030   0006                                     Byval clr As long)
+ 0030   0006                    
+ 0030   0006    Declare Sub      uglCircleF     (Byval dc As Long, _
+ 0030   0006                                     Byval cx As Integer, _ 
+ 0030   0006                                     Byval cy As Integer, _
+ 0030   0006                                     Byval radius As Long, _
+ 0030   0006                                     Byval clr As long)
+ 0030   0006                    
+ 0030   0006    Declare Sub      uglEllipse     (Byval dc As Long, _
+ 0030   0006                                     Byval cx As Integer, _ 
+ 0030   0006                                     Byval cy As Integer, _
+ 0030   0006                                     Byval rx As Integer, _
+ 0030   0006                                     Byval ry As Integer, _
+ 0030   0006                                     Byval clr As long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglEllipseF    (Byval dc As Long, _
+ 0030   0006                                     Byval cx As Integer, _ 
+ 0030   0006                                     Byval cy As Integer, _
+ 0030   0006                                     Byval rx As Integer, _
+ 0030   0006                                     Byval ry As Integer, _
+ 0030   0006                                     Byval clr As long)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPoly        (Byval dc As Long, _
+ 0030   0006                                     Seg pntArray As PNT2D, _
+ 0030   0006                                     Byval points As Integer, _
+                                                                      PAGE   8
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPolyF       (Byval dc As Long, _
+ 0030   0006                                     Seg pntArray As PNT2D, _
+ 0030   0006                                     Byval points As Integer, _
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPolyPoly    (Byval dc As Long, _
+ 0030   0006                                     Seg pntArray As PNT2D, _
+ 0030   0006                                     Seg cntArray As Integer, _
+ 0030   0006                                     Byval polygons As Integer, _
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPolyPolyF   (Byval dc As Long, _
+ 0030   0006                                     Seg pntArray As PNT2D, _
+ 0030   0006                                     Seg cntArray As Integer, _
+ 0030   0006                                     Byval points As Integer, _
+ 0030   0006                                     Byval polygons As Integer, _
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglFxPoly      (Byval dc As Long, _
+ 0030   0006                                     Seg pntArray As PNT2DF, _
+ 0030   0006                                     Byval points As Integer, _
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglFxPolyF     (Byval dc As Long, _
+ 0030   0006                                     Seg pntArray As PNT2DF, _
+ 0030   0006                                     Byval points As Integer, _
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglFxPolyPoly  (Byval dc As Long, _
+ 0030   0006                                     Seg pntArray As PNT2DF, _
+ 0030   0006                                     Seg cntArray As Integer, _
+ 0030   0006                                     Byval polygons As Integer, _
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglFxPolyPolyF (Byval dc As Long, _
+ 0030   0006                                     Seg pntArray As PNT2DF, _
+ 0030   0006                                     Seg cntArray As Integer, _
+ 0030   0006                                     Byval points As Integer, _
+ 0030   0006                                     Byval polygons As Integer, _
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    Declare Sub      uglQuadricBez  (Byval dc As Long, _
+ 0030   0006                                     Seg cbz As QUADBEZ, _ 
+ 0030   0006                                     Byval levels As Integer, _
+ 0030   0006                                     Byval clr As long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglCubicBez    (Byval dc As Long, _
+ 0030   0006                                     Seg cbz As CUBICBEZ, _ 
+ 0030   0006                                     Byval levels As Integer, _
+ 0030   0006                                     Byval clr As long)
+ 0030   0006                     
+                                                                      PAGE   9
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    
+ 0030   0006    Declare Sub      uglClear       (Byval dc As Long, _
+ 0030   0006                                     Byval clr As Long)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    Declare Sub      uglRowRead     (Byval dc As Long, _ 
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval pixels As Integer, _
+ 0030   0006                                     Byval bufferFmt As Integer, _
+ 0030   0006                                     Byval buffer As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglRowReadBuff         Alias "uglRowRead" (Byv
+                al dc As Long, _ 
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval pixels As Integer, _
+ 0030   0006                                     Byval bufferFmt As Integer, _
+ 0030   0006                                     Byval buffer As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglRowWrite    (Byval dc As Long, _ 
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval pixels As Integer, _
+ 0030   0006                                     Byval bufferFmt As Integer, _
+ 0030   0006                                     Byval buffer As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglRowWriteBuff Alias "uglRowWrite" (Byval dc 
+                As Long, _ 
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval pixels As Integer, _
+ 0030   0006                                     Byval bufferFmt As Integer, _ 
+                                                
+ 0030   0006                                     Seg buffer As Any)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglRowWriteEx  (Byval dc As Long, _ 
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval pixels As Integer, _
+ 0030   0006                                     Byval bufferFmt As Integer, _
+ 0030   0006                                     Byval buffer As Long, _
+ 0030   0006                                     Byval opt As Integer)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglRowSetPal   (Byval dcFmt As Integer, _
+ 0030   0006                                     Byval bufferFmt As Integer, _
+ 0030   0006                                     Byval pallete As Long, _
+ 0030   0006                                     Byval entries As Integer)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    Declare Sub      uglGet         (Byval srcDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval dstDc As Long)
+                                                                      PAGE  10
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    
+ 0030   0006    Declare Sub      uglGetConv     (Byval srcDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval dstDc As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPut         (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval srcDc As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPutFlip     (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval mode As Integer, _
+ 0030   0006                                     Byval srcDc As Long)
+ 0030   0006    
+ 0030   0006    declare sub      uglPutRot      (Byval dstDC As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval angle As Single, _
+ 0030   0006                                     Byval srcDC As Long )
+ 0030   0006    
+ 0030   0006    declare sub      uglPutScl      (Byval dstDC As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval xScale As Single, _
+ 0030   0006                                     Byval yScale As Single, _
+ 0030   0006                                     Byval srcDC As Long )
+ 0030   0006                                     
+ 0030   0006    declare sub      uglPutRotScl   (Byval dstDC As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval angle As Single, _
+ 0030   0006                                     Byval xScale As Single, _
+ 0030   0006                                     Byval yScale As Single, _
+ 0030   0006                                     Byval srcDC As Long )
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPutAB       (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval alpha As Integer, _
+ 0030   0006                                     Byval srcDc As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPutABFlip   (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval alpha As Integer, _
+ 0030   0006                                     Byval mode As Integer, _
+ 0030   0006                                     Byval srcDc As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPutConv     (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+                                                                      PAGE  11
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006                                     Byval srcDc As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPutMsk      (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval srcDc As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPutMskFlip  (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval mode As Integer, _
+ 0030   0006                                     Byval srcDc As Long)
+ 0030   0006                                     
+ 0030   0006    declare sub      uglPutMskRot   (Byval dstDC As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval angle As Single, _
+ 0030   0006                                     Byval srcDC As Long )
+ 0030   0006                                     
+ 0030   0006    declare sub      uglPutMskScl   (Byval dstDC As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval xScale As Single, _
+ 0030   0006                                     Byval yScale As Single, _
+ 0030   0006                                     Byval srcDC As Long )
+ 0030   0006    
+ 0030   0006    declare sub      uglPutMskRotScl(Byval dstDC As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval angle As Single, _
+ 0030   0006                                     Byval xScale As Single, _
+ 0030   0006                                     Byval yScale As Single, _
+ 0030   0006                                     Byval srcDC As Long )
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPutMskAB    (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval alpha As Integer, _
+ 0030   0006                                     Byval srcDc As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPutMskABFlip(Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval alpha As Integer, _
+ 0030   0006                                     Byval mode As Integer, _
+ 0030   0006                                     Byval srcDc As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPutMskConv  (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     Byval srcDc As Long)
+ 0030   0006    
+ 0030   0006    Declare Function uglPutBMP%     (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+                                                                      PAGE  12
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     flname As string)
+ 0030   0006                                     
+ 0030   0006    Declare Function uglPutBMPEx%   (Byval dstDc As Long, _
+ 0030   0006                                     Byval x As Integer, _
+ 0030   0006                                     Byval y As Integer, _
+ 0030   0006                                     flname As string, _
+ 0030   0006                                     Byval opt As Integer)
+ 0030   0006    
+ 0030   0006    Declare sub      uglTriF        (Byval dc As Long, _
+ 0030   0006                                     seg vtx As TriType, _
+ 0030   0006                                     Byval col As Long)
+ 0030   0006                                     
+ 0030   0006    Declare Sub      uglTriG        (Byval dc As Long, _
+ 0030   0006                                     seg vtx As TriType)
+ 0030   0006                                     
+ 0030   0006    Declare Sub      uglTriT        (Byval dstDC As Long, _
+ 0030   0006                                     seg vtx As TriType, _
+ 0030   0006                                     Byval mask As Integer, _
+ 0030   0006                                     Byval srcDC As Long)
+ 0030   0006                                     
+ 0030   0006    Declare Sub      uglTriTP       (Byval dstDC As Long, _
+ 0030   0006                                     seg vtx As TriType, _
+ 0030   0006                                     Byval mask As Integer, _
+ 0030   0006                                     Byval srcDC As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglTriFM       (Byval dstDC As Long, _
+ 0030   0006                                     seg vtx As TriType, _
+ 0030   0006                                     byval col as long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglTriGM       (Byval dstDC As Long, _
+ 0030   0006                                     seg vtx As TriType, _
+ 0030   0006                                     byval cnt as integer)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    Declare Sub      uglTriTM       (Byval dstDC As Long, _
+ 0030   0006                                     seg vtx As TriType, _
+ 0030   0006                                     byval cnt as integer, _
+ 0030   0006                                     Byval mask As Integer, _
+ 0030   0006                                     Byval srcDC As Long)          
+                                       
+ 0030   0006    
+ 0030   0006    Declare Sub      uglTriTPM      (Byval dstDC As Long, _
+ 0030   0006                                     seg vtx As TriType, _
+ 0030   0006                                     byval cnt as integer, _
+ 0030   0006                                     Byval mask As Integer, _
+ 0030   0006                                     Byval srcDC As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglQuadF       (Byval dc As Long, _
+ 0030   0006                                     seg vtx As QuadType, _
+ 0030   0006                                     Byval col As Long)
+ 0030   0006                                     
+ 0030   0006    Declare Sub      uglQuadT       (Byval dstDC As Long, _
+ 0030   0006                                     seg vtx As QuadType, _
+                                                                      PAGE  13
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006                                     Byval mask As Integer, _
+ 0030   0006                                     Byval srcDC As Long)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPalSet      (Byval idx As Integer, _
+ 0030   0006                                     Byval entries As Integer, _
+ 0030   0006                                     Byval pal As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPalSetBuff alias "uglPalSet" (Byval idx As 
+                Integer, _
+ 0030   0006                                     Byval entries As Integer, _
+ 0030   0006                                     Seg pal As tRGB)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPalGet      (Byval idx As Integer, _
+ 0030   0006                                     Byval entries As Integer, _
+ 0030   0006                                     Byval pal As Long)
+ 0030   0006    
+ 0030   0006    Declare Sub      uglPalGetBuff  alias "uglPalGet" (Byval idx As
+                 Integer, _
+ 0030   0006                                     Byval entries As Integer, _
+ 0030   0006                                     Seg pal As tRGB)
+ 0030   0006    
+ 0030   0006    Declare Function uglPalLoad&    (flname As String, _
+ 0030   0006                                     Byval fmt As Integer)
+ 0030   0006                                     
+ 0030   0006    Declare Sub      uglPalUsingLin (byval linpal as integer)
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    
+ 0030   0006    '' some constants for commonly used colors
+ 0030   0006    Const REDP32&   = 65536&                        '' 2^16
+ 0030   0006    Const GREENP32& = 256&                          '' 2^8
+ 0030   0006    Const BLUEP32&  = 1&                            '' 2^0
+ 0030   0006    
+ 0030   0006    Const REDP16&   = 2048&                         '' 2^11
+ 0030   0006    Const GREENP16& = 32&                           '' 2^5
+ 0030   0006    Const BLUEP16&  = 1&                            '' 2^0
+ 0030   0006    
+ 0030   0006    Const REDP15&   = 1024&                         '' 2^10
+ 0030   0006    Const GREENP15& = 32&                           '' 2^5
+ 0030   0006    Const BLUEP15&  = 1&                            '' 2^0
+ 0030   0006    
+ 0030   0006    Const REDP8&    = 32&                           '' 2^5
+ 0030   0006    Const GREENP8&  = 4&                            '' 2^2
+ 0030   0006    Const BLUEP8&   = 1&                            '' 2^0
+ 0030   0006    
+ 0030   0006    Const UGL.BLACK32&      = (&h00&*REDP32)+(&h00&*GREENP32)+(&h00
+                &*BLUEP32)
+ 0030   0006    Const UGL.BLUE32&       = (&h00&*REDP32)+(&h00&*GREENP32)+(&hA8
+                &*BLUEP32)
+ 0030   0006    Const UGL.GREEN32&      = (&h00&*REDP32)+(&hA8&*GREENP32)+(&h00
+                &*BLUEP32)
+ 0030   0006    Const UGL.CYAN32&       = (&h00&*REDP32)+(&hA8&*GREENP32)+(&hA8
+                                                                      PAGE  14
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                &*BLUEP32)
+ 0030   0006    Const UGL.RED32&        = (&hA8&*REDP32)+(&h00&*GREENP32)+(&h00
+                &*BLUEP32)
+ 0030   0006    Const UGL.MAGENTA32&    = (&hA8&*REDP32)+(&h00&*GREENP32)+(&hA8
+                &*BLUEP32)
+ 0030   0006    Const UGL.BROWN32&      = (&hA8&*REDP32)+(&h54&*GREENP32)+(&h00
+                &*BLUEP32)
+ 0030   0006    Const UGL.WHITE32&      = (&hA8&*REDP32)+(&hA8&*GREENP32)+(&hA8
+                &*BLUEP32)
+ 0030   0006    Const UGL.GREY32&       = (&h54&*REDP32)+(&h54&*GREENP32)+(&h54
+                &*BLUEP32)
+ 0030   0006    Const UGL.LBLUE32&      = (&h54&*REDP32)+(&h54&*GREENP32)+(&hFF
+                &*BLUEP32)
+ 0030   0006    Const UGL.LGREEN32&     = (&h54&*REDP32)+(&hFF&*GREENP32)+(&h54
+                &*BLUEP32)
+ 0030   0006    Const UGL.LCYAN32&      = (&h54&*REDP32)+(&hFF&*GREENP32)+(&hFF
+                &*BLUEP32)
+ 0030   0006    Const UGL.LRED32&       = (&hFF&*REDP32)+(&h54&*GREENP32)+(&h54
+                &*BLUEP32)
+ 0030   0006    Const UGL.LMAGENTA32&   = (&hFF&*REDP32)+(&h54&*GREENP32)+(&hFF
+                &*BLUEP32)
+ 0030   0006    Const UGL.YELLOW32&     = (&hFF&*REDP32)+(&hFF&*GREENP32)+(&h54
+                &*BLUEP32)
+ 0030   0006    Const UGL.BWHITE32&     = (&hFF&*REDP32)+(&hFF&*GREENP32)+(&hFF
+                &*BLUEP32)
+ 0030   0006    Const UGL.BPINK32&      = (&hFF&*REDP32)+(&h00&*GREENP32)+(&hFF
+                &*BLUEP32)
+ 0030   0006    
+ 0030   0006    Const UGL.BLACK16&      = (&h00&*REDP16)+(&h00&*GREENP16)+(&h00
+                &*BLUEP16)
+ 0030   0006    Const UGL.BLUE16&       = (&h00&*REDP16)+(&h00&*GREENP16)+(&h15
+                &*BLUEP16)
+ 0030   0006    Const UGL.GREEN16&      = (&h00&*REDP16)+(&h2A&*GREENP16)+(&h00
+                &*BLUEP16)
+ 0030   0006    Const UGL.CYAN16&       = (&h00&*REDP16)+(&h2A&*GREENP16)+(&h15
+                &*BLUEP16)
+ 0030   0006    Const UGL.RED16&        = (&h15&*REDP16)+(&h00&*GREENP16)+(&h00
+                &*BLUEP16)
+ 0030   0006    Const UGL.MAGENTA16&    = (&h15&*REDP16)+(&h00&*GREENP16)+(&h15
+                &*BLUEP16)
+ 0030   0006    Const UGL.BROWN16&      = (&h15&*REDP16)+(&h15&*GREENP16)+(&h00
+                &*BLUEP16)
+ 0030   0006    Const UGL.WHITE16&      = (&h15&*REDP16)+(&h2A&*GREENP16)+(&h15
+                &*BLUEP16)
+ 0030   0006    Const UGL.GREY16&       = (&h0A&*REDP16)+(&h15&*GREENP16)+(&h0A
+                &*BLUEP16)
+ 0030   0006    Const UGL.LBLUE16&      = (&h0A&*REDP16)+(&h15&*GREENP16)+(&h1F
+                &*BLUEP16)
+ 0030   0006    Const UGL.LGREEN16&     = (&h0A&*REDP16)+(&h3F&*GREENP16)+(&h0A
+                &*BLUEP16)
+ 0030   0006    Const UGL.LCYAN16&      = (&h0A&*REDP16)+(&h3F&*GREENP16)+(&h1F
+                &*BLUEP16)
+ 0030   0006    Const UGL.LRED16&       = (&h1F&*REDP16)+(&h15&*GREENP16)+(&h0A
+                &*BLUEP16)
+                                                                      PAGE  15
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    Const UGL.LMAGENTA16&   = (&h1F&*REDP16)+(&h15&*GREENP16)+(&h1F
+                &*BLUEP16)
+ 0030   0006    Const UGL.YELLOW16&     = (&h1F&*REDP16)+(&h3F&*GREENP16)+(&h0A
+                &*BLUEP16)
+ 0030   0006    Const UGL.BWHITE16&     = (&h1F&*REDP16)+(&h3F&*GREENP16)+(&h1F
+                &*BLUEP16)
+ 0030   0006    Const UGL.BPINK16&      = (&h1F&*REDP16)+(&h00&*GREENP16)+(&h1F
+                &*BLUEP16)
+ 0030   0006    
+ 0030   0006    Const UGL.BLACK15&      = (&h00&*REDP15)+(&h00&*GREENP15)+(&h00
+                &*BLUEP15)
+ 0030   0006    Const UGL.BLUE15&       = (&h00&*REDP15)+(&h00&*GREENP15)+(&h15
+                &*BLUEP15)
+ 0030   0006    Const UGL.GREEN15&      = (&h00&*REDP15)+(&h15&*GREENP15)+(&h00
+                &*BLUEP15)
+ 0030   0006    Const UGL.CYAN15&       = (&h00&*REDP15)+(&h15&*GREENP15)+(&h15
+                &*BLUEP15)
+ 0030   0006    Const UGL.RED15&        = (&h15&*REDP15)+(&h00&*GREENP15)+(&h00
+                &*BLUEP15)
+ 0030   0006    Const UGL.MAGENTA15&    = (&h15&*REDP15)+(&h00&*GREENP15)+(&h15
+                &*BLUEP15)
+ 0030   0006    Const UGL.BROWN15&      = (&h15&*REDP15)+(&h0A&*GREENP15)+(&h00
+                &*BLUEP15)
+ 0030   0006    Const UGL.WHITE15&      = (&h15&*REDP15)+(&h15&*GREENP15)+(&h15
+                &*BLUEP15)
+ 0030   0006    Const UGL.GREY15&       = (&h0A&*REDP15)+(&h0A&*GREENP15)+(&h0A
+                &*BLUEP15)
+ 0030   0006    Const UGL.LBLUE15&      = (&h0A&*REDP15)+(&h0A&*GREENP15)+(&h1F
+                &*BLUEP15)
+ 0030   0006    Const UGL.LGREEN15&     = (&h0A&*REDP15)+(&h1F&*GREENP15)+(&h0A
+                &*BLUEP15)
+ 0030   0006    Const UGL.LCYAN15&      = (&h0A&*REDP15)+(&h1F&*GREENP15)+(&h1F
+                &*BLUEP15)
+ 0030   0006    Const UGL.LRED15&       = (&h1F&*REDP15)+(&h0A&*GREENP15)+(&h0A
+                &*BLUEP15)
+ 0030   0006    Const UGL.LMAGENTA15&   = (&h1F&*REDP15)+(&h0A&*GREENP15)+(&h1F
+                &*BLUEP15)
+ 0030   0006    Const UGL.YELLOW15&     = (&h1F&*REDP15)+(&h1F&*GREENP15)+(&h0A
+                &*BLUEP15)
+ 0030   0006    Const UGL.BWHITE15&     = (&h1F&*REDP15)+(&h1F&*GREENP15)+(&h1F
+                &*BLUEP15)
+ 0030   0006    Const UGL.BPINK15&      = (&h1F&*REDP15)+(&h00&*GREENP15)+(&h1F
+                &*BLUEP15)
+ 0030   0006    
+ 0030   0006    Const UGL.BLACK8&       = (&h00&*REDP8)+(&h00&*GREENP8)+(&h00&*
+                BLUEP8)
+ 0030   0006    Const UGL.BLUE8&        = (&h00&*REDP8)+(&h00&*GREENP8)+(&h02&*
+                BLUEP8)
+ 0030   0006    Const UGL.GREEN8&       = (&h00&*REDP8)+(&h05&*GREENP8)+(&h00&*
+                BLUEP8)
+ 0030   0006    Const UGL.CYAN8&        = (&h00&*REDP8)+(&h05&*GREENP8)+(&h02&*
+                BLUEP8)
+ 0030   0006    Const UGL.RED8&         = (&h05&*REDP8)+(&h00&*GREENP8)+(&h00&*
+                BLUEP8)
+                                                                      PAGE  16
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    Const UGL.MAGENTA8&     = (&h05&*REDP8)+(&h00&*GREENP8)+(&h02&*
+                BLUEP8)
+ 0030   0006    Const UGL.BROWN8&       = (&h05&*REDP8)+(&h02&*GREENP8)+(&h00&*
+                BLUEP8)
+ 0030   0006    Const UGL.WHITE8&       = (&h05&*REDP8)+(&h05&*GREENP8)+(&h02&*
+                BLUEP8)
+ 0030   0006    Const UGL.GREY8&        = (&h02&*REDP8)+(&h02&*GREENP8)+(&h01&*
+                BLUEP8)
+ 0030   0006    Const UGL.LBLUE8&       = (&h02&*REDP8)+(&h02&*GREENP8)+(&h03&*
+                BLUEP8)
+ 0030   0006    Const UGL.LGREEN8&      = (&h02&*REDP8)+(&h07&*GREENP8)+(&h01&*
+                BLUEP8)
+ 0030   0006    Const UGL.LCYAN8&       = (&h02&*REDP8)+(&h07&*GREENP8)+(&h03&*
+                BLUEP8)
+ 0030   0006    Const UGL.LRED8&        = (&h07&*REDP8)+(&h02&*GREENP8)+(&h01&*
+                BLUEP8)
+ 0030   0006    Const UGL.LMAGENTA8&    = (&h07&*REDP8)+(&h02&*GREENP8)+(&h03&*
+                BLUEP8)
+ 0030   0006    Const UGL.YELLOW8&      = (&h07&*REDP8)+(&h07&*GREENP8)+(&h01&*
+                BLUEP8)
+ 0030   0006    Const UGL.BWHITE8&      = (&h07&*REDP8)+(&h07&*GREENP8)+(&h03&*
+                BLUEP8)
+ 0030   0006    Const UGL.BPINK8&       = (&h07&*REDP8)+(&h00&*GREENP8)+(&h03&*
+                BLUEP8)
+ 0030   0006    
+ 0030   0006    TYPE RegTypeX
+ 0030   0006            ax AS INTEGER
+ 0030   0006            bx AS INTEGER
+ 0030   0006            cx AS INTEGER
+ 0030   0006            dx AS INTEGER
+ 0030   0006            bp AS INTEGER
+ 0030   0006            si AS INTEGER
+ 0030   0006            di AS INTEGER
+ 0030   0006            flags AS INTEGER
+ 0030   0006            ds AS INTEGER
+ 0030   0006            es AS INTEGER
+ 0030   0006    END TYPE
+ 0030   0006    DECLARE SUB INTERRUPTX (intnum AS INTEGER, inreg AS RegTypeX, o
+                utreg AS RegTypeX)
+ 0030   0006    
+ 0030   0006    DECLARE SUB Lg (s AS STRING)
+ 0030   0006    DECLARE SUB Hold (secs AS SINGLE)
+ 0030   0006    DECLARE SUB VSync ()
+ 0030   0006    DECLARE SUB Done ()
+ 0030   0006    DECLARE FUNCTION Crt% (idx AS INTEGER)
+ 0030   0006    DECLARE SUB CrtW (idx AS INTEGER, v AS INTEGER)
+ 0030   0006    DECLARE FUNCTION SeqR% (idx AS INTEGER)
+ 0030   0006    DECLARE SUB SeqW (idx AS INTEGER, v AS INTEGER)
+ 0030   0006    DECLARE SUB LogRegs (tag AS STRING)
+ 0030   0006    DECLARE SUB StartDirect (ofs AS LONG)
+ 0030   0006    DECLARE SUB StartVesa (x AS INTEGER, y AS INTEGER)
+ 0030   0006    DECLARE SUB Marker (n AS INTEGER)
+ 0030   0006    DECLARE SUB Bands (pg AS INTEGER, shift AS INTEGER, mk AS INTEG
+                ER)
+                                                                      PAGE  17
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0030   0006    
+ 0030   0006    DIM SHARED lf AS INTEGER
+ 0030   0006    DIM SHARED video AS LONG
+ 0030   0006    DIM SHARED pitch AS LONG, unit AS INTEGER, cirrus AS INTEGER, c
+                hip AS INTEGER
+ 0030   0006    
+ 0030   0006    DIM inf AS TDC
+ 0030   0006    DIM xr AS INTEGER, yr AS INTEGER, np AS INTEGER, i AS INTEGER, 
+                y AS INTEGER, x AS INTEGER
+ 0030   0006    DIM t0 AS SINGLE, t1 AS SINGLE, n AS INTEGER, s6 AS INTEGER, s6
+                b AS INTEGER, s6c AS INTEGER
+ 0030   0006    
+ 0030   0006    lf = FREEFILE
+ 0030   004E    OPEN "scrltest.log" FOR OUTPUT AS #lf
+ 0030   004E    CALL Lg("SCRLTEST " + DATE$ + " " + TIME$ + " free" + STR$(FRE(
+                -1)))
+ 00AF   0052    IF NOT uglInit THEN CALL Lg("uglInit FAILED"): CALL Done
+ 00E7   0058    xr = 640: yr = 480: np = 2
+ 00E7   0058    video = uglSetVideoDC(UGL.8BIT, xr, yr, np)
+ 00E7   0058    IF video = 0 THEN
+ 00E7   0058            CALL Lg("640x480x8 2 pages: refused - nothing to scroll
+                 into")
+ 0158   0060            uglEnd
+ 015D   0060            CALL Done
+ 0162   0060    END IF
+ 0162   0060    uglDCGet video, inf
+ 0176   0060    pitch = inf.bps
+ 0176   0060    CALL Lg("mode 640x480x8 2 pages, bps" + STR$(inf.bps) + " size"
+                 + STR$(inf.size))
+ 01CE   0064    
+ 01CE   0064    '----- CRTC addressing unit: CR14 bit 6 = doubleword, else CR17
+                 bit 6 = byte, else word
+ 01CE   0064    IF Crt%(&H14) AND &H40 THEN
+ 01CE   0064            unit = 4
+ 01CE   0064    ELSEIF Crt%(&H17) AND &H40 THEN
+ 01F6   0068            unit = 1
+ 01F6   0068    ELSE
+ 021E   006C            unit = 2
+ 021E   006C    END IF
+ 0224   006C    '----- Cirrus? SR06 reads 0Fh when locked (after any write but 
+                12h), 12h when unlocked
+ 0224   006C    s6 = SeqR%(6)
+ 0224   006C    CALL SeqW(6, &HA)
+ 0255   0074    s6b = SeqR%(6)
+ 0255   0074    CALL SeqW(6, &H12)
+ 0286   007C    s6c = SeqR%(6)
+ 0286   007C    cirrus = 0: chip = 0
+ 0286   007C    IF s6b = &HF AND s6c = &H12 THEN cirrus = -1: chip = Crt%(&H27)
+ 02E5   0084    CALL Lg("SR06 as found " + HEX$(s6) + ", after 0A -> " + HEX$(s
+                6b) + ", after 12 -> " + HEX$(s6c) + "  cirrus" + STR$(cirrus) 
+                + " CR27 " + HEX$(chip))
+ 039C   0088    CALL Lg("unit" + STR$(unit) + " bytes (CR14 " + HEX$(Crt%(&H14)
+                ) + " CR17 " + HEX$(Crt%(&H17)) + ")  CR13 " + HEX$(Crt%(&H13))
+                 + " CR1B " + HEX$(Crt%(&H1B)) + " CR1D " + HEX$(Crt%(&H1D)))
+                                                                      PAGE  18
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 04CF   00A0    CALL LogRegs("start as set by uGL")
+ 04EE   00A4    
+ 04EE   00A4    '----- the pictures: page 0 white markers, page 1 shifted bands
+                 + black markers
+ 04EE   00A4    uglSetVisPage 0
+ 04F6   00A4    CALL Bands(0, 0, 255)
+ 0519   00AA    CALL Bands(1, 8, 0)
+ 053C   00B0    uglSetWrkPage 0
+ 0544   00B0    CALL Hold(2)
+ 0559   00B4    
+ 0559   00B4    '----- phase 1: VESA 4F07h
+ 0559   00B4    CALL Marker(1)
+ 0568   00B6    CALL Hold(1)
+ 057D   00BA    FOR y = 0 TO 480 STEP 2
+ 0582   00BA            CALL StartVesa(0, y)
+ 0595   00BC            IF y = 480 THEN CALL LogRegs("phase1 vesa y=480")
+ 05BF   00C0    NEXT
+ 05CD   00C0    CALL Hold(1)
+ 05E2   00C4    FOR y = 480 TO 0 STEP -2
+ 05E8   00C4            CALL StartVesa(0, y)
+ 05FB   00C6    NEXT
+ 0608   00C6    CALL LogRegs("phase1 vesa back at 0")
+ 0627   00CA    CALL Hold(1)
+ 063C   00CE    
+ 063C   00CE    '----- phase 2: direct CRTC, same movement
+ 063C   00CE    CALL Marker(2)
+ 064B   00D0    CALL Hold(1)
+ 0660   00D4    FOR y = 0 TO 480 STEP 2
+ 0666   00D4            CALL StartDirect(y * pitch)
+ 0686   00D8            IF y = 480 THEN CALL LogRegs("phase2 direct y=480")
+ 06B0   00DC    NEXT
+ 06BE   00DC    CALL Hold(1)
+ 06D3   00E0    FOR y = 480 TO 0 STEP -2
+ 06DA   00E0            CALL StartDirect(y * pitch)
+ 06FA   00E4    NEXT
+ 0707   00E4    CALL LogRegs("phase2 direct back at 0")
+ 0726   00E8    CALL Hold(1)
+ 073B   00EC    
+ 073B   00EC    '----- phase 3: sideways (x in bytes, must be a multiple of the
+                 unit)
+ 073B   00EC    CALL Marker(3)
+ 074A   00EE    CALL Hold(1)
+ 075F   00F2    FOR x = 0 TO 384 STEP 4
+ 0764   00F2            CALL StartDirect(CLNG(x))
+ 0775   00F6    NEXT
+ 0783   00F6    CALL LogRegs("phase3 direct x=384")
+ 07A2   00FA    CALL Hold(1)
+ 07B7   00FE    FOR x = 384 TO 0 STEP -4
+ 07BE   00FE            CALL StartDirect(CLNG(x))
+ 07CF   0102    NEXT
+ 07DC   0102    CALL Hold(1)
+ 07F1   0106    
+ 07F1   0106    '----- phase 4: four fast cycles, timed (frames = 2 * 481 / 4 p
+                er cycle)
+                                                                      PAGE  19
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 07F1   0106    CALL Marker(4)
+ 0800   0108    CALL Hold(1)
+ 0815   010C    n = 0
+ 0815   010C    t0 = TIMER
+ 0815   010C    FOR i = 1 TO 4
+ 0832   010C            FOR y = 0 TO 480 STEP 4
+ 0838   010C                    CALL StartDirect(y * pitch): n = n + 1
+ 0858   0110            NEXT
+ 086A   0110            FOR y = 480 TO 0 STEP -4
+ 0870   0110                    CALL StartDirect(y * pitch): n = n + 1
+ 0890   0114            NEXT
+ 08A1   0114    NEXT
+ 08AD   0114    t1 = TIMER - t0
+ 08AD   0114    CALL Lg("phase4:" + STR$(n) + " steps in" + STR$(t1) + " s =" +
+                 STR$(n / t1) + " steps/s (60 = one per frame)")
+ 0947   0118    CALL StartDirect(0)
+ 095C   011C    CALL LogRegs("end at 0")
+ 097B   0120    CALL Hold(1)
+ 0990   0124    uglRestore
+ 0995   0124    uglEnd
+ 099A   0124    CALL Lg("DONE")
+ 09B9   0128    CALL Done
+ 09BE   0128    
+ 09BE   0128    SUB Bands (pg AS INTEGER, shift AS INTEGER, mk AS INTEGER)
+ 09C9   0128            DIM b AS INTEGER, y AS INTEGER, k AS INTEGER, c AS LONG
+ 09C9   0128            uglSetWrkPage pg
+ 09D3   0128            FOR b = 0 TO 14
+ 09D8   0128                    c = ((b + shift) MOD 15) * 16 + 20
+ 09D8   0128                    uglRectF video, 0, b * 32, 639, b * 32 + 31, c
+ 0A27   0128            NEXT
+ 0A33   0128            '----- row markers every 60 lines: a 3-line bar, then n
+                 ticks (n = line / 60)
+ 0A33   0128            FOR y = 0 TO 420 STEP 60
+ 0A38   0128                    uglRectF video, 0, y, 639, y + 2, CLNG(mk)
+ 0A5E   0128                    FOR k = 1 TO y \ 60
+ 0A70   0128                            uglRectF video, k * 24, y + 4, k * 24 +
+                 12, y + 14, CLNG(mk)
+ 0A9D   0128                    NEXT
+ 0AA9   0128            NEXT
+ 0AB7   0128            uglSetWrkPage 0
+ 0ABF   0128    END SUB
+ 0AC7   0128    
+ 0AC7   0128    '----- n black squares top-left of page 0 (visible whenever the
+                 start is 0)
+ 0AC7   0128    SUB Marker (n AS INTEGER)
+ 0AD2   0128            DIM k AS INTEGER
+ 0AD2   0128            uglSetWrkPage 0
+ 0ADA   0128            uglRectF video, 400, 4, 639, 26, 255
+ 0AFD   0128            FOR k = 1 TO n
+ 0B0C   0128                    uglRectF video, 400 + k * 30, 6, 400 + k * 30 +
+                 20, 24, 0
+ 0B36   0128            NEXT
+ 0B42   0128    END SUB
+ 0B4A   0128    
+                                                                      PAGE  20
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0B4A   0128    '----- direct CRTC display start: ofs = byte offset into video 
+                memory
+ 0B4A   0128    SUB StartDirect (ofs AS LONG)
+ 0B55   0128            DIM u AS LONG, b AS INTEGER
+ 0B55   0128            u = ofs \ unit
+ 0B55   0128            WAIT &H3DA, 8, 8
+ 0B55   0128            CALL CrtW(&HC, (u \ 256) AND 255)
+ 0BA9   0128            CALL CrtW(&HD, u AND 255)
+ 0BCA   0128            IF cirrus THEN
+ 0BCA   0128                    b = Crt%(&H1B) AND &HF2
+ 0BCA   0128                    IF u AND &H10000 THEN b = b OR 1
+ 0C0E   0128                    IF u AND &H20000 THEN b = b OR 4
+ 0C2A   0128                    IF u AND &H40000 THEN b = b OR 8
+ 0C46   0128                    CALL CrtW(&H1B, b)
+ 0C58   0128                    IF chip >= &HA0 THEN
+ 0C58   0128                            b = Crt%(&H1D) AND &H7F
+ 0C58   0128                            IF u AND &H80000 THEN b = b OR &H80
+ 0C9D   0128                            CALL CrtW(&H1D, b)
+ 0CAF   0128                    END IF
+ 0CAF   0128            END IF
+ 0CAF   0128            WAIT &H3DA, 8
+ 0CAF   0128    END SUB
+ 0CC2   0128    
+ 0CC2   0128    '----- VESA VBE 4F07h BL=0: CX = first pixel, DX = first line
+ 0CC2   0128    SUB StartVesa (x AS INTEGER, y AS INTEGER)
+ 0CCD   0128            DIM r AS RegTypeX, r2 AS RegTypeX, vi AS INTEGER
+ 0CCD   0128            WAIT &H3DA, 8, 8
+ 0CCD   0128            r.ax = &H4F07: r.bx = 0: r.cx = x: r.dx = y
+ 0CCD   0128            r.bp = 0: r.si = 0: r.di = 0: r.flags = 0: r.ds = -1: r
+                .es = -1
+ 0CCD   0128            vi = &H10
+ 0CCD   0128            CALL INTERRUPTX(vi, r, r2)
+ 0D2A   0128            WAIT &H3DA, 8
+ 0D2A   0128    END SUB
+ 0D3D   0128    
+ 0D3D   0128    SUB LogRegs (tag AS STRING)
+ 0D48   0128            CALL Lg(tag + ": CR0C " + HEX$(Crt%(&HC)) + " CR0D " + 
+                HEX$(Crt%(&HD)) + " CR1B " + HEX$(Crt%(&H1B)) + " CR1D " + HEX$
+                (Crt%(&H1D)) + " CR13 " + HEX$(Crt%(&H13)) + " SR06 " + HEX$(Se
+                qR%(6)))
+ 0E98   0128    END SUB
+ 0EA0   0128    
+ 0EA0   0128    FUNCTION Crt% (idx AS INTEGER)
+ 0EAB   0128            OUT &H3D4, idx
+ 0EAB   0128            Crt% = INP(&H3D5)
+ 0EAB   0128    END FUNCTION
+ 0EC8   0128    
+ 0EC8   0128    SUB CrtW (idx AS INTEGER, v AS INTEGER)
+ 0ED3   0128            OUT &H3D4, idx
+ 0ED3   0128            OUT &H3D5, v
+ 0ED3   0128    END SUB
+ 0EED   0128    
+ 0EED   0128    FUNCTION SeqR% (idx AS INTEGER)
+ 0EF8   0128            OUT &H3C4, idx
+                                                                      PAGE  21
+                                                                      16 Sep 26
+                                                                      20:22:25
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 0EF8   0128            SeqR% = INP(&H3C5)
+ 0EF8   0128    END FUNCTION
+ 0F15   0128    
+ 0F15   0128    SUB SeqW (idx AS INTEGER, v AS INTEGER)
+ 0F20   0128            OUT &H3C4, idx
+ 0F20   0128            OUT &H3C5, v
+ 0F20   0128    END SUB
+ 0F3A   0128    
+ 0F3A   0128    SUB Done
+ 0F45   0128            CLOSE #lf
+ 0F45   0128            END
+ 0F45   0128    END SUB
+ 0F5F   0128    
+ 0F5F   0128    SUB Hold (secs AS SINGLE)
+ 0F6A   0128            DIM t9 AS SINGLE, d9 AS SINGLE
+ 0F6A   0128            t9 = TIMER
+ 0F6A   0128            DO
+ 0F7A   0128                    d9 = TIMER - t9: IF d9 < 0 THEN d9 = d9 + 86400
+ 0FB2   0128            LOOP WHILE d9 < secs
+ 0FB2   0128    END SUB
+ 0FCD   0128    
+ 0FCD   0128    SUB Lg (s AS STRING)
+ 0FD8   0128            PRINT #lf, s
+ 0FD8   0128    END SUB
+ 0FF1   0128    
+ 0FF1   0128    SUB VSync
+ 0FFC   0128            WAIT &H3DA, 8, 8
+ 0FFC   0128            WAIT &H3DA, 8
+ 0FFC   0128    END SUB
+ 1018   0128    
+ 101D   0128    
+
+43885 Bytes Available
+14335 Bytes Free
+
+    0 Warning Error(s)
+    0 Severe  Error(s)

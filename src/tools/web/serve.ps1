@@ -129,6 +129,26 @@ while ($listener.IsListening) {
       elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'application/octet-stream' }
       else { $res.StatusCode = 404; Write-Host ("  404 .PIC not found: $f") -ForegroundColor Yellow }
     }
+    elseif ($path -eq '/api/bmps') {
+      # the illustrated manual pages (MANP00.BMP ...)
+      $names = @(Get-ChildItem (Join-Path $data 'MANP*.BMP') -ErrorAction SilentlyContinue | ForEach-Object { $_.BaseName } | Sort-Object)
+      $json = ConvertTo-Json @($names) -Compress
+      if ($null -eq $json) { $json = '[]' }
+      Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes($json)) 'application/json'
+    }
+    elseif ($path -eq '/api/bmp') {
+      $name = Safe-Name $req.QueryString['name']
+      $f = Join-Path $data ($name + '.BMP')
+      if ($req.HttpMethod -eq 'POST') {
+        $ms = New-Object IO.MemoryStream
+        $req.InputStream.CopyTo($ms)
+        [IO.File]::WriteAllBytes($f, $ms.ToArray())
+        Write-Host ("  saved {0}.BMP  ({1} bytes)" -f $name, $ms.Length) -ForegroundColor Green
+        Send-Bytes $res ([Text.Encoding]::UTF8.GetBytes('ok')) 'text/plain'
+      }
+      elseif (Test-Path $f) { Send-Bytes $res ([IO.File]::ReadAllBytes($f)) 'image/bmp' }
+      else { $res.StatusCode = 404; Write-Host ("  404 .BMP not found: $f") -ForegroundColor Yellow }
+    }
     elseif ($path -eq '/api/pac') {
       $name = Safe-Name $req.QueryString['name']
       $f = Join-Path $data ($name + '.PAC')
