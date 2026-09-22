@@ -31,7 +31,7 @@ $doors = @(
   @{ rm='room3';  o='N'; cx=150; aTop=134; DST='room4'  },
   @{ rm='room3';  o='W'; cx=78;  aTop=150; DST='room2'  },
   @{ rm='room6';  o='S'; cx=148; aTop=170; DST='room2'  },
-  @{ rm='room6';  o='W'; cx=80;  aTop=154; DST='room7'  },
+  @{ rm='room6';  o='W'; cx=78;  aTop=150; DST='room7'  },
   @{ rm='room7';  o='E'; cx=224; aTop=150; DST='room6'  },
   @{ rm='room7';  o='N'; cx=153; aTop=126; DST='room11' },
   # room8 W->room9 REMOVED: the watcher rect overlaps the RM8CLOCK anims

@@ -70,6 +70,10 @@ DECLARE SUB DialGame (sf3!, sf4!, ob() AS SINGLE)
 DECLARE SUB BurnShow ()
 DECLARE SUB CursorPats (px!(), py!(), pc!(), npix!())
 DECLARE SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
+DECLARE SUB LoadBoxes (rm$, bxa%())
+DECLARE SUB SnapFloor (sx!, sy!, bxa%())
+DECLARE SUB WalkFloor (tx!, ty!, px!, py!, sfrq!, bxa%(), cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
+DECLARE FUNCTION ShowHouse% ()
 DECLARE SUB PicSeq (sq$, fr$, rate%, sn2$)
 DECLARE SUB ShowRules ()
 DECLARE SUB LogoShow ()
@@ -176,6 +180,7 @@ DIM SHARED spx(25) AS INTEGER, spy(25) AS INTEGER, spd(25) AS INTEGER
 '----- startup-cached walk frames, 4 direction sets at slot d*151 (0=down/joew1, 1=up/joew2, 2=right/joew3, 3=left/joew4)
 '----- 8-direction walk cache (REDIM = dynamic -> far heap; 8 slots x 151 ints; DGROUP is nearly full)
 REDIM SHARED cwa(1207) AS INTEGER, cwb(1207) AS INTEGER, cmwa(1207) AS INTEGER, cmwb(1207) AS INTEGER
+REDIM SHARED wbox(200) AS INTEGER   '----- walk-box floor: wbox(0)=count, then 8 ints/box (4 corners, feet coords)
 '----- data-driven animation system: ANIMS.PAC library + per-room placements
 DIM SHARED nAnim AS INTEGER, nPlace AS INTEGER
 DIM SHARED anId(70) AS INTEGER, anRate(70) AS INTEGER
@@ -1574,6 +1579,15 @@ loadroom:
 	objerr:
 	RESUME objok
 	placeend:
+	'----- walk-box floor: load ROOMx.BOX; a missing file errors in LoadBoxes and
+	'----- lands here (lbxeof), leaving the count 0 -> fall back to the rectangle band
+	wbox(0) = 0
+	ON ERROR GOTO lbxeof
+	CALL LoadBoxes(q$, wbox())
+	GOTO lbxok
+	lbxeof:
+	RESUME lbxok
+	lbxok:
 	ON ERROR GOTO errhand
 	CLS
 	'----- rooms with overlays load behind a black palette so the base .pic (e.g. the
@@ -1640,7 +1654,17 @@ walkout:
 	'----- leave the player anywhere): L-walk to the door's x first, then out.
 	'----- The 12px dead zone keeps the classic centered walkout pixel-identical.
 	IF (a$ = "1" OR a$ = "2") AND ABS(b - 15 - pjx) > 12 THEN wtx = b - 15
-	CALL walkTo(wtx, wty, pjx, pjy, f3, cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
+	'----- E/W walk-out on a floor: aim at the clicked door point (WalkFloor snaps it
+	'----- onto the floor) so he walks to the door's DEPTH, not straight along his
+	'----- current height into the side wall
+	IF (a$ = "3" OR a$ = "4") AND wbox(0) >= 1 THEN wtx = b - 15: wty = a - 30
+	'----- walk-box floor: route the walk-out through the boxes so the feet stay on
+	'----- the painted floor (WalkFloor also snaps an off-floor edge target inward)
+	IF wbox(0) >= 1 THEN
+		CALL WalkFloor(wtx, wty, pjx, pjy, f3, wbox(), cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
+	ELSE
+		CALL walkTo(wtx, wty, pjx, pjy, f3, cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
+	END IF
 	RETURN
 face:
 	'----- tear down the mouse cursor first: its save-under was sampled before this turn, so restoring it later would repaint the OLD player (erasecur no-ops when the cursor isn't drawn). Next mousepoll re-samples after the turn.
@@ -1684,12 +1708,21 @@ wlkitem:
 	IF wsx > 289 THEN wsx = 289
 	IF wsy < 0 THEN wsy = 0
 	IF wsy > 169 THEN wsy = 169
+	'----- walk-box floor: pull a heuristic stand target onto the painted floor
+	'----- (authored -2 points are trusted, so they bypass this)
+	IF wbox(0) >= 1 AND spx(woi%) < 0 THEN CALL SnapFloor(wsx, wsy, wbox())
 	IF wsx = pjx AND wsy = pjy THEN GOTO wlkface
 	sf$ = a$
 	a$ = ""
 	GOSUB face
 	a$ = sf$
-	CALL walkTo(wsx, wsy, pjx, pjy, f3, cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
+	'----- walk-box floor: route through the boxes (stays on the floor across seams);
+	'----- no boxes -> the classic straight/L walk
+	IF wbox(0) >= 1 THEN
+		CALL WalkFloor(wsx, wsy, pjx, pjy, f3, wbox(), cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
+	ELSE
+		CALL walkTo(wsx, wsy, pjx, pjy, f3, cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
+	END IF
 	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
 	wlkface:
 	sf$ = a$
@@ -2367,6 +2400,10 @@ SUB Intro
 	17510 tc = tc + 1
 	IF INKEY$ = "s" THEN GOTO 18640
 	IF tc <= 1000 THEN GOTO 17510
+
+	'----- house scene (mansion, before entering) -- body in GAME2 ShowHouse%
+	'----- (GAME.BAS is at the 64K code wall); returns 1 if the player skipped
+	IF ShowHouse% <> 0 THEN GOTO 18640
 
 	'----- enter house scene
 	PALETTE 1, 8

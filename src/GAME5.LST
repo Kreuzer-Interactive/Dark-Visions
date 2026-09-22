@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME5.BAS: player rendering module (walk-to movement pha
@@ -56,12 +56,31 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 s the player's 31x31.
  0030   0006    DECLARE SUB OvTop (px!, py!, ovf%())
  0030   0006    
- 0030   0006    '----- wfb: the walk stride phase (0=frame A, 1=frame B). Modul
+ 0030   0006    '----- walk-box floor pathfinding (ROOMx.BOX). See LoadBoxes be
                                                                       PAGE   2
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
+                low.
+ 0030   0006    DECLARE SUB LoadBoxes (rm$, bxa%())
+ 0030   0006    DECLARE FUNCTION PtInBox% (fx!, fy!, bxa%(), bi%)
+ 0030   0006    DECLARE SUB SnapFloor (sx!, sy!, bxa%())
+ 0030   0006    DECLARE SUB NearInBox (fx!, fy!, bxa%(), bi%, nx!, ny!)
+ 0030   0006    DECLARE FUNCTION NearBox% (fx!, fy!, bxa%())
+ 0030   0006    DECLARE FUNCTION BoxAt% (fx!, fy!, bxa%())
+ 0030   0006    DECLARE FUNCTION Adjacent% (bxa%(), i%, j%)
+ 0030   0006    DECLARE FUNCTION SegInt% (ax!, ay!, bx!, by!, cx!, cy!, dx!, dy
+                !, ix!, iy!)
+ 0030   0006    DECLARE SUB GateOf (bxa%(), i%, j%, gx!, gy!)
+ 0030   0006    DECLARE SUB FindPath (sx!, sy!, gx!, gy!, bxa%(), wpx!(), wpy!(
+                ), wpn%)
+ 0030   0006    DECLARE SUB WalkSeg (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%()
+                , cwb%(), cmwb%(), wbg%(), ovf%())
+ 0030   0006    DECLARE SUB WalkFloor (tx!, ty!, px!, py!, sfrq!, bxa%(), cwa%(
+                ), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
+ 0030   0006    
+ 0030   0006    '----- wfb: the walk stride phase (0=frame A, 1=frame B). Modul
                 e-level so it
  0030   0006    '----- PERSISTS across walkTo calls -- short diagonal legs (1-3
                  steps) would
@@ -97,6 +116,11 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0266   0008            IF d$ = "4" THEN PUT (px!, py!), mfl%(0), AND: PUT (px!
                 , py!), fl%(0), OR
  02CD   0008            IF d$ = "2" THEN PUT (px!, py!), mfd%(0), AND: PUT (px!
+                                                                      PAGE   3
+                                                                      22 Sep 26
+                                                                      13:59:26
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
                 , py!), fd%(0), OR
  0334   0008            IF d$ = "6" THEN PUT (px!, py!), mfr%(0), AND: PUT (px!
                 , py!), fr%(0), OR
@@ -116,11 +140,6 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  05C5   0008    SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(
                 ), mwb%(), wbg%(), ovf%())
  05D0   0008            GET (x!, y!)-(x! + 30, y! + 30), wbg%(0)
-                                                                      PAGE   3
-                                                                      17 Sep 26
-                                                                      11:27:06
-Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
-
  05D0   0008            IF fb% = 0 THEN
  05D0   0008                    PUT (x!, y!), mwa%(ofs%), AND: PUT (x!, y!), wa
                 %(ofs%), OR
@@ -156,6 +175,11 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 (d% * 151 + i%)
  087B   0008                    NEXT
  08BF   0008                    CLOSE #fh%
+                                                                      PAGE   4
+                                                                      22 Sep 26
+                                                                      13:59:26
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
  08BF   0008            NEXT
  08DA   0008    END SUB
  08E2   0008    
@@ -175,11 +199,6 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 y BLOAD so the
  08E2   0008    '-----   triggering action's message stays readable through the
                  play.
-                                                                      PAGE   4
-                                                                      17 Sep 26
-                                                                      11:27:06
-Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
-
  08E2   0008    '-----   sn2$ non-empty = PLAY string fired at the start ("MB..
                 " = background).
  08E2   0008    SUB PicSeq (sq$, fr$, rate%, sn2$)
@@ -215,6 +234,11 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 till need one
  0AC0   0008            WHILE ABS(tx! - px!) >= 3 AND ABS(ty! - py!) >= 2
  0AC0   0008                    IF ty! > py! THEN
+                                                                      PAGE   5
+                                                                      22 Sep 26
+                                                                      13:59:26
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
  0AC0   0008                            IF tx! > px! THEN d% = 5 ELSE d% = 4
  0B44   0008                            sd! = 1.1
  0B44   0008                    ELSE
@@ -234,11 +258,6 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0C3B   0008                    IF ABS(tx! - px!) <= 3 THEN px! = tx! ELSE px! 
                 = px! + SGN(tx! - px!) * 4
  0C86   0008                    CALL PStep(px!, py!, wfb%, sfrq!, 1.12, d% * 15
-                                                                      PAGE   5
-                                                                      17 Sep 26
-                                                                      11:27:06
-Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
-
                 1, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
  0CC6   0008                    wfb% = 1 - wfb%
  0CC6   0008            WEND
@@ -274,6 +293,11 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0E37   0008            CLOSE #fh%
  0E37   0008            fh% = FREEFILE
  0E37   0008            OPEN "climb.msk" FOR INPUT AS #fh%
+                                                                      PAGE   6
+                                                                      22 Sep 26
+                                                                      13:59:26
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
  0E37   0008            FOR i% = 0 TO 149
  0E64   0008                    IF EOF(fh%) THEN EXIT FOR
  0E73   0008                    INPUT #fh%, mwa%(i%), mwb%(i%)
@@ -293,17 +317,389 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0FB8   0008                            cf% = 1 - cf%
  0FB8   0008                    NEXT
  0FCF   0008            END IF
-                                                                      PAGE   6
-                                                                      17 Sep 26
-                                                                      11:27:06
-Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
-
  0FCF   0008    END SUB
  0FD7   0008    
- 0FDE   0008    
+ 0FD7   0008    '----- Walk-box floor (the convex areas the player may walk), a
+                uthored per room in
+ 0FD7   0008    '----- haedit and stored as the sidecar ROOMx.BOX (one quad/lin
+                e: x1,y1,..,x4,y4).
+ 0FD7   0008    '----- bxa(0) = box count; then 8 ints per box (4 corners). A m
+                issing/empty file
+ 0FD7   0008    '----- leaves the count 0 and the caller keeps the old rectangl
+                e walk-band.
+ 0FD7   0008    '----- Coordinates are the player's FEET (bottom-centre). Becau
+                se a straight line
+ 0FD7   0008    '----- can't leave a convex box, snapping the stand target into
+                 a box is enough to
+ 0FD7   0008    '----- keep the walk on the floor within that box (multi-box ro
+                uting = phase 2).
+ 0FD7   0008    SUB LoadBoxes (rm$, bxa%())
+ 0FE2   0008            bxa%(0) = 0
+ 0FE2   0008            lbxN% = 0
+ 0FE2   0008            fh% = FREEFILE
+ 0FE2   0008            '----- a missing .box file errors on OPEN; the caller (
+                loadroom) traps it and
+ 0FE2   0008            '----- keeps the count at 0. QB propagates an untrapped
+                 SUB error to the caller.
+ 0FE2   0008            OPEN rm$ + ".box" FOR INPUT AS #fh%
+ 0FE2   0008            DO WHILE NOT EOF(fh%) AND lbxN% < 24
+ 101C   0008                    o% = 1 + lbxN% * 8
+ 101C   0008                    INPUT #fh%, bxa%(o%), bxa%(o% + 1), bxa%(o% + 2
+                ), bxa%(o% + 3), bxa%(o% + 4), bxa%(o% + 5), bxa%(o% + 6), bxa%
+                (o% + 7)
+ 104E   0008                    lbxN% = lbxN% + 1
+ 104E   0008            LOOP
+ 1104   0008            CLOSE #fh%
+ 1104   0008            bxa%(0) = lbxN%
+ 1104   0008    END SUB
+                                                                      PAGE   7
+                                                                      22 Sep 26
+                                                                      13:59:26
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 1129   0008    
+ 1129   0008    '----- point (fx,fy) inside convex box bi% -- all four edge cro
+                ss products share a
+ 1129   0008    '----- sign (a point on an edge = 0 counts as inside). Reads th
+                e box's own winding
+ 1129   0008    '----- so clockwise or counter-clockwise both work.
+ 1129   0008    FUNCTION PtInBox% (fx!, fy!, bxa%(), bi%)
+ 1134   0008            o% = 1 + bi% * 8
+ 1134   0008            cvP% = 0: cvN% = 0
+ 1134   0008            FOR e% = 0 TO 3
+ 1152   0008                    ax% = bxa%(o% + e% * 2): ay% = bxa%(o% + e% * 2
+                 + 1)
+ 1152   0008                    g% = (e% + 1) MOD 4
+ 1152   0008                    cx% = bxa%(o% + g% * 2): cy% = bxa%(o% + g% * 2
+                 + 1)
+ 1152   0008                    cr& = CLNG(cx% - ax%) * (fy! - ay%) - CLNG(cy% 
+                - ay%) * (fx! - ax%)
+ 1152   0008                    IF cr& > 0 THEN cvP% = 1
+ 1220   0008                    IF cr& < 0 THEN cvN% = 1
+ 123A   0008            NEXT
+ 1249   0008            PtInBox% = (cvP% = 0 OR cvN% = 0)
+ 1249   0008    END FUNCTION
+ 126D   0008    
+ 126D   0008    '----- snap a stand target (sprite top-left sx,sy) so the FEET 
+                (sx+15,sy+30) land
+ 126D   0008    '----- on the floor: if already inside a box, no-op; else move 
+                to the nearest point
+ 126D   0008    '----- on any box edge. Convex boxes -> the straight walkTo the
+                n stays on the floor.
+ 126D   0008    SUB SnapFloor (sx!, sy!, bxa%())
+ 1278   0008            IF bxa%(0) < 1 THEN EXIT SUB
+ 128E   0008            fx! = sx! + 15: fy! = sy! + 30
+ 128E   0008            IF BoxAt%(fx!, fy!, bxa%()) >= 0 THEN EXIT SUB
+ 12CC   0008            b% = NearBox%(fx!, fy!, bxa%())
+ 12CC   0008            IF b% < 0 THEN EXIT SUB
+ 12EC   0008            CALL NearInBox(fx!, fy!, bxa%(), b%, nx!, ny!)
+ 1308   0008            sx! = nx! - 15: sy! = ny! - 30
+ 1308   0008    END SUB
+ 1332   0008    
+ 1332   0008    '----- nearest point to (fx,fy) within/on convex box bi% (the p
+                oint itself if inside)
+ 1332   0008    SUB NearInBox (fx!, fy!, bxa%(), bi%, nx!, ny!)
+ 133D   0008            IF PtInBox%(fx!, fy!, bxa%(), bi%) THEN nx! = fx!: ny! 
+                = fy!: EXIT SUB
+ 137A   0008            o% = 1 + bi% * 8
+ 137A   0008            bestd! = 1E30
+ 137A   0008            nx! = fx!: ny! = fy!
+ 137A   0008            FOR e% = 0 TO 3
+ 13B6   0008                    ax! = bxa%(o% + e% * 2): ay! = bxa%(o% + e% * 2
+                 + 1)
+ 13B6   0008                    g% = (e% + 1) MOD 4
+ 13B6   0008                    cx! = bxa%(o% + g% * 2): cy! = bxa%(o% + g% * 2
+                 + 1)
+ 13B6   0008                    dx! = cx! - ax!: dy! = cy! - ay!
+                                                                      PAGE   8
+                                                                      22 Sep 26
+                                                                      13:59:26
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 13B6   0008                    slen! = dx! * dx! + dy! * dy!
+ 13B6   0008                    IF slen! <= 0 THEN
+ 13B6   0008                            px! = ax!: py! = ay!
+ 13B6   0008                    ELSE
+ 149D   0008                            t! = ((fx! - ax!) * dx! + (fy! - ay!) *
+                 dy!) / slen!
+ 149D   0008                            IF t! < 0 THEN t! = 0
+ 14E6   0008                            IF t! > 1 THEN t! = 1
+ 1506   0008                            px! = ax! + t! * dx!: py! = ay! + t! * 
+                dy!
+ 1506   0008                    END IF
+ 152A   0008                    dd! = (px! - fx!) * (px! - fx!) + (py! - fy!) *
+                 (py! - fy!)
+ 152A   0008                    IF dd! < bestd! THEN bestd! = dd!: nx! = px!: n
+                y! = py!
+ 1591   0008            NEXT
+ 15A0   0008    END SUB
+ 15A8   0008    
+ 15A8   0008    '----- index of the box nearest (fx,fy) by its closest interior
+                /edge point
+ 15A8   0008    FUNCTION NearBox% (fx!, fy!, bxa%())
+ 15B3   0008            NearBox% = -1
+ 15B3   0008            bestd! = 1E30
+ 15B3   0008            FOR b% = 0 TO bxa%(0) - 1
+ 15DA   0008                    CALL NearInBox(fx!, fy!, bxa%(), b%, nx!, ny!)
+ 15F4   0008                    dd! = (nx! - fx!) * (nx! - fx!) + (ny! - fy!) *
+                 (ny! - fy!)
+ 15F4   0008                    IF dd! < bestd! THEN bestd! = dd!: NearBox% = b
+                %
+ 1649   0008            NEXT
+ 1655   0008    END FUNCTION
+ 1660   0008    
+ 1660   0008    '----- index of the box containing (fx,fy), or -1
+ 1660   0008    FUNCTION BoxAt% (fx!, fy!, bxa%())
+ 166B   0008            BoxAt% = -1
+ 166B   0008            FOR b% = 0 TO bxa%(0) - 1
+ 1688   0008                    IF PtInBox%(fx!, fy!, bxa%(), b%) THEN BoxAt% =
+                 b%: EXIT FUNCTION
+ 16B0   0008            NEXT
+ 16BC   0008    END FUNCTION
+ 16C7   0008    
+ 16C7   0008    '----- do convex boxes i,j overlap or touch? (SAT: separated if
+                 any edge-normal
+ 16C7   0008    '----- axis has a projection gap; 1-unit slack so an authored e
+                dge-touch counts)
+ 16C7   0008    FUNCTION Adjacent% (bxa%(), i%, j%)
+ 16D2   0008            Adjacent% = -1
+ 16D2   0008            FOR side% = 0 TO 1
+ 16DC   0008                    IF side% = 0 THEN
+ 16DC   0008                            bse% = 1 + i% * 8
+ 16DC   0008                    ELSE
+ 16F5   0008                            bse% = 1 + j% * 8
+ 16F5   0008                    END IF
+ 1704   0008                    FOR e% = 0 TO 3
+                                                                      PAGE   9
+                                                                      22 Sep 26
+                                                                      13:59:26
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 170A   0008                            ax% = bxa%(bse% + e% * 2): ay% = bxa%(b
+                se% + e% * 2 + 1)
+ 170A   0008                            f% = (e% + 1) MOD 4
+ 170A   0008                            cx% = bxa%(bse% + f% * 2): cy% = bxa%(b
+                se% + f% * 2 + 1)
+ 170A   0008                            nxx! = cy% - ay%: nyy! = ax% - cx%
+ 170A   0008                            oi% = 1 + i% * 8: amin! = 1E30: amax! =
+                 -1E30
+ 170A   0008                            FOR k% = 0 TO 3
+ 17B8   0008                                    pr! = nxx! * bxa%(oi% + k% * 2)
+                 + nyy! * bxa%(oi% + k% * 2 + 1)
+ 17B8   0008                                    IF pr! < amin! THEN amin! = pr!
+ 1818   0008                                    IF pr! > amax! THEN amax! = pr!
+ 1836   0008                            NEXT
+ 1845   0008                            oj% = 1 + j% * 8: bmin! = 1E30: bmax! =
+                 -1E30
+ 1845   0008                            FOR k% = 0 TO 3
+ 1870   0008                                    pr! = nxx! * bxa%(oj% + k% * 2)
+                 + nyy! * bxa%(oj% + k% * 2 + 1)
+ 1870   0008                                    IF pr! < bmin! THEN bmin! = pr!
+ 18D0   0008                                    IF pr! > bmax! THEN bmax! = pr!
+ 18EE   0008                            NEXT
+ 18FD   0008                            IF amax! < bmin! - 1 OR bmax! < amin! -
+                 1 THEN Adjacent% = 0: EXIT FUNCTION
+ 1944   0008                    NEXT
+ 1953   0008            NEXT
+ 1962   0008    END FUNCTION
+ 196D   0008    
+ 196D   0008    '----- segment (ax,ay)-(bx,by) x (cx,cy)-(dx,dy): -1 + point in
+                 ix,iy if they cross
+ 196D   0008    FUNCTION SegInt% (ax!, ay!, bx!, by!, cx!, cy!, dx!, dy!, ix!, 
+                iy!)
+ 1978   0008            SegInt% = 0
+ 1978   0008            r1! = bx! - ax!: r2! = by! - ay!
+ 1978   0008            s1! = dx! - cx!: s2! = dy! - cy!
+ 1978   0008            den! = r1! * s2! - r2! * s1!
+ 1978   0008            IF den! = 0 THEN EXIT FUNCTION
+ 19F3   0008            t! = ((cx! - ax!) * s2! - (cy! - ay!) * s1!) / den!
+ 19F3   0008            u! = ((cx! - ax!) * r2! - (cy! - ay!) * r1!) / den!
+ 19F3   0008            IF t! >= 0 AND t! <= 1 AND u! >= 0 AND u! <= 1 THEN ix!
+                 = ax! + t! * r1!: iy! = ay! + t! * r2!: SegInt% = -1
+ 1AE0   0008    END FUNCTION
+ 1AEB   0008    
+ 1AEB   0008    '----- gate point in the shared region of adjacent boxes i,j = 
+                the average of the
+ 1AEB   0008    '----- corners of one lying inside the other + the edge-edge cr
+                ossings (all such
+ 1AEB   0008    '----- points lie in i AND j, so their average is a point in i 
+                n j to walk through)
+ 1AEB   0008    SUB GateOf (bxa%(), i%, j%, gx!, gy!)
+ 1AF6   0008            oi% = 1 + i% * 8: oj% = 1 + j% * 8
+ 1AF6   0008            sxg! = 0: syg! = 0: cg% = 0
+ 1AF6   0008            FOR e% = 0 TO 3
+ 1B34   0008                    pcx! = bxa%(oi% + e% * 2): pcy! = bxa%(oi% + e%
+                                                                      PAGE  10
+                                                                      22 Sep 26
+                                                                      13:59:26
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+                 * 2 + 1)
+ 1B34   0008                    IF PtInBox%(pcx!, pcy!, bxa%(), j%) THEN sxg! =
+                 sxg! + pcx!: syg! = syg! + pcy!: cg% = cg% + 1
+ 1BB0   0008            NEXT
+ 1BBF   0008            FOR e% = 0 TO 3
+ 1BC4   0008                    pcx! = bxa%(oj% + e% * 2): pcy! = bxa%(oj% + e%
+                 * 2 + 1)
+ 1BC4   0008                    IF PtInBox%(pcx!, pcy!, bxa%(), i%) THEN sxg! =
+                 sxg! + pcx!: syg! = syg! + pcy!: cg% = cg% + 1
+ 1C40   0008            NEXT
+ 1C4F   0008            FOR e% = 0 TO 3
+ 1C54   0008                    a1x! = bxa%(oi% + e% * 2): a1y! = bxa%(oi% + e%
+                 * 2 + 1)
+ 1C54   0008                    f% = (e% + 1) MOD 4
+ 1C54   0008                    a2x! = bxa%(oi% + f% * 2): a2y! = bxa%(oi% + f%
+                 * 2 + 1)
+ 1C54   0008                    FOR g% = 0 TO 3
+ 1CE0   0008                            b1x! = bxa%(oj% + g% * 2): b1y! = bxa%(
+                oj% + g% * 2 + 1)
+ 1CE0   0008                            h% = (g% + 1) MOD 4
+ 1CE0   0008                            b2x! = bxa%(oj% + h% * 2): b2y! = bxa%(
+                oj% + h% * 2 + 1)
+ 1CE0   0008                            IF SegInt%(a1x!, a1y!, a2x!, a2y!, b1x!
+                , b1y!, b2x!, b2y!, ixp!, iyp!) THEN sxg! = sxg! + ixp!: syg! =
+                 syg! + iyp!: cg% = cg% + 1
+ 1DBF   0008                    NEXT
+ 1DCE   0008            NEXT
+ 1DDD   0008            IF cg% > 0 THEN
+ 1DDD   0008                    gx! = sxg! / cg%: gy! = syg! / cg%
+ 1DDD   0008            ELSE
+ 1E17   0008                    gx! = (bxa%(oi%) + bxa%(oi% + 2) + bxa%(oi% + 4
+                ) + bxa%(oi% + 6) + bxa%(oj%) + bxa%(oj% + 2) + bxa%(oj% + 4) +
+                 bxa%(oj% + 6)) / 8
+ 1E17   0008                    gy! = (bxa%(oi% + 1) + bxa%(oi% + 3) + bxa%(oi%
+                 + 5) + bxa%(oi% + 7) + bxa%(oj% + 1) + bxa%(oj% + 3) + bxa%(oj
+                % + 5) + bxa%(oj% + 7)) / 8
+ 1E17   0008            END IF
+ 1F6A   0008    END SUB
+ 1F72   0008    
+ 1F72   0008    '----- FindPath (FEET coords): fill wpx/wpy with the walk waypo
+                ints, wpn = count.
+ 1F72   0008    '----- BFS the box-adjacency graph start->goal, then route thro
+                ugh the gate point
+ 1F72   0008    '----- of each consecutive box pair (final waypoint = the goal)
+                . Off-floor goal is
+ 1F72   0008    '----- snapped onto the nearest box; no boxes or no path = a si
+                ngle straight leg.
+ 1F72   0008    SUB FindPath (sx!, sy!, gx!, gy!, bxa%(), wpx!(), wpy!(), wpn%)
+ 1F7D   0008            nb% = bxa%(0)
+ 1F7D   0008            wpn% = 0
+ 1F7D   0008            IF nb% < 1 THEN wpx!(0) = gx!: wpy!(0) = gy!: wpn% = 1:
+                 EXIT SUB
+ 1FD5   0008            gb% = BoxAt%(gx!, gy!, bxa%())
+ 1FD5   0008            IF gb% < 0 THEN
+                                                                      PAGE  11
+                                                                      22 Sep 26
+                                                                      13:59:26
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 1FD5   0008                    gb% = NearBox%(gx!, gy!, bxa%())
+ 1FD5   0008                    CALL NearInBox(gx!, gy!, bxa%(), gb%, ngx!, ngy
+                !)
+ 2024   0008                    gx! = ngx!: gy! = ngy!
+ 2024   0008            END IF
+ 203C   0008            sb% = BoxAt%(sx!, sy!, bxa%())
+ 203C   0008            IF sb% < 0 THEN sb% = NearBox%(sx!, sy!, bxa%())
+ 2071   0008            IF sb% = gb% THEN wpx!(0) = gx!: wpy!(0) = gy!: wpn% = 
+                1: EXIT SUB
+ 20B4   0008            REDIM vis%(31), par%(31), qq%(31), pbx%(31)
+ 2114   0008            FOR t% = 0 TO nb% - 1: vis%(t%) = 0: par%(t%) = -1: NEX
+                T
+ 214E   0008            head% = 0: tail% = 1: qq%(0) = sb%: vis%(sb%) = 1: foun
+                d% = 0
+ 214E   0008            DO WHILE head% < tail% AND found% = 0
+ 2180   0008                    cur% = qq%(head%): head% = head% + 1
+ 2180   0008                    IF cur% = gb% THEN found% = 1
+ 21C3   0008                    IF found% = 0 THEN
+ 21C3   0008                            FOR nn% = 0 TO nb% - 1
+ 21D8   0008                                    IF vis%(nn%) = 0 THEN
+ 21D8   0008                                            IF Adjacent%(bxa%(), cu
+                r%, nn%) THEN vis%(nn%) = 1: par%(nn%) = cur%: qq%(tail%) = nn%
+                : tail% = tail% + 1
+ 224A   0008                                    END IF
+ 224A   0008                            NEXT
+ 2256   0008                    END IF
+ 2256   0008            LOOP
+ 225A   0008            IF found% = 0 THEN wpx!(0) = gx!: wpy!(0) = gy!: wpn% =
+                 1: EXIT SUB
+ 229B   0008            plen% = 0: cur% = gb%
+ 229B   0008            DO
+ 22A6   0008                    pbx%(plen%) = cur%: plen% = plen% + 1
+ 22A6   0008                    IF cur% = sb% THEN EXIT DO
+ 22C5   0008                    cur% = par%(cur%)
+ 22C5   0008                    IF cur% < 0 THEN EXIT DO
+ 22E0   0008            LOOP WHILE plen% < 32
+ 22E6   0008            FOR k% = plen% - 1 TO 1 STEP -1
+ 22EE   0008                    CALL GateOf(bxa%(), pbx%(k%), pbx%(k% - 1), ggx
+                !, ggy!)
+ 235D   0008                    wpx!(wpn%) = ggx!: wpy!(wpn%) = ggy!: wpn% = wp
+                n% + 1
+ 235D   0008            NEXT
+ 23AA   0008            wpx!(wpn%) = gx!: wpy!(wpn%) = gy!: wpn% = wpn% + 1
+ 23AA   0008    END SUB
+ 2414   0008    
+ 2414   0008    '----- walk the player STRAIGHT from (px,py) to (tx,ty) (sprite
+                 top-left), one
+ 2414   0008    '----- 8-way direction for the leg (a straight line stays insid
+                e a convex box)
+ 2414   0008    SUB WalkSeg (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%()
+                , cmwb%(), wbg%(), ovf%())
+ 241F   0008            dx! = tx! - px!: dy! = ty! - py!
+ 241F   0008            mv! = ABS(dx!): IF ABS(dy!) > mv! THEN mv! = ABS(dy!)
+ 2474   0008            ns% = INT(mv! / 3): IF ns% < 1 THEN ns% = 1
+                                                                      PAGE  12
+                                                                      22 Sep 26
+                                                                      13:59:26
+Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
+
+ 2499   0008            adx! = ABS(dx!): ady! = ABS(dy!)
+ 2499   0008            IF adx! > ady! * 2 THEN
+ 2499   0008                    IF dx! > 0 THEN d% = 2 ELSE d% = 3
+ 24EE   0008                    sd! = 1.12
+ 24EE   0008            ELSEIF ady! > adx! * 2 THEN
+ 24FC   0008                    IF dy! > 0 THEN
+ 24FC   0008                            d% = 0: sd! = 1.2
+ 24FC   0008                    ELSE
+ 253D   0008                            d% = 1: sd! = 1.4
+ 253D   0008                    END IF
+ 254D   0008            ELSE
+ 2550   0008                    IF dy! > 0 THEN
+ 2550   0008                            IF dx! > 0 THEN d% = 5 ELSE d% = 4
+ 2587   0008                            sd! = 1.1
+ 2587   0008                    ELSE
+ 2595   0008                            IF dx! > 0 THEN d% = 7 ELSE d% = 6
+ 25B7   0008                            sd! = 1.2
+ 25B7   0008                    END IF
+ 25C2   0008            END IF
+ 25C2   0008            FOR s% = 1 TO ns%
+ 25CE   0008                    px! = px! + dx! / ns%: py! = py! + dy! / ns%
+ 25CE   0008                    CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151
+                , cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
+ 2637   0008                    wfb% = 1 - wfb%
+ 2637   0008            NEXT
+ 264D   0008            px! = tx!: py! = ty!
+ 264D   0008    END SUB
+ 2671   0008    
+ 2671   0008    '----- WalkFloor: floor-aware walk. Route (px,py)->(tx,ty) thro
+                ugh the walk-boxes
+ 2671   0008    '----- and walk each straight leg. Feet = sprite + (15,30); box
+                es are feet coords.
+ 2671   0008    SUB WalkFloor (tx!, ty!, px!, py!, sfrq!, bxa%(), cwa%(), cmwa%
+                (), cwb%(), cmwb%(), wbg%(), ovf%())
+ 267C   0008            REDIM wpx(31) AS SINGLE, wpy(31) AS SINGLE
+ 26AC   0008            wpn% = 0
+ 26AC   0008            CALL FindPath(px! + 15, py! + 30, tx! + 15, ty! + 30, b
+                xa%(), wpx(), wpy(), wpn%)
+ 2719   0008            FOR w% = 0 TO wpn% - 1
+ 2726   0008                    CALL WalkSeg(wpx(w%) - 15, wpy(w%) - 30, px!, p
+                y!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
+ 2786   0008            NEXT
+ 2792   0008    END SUB
+ 27AC   0008    
+ 27B3   0008    
 
 43917 Bytes Available
-37930 Bytes Free
+32707 Bytes Free
 
     0 Warning Error(s)
     0 Severe  Error(s)

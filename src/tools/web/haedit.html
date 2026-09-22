@@ -259,6 +259,7 @@
         <button id="grid" title="Show a faint grid of the action-point lattice (4px)">Grid</button>
         <button id="zones" title="Show click zones — the mousesnap area around each hit point, tinted by the object it clicks. Verb-aware like the game: each verb snaps to its own nearest point; where verbs overlap, action draws on top (filter to one verb for a single-verb map)">Zones</button>
         <button id="animLock" title="Lock scene animations: they draw faded and become click-through, so you can paint hit points underneath them (drag-to-move is disabled while locked; the ⌖ place tool still works)">🔒 Anims</button>
+        <button id="floorBtn" title="Walk-box floor editor: draw the convex boxes the pathfinder keeps the player inside. Click a box to select, drag its corner handles; + Box adds one. Saved to ROOMx.BOX.">Floor</button>
         <label class="snapfld" title="mousesnap radius in pixels (DARK.INI mousesnap; default 6). 0 = exact clicks only.">pad<input id="snap" type="number" min="0" max="32" value="6"></label>
         <button id="zoomOut" title="Zoom out">−</button>
         <span id="zoomLbl" class="hint">3×</span>
@@ -268,6 +269,11 @@
       <span id="dirty" class="badge"></span>
       <button id="save" class="primary" title="Save .pac (Ctrl+S)">Save</button>
       <button id="discard" title="Discard unsaved changes — reload the saved .pac from disk">Discard</button>
+    </div>
+    <div class="invbar" id="boxbar" hidden>
+      <button id="boxAdd" title="Add a walk-box (a convex quad you shape by dragging its corners)">+ Box</button>
+      <button id="boxDel" title="Delete the selected walk-box">Delete box</button>
+      <span id="boxInfo" class="hint">Floor boxes — the convex areas the player may walk. Click one to select, drag its corner handles. Boxes must stay convex.</span>
     </div>
     <div class="hitrow">
     <div id="stage">
@@ -589,8 +595,39 @@ function genPac(s){
   return out;
 }
 
+// ---- walk-box floor (sidecar ROOMx.BOX): one convex quad per line, x1,y1,..,x4,y4 (corners clockwise) ----
+function parseBox(txt){
+  const out=[];
+  (txt||'').split(/\r?\n/).forEach(line=>{
+    const n=line.split(',').map(s=>parseInt(s,10));
+    if(n.length>=8 && n.slice(0,8).every(v=>!isNaN(v)))
+      out.push({p:[{x:n[0],y:n[1]},{x:n[2],y:n[3]},{x:n[4],y:n[5]},{x:n[6],y:n[7]}]});
+  });
+  return out;
+}
+function genBox(s){
+  return (s.boxes||[]).map(b=>b.p.flatMap(c=>[c.x|0,c.y|0]).join(',')).join('\r\n') + ((s.boxes&&s.boxes.length)?'\r\n':'');
+}
+// convex if every consecutive-edge cross product shares one sign (the pathfinder needs this)
+function boxConvex(b){
+  const p=b.p; let sign=0;
+  for(let i=0;i<4;i++){ const a=p[i],c=p[(i+1)%4],d=p[(i+2)%4];
+    const z=(c.x-a.x)*(d.y-c.y)-(c.y-a.y)*(d.x-c.x);
+    if(z){ const s2=z>0?1:-1; if(sign===0) sign=s2; else if(s2!==sign) return false; } }
+  return true;
+}
+// ray-cast point-in-polygon (works even while a box is temporarily concave during a drag)
+function ptInBox(b,x,y){
+  const p=b.p; let inside=false;
+  for(let i=0,j=3;i<4;j=i++){
+    if(((p[i].y>y)!==(p[j].y>y)) && (x < (p[j].x-p[i].x)*(y-p[i].y)/(p[j].y-p[i].y)+p[i].x)) inside=!inside;
+  }
+  return inside;
+}
+
 // ---- state ----
 let pic=null, S=null, room='', curObj=1, zoom=3, peeking=false, dirty=false, showGrid=false, showZones=false, snr=6, zoneCanvas=null, zoneDirty=true, placeSel=-1, placingIdx=-1, placeFrameCache={}, dragPlace=-1, dragOffX=0, dragOffY=0, dragMoved=false, standPlacing=false, standFrames=null, animLocked=false;
+let boxMode=false, boxSel=-1, dragBox=-1, dragCorner=-1, boxDragOX=0, boxDragOY=0, boxHadFile=false;   // walk-box floor editor
 let mode='', rooms=[], fileBlobs={};   // file-mode cache: name -> {pic:Uint8Array, pac:string}
 let painting=0, hoverX=-1, hoverY=-1;
 const undo=[];
@@ -683,6 +720,22 @@ function draw(){
         ctx.beginPath(); ctx.moveTo((sp.x-3)*zoom,sp.y*zoom); ctx.lineTo((sp.x+3)*zoom,sp.y*zoom);
         ctx.moveTo(sp.x*zoom,(sp.y-3)*zoom); ctx.lineTo(sp.x*zoom,(sp.y+3)*zoom); ctx.stroke();
         ctx.fillStyle=seld?'#ffcc00':'#cc66ff'; ctx.fillText('S'+k,(sp.x+4)*zoom,(sp.y-2)*zoom); } }
+    if(boxMode && S && S.boxes){
+      ctx.font='11px monospace'; ctx.textBaseline='alphabetic';
+      S.boxes.forEach((b,bi)=>{
+        const cvx=boxConvex(b), sel=(bi===boxSel);
+        ctx.beginPath(); ctx.moveTo(b.p[0].x*zoom,b.p[0].y*zoom);
+        for(let i=1;i<4;i++) ctx.lineTo(b.p[i].x*zoom,b.p[i].y*zoom);
+        ctx.closePath();
+        ctx.fillStyle = cvx ? (sel?'rgba(80,200,255,0.30)':'rgba(80,200,255,0.15)') : 'rgba(255,80,80,0.28)';
+        ctx.fill();
+        ctx.strokeStyle = cvx ? (sel?'#5cf':'#39c') : '#f55'; ctx.lineWidth=sel?2:1; ctx.stroke();
+        const cx=(b.p[0].x+b.p[1].x+b.p[2].x+b.p[3].x)/4, cy=(b.p[0].y+b.p[1].y+b.p[2].y+b.p[3].y)/4;
+        ctx.fillStyle=cvx?(sel?'#5cf':'#39c'):'#f55'; ctx.fillText('B'+(bi+1),cx*zoom-6,cy*zoom+4);
+        if(sel) for(let i=0;i<4;i++){ ctx.fillStyle='#fff'; ctx.strokeStyle='#06f'; ctx.lineWidth=1;
+          ctx.fillRect(b.p[i].x*zoom-3,b.p[i].y*zoom-3,6,6); ctx.strokeRect(b.p[i].x*zoom-3,b.p[i].y*zoom-3,6,6); }
+      });
+    }
   }
   if(hoverX>=0){ ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1;
     ctx.strokeRect((hoverX-2)*zoom-1, (hoverY-2)*zoom-1, 4*zoom+2, 4*zoom+2); }
@@ -937,6 +990,14 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('mousedown',e=>{
   e.preventDefault();
   const ae=document.activeElement; if(ae && (ae.tagName==='INPUT'||ae.tagName==='SELECT')) ae.blur();
+  if(boxMode && S && S.boxes){
+    const r=cv.getBoundingClientRect(), mx=(e.clientX-r.left)/zoom, my=(e.clientY-r.top)/zoom, tol=Math.max(2.5,6/zoom);
+    if(boxSel>=0 && S.boxes[boxSel]){ const p=S.boxes[boxSel].p;   // 1) grab a corner handle of the selected box
+      for(let i=0;i<4;i++) if(Math.abs(p[i].x-mx)<=tol && Math.abs(p[i].y-my)<=tol){ dragBox=boxSel; dragCorner=i; return; } }
+    for(let bi=S.boxes.length-1;bi>=0;bi--) if(ptInBox(S.boxes[bi],mx,my)){   // 2) inside a box = select + start whole-box drag
+      boxSel=bi; dragBox=bi; dragCorner=-1; boxDragOX=Math.round(mx); boxDragOY=Math.round(my); renderBoxBar(); draw(); return; }
+    boxSel=-1; dragBox=-1; dragCorner=-1; renderBoxBar(); draw(); return;   // 3) empty = deselect
+  }
   if(standPlacing && S){ const r=cv.getBoundingClientRect();
     const x=Math.max(0,Math.min(319,Math.floor((e.clientX-r.left)/zoom)));
     const y=Math.max(0,Math.min(199,Math.floor((e.clientY-r.top)/zoom)));
@@ -956,6 +1017,14 @@ cv.addEventListener('mousedown',e=>{
   applyStroke(x,y);
 });
 cv.addEventListener('mousemove',e=>{
+  if(boxMode && dragBox>=0 && S&&S.boxes[dragBox]){ const r=cv.getBoundingClientRect();
+    const mx=Math.max(0,Math.min(319,Math.round((e.clientX-r.left)/zoom))), my=Math.max(0,Math.min(199,Math.round((e.clientY-r.top)/zoom)));
+    if(dragCorner>=0){ S.boxes[dragBox].p[dragCorner].x=mx; S.boxes[dragBox].p[dragCorner].y=my; }
+    else { let dx=mx-boxDragOX, dy=my-boxDragOY; boxDragOX=mx; boxDragOY=my;   // whole-box move, delta clamped so it stays on screen
+      const p=S.boxes[dragBox].p, xs=p.map(c=>c.x), ys=p.map(c=>c.y);
+      dx=Math.max(-Math.min(...xs),Math.min(319-Math.max(...xs),dx)); dy=Math.max(-Math.min(...ys),Math.min(199-Math.max(...ys),dy));
+      p.forEach(c=>{ c.x+=dx; c.y+=dy; }); }
+    setDirty(true); renderBoxBar(); draw(); return; }
   if(dragPlace>=0 && S&&S.placements[dragPlace]){ const r=cv.getBoundingClientRect();
     if(!dragMoved){ pushUndo('p'); dragMoved=true; }
     S.placements[dragPlace].x=Math.max(0,Math.min(319,Math.round((e.clientX-r.left)/zoom-dragOffX)));
@@ -965,7 +1034,7 @@ cv.addEventListener('mousemove',e=>{
   if(!painting) cv.style.cursor=hitPlacement(e)>=0?'grab':'';
   if(painting) applyStroke(x,y); else draw();
 });
-window.addEventListener('mouseup',()=>{ if(dragPlace>=0){ dragPlace=-1; cv.style.cursor=''; setDirty(true); renderPlacements(); } painting=0; });
+window.addEventListener('mouseup',()=>{ if(dragBox>=0){ dragBox=-1; dragCorner=-1; setDirty(true); } if(dragPlace>=0){ dragPlace=-1; cv.style.cursor=''; setDirty(true); renderPlacements(); } painting=0; });
 cv.addEventListener('mouseleave',()=>{ hoverX=-1; draw(); });
 function applyStroke(x,y){
   let ch = painting===2 ? eraseAt(x,y) : paintAt(x,y);
@@ -1014,6 +1083,16 @@ document.getElementById('stage').addEventListener('wheel',e=>{
 document.getElementById('grid').onclick=function(){ showGrid=!showGrid; this.classList.toggle('active',showGrid); draw(); };
 document.getElementById('zones').onclick=function(){ showZones=!showZones; this.classList.toggle('active',showZones); draw(); };
 document.getElementById('animLock').onclick=function(){ animLocked=!animLocked; this.classList.toggle('active',animLocked); if(animLocked&&dragPlace>=0){ dragPlace=-1; cv.style.cursor=''; } draw(); };
+document.getElementById('floorBtn').onclick=function(){ boxMode=!boxMode; this.classList.toggle('active',boxMode); document.getElementById('boxbar').hidden=!boxMode; if(boxMode){ standPlacing=false; placingIdx=-1; } boxSel=-1; renderBoxBar(); draw(); };
+document.getElementById('boxAdd').onclick=()=>{ if(!S) return; if(!S.boxes) S.boxes=[]; S.boxes.push({p:[{x:120,y:140},{x:200,y:140},{x:215,y:180},{x:105,y:180}]}); boxSel=S.boxes.length-1; setDirty(true); renderBoxBar(); draw(); };
+document.getElementById('boxDel').onclick=()=>{ if(!S||boxSel<0||!S.boxes[boxSel]) return; S.boxes.splice(boxSel,1); boxSel=-1; setDirty(true); renderBoxBar(); draw(); };
+function renderBoxBar(){ const inf=document.getElementById('boxInfo'); if(!inf) return;
+  const n=S&&S.boxes?S.boxes.length:0;
+  if(boxSel>=0 && S.boxes[boxSel]){ const cvx=boxConvex(S.boxes[boxSel]);
+    inf.textContent='Box '+(boxSel+1)+' of '+n+(cvx?' — drag its corner handles':' — ⚠ not convex (the pathfinder needs convex boxes)');
+    inf.style.color=cvx?'':'#f88'; }
+  else { inf.textContent=n?(n+' box'+(n>1?'es':'')+' — click one to select, or + Box to add'):'No boxes yet — press + Box to add one'; inf.style.color=''; }
+}
 document.getElementById('snap').oninput=function(){ snr=Math.max(0,Math.min(32,parseInt(this.value)||0)); zoneDirty=true; draw(); };
 
 // ---- dirty / save ----
@@ -1040,13 +1119,19 @@ async function loadRoom(name){
   } else {
     pic=fileBlobs[name].pic; S=parsePac(fileBlobs[name].pac);
   }
+  // walk-box floor (sidecar ROOMx.BOX) — optional; a missing file just means no boxes
+  S.boxes=[]; boxHadFile=false; boxSel=-1;
+  if(mode==='server'){
+    try{ const rb=await fetch('api/box?name='+encodeURIComponent(name),{cache:'no-store'});
+      if(rb.ok){ boxHadFile=true; mtTrack('box:'+name,rb); S.boxes=parseBox(await rb.text()); } }catch(_){}
+  } else if(fileBlobs[name] && fileBlobs[name].box){ boxHadFile=true; S.boxes=parseBox(fileBlobs[name].box); }
   curObj=1; undo.length=0; peeking=false; setDirty(false); hidden.clear();
   renderArt(); buildList(); fillForm(); resize();
   document.getElementById('noplchk').checked=(S.nopl===1);
   document.getElementById('roomname').value=(S.name||'');
   placeSel=-1; placingIdx=-1; placeFrameCache={}; standPlacing=false; placeHidden.clear();
   if(!anims.length) await loadAnims();
-  await ensurePlaceFrames(); ensureStandFrames().then(draw); renderStand(); renderPlacements(); draw();
+  await ensurePlaceFrames(); ensureStandFrames().then(draw); renderStand(); renderPlacements(); renderBoxBar(); draw();
 }
 async function ensurePlaceFrames(){
   if(!S||!S.placements) return;
@@ -1234,14 +1319,17 @@ async function save(){
   if(!S) return;
   const txt=genPac(S);
   itemXref=null; delete roomObjCache[room];
+  const nb=S.boxes?S.boxes.length:0;
   if(mode==='server'){
     if(!await mtSave('api/pac?name='+encodeURIComponent(room),'pac:'+room,txt,room+'.PAC')) return;
-    setDirty(false); flash('Saved '+room+'.PAC to disk');
+    if(nb || boxHadFile){ if(await mtSave('api/box?name='+encodeURIComponent(room),'box:'+room,genBox(S),room+'.BOX')) boxHadFile=true; }
+    setDirty(false); flash('Saved '+room+'.PAC'+(nb?(' + '+nb+' box'+(nb>1?'es':'')):'')+' to disk');
   } else {
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));
     a.download=room+'.PAC'; a.click();
-    setDirty(false); flash('Downloaded '+room+'.PAC — move it into src\\');
+    if(nb){ const ab=document.createElement('a'); ab.href=URL.createObjectURL(new Blob([genBox(S)],{type:'text/plain'})); ab.download=room+'.BOX'; ab.click(); }
+    setDirty(false); flash('Downloaded '+room+'.PAC'+(nb?' + '+room+'.BOX':'')+' — move into src\\');
   }
 }
 function flash(msg){ const d=document.getElementById('dirty'); d.textContent=msg; d.className='badge ok';

@@ -63,6 +63,39 @@ DIM SHARED sdwPLX AS INTEGER, sdwPLY AS INTEGER
 '----- player's (pre-light) fbg save-under over lit pools via face/PStand
 DIM SHARED sdwLCl AS SINGLE
 
+'----- ShowHouse: intro mansion scene (HOUSE.PIC, CGA palette 2,3,6) shown after
+'----- the hill scene, before entering. Lives here because GAME.BAS is at the 64K
+'----- code wall. Holds ~4s (skippable); returns 1 if the player pressed 's'.
+FUNCTION ShowHouse%
+	ShowHouse% = 0
+	KEY OFF
+	PALETTE 1, 2
+	PALETTE 2, 3
+	PALETTE 3, 6
+	DEF SEG = &HB800: BLOAD "house.pic", 0: DEF SEG
+	'----- storm-arrival: footsteps, then a LIGHTNING FLASH + thunder (reusing the
+	'----- hill scene's exact flash/rumble so it reads the same), then more steps.
+	'----- The screen flash is what sells the thunder; audio alone is just a rumble.
+	FOR i% = 1 TO 5
+		IF INKEY$ = "s" THEN ShowHouse% = 1: EXIT FUNCTION
+		SOUND f3, .1: SOUND 32676, 7
+	NEXT
+	'----- lightning: flicker the CGA background white (COLOR 15) like the hill scene
+	COLOR 15: SOUND 32676, 2: COLOR 0: SOUND 32676, 1
+	COLOR 15: SOUND 32676, 2: COLOR 0
+	'----- thunder: descending rumble mixing f10 (the hill scene's 17340 pattern)
+	tc = 200
+	DO
+		IF INKEY$ = "s" THEN ShowHouse% = 1: EXIT FUNCTION
+		SOUND tc, .1: SOUND f10, .1: SOUND 32676, 1
+		tc = tc - 10
+	LOOP WHILE tc >= 50
+	FOR i% = 1 TO 4
+		IF INKEY$ = "s" THEN ShowHouse% = 1: EXIT FUNCTION
+		SOUND f3, .1: SOUND 32676, 7
+	NEXT
+END FUNCTION
+
 '----- DeathMusic: play one of four random dirges, note by note so a keypress
 '----- or mouse click skips the rest (octave shifts are rebalanced on a skip
 '----- since the tunes rely on balanced <...> pairs)

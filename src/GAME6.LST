@@ -1,6 +1,6 @@
                                                                       PAGE   1
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    '----- GAME6.BAS: VGA scene module (uGL 0.23b, src\ugl). Sixth 
@@ -58,8 +58,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 le: cut in, hold
  0030   0006    '-----   2 s, any key ends it, cut to black. TPLOGO.BMP (640x48
                                                                       PAGE   2
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 0) on the VESA
@@ -117,8 +117,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    Const UGL.BF.16BIT% = 2% * 2%
  0030   0006    Const UGL.BF.32BIT% = 3% * 2%
                                                                       PAGE   3
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    Const UGL.BF.24BIT% = 4% * 2%
@@ -176,8 +176,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 tangle
  0030   0006    End Type
                                                                       PAGE   4
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    
@@ -235,8 +235,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    type vector3f
  0030   0006            x       as single
                                                                       PAGE   5
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006            y       as single
@@ -294,8 +294,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006                                     Byval fmt As Integer, _
  0030   0006                                     Byval xRes As Integer, _ 
                                                                       PAGE   6
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006                                     Byval yRes As Integer)
@@ -353,8 +353,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    Declare Function uglColor16&    (Byval red As Integer, _
  0030   0006                                     Byval green As Integer, _
                                                                       PAGE   7
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006                                     Byval blue As Integer)
@@ -412,8 +412,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006                                     Byval y1 As Integer, _
  0030   0006                                     Byval x2 As Integer, _
                                                                       PAGE   8
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006                                     Byval y2 As Integer, _
@@ -471,8 +471,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006                                     Byval clr As Long)
  0030   0006    
                                                                       PAGE   9
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    Declare Sub      uglPolyPolyF   (Byval dc As Long, _
@@ -530,8 +530,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    
  0030   0006    Declare Sub      uglRowReadBuff         Alias "uglRowRead" (Byv
                                                                       PAGE  10
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 al dc As Long, _ 
@@ -589,8 +589,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    Declare Sub      uglPutFlip     (Byval dstDc As Long, _
  0030   0006                                     Byval x As Integer, _
                                                                       PAGE  11
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006                                     Byval y As Integer, _
@@ -648,8 +648,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006                                     Byval srcDc As Long)
  0030   0006                                     
                                                                       PAGE  12
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    declare sub      uglPutMskRot   (Byval dstDC As Long, _
@@ -707,8 +707,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006                                     Byval col As Long)
  0030   0006                                     
                                                                       PAGE  13
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    Declare Sub      uglTriG        (Byval dc As Long, _
@@ -766,8 +766,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006                                     Seg pal As tRGB)
  0030   0006    
                                                                       PAGE  14
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    Declare Sub      uglPalGet      (Byval idx As Integer, _
@@ -825,8 +825,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    Const UGL.LBLUE32&      = (&h54&*REDP32)+(&h54&*GREENP32)+(&hFF
                 &*BLUEP32)
                                                                       PAGE  15
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    Const UGL.LGREEN32&     = (&h54&*REDP32)+(&hFF&*GREENP32)+(&h54
@@ -884,8 +884,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    Const UGL.BLUE15&       = (&h00&*REDP15)+(&h00&*GREENP15)+(&h15
                 &*BLUEP15)
                                                                       PAGE  16
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    Const UGL.GREEN15&      = (&h00&*REDP15)+(&h15&*GREENP15)+(&h00
@@ -943,8 +943,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 BLUEP8)
  0030   0006    Const UGL.LCYAN8&       = (&h02&*REDP8)+(&h07&*GREENP8)+(&h03&*
                                                                       PAGE  17
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 BLUEP8)
@@ -1002,8 +1002,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    Const F4CREATE  = &h4000 or F4RW
  0030   0006    Const F4APPEND  = &h8000 or F4WRITE
                                                                       PAGE  18
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    
@@ -1061,8 +1061,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    
  0030   0006    Declare Function fileWriteHEx&  Alias "fileWriteH" (Seg f As FI
                                                                       PAGE  19
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 LE, _
@@ -1120,8 +1120,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    Declare Function bfileRead2%    (Seg bf As BFILE)
  0030   0006    
                                                                       PAGE  20
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    Declare Function bfileRead4&    (Seg bf As BFILE)
@@ -1179,8 +1179,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006            di AS INTEGER
  0030   0006            flags AS INTEGER
                                                                       PAGE  21
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006            ds AS INTEGER
@@ -1238,8 +1238,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0030   0006    DECLARE FUNCTION CrtcR% (idx AS INTEGER)
  0030   0006    DECLARE SUB CrtcW (idx AS INTEGER, v AS INTEGER)
                                                                       PAGE  22
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0030   0006    DECLARE SUB SlideFrame (px AS INTEGER, f AS INTEGER)
@@ -1297,8 +1297,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0115   0052            IF xr = 640 THEN bmp = "tplogo.bmp" ELSE bmp = "tplog32
                 0.bmp"
                                                                       PAGE  23
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  013C   0052            uglSetWrkPage 0
@@ -1356,8 +1356,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0298   0052    '----- because qstart draws the cursor sprite in CGA graphics r
                 ight after.
                                                                       PAGE  24
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0298   0052    SUB ShowInstructions (msen AS SINGLE)
@@ -1415,8 +1415,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  0567   0052            DIM r AS RegType, r2 AS RegType, vi AS INTEGER
  0567   0052            uglRestore
                                                                       PAGE  25
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  056C   0052            '----- uglRestore returns to the mode uGL was initialis
@@ -1474,8 +1474,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  081A   0052            rx.ax = &H4F00: rx.bx = 0: rx.cx = 0: rx.dx = 0
  081A   0052            CALL VbeCall(fh, "4F00 info", rx)
                                                                       PAGE  26
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  0855   0052            IF rx.ax = &H4F THEN
@@ -1533,8 +1533,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
                 ne 480", rx)
  0FEB   0052                            rx.ax = &H4F07: rx.bx = 1: rx.cx = 0: r
                                                                       PAGE  27
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
                 x.dx = 0
@@ -1592,8 +1592,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1372   0052    SUB VgaHold (secs AS SINGLE)
  137D   0052            DIM t9 AS SINGLE, d9 AS SINGLE
                                                                       PAGE  28
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  137D   0052            t9 = TIMER
@@ -1651,8 +1651,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  16D2   0052                    mPal(i).red = MID$(s, i * 4 + 3, 1)
  16D2   0052            NEXT
                                                                       PAGE  29
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1784   0052            s = ""
@@ -1710,8 +1710,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  196B   0052            mv = VgaOpen&(640, xr, yr, np)
  196B   0052            IF mv = 0 THEN EXIT SUB
                                                                       PAGE  30
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  19AF   0052            IF xr <> 640 THEN CALL ManualSimple(mv, xr, np): EXIT S
@@ -1769,8 +1769,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1C54   0052            FOR i = 0 TO 10
  1C5A   0052                    CALL VgaSync
                                                                       PAGE  31
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1C5F   0052                    CALL VgaPalApply(i * 16 \ 10)
@@ -1828,8 +1828,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  1EFB   0052    END SUB
  1F03   0052    
                                                                       PAGE  32
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  1F03   0052    '----- turn to view n: horizontal nudge-slide where the mode al
@@ -1887,8 +1887,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  20D0   0052    '----- part - string math over 256 colours), then in the vertic
                 al blank do ONLY the
                                                                       PAGE  33
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  20D0   0052    '----- fast register writes: move the display start (the scroll
@@ -1946,8 +1946,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  2333   0052    END FUNCTION
  2350   0052    
                                                                       PAGE  34
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  2350   0052    SUB CrtcW (idx AS INTEGER, v AS INTEGER)
@@ -2005,8 +2005,8 @@ Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
  25E5   0052            xr = 640: yr = 480: np = 2
  25E5   0052            v = uglSetVideoDC(UGL.8BIT, xr, yr, np)
                                                                       PAGE  35
-                                                                      17 Sep 26
-                                                                      11:27:06
+                                                                      22 Sep 26
+                                                                      13:59:26
 Offset  Data    Source Line      Microsoft (R) QuickBASIC Compiler Version 4.50
 
  25E5   0052            k1 = (v <> 0)
