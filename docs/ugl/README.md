@@ -188,6 +188,20 @@ sound `snd*` / music `mod*` (SND.BI/MOD.BI, Sound Blaster only, untested here).
 * **Mid-game use (the planned VGA manual):** open with `VgaOpen`, draw, `VgaClose`, then `SCREEN 1` again and
   redraw the room - the CGA framebuffer and palette do not survive the mode switch. UGLTEST's "cycle 2" proves
   uGL re-initialises cleanly after a full close.
+* **Mode-13h overlay over the live CGA room (2026-10-06, `GAME6 ReviveVga%`):** the revive message needs light
+  gray on top of a room palette that has no light gray. CGA (SCREEN 1) has one 4-colour palette for the whole
+  screen, so ReviveVga PEEKs the 16 KB B800 framebuffer, `VgaOpen(320, ...)` (new rung: plain mode 13h, no VESA),
+  sets palette 0-3 = the room's COLOR/PALETTE as CGA RGB and 4-6 = light gray / blue / brown, converts each CGA row
+  (byte -> 4 indices via a 256-entry table, `uglRowWriteBuff`) with the masked sprite laid over it, waits for the
+  key/click, `VgaClose`, blacks attrs 1-3, POKEs the framebuffer back and lets the caller's `rmpal` light it.
+  Far heap: ~18 KB while it runs (framebuffer copy packed two bytes per int, sprite bytes split on the fly, no
+  MEM DCs) because the 486 showed only ~43 KB free in-game (VGA.LOG "from bios mode 4").
+  ~1 s round trip in DOSBox-X including the mandatory 1 s hold; the room comes back byte-identical. Mode 4 and
+  mode 13h share CRTC timing (320x200 @ 70 Hz), so a monitor should not resync on the switch. Returns 0 on a
+  no-VGA machine and GAME4 `ReviveShow` falls back to the single-palette CGA version. Verified in DOSBox-X with
+  a throwaway harness (since removed) that linked GAME6.OBJ alone with a stub `ShowRules`, BLOADed ROOM1.PIC,
+  called ReviveVga, and compared the B800 framebuffer before/after: 0 bytes differed, with and without the
+  mouse cursor; the far-heap reading before/after the call is how to check the 486 headroom.
 * **Build changes** (`src/build.conf`): `set INCLUDE=D:\UGL` after the mounts; a `BC ... GAME6.BAS` line; the
   link fields moved into **`src/LINK.RSP`** (`LINK @D:LINK.RSP`), because the one-line form with `/SEG:800`,
   six objects and the library overflows the 127-character DOS command tail - LINK then saw `UGLD.L` and

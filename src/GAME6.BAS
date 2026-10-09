@@ -41,6 +41,14 @@
 '-----   Right/Down/PgDn = next, Home/End, Tab/Esc = close. Mouse (game mouse=1):
 '-----   click the left half of the screen = previous, right half = next. If 800x600
 '-----   is unavailable it falls back to ManualSimple (the old MANnnH/L pages).
+'-----
+'----- ReviveVga (GAME4 ReviveShow calls it first): the revive message over the
+'-----   live room in plain VGA mode 13h so the room keeps its own 4 colours AND
+'-----   the message gets 3 of its own (light gray / blue / brown) -- CGA's one
+'-----   shared palette can't do both. Snapshots the B800 framebuffer, redraws it
+'-----   pixel-for-pixel in 256-colour mode, draws the masked sprite on top, then
+'-----   mode 4 again and POKEs the snapshot back under a black palette (the
+'-----   caller's rmpal lights it). Returns 0 = no VGA, use the CGA version.
 DEFINT A-Z
 '$INCLUDE: 'UGL.BI'
 '$INCLUDE: 'DOS.BI'
@@ -111,6 +119,8 @@ DECLARE SUB CrtcW (idx AS INTEGER, v AS INTEGER)
 DECLARE SUB SlideFrame (px AS INTEGER, f AS INTEGER)
 DECLARE SUB VgaPalCalc (f AS INTEGER)
 DECLARE SUB MouseRead (x AS INTEGER, y AS INTEGER, b AS INTEGER)
+DECLARE FUNCTION ReviveVga% (art() AS INTEGER, msk() AS INTEGER, co AS INTEGER, p1 AS INTEGER, p2 AS INTEGER, p3 AS INTEGER, mvint AS INTEGER, msen AS SINGLE)
+DECLARE SUB CgaRGB (c AS INTEGER, p AS tRGB)
 
 '----- module state for the page-flip viewer (mPal / vbuf in the far heap via REDIM)
 REM $DYNAMIC
@@ -658,6 +668,13 @@ FUNCTION VgaOpen& (pref AS INTEGER, xr AS INTEGER, yr AS INTEGER, np AS INTEGER)
 		VgaOpen& = v
 		EXIT FUNCTION
 	END IF
+	IF pref = 320 THEN
+		'----- in-game overlays (ReviveVga): plain VGA mode 13h only, no VESA,
+		'----- the mode every VGA has -- 0 here means "no VGA at all"
+		xr = 320: yr = 200: np = 1
+		VgaOpen& = uglSetVideoDC(UGL.8BIT, xr, yr, np)
+		EXIT FUNCTION
+	END IF
 	IF pref = 800 THEN
 		xr = 800: yr = 600: np = 1
 		v = uglSetVideoDC(UGL.8BIT, xr, yr, np)
@@ -679,4 +696,221 @@ FUNCTION VgaOpen& (pref AS INTEGER, xr AS INTEGER, yr AS INTEGER, np AS INTEGER)
 	END IF
 	IF v = 0 THEN EXIT FUNCTION
 	VgaOpen& = v
+END FUNCTION
+
+'----- CGA/EGA 16-colour index -> 0-255 RGB (6 = brown, not dark yellow)
+SUB CgaRGB (c AS INTEGER, p AS tRGB)
+	DIM r AS INTEGER, g AS INTEGER, b AS INTEGER, hi AS INTEGER
+	hi = 0
+	IF (c AND 8) THEN hi = &H55
+	r = hi: g = hi: b = hi
+	IF (c AND 4) THEN r = r + &HAA
+	IF (c AND 2) THEN g = g + &HAA
+	IF (c AND 1) THEN b = b + &HAA
+	IF c = 6 THEN g = &H55
+	p.red = CHR$(r): p.green = CHR$(g): p.blue = CHR$(b)
+END SUB
+
+'----- ReviveVga: see the module header. art()/msk() = REVIVE.DAT in QB PUT layout
+'----- (int 0 = width*2 bits, int 1 = height, then byte-aligned 2bpp rows; mask
+'----- pixel 3 = transparent, 0 = opaque). co/p1-p3 = the room's COLOR/PALETTE.
+'----- Palette indices: 0-3 = the room's four CGA colours, 4 = light gray (the
+'----- sprite's attr 1), 5 = blue (attr 2), 6 = brown (attr 3). Returns -1 when
+'----- it showed the message (screen is back in mode 4 with attrs 1-3 black),
+'----- 0 when there is no VGA -- nothing was touched, use the CGA ReviveShow.
+FUNCTION ReviveVga% (art() AS INTEGER, msk() AS INTEGER, co AS INTEGER, p1 AS INTEGER, p2 AS INTEGER, p3 AS INTEGER, mvint AS INTEGER, msen AS SINGLE)
+	DIM v AS LONG, xr AS INTEGER, yr AS INTEGER, np AS INTEGER
+	DIM i AS INTEGER, x AS INTEGER, y AS INTEGER, b AS INTEGER, k AS INTEGER, q AS INTEGER
+	DIM ofs AS INTEGER, w AS INTEGER, h AS INTEGER, cx AS INTEGER, cy AS INTEGER, bpr AS INTEGER
+	DIM sb AS INTEGER, sa AS INTEGER, ma AS INTEGER, px AS INTEGER, hv AS INTEGER
+	DIM lo AS INTEGER, hi AS INTEGER, mb AS INTEGER, sbt AS INTEGER
+	DIM kk AS STRING, rt AS SINGLE, el AS SINGLE
+	DIM cmx AS INTEGER, cmy AS INTEGER, nmx AS INTEGER, nmy AS INTEGER, mbt AS INTEGER, cdrn AS INTEGER
+	DIM cc(0 TO 3) AS INTEGER
+	DIM cbuf(0 TO 47) AS LONG
+	'----- far heap is tight on the 486 (~43 KB free in-game, VGA.LOG): the
+	'----- framebuffer copy is packed two bytes per int (16 KB) and the sprite
+	'----- bytes are split on the fly -- ~18 KB in all
+	REDIM cga(0 TO 8191) AS INTEGER
+	REDIM lut(0 TO 255, 0 TO 1) AS INTEGER
+	REDIM row(0 TO 159) AS INTEGER
+	REDIM pal(0 TO 255) AS tRGB
+	ReviveVga% = 0
+	'----- sprite geometry; bail out on garbage data (CGA version copes)
+	w = art(0) \ 2: h = art(1): bpr = (art(0) + 7) \ 8
+	IF w < 1 OR w > 320 OR h < 1 OR h > 200 THEN EXIT FUNCTION
+	cx = (320 - w) \ 2: cy = (200 - h) \ 2
+	'----- 1. snapshot the CGA framebuffer: both interleaves, the full 16 KB,
+	'----- byte pairs packed little-endian into signed ints
+	DEF SEG = &HB800
+	FOR i = 0 TO 8191
+		hi = PEEK(i * 2 + 1)
+		IF hi > 127 THEN hi = hi - 256
+		cga(i) = PEEK(i * 2) + hi * 256
+	NEXT
+	DEF SEG
+	'----- 2. mode 13h -- or no VGA: leave with nothing changed
+	v = VgaOpen&(320, xr, yr, np)
+	IF v = 0 THEN EXIT FUNCTION
+	uglSetWrkPage 0
+	uglSetVisPage 0
+	'----- 3. palette first (the mode set left VRAM black), so nothing shows in
+	'----- the default VGA colours while the rows go in
+	cc(0) = co AND 15: cc(1) = p1 AND 15: cc(2) = p2 AND 15: cc(3) = p3 AND 15
+	FOR i = 0 TO 255
+		pal(i).red = CHR$(0): pal(i).green = CHR$(0): pal(i).blue = CHR$(0)
+	NEXT
+	FOR i = 0 TO 3
+		CALL CgaRGB(cc(i), pal(i))
+	NEXT
+	CALL CgaRGB(7, pal(4))
+	CALL CgaRGB(1, pal(5))
+	CALL CgaRGB(6, pal(6))
+	uglPalSetBuff 0, 256, pal(0)
+	'----- 4. byte -> 4 pixels lookup: two ints of two 8-bit indices each
+	'----- (little-endian: pixel 0 in the low byte), i.e. the row buffer layout
+	FOR b = 0 TO 255
+		lut(b, 0) = (b \ 64) + ((b \ 16) AND 3) * 256
+		lut(b, 1) = ((b \ 4) AND 3) + (b AND 3) * 256
+	NEXT
+	'----- 5. the screen, one row at a time: CGA row (y\2)*80 in interleave
+	'----- (y AND 1) = 40 packed ints -> 320 indices 0-3; the message row laid
+	'----- over it. QB's \ is signed, so the high byte is split by hand.
+	FOR y = 0 TO 199
+		ofs = (y \ 2) * 40 + (y AND 1) * 4096
+		k = 0
+		FOR x = 0 TO 39
+			hv = cga(ofs + x)
+			lo = hv AND 255
+			hi = (hv AND &H7F00) \ 256
+			IF hv < 0 THEN hi = hi + 128
+			row(k) = lut(lo, 0): row(k + 1) = lut(lo, 1)
+			row(k + 2) = lut(hi, 0): row(k + 3) = lut(hi, 1)
+			k = k + 4
+		NEXT
+		IF y >= cy AND y < cy + h THEN
+			sb = 4 + (y - cy) * bpr
+			FOR x = 0 TO w - 1
+				IF (x AND 3) = 0 THEN
+					'----- next sprite/mask byte (byte q of the PUT array)
+					q = sb + (x \ 4)
+					hv = msk(q \ 2)
+					IF (q AND 1) THEN
+						mb = (hv AND &H7F00) \ 256
+						IF hv < 0 THEN mb = mb + 128
+					ELSE
+						mb = hv AND 255
+					END IF
+					hv = art(q \ 2)
+					IF (q AND 1) THEN
+						sbt = (hv AND &H7F00) \ 256
+						IF hv < 0 THEN sbt = sbt + 128
+					ELSE
+						sbt = hv AND 255
+					END IF
+				END IF
+				ma = lut(mb, (x AND 3) \ 2)
+				IF (x AND 1) THEN ma = ma \ 256 ELSE ma = ma AND 255
+				IF ma = 0 THEN
+					sa = lut(sbt, (x AND 3) \ 2)
+					IF (x AND 1) THEN sa = sa \ 256 ELSE sa = sa AND 255
+					IF sa THEN sa = sa + 3
+					px = cx + x: k = px \ 2
+					IF (px AND 1) THEN row(k) = (row(k) AND 255) OR (sa * 256) ELSE row(k) = (row(k) AND &HFF00) OR sa
+				END IF
+			NEXT
+		END IF
+		uglRowWriteBuff v, 0, y, 320, UGL.BF.8BIT, row(0)
+	NEXT
+	'----- 6. same dismissal contract as the CGA ReviveShow: mashed keys and a
+	'----- held button are not a dismissal; then a fresh key / click, but the
+	'----- message stays up at least a full second
+	DO
+		kk = INKEY$
+	LOOP WHILE kk <> ""
+	cdrn = 0
+	IF msen = 1 THEN
+		DO
+			CALL MouseRead(nmx, nmy, mbt)
+		LOOP WHILE (mbt AND 1) <> 0
+		cmx = nmx \ 2: cmy = nmy
+		IF cmx > 312 THEN cmx = 312
+		IF cmy > 192 THEN cmy = 192
+		GOSUB rvgdraw
+	END IF
+	rt = TIMER
+	rvgwait:
+	kk = INKEY$
+	IF kk <> "" THEN GOTO rvgdone
+	IF msen = 1 THEN
+		GOSUB rvgtrack
+		IF (mbt AND 1) <> 0 THEN GOTO rvgdone
+	END IF
+	GOTO rvgwait
+	rvgdone:
+	DO
+		el = TIMER - rt
+		IF el < 0 THEN el = el + 86400
+		IF el >= 1 THEN EXIT DO
+		IF msen = 1 THEN GOSUB rvgtrack
+	LOOP
+	'----- 7. back to mode 4: attrs 1-3 black BEFORE the framebuffer goes back so
+	'----- the room never flashes in the BIOS default cyan/magenta/white; the
+	'----- caller's rmpal sets the real colours
+	CALL VgaClose
+	PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
+	DEF SEG = &HB800
+	FOR i = 0 TO 8191
+		hv = cga(i)
+		hi = (hv AND &H7F00) \ 256
+		IF hv < 0 THEN hi = hi + 128
+		POKE i * 2, hv AND 255
+		POKE i * 2 + 1, hi
+	NEXT
+	DEF SEG
+	ReviveVga% = -1
+	EXIT FUNCTION
+
+	'----- poll the mouse; move the software cursor when it changed
+	rvgtrack:
+	CALL MouseRead(nmx, nmy, mbt)
+	nmx = nmx \ 2
+	IF nmx > 312 THEN nmx = 312
+	IF nmy > 192 THEN nmy = 192
+	IF nmx <> cmx OR nmy <> cmy THEN GOSUB rvgerase: cmx = nmx: cmy = nmy: GOSUB rvgdraw
+	RETURN
+
+	'----- the game's NW-arrow cursor (brown outline, light gray fill) with a
+	'----- 6x8 save-under read back pixel by pixel
+	rvgdraw:
+	k = 0
+	FOR y = 0 TO 7
+		FOR x = 0 TO 5
+			cbuf(k) = uglPGet(v, cmx + x, cmy + y): k = k + 1
+		NEXT
+	NEXT
+	uglPSet v, cmx, cmy, 6
+	uglPSet v, cmx, cmy + 1, 6: uglPSet v, cmx + 1, cmy + 1, 6
+	uglPSet v, cmx, cmy + 2, 6: uglPSet v, cmx + 2, cmy + 2, 6
+	uglPSet v, cmx, cmy + 3, 6: uglPSet v, cmx + 3, cmy + 3, 6
+	uglPSet v, cmx, cmy + 4, 6: uglPSet v, cmx + 4, cmy + 4, 6
+	uglPSet v, cmx, cmy + 5, 6: uglPSet v, cmx + 2, cmy + 5, 6: uglPSet v, cmx + 3, cmy + 5, 6
+	uglPSet v, cmx, cmy + 6, 6: uglPSet v, cmx + 1, cmy + 6, 6
+	uglPSet v, cmx + 1, cmy + 2, 4
+	uglPSet v, cmx + 1, cmy + 3, 4: uglPSet v, cmx + 2, cmy + 3, 4
+	uglPSet v, cmx + 1, cmy + 4, 4: uglPSet v, cmx + 2, cmy + 4, 4: uglPSet v, cmx + 3, cmy + 4, 4
+	uglPSet v, cmx + 1, cmy + 5, 4
+	cdrn = 1
+	RETURN
+	rvgerase:
+	IF cdrn = 1 THEN
+		k = 0
+		FOR y = 0 TO 7
+			FOR x = 0 TO 5
+				uglPSet v, cmx + x, cmy + y, cbuf(k): k = k + 1
+			NEXT
+		NEXT
+	END IF
+	cdrn = 0
+	RETURN
 END FUNCTION

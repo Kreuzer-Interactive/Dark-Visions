@@ -8,7 +8,7 @@ DECLARE SUB Credits (gd%)
 DECLARE SUB invhi ()
 DECLARE SUB SlotScreen (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, mode AS INTEGER, dead AS INTEGER, act AS INTEGER)
 DECLARE SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS INTEGER, dead AS INTEGER)
-DECLARE SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
+DECLARE SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE, co AS SINGLE, p1 AS SINGLE, p2 AS SINGLE, p3 AS SINGLE)
 DECLARE SUB drawcur ()
 DECLARE SUB erasecur ()
 DECLARE SUB InitVars ()
@@ -2250,7 +2250,7 @@ death:
 	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
 	rvfd = 0
 	CALL LoadFade(co, pa1, pa2, pa3)
-	CALL ReviveShow(mvint, msen)
+	CALL ReviveShow(mvint, msen, co, pa1, pa2, pa3)
 	GOSUB rmpal
 	t0 = TIMER
 	GOTO 14570
@@ -2417,9 +2417,9 @@ SUB Intro
 
 	'----- talk scene
 	17590 KEY OFF
-	PALETTE 1, 12
+	PALETTE 1, 7
 	PALETTE 2, 6
-	PALETTE 3, 8
+	PALETTE 3, 1
 	DEF SEG = &HB800: BLOAD "talk.pic", 0: DEF SEG
 	k$ = INKEY$
 	17640 GOSUB 17850

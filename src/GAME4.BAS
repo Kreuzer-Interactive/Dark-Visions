@@ -27,7 +27,8 @@ DECLARE SUB YNBtn (sel AS INTEGER, dk AS INTEGER)
 DECLARE SUB YNWait (mvint AS INTEGER, msen AS SINGLE, dk AS INTEGER, res AS INTEGER)
 DECLARE SUB SaveGame (slot AS INTEGER)
 DECLARE SUB LoadGame (slot AS INTEGER)
-DECLARE SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
+DECLARE SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE, co AS SINGLE, p1 AS SINGLE, p2 AS SINGLE, p3 AS SINGLE)
+DECLARE FUNCTION ReviveVga% (art() AS INTEGER, msk() AS INTEGER, co AS INTEGER, p1 AS INTEGER, p2 AS INTEGER, p3 AS INTEGER, mvint AS INTEGER, msen AS SINGLE)
 DECLARE SUB SlotScreen (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, mode AS INTEGER, dead AS INTEGER, act AS INTEGER)
 DECLARE FUNCTION slLoc$ (rq AS STRING)
 
@@ -459,9 +460,13 @@ END SUB
 
 '----- ReviveShow: after a revive=1 timer death restores the temp save, show
 '----- the "they're still in there" message sprite (REVIVE.DAT) centered over
-'----- the restored room in a fixed palette, wait for a fresh key or click,
-'----- then put the screen back. The CALLER restores the room palette (rmpal).
-SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
+'----- the restored room, wait for a fresh key or click, then put the screen
+'----- back. The CALLER restores the room palette (rmpal). On a VGA the GAME6
+'----- ReviveVga does the showing in mode 13h (room colours untouched + the
+'----- message in its own light gray / blue / brown); the CGA path below is
+'----- the no-VGA fallback and squeezes everything into one 4-colour palette.
+'----- co/p1-p3 = the room's COLOR/PALETTE (for the VGA path's indices 0-3).
+SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE, co AS SINGLE, p1 AS SINGLE, p2 AS SINGLE, p3 AS SINGLE)
 	DIM mr AS RegType, mo AS RegType
 	DIM i AS INTEGER, n AS INTEGER, cx AS INTEGER, cy AS INTEGER
 	DIM k$
@@ -483,10 +488,15 @@ SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
 		CLOSE #2
 		rvOk = 1
 	END IF
+	'----- VGA: mode 13h overlay, room palette kept; 0 = no VGA, do it in CGA
+	IF ReviveVga%(rvArt(), rvMsk(), CINT(co), CINT(p1), CINT(p2), CINT(p3), mvint, msen) THEN EXIT SUB
 	cx = (320 - rvArt(0) \ 2) \ 2
 	cy = (200 - rvArt(1)) \ 2
-	'----- art palette: dkgray box, blue portrait detail, brown/orange text
-	PALETTE 1, 8: PALETTE 2, 1: PALETTE 3, 6
+	'----- art palette: LIGHT gray box (attr 1 -> 7; the editor maps the PNG's
+	'----- gray to attr 1, which rooms show as dark gray 8), blue portrait
+	'----- detail, brown/orange text. The room behind shifts too while the
+	'----- message is up; the caller's rmpal puts it back on dismiss.
+	PALETTE 1, 7: PALETTE 2, 1: PALETTE 3, 6
 	GET (cx, cy)-(cx + rvArt(0) \ 2 - 1, cy + rvArt(1) - 1), rvu
 	PUT (cx, cy), rvMsk, AND
 	PUT (cx, cy), rvArt, OR
@@ -537,8 +547,8 @@ SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE)
 	IF nmx <> cmx OR nmy <> cmy THEN GOSUB rvcerase: cmx = nmx: cmy = nmy: GOSUB rvcdraw
 	RETURN
 
-	'----- NW-arrow cursor with save-under (brown outline + dkgray fill --
-	'----- the revive palette has no light gray)
+	'----- NW-arrow cursor with save-under (brown outline + attr-1 fill, light
+	'----- gray in the revive palette)
 	rvcdraw:
 	GET (cmx, cmy)-(cmx + 5, cmy + 7), cbuf
 	PSET (cmx, cmy), 3
