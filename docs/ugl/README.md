@@ -196,6 +196,24 @@ sound `snd*` / music `mod*` (SND.BI/MOD.BI, Sound Blaster only, untested here).
   key/click, `VgaClose`, blacks attrs 1-3, POKEs the framebuffer back and lets the caller's `rmpal` light it.
   Far heap: ~18 KB while it runs (framebuffer copy packed two bytes per int, sprite bytes split on the fly, no
   MEM DCs) because the 486 showed only ~43 KB free in-game (VGA.LOG "from bios mode 4").
+* **Intro hall conversation (2026-10-09, `GAME6 IntroTalk%`):** the enter-house scene in mode 13h instead of the CGA
+  walk + TALK.PIC. Same snapshot/row trick on ENTER.PIC (BLOADed behind a black palette by GAME.BAS Intro), Joe's
+  JOEW2 frames walk with the original per-step warble timing, and halfway up each line of `src/INTROTLK.TXT`
+  (`Y|...` / `J|...`, `;` comments, editable without a rebuild) is shown in the black area above the hall as a
+  DrawYNBox-style dialog: DLGCOR corner ornaments, the game's font.txt glyphs, the speaker's 64x64 head on their
+  side of the hall (you left, James right; Joe swaps to the JOED right-facing standing sprite for the talk)
+  (`HEADYOU.PCT` / `HEADJAM.PCT`, made from `src/ART/HeadYou.png` / `HeadJames.png` with
+  `tools/png2pct.ps1 -FlipX` -- both heads are shown mirrored, per the artist, for those sides), typed out
+  letter by letter (`VgaType`: each letter one step of the old warble "voice" plus
+  half a clock tick of silence, ~35 ms, paced by foreground SOUND so it is FPU-free and CPU-independent; a key
+  finishes the line at once), then any key = next line, `s` = skip. Font: font3 (the 10 px room-message face).
+  Palette 0-3 = the hall,
+  4 = light gray (heads, border, text); art maps attrs to indices per piece (`VgaArt`). Shared helpers for this
+  kind of overlay: `CgaSnap` / `CgaLut` / `CgaRows`, `VgaPalSet`, `VgaArt` (any SCREEN 1 PUT array + mask),
+  `VgaText` / `VgaTextW` / `VgaWrap`. The CGA scene moved to `GAME6 IntroWalkCga%` as the no-VGA fallback, which
+  also took GAME.BAS from 3 bytes under its 64K code wall to ~2 KB under. The `[int]` cast in PowerShell rounds
+  to nearest (use `[Math]::Floor`) and `fl` is the Format-List alias -- both bit the .PIC decoders while checking
+  this; the .PCT writer in png2pct.ps1 has the fix.
   ~1 s round trip in DOSBox-X including the mandatory 1 s hold; the room comes back byte-identical. Mode 4 and
   mode 13h share CRTC timing (320x200 @ 70 Hz), so a monitor should not resync on the switch. Returns 0 on a
   no-VGA machine and GAME4 `ReviveShow` falls back to the single-palette CGA version. Verified in DOSBox-X with

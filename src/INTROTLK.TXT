@@ -1,0 +1,14 @@
+; Dark Visions intro: the hall conversation (GAME6 IntroTalk, shown over ENTER.PIC in VGA).
+; One speech per line: "Y|" = you, "J|" = James. Lines starting with ; are ignored.
+; Plain ASCII only (the font has no curly quotes or em dashes); text wraps automatically,
+; up to 6 lines of the big font per speech (about 180 characters).
+Y|Excuse me, sir?
+J|Welcome. How can I be of service?
+Y|I'm looking for my uncle, Dr. Maller. He wrote to me last week asking me to come.
+J|Ah, yes. We've been expecting you. I'm James. Please, come in.
+Y|Thank you. Could I see my uncle?
+J|We're holding a party in his honour this evening. You've arrived just in time.
+Y|He didn't mention a party in his letter.
+J|Then we have a pleasant evening in store for you. Your room is upstairs - the first door on the right. You may change there before joining us.
+Y|Could I speak with him first? I have a few questions about the apprenticeship.
+J|There will be time to speak with him after the party. He's left some papers on your desk for you to read. They should answer a few of your questions in the meantime.

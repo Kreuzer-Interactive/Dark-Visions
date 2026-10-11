@@ -49,6 +49,22 @@
 '-----   pixel-for-pixel in 256-colour mode, draws the masked sprite on top, then
 '-----   mode 4 again and POKEs the snapshot back under a black palette (the
 '-----   caller's rmpal lights it). Returns 0 = no VGA, use the CGA version.
+'-----
+'----- IntroTalk (GAME.BAS Intro, the enter-house scene): the walk up the hall
+'-----   and the James / player conversation in mode 13h, replacing the CGA
+'-----   walk + TALK.PIC. ENTER.PIC (BLOADed by the caller behind a black
+'-----   palette) is snapshotted and redrawn in its own colours plus light gray
+'-----   (index 4); Joe's JOEW2 frames walk with the original timing; halfway
+'-----   up, each line of INTROTLK.TXT ("Y|..." / "J|...") appears in the black
+'-----   area above the hall as a DrawYNBox-style dialog (DLGCOR corners, the
+'-----   game's bitmap font) with the speaker's head (HEADYOU / HEADJAM.PCT,
+'-----   src\ART\Head*.png via tools\png2pct.ps1) on their side, warbled like
+'-----   the old talk scene; any key = next line, 's' = skip the intro. Shared
+'-----   helpers: CgaSnap / CgaLut / CgaRows (B800 snapshot -> mode-13h rows),
+'-----   VgaPalSet, VgaArt (a SCREEN 1 PUT array with an attr -> index map),
+'-----   VgaText / VgaTextW / VgaWrap (font.txt glyphs on a DC), VgaWarble.
+'-----   Returns 0 = not shown (no VGA, or the script / heads missing) so the
+'-----   CGA scene runs, 1 = done, 2 = skipped.
 DEFINT A-Z
 '$INCLUDE: 'UGL.BI'
 '$INCLUDE: 'DOS.BI'
@@ -121,6 +137,21 @@ DECLARE SUB VgaPalCalc (f AS INTEGER)
 DECLARE SUB MouseRead (x AS INTEGER, y AS INTEGER, b AS INTEGER)
 DECLARE FUNCTION ReviveVga% (art() AS INTEGER, msk() AS INTEGER, co AS INTEGER, p1 AS INTEGER, p2 AS INTEGER, p3 AS INTEGER, mvint AS INTEGER, msen AS SINGLE)
 DECLARE SUB CgaRGB (c AS INTEGER, p AS tRGB)
+DECLARE SUB CgaSnap (cga() AS INTEGER)
+DECLARE SUB CgaLut (lut() AS INTEGER)
+DECLARE SUB CgaRows (v AS LONG, cga() AS INTEGER, lut() AS INTEGER, row() AS INTEGER, y0 AS INTEGER, y1 AS INTEGER, x0 AS INTEGER, x1 AS INTEGER)
+DECLARE SUB VgaPalSet (cc() AS INTEGER, n AS INTEGER)
+DECLARE FUNCTION PutByte% (arr() AS INTEGER, q AS INTEGER)
+DECLARE SUB VgaArt (v AS LONG, x0 AS INTEGER, y0 AS INTEGER, art() AS INTEGER, ao AS INTEGER, msk() AS INTEGER, mo AS INTEGER, um AS INTEGER, cmap() AS INTEGER)
+DECLARE SUB VgaText (v AS LONG, x AS INTEGER, y AS INTEGER, s AS STRING, clr AS INTEGER, fd() AS INTEGER)
+DECLARE FUNCTION VgaTextW% (s AS STRING, fd() AS INTEGER)
+DECLARE SUB VgaWrap (v AS LONG, x AS INTEGER, y AS INTEGER, s AS STRING, clr AS INTEGER, maxpx AS INTEGER, lineh AS INTEGER, fd() AS INTEGER)
+DECLARE SUB VgaWrapSplit (s AS STRING, maxpx AS INTEGER, fd() AS INTEGER, lines() AS STRING, n AS INTEGER)
+DECLARE SUB VgaType (v AS LONG, x AS INTEGER, y AS INTEGER, s AS STRING, clr AS INTEGER, maxpx AS INTEGER, lineh AS INTEGER, fd() AS INTEGER, f3 AS SINGLE, k AS STRING)
+DECLARE SUB VgaWarble (f3 AS SINGLE)
+DECLARE SUB VgaMark (v AS LONG, x AS INTEGER, y AS INTEGER, clr AS INTEGER)
+DECLARE FUNCTION IntroTalk% (fd() AS INTEGER, f3 AS SINGLE)
+DECLARE FUNCTION IntroWalkCga% (f3 AS SINGLE)
 
 '----- module state for the page-flip viewer (mPal / vbuf in the far heap via REDIM)
 REM $DYNAMIC
@@ -742,13 +773,7 @@ FUNCTION ReviveVga% (art() AS INTEGER, msk() AS INTEGER, co AS INTEGER, p1 AS IN
 	cx = (320 - w) \ 2: cy = (200 - h) \ 2
 	'----- 1. snapshot the CGA framebuffer: both interleaves, the full 16 KB,
 	'----- byte pairs packed little-endian into signed ints
-	DEF SEG = &HB800
-	FOR i = 0 TO 8191
-		hi = PEEK(i * 2 + 1)
-		IF hi > 127 THEN hi = hi - 256
-		cga(i) = PEEK(i * 2) + hi * 256
-	NEXT
-	DEF SEG
+	CALL CgaSnap(cga())
 	'----- 2. mode 13h -- or no VGA: leave with nothing changed
 	v = VgaOpen&(320, xr, yr, np)
 	IF v = 0 THEN EXIT FUNCTION
@@ -756,23 +781,12 @@ FUNCTION ReviveVga% (art() AS INTEGER, msk() AS INTEGER, co AS INTEGER, p1 AS IN
 	uglSetVisPage 0
 	'----- 3. palette first (the mode set left VRAM black), so nothing shows in
 	'----- the default VGA colours while the rows go in
-	cc(0) = co AND 15: cc(1) = p1 AND 15: cc(2) = p2 AND 15: cc(3) = p3 AND 15
-	FOR i = 0 TO 255
-		pal(i).red = CHR$(0): pal(i).green = CHR$(0): pal(i).blue = CHR$(0)
-	NEXT
-	FOR i = 0 TO 3
-		CALL CgaRGB(cc(i), pal(i))
-	NEXT
-	CALL CgaRGB(7, pal(4))
-	CALL CgaRGB(1, pal(5))
-	CALL CgaRGB(6, pal(6))
-	uglPalSetBuff 0, 256, pal(0)
+	cc(0) = co: cc(1) = p1: cc(2) = p2: cc(3) = p3
+	cc(4) = 7: cc(5) = 1: cc(6) = 6
+	CALL VgaPalSet(cc(), 7)
 	'----- 4. byte -> 4 pixels lookup: two ints of two 8-bit indices each
 	'----- (little-endian: pixel 0 in the low byte), i.e. the row buffer layout
-	FOR b = 0 TO 255
-		lut(b, 0) = (b \ 64) + ((b \ 16) AND 3) * 256
-		lut(b, 1) = ((b \ 4) AND 3) + (b AND 3) * 256
-	NEXT
+	CALL CgaLut(lut())
 	'----- 5. the screen, one row at a time: CGA row (y\2)*80 in interleave
 	'----- (y AND 1) = 40 packed ints -> 320 indices 0-3; the message row laid
 	'----- over it. QB's \ is signed, so the high byte is split by hand.
@@ -913,4 +927,511 @@ FUNCTION ReviveVga% (art() AS INTEGER, msk() AS INTEGER, co AS INTEGER, p1 AS IN
 	END IF
 	cdrn = 0
 	RETURN
+END FUNCTION
+
+'----- CGA framebuffer helpers shared by the mode-13h overlays (ReviveVga,
+'----- IntroTalk). CgaSnap: B800 (both interleaves, 16 KB) into cga() packed
+'----- two bytes per int. CgaLut: byte -> 4 indices table, two ints of two
+'----- 8-bit indices each, pixel 0 in the low byte = the row buffer layout.
+'----- CgaRows: rows y0..y1 of the snapshot rewritten on the video DC over
+'----- the 8-pixel-aligned span covering x0..x1 (also the sprite "erase").
+SUB CgaSnap (cga() AS INTEGER)
+	DIM i AS INTEGER, hi AS INTEGER
+	DEF SEG = &HB800
+	FOR i = 0 TO 8191
+		hi = PEEK(i * 2 + 1)
+		IF hi > 127 THEN hi = hi - 256
+		cga(i) = PEEK(i * 2) + hi * 256
+	NEXT
+	DEF SEG
+END SUB
+
+SUB CgaLut (lut() AS INTEGER)
+	DIM b AS INTEGER
+	FOR b = 0 TO 255
+		lut(b, 0) = (b \ 64) + ((b \ 16) AND 3) * 256
+		lut(b, 1) = ((b \ 4) AND 3) + (b AND 3) * 256
+	NEXT
+END SUB
+
+SUB CgaRows (v AS LONG, cga() AS INTEGER, lut() AS INTEGER, row() AS INTEGER, y0 AS INTEGER, y1 AS INTEGER, x0 AS INTEGER, x1 AS INTEGER)
+	DIM y AS INTEGER, j AS INTEGER, j0 AS INTEGER, j1 AS INTEGER, k AS INTEGER
+	DIM hv AS INTEGER, lo AS INTEGER, hi AS INTEGER, ofs AS INTEGER, xs AS INTEGER, npx AS INTEGER
+	j0 = x0 \ 8: j1 = x1 \ 8
+	IF j0 < 0 THEN j0 = 0
+	IF j1 > 39 THEN j1 = 39
+	xs = j0 * 8: npx = (j1 - j0 + 1) * 8
+	FOR y = y0 TO y1
+		ofs = (y \ 2) * 40 + (y AND 1) * 4096
+		FOR j = j0 TO j1
+			hv = cga(ofs + j)
+			lo = hv AND 255
+			hi = (hv AND &H7F00) \ 256
+			IF hv < 0 THEN hi = hi + 128
+			k = j * 4
+			row(k) = lut(lo, 0): row(k + 1) = lut(lo, 1)
+			row(k + 2) = lut(hi, 0): row(k + 3) = lut(hi, 1)
+		NEXT
+		uglRowWriteBuff v, xs, y, npx, UGL.BF.8BIT, row(j0 * 4)
+	NEXT
+END SUB
+
+'----- VgaPalSet: indices 0..n-1 from CGA colour numbers cc(), the rest black
+SUB VgaPalSet (cc() AS INTEGER, n AS INTEGER)
+	DIM i AS INTEGER, c AS INTEGER
+	REDIM pal(0 TO 255) AS tRGB
+	FOR i = 0 TO 255
+		pal(i).red = CHR$(0): pal(i).green = CHR$(0): pal(i).blue = CHR$(0)
+	NEXT
+	FOR i = 0 TO n - 1
+		c = cc(i) AND 15
+		CALL CgaRGB(c, pal(i))
+	NEXT
+	uglPalSetBuff 0, 256, pal(0)
+END SUB
+
+'----- PutByte: byte q (0-based, header included) of a SCREEN 1 PUT array --
+'----- QB's \ is signed, so the high byte is split by hand
+FUNCTION PutByte% (arr() AS INTEGER, q AS INTEGER)
+	DIM hv AS INTEGER, b AS INTEGER
+	hv = arr(q \ 2)
+	IF (q AND 1) THEN
+		b = (hv AND &H7F00) \ 256
+		IF hv < 0 THEN b = b + 128
+	ELSE
+		b = hv AND 255
+	END IF
+	PutByte% = b
+END FUNCTION
+
+'----- VgaArt: a SCREEN 1 PUT array (2bpp; ints ao.. of art(), and with um <> 0
+'----- ints mo.. of msk() -- mask 0 = opaque, 3 = transparent, the game's PUT
+'----- AND / PUT OR pair) at (x0,y0), attrs mapped to indices through cmap()
+SUB VgaArt (v AS LONG, x0 AS INTEGER, y0 AS INTEGER, art() AS INTEGER, ao AS INTEGER, msk() AS INTEGER, mo AS INTEGER, um AS INTEGER, cmap() AS INTEGER)
+	DIM w AS INTEGER, h AS INTEGER, bpr AS INTEGER, x AS INTEGER, y AS INTEGER
+	DIM q AS INTEGER, sb AS INTEGER, mb AS INTEGER, sa AS INTEGER, ma AS INTEGER, dv AS INTEGER
+	DIM sv(0 TO 3) AS INTEGER
+	sv(0) = 64: sv(1) = 16: sv(2) = 4: sv(3) = 1
+	w = art(ao) \ 2: h = art(ao + 1): bpr = (art(ao) + 7) \ 8
+	mb = 0: sb = 0
+	FOR y = 0 TO h - 1
+		FOR x = 0 TO w - 1
+			IF (x AND 3) = 0 THEN
+				q = 4 + y * bpr + (x \ 4)
+				sb = PutByte%(art(), ao * 2 + q)
+				IF um <> 0 THEN mb = PutByte%(msk(), mo * 2 + q)
+			END IF
+			dv = sv(x AND 3)
+			ma = (mb \ dv) AND 3
+			IF ma = 0 THEN
+				sa = (sb \ dv) AND 3
+				uglPSet v, x0 + x, y0 + y, cmap(sa)
+			END IF
+		NEXT
+	NEXT
+END SUB
+
+'----- VgaText / VgaTextW / VgaWrap: the game's bitmap font (font.txt layout,
+'----- GAME3 drawChar) on a uGL DC. Plain text only (no ~ _ | codes); space =
+'----- 4 px, glyph advance = width + 1; a backslash in VgaWrap forces a line
+'----- break (as in drawWrap).
+SUB VgaText (v AS LONG, x AS INTEGER, y AS INTEGER, s AS STRING, clr AS INTEGER, fd() AS INTEGER)
+	DIM i AS INTEGER, cx AS INTEGER, cc AS INTEGER, w AS INTEGER, hh AS INTEGER, di AS INTEGER
+	DIM r AS INTEGER, c AS INTEGER, pat AS INTEGER, bit AS INTEGER, msb AS INTEGER
+	hh = fd(0): cx = x
+	FOR i = 1 TO LEN(s)
+		cc = ASC(MID$(s, i, 1))
+		IF cc = 32 THEN
+			cx = cx + 4
+		ELSE
+			di = cc * (hh + 1): w = fd(di)
+			IF w > 0 AND w < 16 THEN
+				msb = 1
+				FOR c = 2 TO w
+					msb = msb * 2
+				NEXT
+				FOR r = 0 TO hh - 1
+					pat = fd(di + 1 + r)
+					IF pat <> 0 THEN
+						bit = msb
+						FOR c = 0 TO w - 1
+							IF (pat AND bit) <> 0 THEN uglPSet v, cx + c, y + r, clr
+							bit = bit \ 2
+						NEXT
+					END IF
+				NEXT
+			END IF
+			IF w = 0 THEN w = 3
+			cx = cx + w + 1
+		END IF
+	NEXT
+END SUB
+
+FUNCTION VgaTextW% (s AS STRING, fd() AS INTEGER)
+	DIM i AS INTEGER, cc AS INTEGER, w AS INTEGER, tot AS INTEGER, hh AS INTEGER
+	hh = fd(0): tot = 0
+	FOR i = 1 TO LEN(s)
+		cc = ASC(MID$(s, i, 1))
+		IF cc = 32 THEN
+			tot = tot + 4
+		ELSE
+			w = fd(cc * (hh + 1))
+			IF w = 0 THEN w = 3
+			tot = tot + w + 1
+		END IF
+	NEXT
+	VgaTextW% = tot
+END FUNCTION
+
+'----- VgaWrapSplit: word-wrap s into lines() (at most UBOUND(lines) + 1 of
+'----- them, the rest dropped), n = how many; a backslash forces a break
+SUB VgaWrapSplit (s AS STRING, maxpx AS INTEGER, fd() AS INTEGER, lines() AS STRING, n AS INTEGER)
+	DIM i AS INTEGER, ww AS INTEGER, lw AS INTEGER, mx AS INTEGER
+	DIM ch AS STRING, word AS STRING, ln AS STRING, brc AS STRING
+	n = 0: mx = UBOUND(lines) + 1
+	ln = "": lw = 0: word = "": brc = CHR$(92)
+	FOR i = 1 TO LEN(s) + 1
+		IF i <= LEN(s) THEN ch = MID$(s, i, 1) ELSE ch = " "
+		IF ch = " " OR ch = brc THEN
+			IF LEN(word) > 0 THEN
+				ww = VgaTextW%(word, fd())
+				IF lw = 0 THEN
+					ln = word: lw = ww
+				ELSEIF lw + 4 + ww > maxpx THEN
+					IF n < mx THEN lines(n) = ln: n = n + 1
+					ln = word: lw = ww
+				ELSE
+					ln = ln + " " + word: lw = lw + 4 + ww
+				END IF
+				word = ""
+			END IF
+			IF ch = brc THEN
+				IF n < mx THEN lines(n) = ln: n = n + 1
+				ln = "": lw = 0
+			END IF
+		ELSE
+			word = word + ch
+		END IF
+	NEXT
+	IF LEN(ln) > 0 AND n < mx THEN lines(n) = ln: n = n + 1
+END SUB
+
+SUB VgaWrap (v AS LONG, x AS INTEGER, y AS INTEGER, s AS STRING, clr AS INTEGER, maxpx AS INTEGER, lineh AS INTEGER, fd() AS INTEGER)
+	DIM i AS INTEGER, n AS INTEGER
+	DIM lines(0 TO 7) AS STRING
+	CALL VgaWrapSplit(s, maxpx, fd(), lines(), n)
+	FOR i = 0 TO n - 1
+		CALL VgaText(v, x, y + i * lineh, lines(i), clr, fd())
+	NEXT
+END SUB
+
+'----- VgaType: VgaWrap as a typewriter -- one glyph at a time, each letter a
+'----- step of the intro's warble (SOUND is foreground, so the notes also pace
+'----- it: ~3 short notes + a silent one per letter, FPU-free). A key pressed
+'----- while typing finishes the line at once and comes back in k ("" = none)
+'----- so the caller can treat 's' as the skip.
+SUB VgaType (v AS LONG, x AS INTEGER, y AS INTEGER, s AS STRING, clr AS INTEGER, maxpx AS INTEGER, lineh AS INTEGER, fd() AS INTEGER, f3 AS SINGLE, k AS STRING)
+	DIM i AS INTEGER, j AS INTEGER, n AS INTEGER, cx AS INTEGER, cy AS INTEGER
+	DIM tw AS INTEGER, fast AS INTEGER, ch AS STRING
+	DIM lines(0 TO 7) AS STRING
+	CALL VgaWrapSplit(s, maxpx, fd(), lines(), n)
+	k = "": fast = 0: tw = 50
+	FOR i = 0 TO n - 1
+		cx = x: cy = y + i * lineh
+		FOR j = 1 TO LEN(lines(i))
+			ch = MID$(lines(i), j, 1)
+			CALL VgaText(v, cx, cy, ch, clr, fd())
+			cx = cx + VgaTextW%(ch, fd())
+			IF fast = 0 THEN
+				IF ch <> " " THEN
+					SOUND f3, .05
+					SOUND tw, .05
+					SOUND (450 - tw) / 2, .05
+					tw = tw + 10
+					IF tw > 250 THEN tw = 50
+				END IF
+				'----- the pace: ~27 ms of silence (half a clock tick) per letter
+				'----- on top of the ~8 ms warble step
+				SOUND 32767, .5
+				k = INKEY$
+				IF k <> "" THEN fast = 1
+			END IF
+		NEXT
+	NEXT
+END SUB
+
+'----- VgaWarble: the intro's speech / footstep warble (GAME.BAS 17850)
+SUB VgaWarble (f3 AS SINGLE)
+	DIM tw AS INTEGER
+	FOR tw = 50 TO 250 STEP 10
+		SOUND f3, .05
+		SOUND tw, .05
+		SOUND (450 - tw) / 2, .05
+	NEXT
+END SUB
+
+'----- VgaMark: the "press a key" triangle (4 x 7, pointing right) at (x,y)
+'----- in colour clr; 0 erases it
+SUB VgaMark (v AS LONG, x AS INTEGER, y AS INTEGER, clr AS INTEGER)
+	DIM c AS INTEGER, r AS INTEGER
+	FOR c = 0 TO 3
+		FOR r = c TO 6 - c
+			uglPSet v, x + c, y + r, clr
+		NEXT
+	NEXT
+END SUB
+
+'----- IntroTalk: see the module header. fd() = the game's font.txt glyphs,
+'----- f3 = the warble base tone. Returns 0 = not shown (no VGA, or the
+'----- script / heads missing) so GAME.BAS runs the CGA walk + TALK.PIC;
+'----- 1 = done (mode 4 again, VRAM black -- the title screen BLOADs next);
+'----- 2 = 's' pressed, the intro's skip.
+FUNCTION IntroTalk% (fd() AS INTEGER, f3 AS SINGLE)
+	DIM v AS LONG, xr AS INTEGER, yr AS INTEGER, np AS INTEGER, fh AS INTEGER
+	DIM i AS INTEGER, j AS INTEGER, n AS INTEGER, tc AS INTEGER, fr AS INTEGER, res AS INTEGER
+	DIM ln AS STRING, k AS STRING
+	DIM bx1 AS INTEGER, by1 AS INTEGER, bx2 AS INTEGER, by2 AS INTEGER
+	DIM hx AS INTEGER, tx AS INTEGER, tw AS INTEGER, nw AS INTEGER, mk AS INTEGER
+	DIM rt AS SINGLE, el AS SINGLE
+	DIM cc(0 TO 4) AS INTEGER, cmRoom(0 TO 3) AS INTEGER, cmUI(0 TO 3) AS INTEGER, cmHead(0 TO 3) AS INTEGER
+	DIM spk(0 TO 15) AS STRING, txt(0 TO 15) AS STRING
+	IntroTalk% = 0
+	IF FileExists%("INTROTLK.TXT") = 0 THEN EXIT FUNCTION
+	IF FileExists%("HEADYOU.PCT") = 0 THEN EXIT FUNCTION
+	IF FileExists%("HEADJAM.PCT") = 0 THEN EXIT FUNCTION
+	'----- the script: "Y|text" / "J|text", ";" comments, up to 16 lines
+	n = 0
+	fh = FREEFILE
+	OPEN "INTROTLK.TXT" FOR INPUT AS #fh
+	DO WHILE NOT EOF(fh)
+		LINE INPUT #fh, ln
+		IF LEN(ln) >= 3 AND n < 16 THEN
+			IF LEFT$(ln, 1) <> ";" AND MID$(ln, 2, 1) = "|" THEN
+				spk(n) = UCASE$(LEFT$(ln, 1)): txt(n) = MID$(ln, 3): n = n + 1
+			END IF
+		END IF
+	LOOP
+	CLOSE #fh
+	IF n = 0 THEN EXIT FUNCTION
+	REDIM cga(0 TO 8191) AS INTEGER
+	REDIM lut(0 TO 255, 0 TO 1) AS INTEGER
+	REDIM row(0 TO 159) AS INTEGER
+	REDIM r1(0 TO 125) AS INTEGER, r2(0 TO 125) AS INTEGER
+	REDIM mr1(0 TO 125) AS INTEGER, mr2(0 TO 125) AS INTEGER
+	REDIM jr(0 TO 125) AS INTEGER, mjr(0 TO 125) AS INTEGER
+	REDIM hdY(0 TO 513) AS INTEGER, hdJ(0 TO 513) AS INTEGER
+	REDIM cor(0 TO 63) AS INTEGER
+	REDIM non(0 TO 1) AS INTEGER
+	'----- art: Joe's two walk frames + masks (GAME.BAS 18310's files), the
+	'----- heads, the dialog corner ornaments
+	fh = FREEFILE
+	OPEN "JOEW2.PCT" FOR INPUT AS #fh
+	FOR i = 0 TO 125
+		INPUT #fh, r1(i), r2(i)
+	NEXT
+	CLOSE #fh
+	OPEN "JOEW2.MSK" FOR INPUT AS #fh
+	FOR i = 0 TO 125
+		INPUT #fh, mr1(i), mr2(i)
+	NEXT
+	CLOSE #fh
+	'----- Joe standing, facing right (JOED column 3 of down/up/right/left/
+	'----- dl/dr/ul/ur -- GAME.BAS joeface): he turns to James for the talk
+	OPEN "JOED.PCT" FOR INPUT AS #fh
+	FOR i = 0 TO 125
+		INPUT #fh, t1, t2, jr(i), t4, t5, t6, t7, t8
+	NEXT
+	CLOSE #fh
+	OPEN "JOED.MSK" FOR INPUT AS #fh
+	FOR i = 0 TO 125
+		INPUT #fh, t1, t2, mjr(i), t4, t5, t6, t7, t8
+	NEXT
+	CLOSE #fh
+	OPEN "HEADYOU.PCT" FOR INPUT AS #fh
+	FOR i = 0 TO 513
+		INPUT #fh, hdY(i)
+	NEXT
+	CLOSE #fh
+	OPEN "HEADJAM.PCT" FOR INPUT AS #fh
+	FOR i = 0 TO 513
+		INPUT #fh, hdJ(i)
+	NEXT
+	CLOSE #fh
+	OPEN "DLGCOR.PCT" FOR INPUT AS #fh
+	FOR i = 0 TO 15
+		INPUT #fh, cor(i), cor(16 + i), cor(32 + i), cor(48 + i)
+	NEXT
+	CLOSE #fh
+	'----- the hall: snapshot the CGA BLOAD, then mode 13h (0 = no VGA: nothing
+	'----- has been touched yet, the CGA scene takes over)
+	CALL CgaSnap(cga())
+	v = VgaOpen&(320, xr, yr, np)
+	IF v = 0 THEN EXIT FUNCTION
+	uglSetWrkPage 0
+	uglSetVisPage 0
+	CALL VgaPalBlack
+	'----- palette: 0-3 = the hall (COLOR 0 / PALETTE 8,1,6), 4 = light gray.
+	'----- Art maps: room art as is; UI art (DLGCOR, the save/load palette
+	'----- 1=dkgray 2=ltgray 3=brown); heads 1=ltgray 2=blue 3=brown
+	cc(0) = 0: cc(1) = 8: cc(2) = 1: cc(3) = 6: cc(4) = 7
+	FOR i = 0 TO 3
+		cmRoom(i) = i
+	NEXT
+	cmUI(0) = 0: cmUI(1) = 1: cmUI(2) = 4: cmUI(3) = 3
+	cmHead(0) = 0: cmHead(1) = 4: cmHead(2) = 2: cmHead(3) = 3
+	CALL CgaLut(lut())
+	CALL CgaRows(v, cga(), lut(), row(), 0, 199, 0, 319)
+	CALL VgaPalSet(cc(), 5)
+	'----- the walk, GAME.BAS 18310's timing: frame 1 at tc, frame 2 at tc-2,
+	'----- a warble + two silent SOUNDs per step, the step erased before the
+	'----- next; the conversation when frame 1 stands at 130 (Joe stays up)
+	bx1 = 8: by1 = 4: bx2 = 311: by2 = 95
+	res = 1
+	tc = 150: fr = 1
+	DO
+		IF fr = 1 THEN
+			CALL VgaArt(v, 143, tc, r1(), 0, mr1(), 0, 1, cmRoom())
+		ELSE
+			CALL VgaArt(v, 143, tc, r2(), 0, mr2(), 0, 1, cmRoom())
+		END IF
+		IF INKEY$ = "s" THEN res = 2: EXIT DO
+		CALL VgaWarble(f3)
+		FOR i = 1 TO 2
+			SOUND 32676, .3
+		NEXT
+		IF fr = 1 AND tc = 130 THEN
+			'----- Joe turns to face James (standing, right) for the talk; the
+			'----- erase after the conversation puts the walk frame back
+			CALL CgaRows(v, cga(), lut(), row(), tc, tc + 30, 143, 173)
+			CALL VgaArt(v, 143, tc, jr(), 0, mjr(), 0, 1, cmRoom())
+			FOR i = 0 TO n - 1
+				'----- the box: DrawYNBox's border (dk / black / dk / light,
+				'----- black fill) with the DLGCOR corner ornaments
+				uglRect v, bx1, by1, bx2, by2, 1
+				uglRect v, bx1 + 1, by1 + 1, bx2 - 1, by2 - 1, 0
+				uglRect v, bx1 + 2, by1 + 2, bx2 - 2, by2 - 2, 1
+				uglRect v, bx1 + 3, by1 + 3, bx2 - 3, by2 - 3, 4
+				uglRectF v, bx1 + 4, by1 + 4, bx2 - 4, by2 - 4, 0
+				CALL VgaArt(v, bx1, by2 - 8, cor(), 0, non(), 0, 0, cmUI())
+				CALL VgaArt(v, bx2 - 8, by2 - 8, cor(), 16, non(), 0, 0, cmUI())
+				CALL VgaArt(v, bx1, by1, cor(), 32, non(), 0, 0, cmUI())
+				CALL VgaArt(v, bx2 - 8, by1, cor(), 48, non(), 0, 0, cmUI())
+				'----- the speaker's head on their side of the hall (you come in
+				'----- on the left, James waits on the right), the name under it,
+				'----- the line wrapped beside it
+				IF spk(i) = "J" THEN
+					hx = bx2 - 9 - 63
+					tx = bx1 + 9: tw = hx - 9 - tx
+					CALL VgaArt(v, hx, by1 + 8, hdJ(), 0, non(), 0, 0, cmHead())
+					ln = "James"
+				ELSE
+					hx = bx1 + 9
+					tx = hx + 64 + 9: tw = bx2 - 9 - tx
+					CALL VgaArt(v, hx, by1 + 8, hdY(), 0, non(), 0, 0, cmHead())
+					ln = "You"
+				END IF
+				CALL VgaText(v, hx + 32 - VgaTextW%(ln, fd()) \ 2, by1 + 8 + 64 + 2, ln, 3, fd())
+				'----- the line types itself out, each letter a step of the warble
+				'----- (the old talk scene's voice); a key finishes it at once...
+				DO
+					k = INKEY$
+				LOOP WHILE k <> ""
+				CALL VgaType(v, tx, by1 + 12, txt(i), 4, tw, fd(0) + 2, fd(), f3, k)
+				IF k = "s" THEN res = 2: EXIT FOR
+				k = ""
+				'----- ...then any key = next line, 's' = skip the intro, with the
+				'----- marker blinking in the corner meanwhile
+				mk = 1: CALL VgaMark(v, bx2 - 14, by2 - 14, 3)
+				rt = TIMER
+				DO WHILE k = ""
+					el = TIMER - rt
+					IF el < 0 OR el >= .4 THEN
+						rt = TIMER: mk = 1 - mk
+						CALL VgaMark(v, bx2 - 14, by2 - 14, mk * 3)
+					END IF
+					k = INKEY$
+				LOOP
+				IF k = "s" THEN res = 2: EXIT FOR
+			NEXT
+			'----- the box away (ENTER.PIC is black above the hall)
+			uglRectF v, bx1, by1, bx2, by2, 0
+			IF res = 2 THEN EXIT DO
+		END IF
+		CALL CgaRows(v, cga(), lut(), row(), tc, tc + 30, 143, 173)
+		tc = tc - 2
+		IF fr = 1 THEN fr = 2 ELSE fr = 1
+	LOOP WHILE tc >= 116
+	'----- back to CGA: mode 4, VRAM and attrs black; the title screen (or the
+	'----- skip exit) sets its own palette and BLOADs
+	CALL VgaClose
+	PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
+	IntroTalk% = res
+END FUNCTION
+
+'----- IntroWalkCga: the CGA enter scene, moved here from GAME.BAS (18310 /
+'----- 17590 / 17690) for the 64K code wall; the no-VGA fallback of IntroTalk.
+'----- Joe (JOEW2 frames) walks up the hall with the warble per step; halfway
+'----- up TALK.PIC in its 7/6/1 palette with the warble voice until a key,
+'----- then the screen scrolled away and ENTER.PIC back, then the rest of the
+'----- walk. The caller has ENTER.PIC loaded (any palette); this sets 8/1/6.
+'----- Returns 2 = 's' pressed (skip the intro), else 1.
+FUNCTION IntroWalkCga% (f3 AS SINGLE)
+	DIM tc AS INTEGER, i AS INTEGER, fh AS INTEGER, k AS STRING
+	REDIM r1(0 TO 130) AS INTEGER, r2(0 TO 130) AS INTEGER
+	REDIM mr1(0 TO 130) AS INTEGER, mr2(0 TO 130) AS INTEGER
+	REDIM rbg(0 TO 130) AS INTEGER
+	IntroWalkCga% = 2
+	PALETTE 1, 8: PALETTE 2, 1: PALETTE 3, 6
+	fh = FREEFILE
+	OPEN "joew2.pct" FOR INPUT AS #fh
+	FOR i = 0 TO 125
+		INPUT #fh, r1(i), r2(i)
+	NEXT
+	CLOSE #fh
+	OPEN "joew2.msk" FOR INPUT AS #fh
+	FOR i = 0 TO 125
+		INPUT #fh, mr1(i), mr2(i)
+	NEXT
+	CLOSE #fh
+	tc = 150
+	DO
+		GET (143, tc)-(173, tc + 30), rbg: PUT (143, tc), mr1, AND: PUT (143, tc), r1, OR
+		IF INKEY$ = "s" THEN EXIT FUNCTION
+		CALL VgaWarble(f3)
+		FOR i = 1 TO 2
+			SOUND 32676, .3
+		NEXT
+		PUT (143, tc), rbg, PSET
+		IF tc = 130 THEN
+			FOR i = 1 TO 10000
+			NEXT
+			'----- talk scene
+			PALETTE 1, 7: PALETTE 2, 6: PALETTE 3, 1
+			DEF SEG = &HB800: BLOAD "talk.pic", 0: DEF SEG
+			k = INKEY$
+			DO
+				CALL VgaWarble(f3)
+				SOUND 32576, INT(RND * 9)
+				k = INKEY$
+				IF k = "s" THEN EXIT FUNCTION
+			LOOP WHILE k = ""
+			'----- restore the enter scene: scroll the talk away, reload
+			FOR i = 1 TO 24
+				LOCATE 25, 1
+				PRINT " "
+			NEXT
+			PALETTE 1, 8: PALETTE 2, 1: PALETTE 3, 6
+			DEF SEG = &HB800: BLOAD "enter.pic", 0: DEF SEG
+		END IF
+		tc = tc - 2
+		GET (143, tc)-(173, tc + 30), rbg: PUT (143, tc), mr2, AND: PUT (143, tc), r2, OR
+		IF INKEY$ = "s" THEN EXIT FUNCTION
+		CALL VgaWarble(f3)
+		FOR i = 1 TO 2
+			SOUND 32676, .3
+		NEXT
+		PUT (143, tc), rbg, PSET
+		tc = tc - 2
+	LOOP WHILE tc >= 116
+	IntroWalkCga% = 1
 END FUNCTION

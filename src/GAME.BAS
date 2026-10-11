@@ -9,6 +9,8 @@ DECLARE SUB invhi ()
 DECLARE SUB SlotScreen (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, mode AS INTEGER, dead AS INTEGER, act AS INTEGER)
 DECLARE SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS INTEGER, dead AS INTEGER)
 DECLARE SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE, co AS SINGLE, p1 AS SINGLE, p2 AS SINGLE, p3 AS SINGLE)
+DECLARE FUNCTION IntroTalk% (fontData() AS INTEGER, f3 AS SINGLE)
+DECLARE FUNCTION IntroWalkCga% (f3 AS SINGLE)
 DECLARE SUB drawcur ()
 DECLARE SUB erasecur ()
 DECLARE SUB InitVars ()
@@ -2314,11 +2316,6 @@ SUB Intro
 
 	'----- buffers + load car image
 	DIM ec(1000) AS INTEGER
-	DIM r1(130) AS INTEGER
-	DIM r2(130) AS INTEGER
-	DIM mr1(130) AS INTEGER
-	DIM mr2(130) AS INTEGER
-	DIM rbg(130) AS INTEGER
 	CALL introShowCarr
 	cy = 133
 	GET (8, 133)-(105, 175), ec
@@ -2405,43 +2402,22 @@ SUB Intro
 	'----- (GAME.BAS is at the 64K code wall); returns 1 if the player skipped
 	IF ShowHouse% <> 0 THEN GOTO 18640
 
-	'----- enter house scene
-	PALETTE 1, 8
-	PALETTE 2, 1
-	PALETTE 3, 6
+	'----- enter house scene: ENTER.PIC behind a black palette, then GAME6 --
+	'----- IntroTalk (VGA mode 13h: the walk + the hall conversation; 0 = no
+	'----- VGA / no script) else IntroWalkCga (the CGA walk + TALK.PIC); 2 = 's'
+	PALETTE 1, 0
+	PALETTE 2, 0
+	PALETTE 3, 0
 	KEY OFF
 	DEF SEG = &HB800: BLOAD "enter.pic", 0: DEF SEG
-	GOSUB 18310
+	vr = IntroTalk%(font3Data(), f3)
+	IF vr = 0 THEN vr = IntroWalkCga%(f3)
+	IF vr = 2 THEN GOTO 18640
 	IF it0 >= 0 THEN itt = itt + (TIMER - it0): it0 = -1
 	GOTO 17780
 
-	'----- talk scene
-	17590 KEY OFF
-	PALETTE 1, 7
-	PALETTE 2, 6
-	PALETTE 3, 1
-	DEF SEG = &HB800: BLOAD "talk.pic", 0: DEF SEG
-	k$ = INKEY$
-	17640 GOSUB 17850
-	SOUND 32576, INT(RND * 9)
-	k$ = INKEY$
-	IF k$ = "s" THEN skp = 1: RETURN
-	IF (k$) <> "" THEN GOTO 17690
-	GOTO 17640
-	GOTO 17780
-
-	'----- restore enter scene after talk
-	17690 FOR n = 1 TO 24
-		LOCATE 25, 1
-		PRINT " "
-	NEXT
-	KEY OFF
-	PALETTE 1, 8
-	PALETTE 2, 1
-	PALETTE 3, 6
-	DEF SEG = &HB800: BLOAD "enter.pic", 0: DEF SEG
-	DEF SEG
-	RETURN
+	'----- (the talk scene + the enter-scene restore moved to GAME6
+	'----- IntroWalkCga -- the 64K code wall)
 
 	'----- title screen
 	17780 PALETTE 2, 9
@@ -2512,64 +2488,12 @@ SUB Intro
 	PLAY "o2d4f8e8e-8d8c+8d8o1a2o2d1o0"
 	RETURN
 
-	'----- animate Joe walking + dialogue
-	18310 CLOSE
-	w$ = "joew2"
-	OPEN (w$) + ".pct" FOR INPUT AS #1
-	tc = 0
-	18370 INPUT #1, r1(tc), r2(tc)
-	tc = tc + 1
-	IF tc <= 125 THEN GOTO 18370
-	CLOSE
-	OPEN (w$) + ".msk" FOR INPUT AS #1
-	tc = 0
-	18375 INPUT #1, mr1(tc), mr2(tc)
-	tc = tc + 1
-	IF tc <= 125 THEN GOTO 18375
-	CLOSE
-	wc = wc + 1
-	tc = 150
-	18420 GET (143, tc)-(173, tc + 30), rbg: PUT (143, tc), mr1, AND: PUT (143, tc), r1, OR
-	IF INKEY$ = "s" THEN GOTO 18640
-	IF it0 >= 0 THEN ifc = ifc + 1
-	GOSUB 17850
-
-	FOR n = 1 TO 2
-		SOUND 32676, .3
-	NEXT
-	PUT (143, tc), rbg, PSET
-	IF tc <> 130 THEN GOTO 18530
-
-	FOR n = 1 TO 10000
-	NEXT
-	tf = 0#
-	IF it0 >= 0 THEN itt = itt + (TIMER - it0): it0 = -1: GOSUB introlog
-	GOSUB 17590
-	IF skp = 1 THEN GOTO 18640
-	18530 tf = 1
-	tc = tc - 2
-	GET (143, tc)-(173, tc + 30), rbg: PUT (143, tc), mr2, AND: PUT (143, tc), r2, OR
-	IF INKEY$ = "s" THEN GOTO 18640
-	IF it0 >= 0 THEN ifc = ifc + 1
-	GOSUB 17850
-
-	FOR n = 1 TO 2
-		SOUND 32676, .3
-	NEXT
-	PUT (143, tc), rbg, PSET
-	tc = tc - 2
-	IF tc >= 116 THEN GOTO 18420
-	RETURN
+	'----- (Joe's walk up the hall moved to GAME6 IntroWalkCga / IntroTalk)
 
 	'----- skip / cleanup exit
 	18640 IF it0 >= 0 THEN itt = itt + (TIMER - it0): it0 = -1: GOSUB introlog
 	it0 = -1
 	ERASE ec
-	ERASE r1
-	ERASE r2
-	ERASE mr1
-	ERASE mr2
-	ERASE rbg
 	EXIT SUB
 
 	'----- write intro frame/time log
