@@ -11,6 +11,7 @@ DECLARE SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, a
 DECLARE SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE, co AS SINGLE, p1 AS SINGLE, p2 AS SINGLE, p3 AS SINGLE)
 DECLARE FUNCTION IntroTalk% (fontData() AS INTEGER, f3 AS SINGLE)
 DECLARE FUNCTION IntroWalkCga% (f3 AS SINGLE)
+DECLARE FUNCTION IntroCar3D% (f3 AS SINGLE, nfr AS SINGLE)
 DECLARE SUB drawcur ()
 DECLARE SUB erasecur ()
 DECLARE SUB InitVars ()
@@ -2316,6 +2317,16 @@ SUB Intro
 
 	'----- buffers + load car image
 	DIM ec(1000) AS INTEGER
+	'----- the 3D car (GAME7 IntroCar3D: VGA mode 13h, the textured model of
+	'----- toolsCAR3D.BAS, the same engine sweep). The shadow / anim caches
+	'----- are empty until the first room, so they lend it their heap. 1 = no
+	'----- VGA or no files: the CGA sprite drive below as before; 2 = s pressed
+	ERASE sdwDat, acPct, acMsk
+	vr = IntroCar3D%(f3, ifc)
+	REDIM sdwDat(27000) AS INTEGER
+	REDIM acPct(6, 1600) AS INTEGER, acMsk(6, 1600) AS INTEGER
+	IF vr = 2 THEN GOTO 18640
+	IF vr = 0 THEN PALETTE 1, 2: PALETTE 2, 11: PALETTE 3, 6: GOTO 17185
 	CALL introShowCarr
 	cy = 133
 	GET (8, 133)-(105, 175), ec
@@ -2353,7 +2364,7 @@ SUB Intro
 	17170 tc = tc + 1
 	IF INKEY$ = "s" THEN GOTO 18640
 	17180 IF tc <= 500 THEN GOTO 17170
-	DEF SEG = &HB800: BLOAD "hill.pic", 0: DEF SEG
+	17185 DEF SEG = &HB800: BLOAD "hill.pic", 0: DEF SEG
 	PALETTE 2, 11
 	PALETTE 3, 3
 	KEY OFF
