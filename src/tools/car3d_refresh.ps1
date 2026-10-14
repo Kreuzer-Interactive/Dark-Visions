@@ -5,6 +5,7 @@
 #   powershell -ExecutionPolicy Bypass -File src\tools\car3d_refresh.ps1
 #   ... -Texture Texture3.png      another texture file (default Texture2.png)
 #   ... -Lit                       8 lighting bands instead of unlit (for grey-shaded textures)
+#   ... -Scale 1                   the car as modelled (default 1.15: 15% bigger in place)
 #   ... -Seconds 120               how long the window runs (default 300; ESC quits early)
 #   ... -NoLaunch / -No486         skip the window / skip the 486
 #
@@ -13,6 +14,7 @@
 param(
     [string]$Texture = "Texture2.png",
     [string]$Backdrop = "carr_road2.png",   # painted 320x200 backdrop in src\ART\Car3d; "" or a missing file = the carr.pic composition
+    [double]$Scale = 1.15,                 # the car's size in place (converter -Scale); 1 = as modelled
     [switch]$Lit,
     [int]$Seconds = 300,
     [switch]$NoLaunch,
@@ -23,7 +25,7 @@ $tools = $PSScriptRoot
 $src = (Resolve-Path "$tools\..").Path
 
 # 1. convert (the converter picks the newest .3ds in src\ART\Car3d and says which)
-$cnv = @{ Texture = $Texture }
+$cnv = @{ Texture = $Texture; Scale = $Scale }
 if (-not $Lit) { $cnv.Unlit = $true }
 if ($Backdrop -and (Test-Path "$src\ART\Car3d\$Backdrop")) { $cnv.Backdrop = $Backdrop }
 & "$tools\car3dcnv.ps1" @cnv | Where-Object { $_ -match 'model:|dropped|MDL|BMP' }

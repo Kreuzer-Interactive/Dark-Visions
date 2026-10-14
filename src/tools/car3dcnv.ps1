@@ -20,6 +20,7 @@ param(
   [switch]$FlipU,     # mirror the texture left-right (u -> 1-u) if the unwrap was made that way
   [switch]$FlipV,     # do NOT flip v: the default turns 3DS's bottom-up v into top-down rows
   [switch]$Unlit,     # lighting painted into the texture: up to 239 colours, no shade bands, renderer skips lighting
+  [double]$Scale = 1.0,  # the car's size in place, about its wheel line: 1.15 = 15% bigger, same road position
   [switch]$KeepHidden # keep faces whose UV area is entirely transparent (they are dropped by default)
 )
 $ErrorActionPreference = 'Stop'
@@ -79,6 +80,9 @@ $cx=(($vx|Measure -Min).Minimum+($vx|Measure -Max).Maximum)/2
 $cy=(($vy|Measure -Min).Minimum+($vy|Measure -Max).Maximum)/2
 $cz=(($vz|Measure -Min).Minimum+($vz|Measure -Max).Maximum)/2
 for($i=0;$i -lt $nv;$i++){ $vx[$i]-=$cx; $vy[$i]-=$cy; $vz[$i]-=$cz }
+# -Scale: bigger or smaller in place -- about the wheel line (min y), so the car keeps
+# standing on the road at the same path height
+if($Scale -ne 1){ $ymin=($vy|Measure -Min).Minimum; for($i=0;$i -lt $nv;$i++){ $vx[$i]=$vx[$i]*$Scale; $vz[$i]=$vz[$i]*$Scale; $vy[$i]=$ymin+($vy[$i]-$ymin)*$Scale } }
 $fa=$FA.ToArray(); $fb=$FB.ToArray(); $fc=$FC.ToArray()
 # normals; flip the winding if most of them point inward
 function Norm($i){

@@ -25,8 +25,9 @@
 '----- sprite drive as before. Nothing is allocated once C3dPoint has taken
 '----- the buffers' addresses (the far heap may move arrays).
 '-----
-'----- Timing: one path step (of 200 along the road) per 70 Hz retrace, two
-'----- when a frame took two. The clock is the engine sound itself: QB's
+'----- Timing: SPD tenths of a path step (of 200 along the road) per 70 Hz
+'----- retrace, twice that when a frame took two. The clock is the engine
+'----- sound itself: QB's
 '----- background music runs PIT channel 0 at 582.6 Hz (reload 2048) while
 '----- notes play and every SOUND x,.06 lasts exactly one of those ticks, so
 '----- the notes consumed from the queue (PLAY(0)) measure time to 1.7 ms;
@@ -84,11 +85,15 @@ DECLARE SUB VgaClose ()
 DECLARE SUB VgaSync ()
 DECLARE FUNCTION FileExists% (fil AS STRING)
 
-'----- the work buffer (the car's screen box is at most 109x57, plus the
-'----- join with the previous frame's box) and the backdrop strip's first row
-CONST WKW = 136
-CONST WKH = 72
+'----- the work buffer (the car's screen box is at most about 126x66 at the
+'----- converter's 1.15 scale, plus the join with the previous frame's box)
+'----- and the backdrop strip's first row
+CONST WKW = 152
+CONST WKH = 80
 CONST BGY0 = 96
+'----- the pace: tenths of a path step per 70 Hz retrace (10 = one step per
+'----- retrace, the 2026-10-13 pace, 3.0 s for the drive; 13 = 30% faster)
+CONST SPD = 13
 '----- the drive (x16 units): the world line of tools\CAR3D.BAS, from screen
 '----- (77,154) at depth 420 to depth 740 under the sprite's last x; the car
 '----- heads along it (yaw = 90 deg - ATN(PDZ/PDX)), away from the camera
@@ -157,14 +162,14 @@ FUNCTION IntroCar3D% (f3 AS SINGLE, nfr AS SINGLE)
 	fre1 = FRE(-1)
 	CALL C3dLoadBackdrop
 	'----- the original: carr.pic black for a second, then the reveal with the
-	'----- car at its start, two silent ticks, and off
+	'----- car at its start; it drives from the first visible frame on (the
+	'----- original's two silent ticks before the first step are gone)
 	ox2 = -1
-	ts = -5
+	ts = -50
 	CALL C3dPath(ts, px, py, pz)
 	CALL C3dDraw(px, py, pz)
 	IF C3dHold%(1!) THEN res = 2: GOTO c3dout
 	CALL C3dPal(16)
-	IF C3dHold%(.11) THEN res = 2: GOTO c3dout
 	'----- the drive, the engine sweep queued ahead in the background
 	PLAY "MB"
 	qt = 0: cl = 0: tc = 50: frames = 0: mxdu = 0: mndu = 999
@@ -184,20 +189,20 @@ FUNCTION IntroCar3D% (f3 AS SINGLE, nfr AS SINGLE)
 		nfr = nfr + 1
 		frames = frames + 1
 		'----- notes played since the last frame (1.717 ms each) -> retraces
-		'----- (8.313 notes) -> path steps
+		'----- (8.313 notes) -> SPD tenths of a path step each
 		cons = qt - PLAY(0)
 		du = cons - cl: cl = cons
 		stp = (du * 1000 + 4157) \ 8313
 		IF stp < 1 THEN stp = 1
 		IF stp > 4 THEN stp = 4
-		ts = ts + stp
+		ts = ts + stp * SPD
 		IF dbg THEN
 			IF frames > 1 THEN
 				IF du > mxdu THEN mxdu = du
 				IF du < mndu THEN mndu = du
 			END IF
 		END IF
-	LOOP UNTIL ts > 205
+	LOOP UNTIL ts > 2050
 	tk1 = C3dTicks&
 	'----- the cut, with the car still rolling: black in the next blank while
 	'----- the engine's last queued notes play out (the original cut to
@@ -214,7 +219,7 @@ FUNCTION IntroCar3D% (f3 AS SINGLE, nfr AS SINGLE)
 		OPEN "C3D.LOG" FOR APPEND AS #fh
 		PRINT #fh, "--- " + DATE$ + " " + TIME$ + " IntroCar3D: heap before"; fre0; " needed"; need; " after"; fre1; " strings"; FRE("")
 		PRINT #fh, "tex"; texW; "x"; bands; " verts"; nv; " faces"; nf; " frames"; frames; " ticks"; tk1 - tk0; " notes played"; cons; " per frame min"; mndu; " max"; mxdu
-		PRINT #fh, "steps/s"; INT(210 * 18.2 / ((tk1 - tk0) + .001)); " (70 = one per retrace)  res"; res
+		PRINT #fh, "steps/s"; INT(2100 * 18.2 / ((tk1 - tk0) + .001)) / 10; " (SPD"; SPD; "= "; 7 * SPD; ")  res"; res
 		CLOSE #fh
 	END IF
 c3dout:
@@ -456,11 +461,12 @@ SUB C3dPoint
 	prq(10) = nv
 END SUB
 
-'----- C3dPath: world position (x16 units) at step ts of 200 along the drive
+'----- C3dPath: world position (x16 units) at ts tenths of a step (of 200)
+'----- along the drive
 SUB C3dPath (ts AS INTEGER, px AS LONG, py AS LONG, pz AS LONG)
-	px = PX0 + (CLNG(ts) * PDX) \ 200
-	py = PY0 + (CLNG(ts) * PDY) \ 200
-	pz = PZ0 + (CLNG(ts) * PDZ) \ 200
+	px = PX0 + (CLNG(ts) * PDX) \ 2000
+	py = PY0 + (CLNG(ts) * PDY) \ 2000
+	pz = PZ0 + (CLNG(ts) * PDZ) \ 2000
 END SUB
 
 '----- C3dDraw: C3DPRJ projects the model at (px,py,pz) and gives its screen
