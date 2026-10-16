@@ -429,3 +429,124 @@ $srcDir = "$PSScriptRoot\.."
 [System.IO.File]::WriteAllBytes("$srcDir\C3DPRJ.OVL", $prj)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DTEST.OVL", $tst)
 Write-Host "C3DTRI.OVL $($tri.Length) bytes; C3DPRJ.OVL $($prj.Length) bytes; C3DEDGE.OVL $($edge.Length) bytes; C3DBLTM.OVL $($bltm.Length) bytes; C3DTEST.OVL $($tst.Length) bytes"
+
+# =============================================================================
+# C3DROT: CALL ABSOLUTE(BYVAL seg, BYVAL off, SADD(rot$))  RETF 4  -- block of 24 words:
+#   0/1 mx seg/off  2/3 my  4/5 mz  (the model, x16)   6/7 rx  8/9 ry  10/11 rz (out)
+#   12 nv  13 cs  14 sn (the heading, x256)  15/16 fa seg/off (5-word records)
+#   17/18 ord seg/off (out)  19 nf  20/21 lnk seg/off (nf words scratch)
+#   22/23 bkt seg/off (256 words scratch)  24 cp  25 sp (the pitch, x256: 256/0 = none)
+#   The pitch first, about the model's x axis (its front is +z, so sp > 0 lifts the nose):
+#   y' = (y*cp + z*sp) >> 8, z' = (z*cp - y*sp) >> 8; then the heading: rx = (x*cs + z'*sn)
+#   >> 8, rz = (z'*cs - x*sn) >> 8, ry = y'; then the faces bucket-sorted far-to-near by
+#   (rz[a]+rz[b]+rz[c]+4096) >> 5 into ord. Shifts floor (QB's \ truncates): a 1/16-unit
+#   difference on negative values.
+#   About 1.4 ms on a 486SX for 483 vertices / 229 faces, so the car can turn every frame.
+# =============================================================================
+function QR($k) { return -96 + 2 * $k }
+$script:a = [Asm]::new()
+E @(0x55); E @(0x8B, 0xEC); E @(0x81, 0xEC, 0x60, 0x00); E @(0x1E, 0x56, 0x57, 0x06, 0x53)   # push bp; mov bp,sp; sub sp,96; push ds,si,di,es,bx
+MovDsM 8; MovRM 'si' 6; E @(0x8C, 0xD0); E @(0x8E, 0xC0); LeaDI (QR 0); E @(0xB9, 0x1A, 0x00); E @(0xF3, 0xA5)   # block (26 words) -> locals
+# ---- rotate: the pitch (about the model's x axis), then the heading ----
+MovMI -4 0
+Lbl 'rloop'
+MovRM 'ax' -4; CmpRM 'ax' (QR 12); Jn @(0x0F, 0x8D) 'rdone'
+E @(0xD1, 0xE0); MovMR -6 'ax'                                                         # i*2
+MovDsM (QR 0); MovRM 'si' -6; AddRM 'si' (QR 1); E @(0x66, 0x0F, 0xBF, 0x04); Mov32MR -12 'ax'   # x
+MovDsM (QR 2); MovRM 'si' -6; AddRM 'si' (QR 3); E @(0x66, 0x0F, 0xBF, 0x04); Mov32MR -20 'ax'   # y
+MovDsM (QR 4); MovRM 'si' -6; AddRM 'si' (QR 5); E @(0x66, 0x0F, 0xBF, 0x0C); Mov32MR -16 'cx'   # z
+Movsx32RM 'dx' (QR 24); E @(0x66, 0x0F, 0xAF, 0xC2)                                    # eax = y*cp
+Movsx32RM 'dx' (QR 25); E @(0x66, 0x0F, 0xAF, 0xCA)                                    # ecx = z*sp
+E @(0x66, 0x03, 0xC1); E @(0x66, 0xC1, 0xF8, 0x08)                                     # y' = (y*cp + z*sp) >> 8
+MovDsM (QR 8); MovRM 'si' -6; AddRM 'si' (QR 9); E @(0x89, 0x04)                       # ry[i] = y'
+Mov32RM 'ax' -16; Movsx32RM 'dx' (QR 24); E @(0x66, 0x0F, 0xAF, 0xC2)                  # eax = z*cp
+Mov32RM 'cx' -20; Movsx32RM 'dx' (QR 25); E @(0x66, 0x0F, 0xAF, 0xCA)                  # ecx = y*sp
+E @(0x66, 0x2B, 0xC1); E @(0x66, 0xC1, 0xF8, 0x08); Mov32MR -16 'ax'                   # z' = (z*cp - y*sp) >> 8
+Mov32RM 'ax' -12; Movsx32RM 'dx' (QR 13); E @(0x66, 0x0F, 0xAF, 0xC2)                  # eax = x*cs
+Mov32RM 'cx' -16; Movsx32RM 'dx' (QR 14); E @(0x66, 0x0F, 0xAF, 0xCA)                  # ecx = z'*sn
+E @(0x66, 0x03, 0xC1); E @(0x66, 0xC1, 0xF8, 0x08)                                     # >> 8
+MovDsM (QR 6); MovRM 'si' -6; AddRM 'si' (QR 7); E @(0x89, 0x04)                       # rx[i]
+Mov32RM 'ax' -16; Movsx32RM 'dx' (QR 13); E @(0x66, 0x0F, 0xAF, 0xC2)                  # eax = z'*cs
+Mov32RM 'cx' -12; Movsx32RM 'dx' (QR 14); E @(0x66, 0x0F, 0xAF, 0xCA)                  # ecx = x*sn
+E @(0x66, 0x2B, 0xC1); E @(0x66, 0xC1, 0xF8, 0x08)
+MovDsM (QR 10); MovRM 'si' -6; AddRM 'si' (QR 11); E @(0x89, 0x04)                     # rz[i]
+IncM -4; JmpN 'rloop'
+Lbl 'rdone'
+# ---- bucket the faces by depth ----
+MovEsM (QR 22); MovRM 'di' (QR 23); E @(0xB9, 0x00, 0x01); E @(0xB8, 0xFF, 0xFF); E @(0xF3, 0xAB)   # bkt[] = -1
+MovMI -4 0
+Lbl 'floop'
+MovRM 'ax' -4; CmpRM 'ax' (QR 19); Jn @(0x0F, 0x8D) 'fdone'
+E @(0x8B, 0xC8); E @(0xC1, 0xE0, 0x03); E @(0x03, 0xC1); E @(0x03, 0xC1); MovMR -6 'ax'   # f*10
+MovDsM (QR 15); MovRM 'si' -6; AddRM 'si' (QR 16)                                      # ds:si -> fa[f]
+MovEsM (QR 10)                                                                         # es = rz
+E @(0x8B, 0x1C); E @(0xD1, 0xE3); AddRM 'bx' (QR 11); E @(0x26, 0x8B, 0x17)            # dx = rz[a]
+E @(0x8B, 0x5C, 0x02); E @(0xD1, 0xE3); AddRM 'bx' (QR 11); E @(0x26, 0x03, 0x17)      # + rz[b]
+E @(0x8B, 0x5C, 0x04); E @(0xD1, 0xE3); AddRM 'bx' (QR 11); E @(0x26, 0x03, 0x17)      # + rz[c]
+E @(0x81, 0xC2, 0x00, 0x10); E @(0xC1, 0xFA, 0x05)                                     # (+4096) >> 5
+E @(0x83, 0xFA, 0x00); Jr 0x7D 'c1'; E @(0x33, 0xD2); Lbl 'c1'                          # clamp 0
+E @(0x81, 0xFA, 0xFF, 0x00); Jr 0x7E 'c2'; E @(0xBA, 0xFF, 0x00); Lbl 'c2'              # clamp 255
+E @(0xD1, 0xE2)
+MovEsM (QR 22); E @(0x8B, 0xDA); AddRM 'bx' (QR 23)                                    # es:bx -> bkt[d]
+E @(0x26, 0x8B, 0x07); MovRM 'cx' -4; E @(0x26, 0x89, 0x0F)                            # ax = bkt[d]; bkt[d] = f
+MovEsM (QR 20); MovRM 'bx' -4; E @(0xD1, 0xE3); AddRM 'bx' (QR 21); E @(0x26, 0x89, 0x07)   # lnk[f] = ax
+IncM -4; JmpN 'floop'
+Lbl 'fdone'
+# ---- gather far-to-near ----
+MovMI -8 0; MovMI -4 255
+Lbl 'gloop'
+MovEsM (QR 22); MovRM 'bx' -4; E @(0xD1, 0xE3); AddRM 'bx' (QR 23); E @(0x26, 0x8B, 0x07)   # ax = bkt[bk]
+Lbl 'wloop'
+E @(0x85, 0xC0); Jr 0x78 'wdone'
+MovEsM (QR 17); MovRM 'bx' -8; E @(0xD1, 0xE3); AddRM 'bx' (QR 18); E @(0x26, 0x89, 0x07); IncM -8   # ord[n++] = f
+MovEsM (QR 20); E @(0x8B, 0xD8); E @(0xD1, 0xE3); AddRM 'bx' (QR 21); E @(0x26, 0x8B, 0x07)          # ax = lnk[f]
+Jr 0xEB 'wloop'
+Lbl 'wdone'
+E @(0xFF, 0x4E, (D8 -4)); Jn @(0x0F, 0x89) 'gloop'                                     # dec bk; jns
+E @(0x5B, 0x07, 0x5F, 0x5E, 0x1F); E @(0x8B, 0xE5); E @(0x5D); E @(0xCA, 0x04, 0x00)
+$rot = $script:a.Resolve()
+
+# =============================================================================
+# C3DBLTF: CALL ABSOLUTE(BYVAL sseg, BYVAL soff, BYVAL dseg, BYVAL doff, BYVAL fseg, BYVAL foff,
+#                        BYVAL rows, BYVAL rbytes, BYVAL sstride, BYVAL dstride, BYVAL fstride,
+#                        BYVAL colour, SADD(bltf$))  RETF 24
+#   C3DBLTM with a foreground layer: the same rectangle of the backdrop strip (fseg:foff,
+#   stride fstride) is read alongside; where the strip byte has bit 7 set (a pixel the
+#   artist marked "in front", carr_road2_front.png) that byte goes out instead of the work
+#   buffer's, so the car passes behind it. The palette mirrors 0..15 at 128..143, so the
+#   flagged value shows as the same colour. 254 -> colour as before.
+#   [bp+6]=colour [bp+8]=fstride [bp+10]=dstride [bp+12]=sstride [bp+14]=rbytes [bp+16]=rows
+#   [bp+18]=foff [bp+20]=fseg [bp+22]=doff [bp+24]=dseg [bp+26]=soff [bp+28]=sseg
+# =============================================================================
+$script:a = [Asm]::new()
+E @(0x55); E @(0x8B, 0xEC); E @(0x1E, 0x56, 0x57, 0x06, 0x53); E @(0x0F, 0xA0)         # push ds,si,di,es,bx,fs
+MovDsM 28; MovRM 'si' 26; MovEsM 24; MovRM 'di' 22
+E @(0x8E, 0x66, 0x14); MovRM 'bx' 18                                                   # fs = fseg; bx = foff
+Lbl 'frow'
+MovRM 'cx' 14; E @(0xD1, 0xE9); Jr 0xE3 'fodd'
+Lbl 'fw'
+E @(0xAD); E @(0x64, 0x8B, 0x17); E @(0x83, 0xC3, 0x02)                                # lodsw; dx = fs:[bx]; bx += 2
+E @(0xF6, 0xC2, 0x80); Jr 0x74 'n1'; E @(0x8A, 0xC2); Jr 0xEB 'm1'                     # al: flagged -> strip byte
+Lbl 'n1'; E @(0x3C, 0xFE); Jr 0x75 'm1'; E @(0x8A, 0x46, 0x06)                          #     254 -> colour
+Lbl 'm1'
+E @(0xF6, 0xC6, 0x80); Jr 0x74 'n2'; E @(0x8A, 0xE6); Jr 0xEB 'm2'                     # ah
+Lbl 'n2'; E @(0x80, 0xFC, 0xFE); Jr 0x75 'm2'; E @(0x8A, 0x66, 0x06)
+Lbl 'm2'
+E @(0xAB); Jr 0xE2 'fw'                                                                # stosw; loop
+Lbl 'fodd'
+E @(0xF7, 0x46, 0x0E, 0x01, 0x00); Jr 0x74 'fadv'
+E @(0xAC); E @(0x64, 0x8A, 0x17); E @(0x43)                                            # lodsb; dl = fs:[bx]; inc bx
+E @(0xF6, 0xC2, 0x80); Jr 0x74 'n3'; E @(0x8A, 0xC2); Jr 0xEB 'm3'
+Lbl 'n3'; E @(0x3C, 0xFE); Jr 0x75 'm3'; E @(0x8A, 0x46, 0x06)
+Lbl 'm3'; E @(0xAA)
+Lbl 'fadv'
+MovRM 'ax' 12; SubRM 'ax' 14; E @(0x03, 0xF0)                                          # si += sstride - rbytes
+MovRM 'ax' 10; SubRM 'ax' 14; E @(0x03, 0xF8)                                          # di += dstride - rbytes
+MovRM 'ax' 8; SubRM 'ax' 14; E @(0x03, 0xD8)                                           # bx += fstride - rbytes
+E @(0xFF, 0x4E, 0x10); Jn @(0x0F, 0x85) 'frow'                                         # dec rows; jnz
+E @(0x0F, 0xA1); E @(0x5B, 0x07, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x18, 0x00)
+$bltf = $script:a.Resolve()
+
+[System.IO.File]::WriteAllBytes("$srcDir\C3DROT.OVL", $rot)
+[System.IO.File]::WriteAllBytes("$srcDir\C3DBLTF.OVL", $bltf)
+Write-Host "C3DROT.OVL $($rot.Length) bytes; C3DBLTF.OVL $($bltf.Length) bytes"

@@ -21,8 +21,11 @@ DIM SHARED tx(0 TO 2063) AS INTEGER
 DIM SHARED sx(0 TO 7) AS INTEGER, sy(0 TO 7) AS INTEGER, tu(0 TO 7) AS INTEGER, tv(0 TO 7) AS INTEGER
 DIM SHARED fa(0 TO 3) AS Fac, bd(0 TO 3) AS INTEGER, ord(0 TO 3) AS INTEGER, bt(0 TO 7) AS INTEGER
 DIM SHARED rx(0 TO 7) AS INTEGER, ry(0 TO 7) AS INTEGER, rz(0 TO 7) AS INTEGER
+DIM SHARED mx(0 TO 7) AS INTEGER, my(0 TO 7) AS INTEGER, mz(0 TO 7) AS INTEGER
+DIM SHARED lnk(0 TO 3) AS INTEGER, bkt(0 TO 255) AS INTEGER, eord(0 TO 3) AS INTEGER, dd(0 TO 3) AS INTEGER
+DIM SHARED prr(0 TO 25) AS INTEGER
 '$STATIC
-DIM tst AS STRING, tri AS STRING, prj AS STRING
+DIM tst AS STRING, tri AS STRING, prj AS STRING, rot AS STRING, bltf AS STRING
 DIM fh AS INTEGER, i AS INTEGER, x AS INTEGER, y AS INTEGER, s AS STRING, v AS INTEGER
 DIM tseg AS INTEGER, tp AS INTEGER, pad AS INTEGER, wseg AS INTEGER, woff AS INTEGER
 DIM t1 AS LONG, t2 AS LONG, t4 AS LONG
@@ -33,6 +36,8 @@ DIM px AS LONG, py AS LONG, pz AS LONG, zz AS LONG, ex AS INTEGER, ey AS INTEGER
 	CALL LoadOvl("C3DTEST.OVL", tst)
 	CALL LoadOvl("C3DTRI.OVL", tri)
 	CALL LoadOvl("C3DPRJ.OVL", prj)
+	CALL LoadOvl("C3DROT.OVL", rot)
+	CALL LoadOvl("C3DBLTF.OVL", bltf)
 	PRINT #fh, "ovl sizes:"; LEN(tst); LEN(tri); LEN(prj)
 
 	'----- 1. encodings: a=300 b=-7 c=25 d=13
@@ -129,6 +134,70 @@ DIM px AS LONG, py AS LONG, pz AS LONG, zz AS LONG, ex AS INTEGER, ey AS INTEGER
 		IF ex <> sx(i) OR ey <> sy(i) THEN bad = bad + 1
 	NEXT
 	PRINT #fh, "prj: mismatches"; bad; " bbox"; prm(17); prm(18); prm(19); prm(20)
+	'----- 4. rotation + depth sort (C3DROT) against the QB formulas
+	FOR i = 0 TO 7: mx(i) = i * 300 - 1000: my(i) = 500 - i * 150: mz(i) = i * 200 - 300: NEXT
+	fa(0).a = 0: fa(0).b = 1: fa(0).c = 2: fa(0).d = -1: fa(0).ci = 0
+	fa(1).a = 1: fa(1).b = 3: fa(1).c = 2: fa(1).d = -1: fa(1).ci = 0
+	fa(2).a = 4: fa(2).b = 5: fa(2).c = 6: fa(2).d = -1: fa(2).ci = 0
+	fa(3).a = 7: fa(3).b = 6: fa(3).c = 5: fa(3).d = -1: fa(3).ci = 0
+	prr(0) = VARSEG(mx(0)): prr(1) = VARPTR(mx(0)): prr(2) = VARSEG(my(0)): prr(3) = VARPTR(my(0))
+	prr(4) = VARSEG(mz(0)): prr(5) = VARPTR(mz(0)): prr(6) = VARSEG(rx(0)): prr(7) = VARPTR(rx(0))
+	prr(8) = VARSEG(ry(0)): prr(9) = VARPTR(ry(0)): prr(10) = VARSEG(rz(0)): prr(11) = VARPTR(rz(0))
+	prr(12) = 8: prr(13) = 148: prr(14) = 209
+	prr(15) = VARSEG(fa(0)): prr(16) = VARPTR(fa(0)): prr(17) = VARSEG(ord(0)): prr(18) = VARPTR(ord(0))
+	prr(19) = 4: prr(20) = VARSEG(lnk(0)): prr(21) = VARPTR(lnk(0)): prr(22) = VARSEG(bkt(0)): prr(23) = VARPTR(bkt(0))
+	prr(24) = 256: prr(25) = 0
+	FOR i = 0 TO 3: ord(i) = -7: NEXT
+	DEF SEG = VARSEG(rot)
+	CALL ABSOLUTE(BYVAL VARSEG(prr(0)), BYVAL VARPTR(prr(0)), SADD(rot))
+	DEF SEG
+	bad = 0
+	FOR i = 0 TO 7
+		t1 = CLNG(mx(i)) * 148 + CLNG(mz(i)) * 209: ex = t1 \ 256: IF t1 < 0 AND (t1 MOD 256) <> 0 THEN ex = ex - 1
+		t2 = CLNG(mz(i)) * 148 - CLNG(mx(i)) * 209: ey = t2 \ 256: IF t2 < 0 AND (t2 MOD 256) <> 0 THEN ey = ey - 1
+		IF rx(i) <> ex OR rz(i) <> ey OR ry(i) <> my(i) THEN bad = bad + 1
+		PRINT #fh, "rot v"; i; " asm"; rx(i); ry(i); rz(i); " qb"; ex; my(i); ey
+	NEXT
+	FOR i = 0 TO 3: dd(i) = (rz(fa(i).a) + rz(fa(i).b) + rz(fa(i).c) + 4096) \ 32: NEXT
+	x = 0
+	FOR y = 255 TO 0 STEP -1
+		FOR i = 3 TO 0 STEP -1
+			IF dd(i) = y THEN eord(x) = i: x = x + 1
+		NEXT
+	NEXT
+	FOR i = 0 TO 3: IF ord(i) <> eord(i) THEN bad = bad + 1
+	NEXT
+	PRINT #fh, "rot: mismatches"; bad; " order asm"; ord(0); ord(1); ord(2); ord(3); " qb"; eord(0); eord(1); eord(2); eord(3); " depths"; dd(0); dd(1); dd(2); dd(3)
+
+	'----- 4b. the same with a 20-degree pitch (cp 241, sp 88) against the QB formulas
+	prr(24) = 241: prr(25) = 88
+	DEF SEG = VARSEG(rot)
+	CALL ABSOLUTE(BYVAL VARSEG(prr(0)), BYVAL VARPTR(prr(0)), SADD(rot))
+	DEF SEG
+	bad = 0
+	FOR i = 0 TO 7
+		t1 = CLNG(my(i)) * 241 + CLNG(mz(i)) * 88: ex = t1 \ 256: IF t1 < 0 AND (t1 MOD 256) <> 0 THEN ex = ex - 1
+		t2 = CLNG(mz(i)) * 241 - CLNG(my(i)) * 88: ey = t2 \ 256: IF t2 < 0 AND (t2 MOD 256) <> 0 THEN ey = ey - 1
+		t1 = CLNG(mx(i)) * 148 + CLNG(ey) * 209: x = t1 \ 256: IF t1 < 0 AND (t1 MOD 256) <> 0 THEN x = x - 1
+		t2 = CLNG(ey) * 148 - CLNG(mx(i)) * 209: y = t2 \ 256: IF t2 < 0 AND (t2 MOD 256) <> 0 THEN y = y - 1
+		IF rx(i) <> x OR ry(i) <> ex OR rz(i) <> y THEN bad = bad + 1
+		PRINT #fh, "pitch v"; i; " asm"; rx(i); ry(i); rz(i); " qb"; x; ex; y
+	NEXT
+	PRINT #fh, "pitch: mismatches"; bad
+
+	'----- 5. masked blit (C3DBLTF): 5 bytes x 2 rows, strip flags at 2 and 6, colour 3
+	DEF SEG = wseg
+	FOR i = 0 TO 255: POKE woff + i, 0: NEXT
+	POKE woff + 0, 10: POKE woff + 1, 254: POKE woff + 2, 20: POKE woff + 3, 30: POKE woff + 4, 254
+	POKE woff + 5, 1: POKE woff + 6, 2: POKE woff + 7, 3: POKE woff + 8, 4: POKE woff + 9, 5
+	POKE woff + 64 + 2, 129: POKE woff + 64 + 6, 131
+	DEF SEG = VARSEG(bltf)
+	CALL ABSOLUTE(BYVAL wseg, BYVAL woff, BYVAL wseg, BYVAL woff + 128, BYVAL wseg, BYVAL woff + 64, BYVAL 2, BYVAL 5, BYVAL 5, BYVAL 5, BYVAL 5, BYVAL 3, SADD(bltf))
+	DEF SEG = wseg
+	s = ""
+	FOR i = 0 TO 9: s = s + STR$(PEEK(woff + 128 + i)): NEXT
+	DEF SEG
+	PRINT #fh, "bltf: out"; s; "  (expect 10 3 129 30 3 1 131 3 4 5)"
 	CLOSE #fh
 	PRINT "C3DTEST done"
 	END

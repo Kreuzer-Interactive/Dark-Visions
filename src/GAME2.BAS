@@ -63,14 +63,15 @@ DIM SHARED sdwPLX AS INTEGER, sdwPLY AS INTEGER
 '----- player's (pre-light) fbg save-under over lit pools via face/PStand
 DIM SHARED sdwLCl AS SINGLE
 
-'----- ShowHouse: intro mansion scene (HOUSE.PIC, CGA palette 2,3,6) shown after
+'----- ShowHouse: intro mansion scene (HOUSE.PIC, CGA palette 2,8,6: green, dark
+'----- grey, brown -- the artist's 2026-10-14 repaint) shown after
 '----- the hill scene, before entering. Lives here because GAME.BAS is at the 64K
 '----- code wall. Holds ~4s (skippable); returns 1 if the player pressed 's'.
 FUNCTION ShowHouse%
 	ShowHouse% = 0
 	KEY OFF
 	PALETTE 1, 2
-	PALETTE 2, 3
+	PALETTE 2, 8
 	PALETTE 3, 6
 	DEF SEG = &HB800: BLOAD "house.pic", 0: DEF SEG
 	'----- storm-arrival: footsteps, then a LIGHTNING FLASH + thunder (reusing the
@@ -877,7 +878,51 @@ END SUB
 '----- lit (PSET), keep (AND), outside-restore (OR), shUp, shDn (AND).
 SUB ShadLoad (sdt%())
 	DIM sv AS INTEGER, sn2 AS INTEGER, si2 AS INTEGER, sof AS INTEGER, sar AS INTEGER, sdi AS INTEGER
+	DIM fb AS INTEGER, k AS INTEGER, n AS INTEGER, m AS INTEGER, p AS INTEGER, srcLen AS LONG, s AS STRING, tag AS STRING
 	sdwOn = 0: sdwN = 0
+	'----- the binary cache first (SHADW2.BIN, written below after a text
+	'----- parse): the text parse of 25,000 numbers takes a 486 many seconds,
+	'----- the cache a fraction. Keyed to the text file's length, so a new
+	'----- SHADW2.PAC is parsed again (and the cache rewritten)
+	srcLen = LOF(3)
+	fb = FREEFILE
+	OPEN "SHADW2.BIN" FOR BINARY AS #fb
+	IF LOF(fb) >= 12 THEN
+		tag = SPACE$(4)
+		GET #fb, 1, tag
+		GET #fb, , sv
+		GET #fb, , n
+		GET #fb, , m
+		IF tag = "SHB1" AND sv = CINT(srcLen \ 16) AND n >= 1 AND n <= 20 AND m >= 1 AND m <= 27000 THEN
+			sdwN = n
+			FOR sdi = 1 TO n
+				GET #fb, , k: sdwRm$(sdi) = SPACE$(k): GET #fb, , sdwRm$(sdi)
+				GET #fb, , k: sdwDst$(sdi) = SPACE$(k): GET #fb, , sdwDst$(sdi)
+				GET #fb, , sdwTX(sdi): GET #fb, , sdwTY(sdi): GET #fb, , sdwTW(sdi): GET #fb, , sdwTH(sdi)
+				GET #fb, , sdwAx(sdi): GET #fb, , sdwYLo(sdi): GET #fb, , sdwDp(sdi): GET #fb, , sdwMir(sdi)
+				GET #fb, , sdwAxs(sdi): GET #fb, , sdwSBW(sdi): GET #fb, , sdwSPH(sdi)
+				GET #fb, , sdwOId(sdi): GET #fb, , sdwOLt(sdi): GET #fb, , sdwOKp(sdi)
+				GET #fb, , sdwOBg(sdi): GET #fb, , sdwOSU(sdi): GET #fb, , sdwOSD(sdi)
+				sdwRB(sdi) = sdwTW(sdi) \ 4
+				sdwVI(sdi) = (sdwSBW(sdi) * sdwSPH(sdi) + 1) \ 2
+			NEXT
+			'----- the pixel pool in 4 KB pieces
+			sof = 0
+			DO WHILE sof < m
+				k = m - sof: IF k > 2048 THEN k = 2048
+				s = SPACE$(k * 2)
+				GET #fb, , s
+				FOR p = 1 TO k: sdt%(sof + p - 1) = CVI(MID$(s, p * 2 - 1, 2)): NEXT
+				sof = sof + k
+			LOOP
+			CLOSE #fb
+			CLOSE #3
+			sdwOn = 1
+			EXIT SUB
+		END IF
+	END IF
+	CLOSE #fb
+	'----- the text file (the build script's SHADW2.PAC, v6)
 	INPUT #3, sv, sdwN
 	IF sv <> 6 OR sdwN < 1 OR sdwN > 20 THEN CLOSE #3: sdwN = 0: EXIT SUB
 	sof = 0
@@ -903,6 +948,32 @@ SUB ShadLoad (sdt%())
 	NEXT
 	CLOSE #3
 	sdwOn = 1
+	'----- the cache for next time (a failure here is no loss: the data is in)
+	IF sof < 1 THEN EXIT SUB
+	fb = FREEFILE
+	OPEN "SHADW2.BIN" FOR BINARY AS #fb
+	tag = "SHB1": PUT #fb, 1, tag
+	sv = CINT(srcLen \ 16): PUT #fb, , sv
+	n = sdwN: PUT #fb, , n
+	m = sof: PUT #fb, , m
+	FOR sdi = 1 TO n
+		k = LEN(sdwRm$(sdi)): PUT #fb, , k: PUT #fb, , sdwRm$(sdi)
+		k = LEN(sdwDst$(sdi)): PUT #fb, , k: PUT #fb, , sdwDst$(sdi)
+		PUT #fb, , sdwTX(sdi): PUT #fb, , sdwTY(sdi): PUT #fb, , sdwTW(sdi): PUT #fb, , sdwTH(sdi)
+		PUT #fb, , sdwAx(sdi): PUT #fb, , sdwYLo(sdi): PUT #fb, , sdwDp(sdi): PUT #fb, , sdwMir(sdi)
+		PUT #fb, , sdwAxs(sdi): PUT #fb, , sdwSBW(sdi): PUT #fb, , sdwSPH(sdi)
+		PUT #fb, , sdwOId(sdi): PUT #fb, , sdwOLt(sdi): PUT #fb, , sdwOKp(sdi)
+		PUT #fb, , sdwOBg(sdi): PUT #fb, , sdwOSU(sdi): PUT #fb, , sdwOSD(sdi)
+	NEXT
+	p = 0
+	DO WHILE p < m
+		k = m - p: IF k > 2048 THEN k = 2048
+		s = ""
+		FOR si2 = 0 TO k - 1: s = s + MKI$(sdt%(p + si2)): NEXT
+		PUT #fb, , s
+		p = p + k
+	LOOP
+	CLOSE #fb
 END SUB
 
 '----- ShadRoom: loadroom hook -- reset every watcher, then collect the ones

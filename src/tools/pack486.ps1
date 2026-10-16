@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   Source = QA\current (the tested runtime set) unless -Source says otherwise.
-  Takes: EXE COM BAT PIC PAC PCT MSK DAT TXT BMP INI TTT OVL BOX, minus the save slots
+  Takes: EXE COM BAT PIC PAC PCT MSK DAT TXT BMP INI TTT OVL BOX MDL, minus the save slots
   (SAVER?.PAC, the game recreates empty ones; -WithSaves ships the dev saves so the
   tester can jump to later rooms), logs, the 1993 floppy installer (INSTALL.BAT) and
   the stray GAME.EXR.
@@ -53,7 +53,7 @@ if (-not $DosBox) {
 $pkZipExe = Join-Path $PkDir 'PKZIP.EXE'
 $usePk = (-not $NoDosBox) -and $DosBox -and (Test-Path -LiteralPath $pkZipExe) -and $PkUnzip
 $Source = (Resolve-Path $Source).Path
-$include = @('EXE', 'COM', 'BAT', 'PIC', 'PAC', 'PCT', 'MSK', 'DAT', 'TXT', 'BMP', 'INI', 'TTT', 'OVL', 'BOX')
+$include = @('EXE', 'COM', 'BAT', 'PIC', 'PAC', 'PCT', 'MSK', 'DAT', 'TXT', 'BMP', 'INI', 'TTT', 'OVL', 'BOX', 'MDL')
 $excludeNames = @('INSTALL.BAT', 'GAME.EXR')
 $excludeLike = @('*.LOG')
 if (-not $WithSaves) { $excludeLike += 'SAVER?.PAC' }

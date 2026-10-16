@@ -11,7 +11,11 @@ DECLARE SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, a
 DECLARE SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE, co AS SINGLE, p1 AS SINGLE, p2 AS SINGLE, p3 AS SINGLE)
 DECLARE FUNCTION IntroTalk% (fontData() AS INTEGER, f3 AS SINGLE)
 DECLARE FUNCTION IntroWalkCga% (f3 AS SINGLE)
-DECLARE FUNCTION IntroCar3D% (f3 AS SINGLE, nfr AS SINGLE)
+DECLARE FUNCTION IntroCar3D% (f3 AS SINGLE, f10 AS SINGLE, f1 AS SINGLE, f6 AS SINGLE, nfr AS SINGLE)
+DECLARE FUNCTION IntroCar3DLoad% (f3 AS SINGLE, f10 AS SINGLE, f1 AS SINGLE, f6 AS SINGLE)
+DECLARE SUB StartupOpen ()
+DECLARE SUB StartupLine (s AS STRING)
+DECLARE SUB C3dMark (s AS STRING)
 DECLARE SUB drawcur ()
 DECLARE SUB erasecur ()
 DECLARE SUB InitVars ()
@@ -293,6 +297,16 @@ CALL initAllFonts(fontData(), font3Data(), fontbData())
 '      bails out of the cutscene to introDone -- the intro ends early but the
 '      game runs instead of crashing to DOS.  (Throttle work restores it.)
 ON ERROR GOTO introSkip
+'----- the startup page (GAME7, text mode, 2026-10-15): the loading the intro
+'      needs, a line per thing as it comes, before the logo instead of a black
+'      wait after it. The walk sprites come here too (off loadgame)
+IF inon <> 0 AND qkon = 0 THEN
+	CALL StartupOpen
+	CALL LoadWalks(cwa(), cmwa(), cwb(), cmwb()): wlkOn = 1
+	CALL StartupLine("W_Init: walk sprites loaded.")
+	ERASE sdwDat, acPct, acMsk
+	r3 = IntroCar3DLoad%(f3, f10, f1, f6)
+END IF
 '----- tenthplay logo (GAME6, VGA/VESA via uGL) runs first, under the same skips as the intro + its own logo= key
 IF inon <> 0 AND qkon = 0 AND lgon <> 0 THEN CALL LogoShow
 IF inon <> 0 AND qkon = 0 THEN CALL Intro
@@ -1755,10 +1769,14 @@ loadgame:
 	CLS
 	LOCATE 13, 16
 	PRINT "Loading...";
+	CALL C3dMark("loadgame start")
 	GOSUB loadanims
+	CALL C3dMark("loadgame anims")
 	GOSUB shadload
-	CALL LoadWalks(cwa(), cmwa(), cwb(), cmwb())
+	CALL C3dMark("loadgame shadows")
+	IF wlkOn = 0 THEN CALL LoadWalks(cwa(), cmwa(), cwb(), cmwb())
 	GOSUB joeface
+	CALL C3dMark("loadgame faces")
 	RETURN
 
 '----- joeface: load Joe face sprites, pick direction toward player
@@ -2322,10 +2340,11 @@ SUB Intro
 	'----- are empty until the first room, so they lend it their heap. 1 = no
 	'----- VGA or no files: the CGA sprite drive below as before; 2 = s pressed
 	ERASE sdwDat, acPct, acMsk
-	vr = IntroCar3D%(f3, ifc)
+	vr = IntroCar3D%(f3, f10, f1, f6, ifc)
 	REDIM sdwDat(27000) AS INTEGER
 	REDIM acPct(6, 1600) AS INTEGER, acMsk(6, 1600) AS INTEGER
 	IF vr = 2 THEN GOTO 18640
+	IF vr = 3 THEN GOTO 17520
 	IF vr = 0 THEN PALETTE 1, 2: PALETTE 2, 11: PALETTE 3, 6: GOTO 17185
 	CALL introShowCarr
 	cy = 133
@@ -2411,7 +2430,7 @@ SUB Intro
 
 	'----- house scene (mansion, before entering) -- body in GAME2 ShowHouse%
 	'----- (GAME.BAS is at the 64K code wall); returns 1 if the player skipped
-	IF ShowHouse% <> 0 THEN GOTO 18640
+	17520 IF ShowHouse% <> 0 THEN GOTO 18640
 
 	'----- enter house scene: ENTER.PIC behind a black palette, then GAME6 --
 	'----- IntroTalk (VGA mode 13h: the walk + the hall conversation; 0 = no

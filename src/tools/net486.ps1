@@ -5,10 +5,14 @@
 .DESCRIPTION
   The 486 runs mTCP FTPSRV inside SERVE.BAT (see the disk verb). This script is the PC side:
 
-    disk                    build dist\NET486 = the one-floppy setup payload for the 486 (3Com
+    disk [-Nic ne2000]      build dist\NET486 = the one-floppy setup payload for the 486 (3Com
                             config tool + packet driver, mTCP tools, MTCP.CFG, FTPPASS.TXT,
                             NETINST/CFGNIC/NET/SERVE batches, README.TXT). Copy it onto a floppy.
-    set-host <ip|name>      remember the 486's address (what DHCP printed on the 486)
+                            -Nic ne2000: dist\NET486NE for an emulated 486 (86Box) with a Novell
+                            NE2000 instead: the Crynwr NE2000 packet driver, IRQ 3 unless -NicIrq.
+    set-host <ip|name>      remember the 486's address (what DHCP printed on the 486); an
+                            emulated 486 behind 86Box's SLiRP: set-host 127.0.0.1:2021 (see
+                            the NE2000 disk's README for the port forwarding rules)
     ping                    is the FTP server answering?
     ls [dir]                directory listing (default /drive_c/darkv/)
     push [-Source d|file]   upload what changed since the last push (default source dist\DV486,
@@ -21,6 +25,8 @@
                             -Wait blocks until the server is back (the job finished).
     quit                    restart the server with an empty job (re-reads MTCP.CFG/FTPPASS.TXT)
     who | stats | diskfree  the server's SITE commands
+    slirp-cfg <86box.cfg>   write the [SLiRP Port Forwarding #1] rules (2021->21, 2048-2303 ->
+                            the same) into an 86Box VM's config; 86Box must be closed
     help
 
   DOS paths are written mTCP style: /drive_c/darkv/GAME.EXE. Transfers use curl.exe (built into
@@ -50,10 +56,12 @@ param(
     [int]$WaitMinutes = 60,
     [int]$NicIrq = 10,
     [string]$NicIo = '300',
+    [ValidateSet('3c509b', 'ne2000')][string]$Nic = '3c509b',
     [switch]$All,
     [switch]$Pack,
     [switch]$Wait,
-    [switch]$NoVerify
+    [switch]$NoVerify,
+    [switch]$VerboseCurl
 )
 
 $ErrorActionPreference = 'Stop'
@@ -108,14 +116,29 @@ function Test-Port([string]$h, [int]$p, [int]$timeoutMs = 2000) {
         $ar = $c.BeginConnect($h, $p, $null, $null)
         if (-not $ar.AsyncWaitHandle.WaitOne($timeoutMs)) { return $false }
         $c.EndConnect($ar)
+        # behind an emulator's NAT forward the host port accepts even when the 486 is not
+        # listening: the server is up only if its banner arrives
+        if ($script:SkipPasvIp) {
+            $s = $c.GetStream(); $s.ReadTimeout = [Math]::Max(1000, $timeoutMs)
+            $buf = New-Object byte[] 64; $got = $s.Read($buf, 0, 64)
+            return ($got -ge 3 -and $ascii.GetString($buf, 0, 3) -eq '220')
+        }
         return $true
     } catch { return $false } finally { $c.Close() }
 }
 
 # ---------------------------------------------------------------- helpers
+function Resolve-Target([string]$t) {
+    # 'host:port' (an emulator's forwarded port, e.g. 127.0.0.1:2021) sets the port too; for a
+    # loopback host the FTP data connections must ignore the PASV address the 486 announces
+    # (its own, behind the NAT) and come back to the same forwarded host
+    if ($t -match '^(.+):(\d+)$') { $script:Port = [int]$matches[2]; $t = $matches[1] }
+    $script:SkipPasvIp = ($t -in '127.0.0.1', 'localhost', '::1')
+    return $t
+}
 function Get-Target {
-    if ($Target) { return $Target }
-    if (Test-Path -LiteralPath $hostFile) { $t = (Get-Content -LiteralPath $hostFile -Raw).Trim(); if ($t) { return $t } }
+    if ($Target) { return (Resolve-Target $Target) }
+    if (Test-Path -LiteralPath $hostFile) { $t = (Get-Content -LiteralPath $hostFile -Raw).Trim(); if ($t) { return (Resolve-Target $t) } }
     foreach ($n in 'dv486', 'DV486') { try { if ([System.Net.Dns]::GetHostAddresses($n).Count -gt 0) { return $n } } catch {} }
     throw "I do not know the 486's address yet. NET.BAT (DHCP) prints it on the 486; then run:  net486.ps1 set-host <address>"
 }
@@ -129,6 +152,10 @@ function ConvertTo-RemotePath([string]$p) {
 function Invoke-Curl([string[]]$curlArgs) {
     $base = @('--silent', '--show-error', '--disable-epsv', '--connect-timeout', '10', '--user', "${User}:${Password}")
     if ($LimitRate) { $base += @('--limit-rate', $LimitRate) }
+    if ($script:SkipPasvIp) { $base += '--ftp-skip-pasv-ip' }
+    # a 425 (no data connection) now and then from a 486 fed too fast: retry that transfer after a pause
+    $base += @('--retry', '5', '--retry-delay', '2', '--retry-all-errors')
+    if ($VerboseCurl) { $base += '-v' }
     & $curl @base @curlArgs
     $script:curlExit = $LASTEXITCODE
 }
@@ -159,19 +186,38 @@ function Do-Disk {
     $ed = Get-ChildItem -LiteralPath (Join-Path $repo 'third_party\3com-etherdisk') -Filter '*.zip' | Select-Object -First 1
     if (-not $mt) { throw 'third_party\mtcp\mTCP_*.zip is missing' }
     if (-not $ed) { throw 'third_party\3com-etherdisk\*.zip is missing' }
+    $ne = ($Nic -eq 'ne2000')
+    if ($ne -and -not $PSBoundParameters.ContainsKey('NicIrq')) { $script:NicIrq = 3 }
+    $cw = Join-Path $repo 'third_party\crynwr\crynwr.zip'
+    if ($ne -and -not (Test-Path -LiteralPath $cw)) { throw 'third_party\crynwr\crynwr.zip is missing' }
     $ex = Join-Path $state 'extract'
     if (Test-Path -LiteralPath $ex) { Remove-Item -LiteralPath $ex -Recurse -Force }
     Expand-Archive -LiteralPath $mt.FullName -DestinationPath (Join-Path $ex 'mtcp') -Force
     Expand-Archive -LiteralPath $ed.FullName -DestinationPath (Join-Path $ex 'ed') -Force
-    $out = Join-Path $dist 'NET486'
+    if ($ne) { Expand-Archive -LiteralPath $cw -DestinationPath (Join-Path $ex 'cw') -Force }
+    $out = Join-Path $dist $(if ($ne) { 'NET486NE' } else { 'NET486' })
     if (Test-Path -LiteralPath $out) { Get-ChildItem -LiteralPath $out -Force | Remove-Item -Recurse -Force } else { New-Item -ItemType Directory -Path $out | Out-Null }
     $take = @(
         @('mtcp\dhcp.exe', 'DHCP.EXE'), @('mtcp\ftpsrv.exe', 'FTPSRV.EXE'), @('mtcp\ping.exe', 'PING.EXE'),
         @('mtcp\pkttool.exe', 'PKTTOOL.EXE'), @('mtcp\nc.exe', 'NC.EXE'), @('mtcp\ftp.exe', 'FTP.EXE'),
-        @('mtcp\sntp.exe', 'SNTP.EXE'), @('mtcp\htget.exe', 'HTGET.EXE'), @('mtcp\COPYING.TXT', 'COPYING.TXT'),
-        @('ed\3C5X9CFG.EXE', '3C5X9CFG.EXE'), @('ed\3C5X9ENG.HLP', '3C5X9ENG.HLP'), @('ed\PNPDSABL.BAT', 'PNPDSABL.BAT'),
-        @('ed\PKTDVR\3C5X9PD.COM', '3C5X9PD.COM'), @('ed\PKTDVR\3C5X9PD.DOC', '3C5X9PD.DOC'), @('ed\DIAG\INSTRUCT.TXT', 'INSTRUCT.TXT')
+        @('mtcp\sntp.exe', 'SNTP.EXE'), @('mtcp\htget.exe', 'HTGET.EXE'), @('mtcp\COPYING.TXT', 'COPYING.TXT')
     )
+    if ($ne) {
+        $take += ,@('cw\DRIVERS\CRYNWR\NE2000.COM', 'NE2000.COM')
+    } else {
+        $take += @(@('ed\3C5X9CFG.EXE', '3C5X9CFG.EXE'), @('ed\3C5X9ENG.HLP', '3C5X9ENG.HLP'), @('ed\PNPDSABL.BAT', 'PNPDSABL.BAT'),
+            @('ed\PKTDVR\3C5X9PD.COM', '3C5X9PD.COM'), @('ed\PKTDVR\3C5X9PD.DOC', '3C5X9PD.DOC'), @('ed\DIAG\INSTRUCT.TXT', 'INSTRUCT.TXT'))
+    }
+    # the packet driver's command line and a few card-specific words for the batches
+    if ($ne) {
+        $pktLoad = "C:\NET\NE2000 0x60 $NicIrq 0x$NicIo"; $pktName = 'NE2000'
+        $cardWord = 'Novell NE2000 (emulated)'; $diagHint = 'PKTTOOL STATS 0x60     86Box: Settings, Network'
+        $failHint = 'Emulated card: 86Box Settings, Network: Novell NE2000, base ' + $NicIo + 'h, IRQ ' + $NicIrq + ', mode PCap or SLiRP.'
+    } else {
+        $pktLoad = 'C:\NET\3C5X9PD 0x60'; $pktName = '3C5X9PD'
+        $cardWord = '3Com 3C509B'; $diagHint = 'PKTTOOL STATS 0x60     3C5X9CFG (Tests: Run Tests)'
+        $failHint = 'Real card: run CFGNIC once, power-cycle, then SETUP again.'
+    }
     foreach ($t in $take) {
         $src = Join-Path $ex $t[0]
         if (-not (Test-Path -LiteralPath $src)) { throw "missing in the zip: $($t[0])" }
@@ -185,7 +231,7 @@ function Do-Disk {
 # NET.BAT sets MTCPCFG to this file. DHCP.EXE appends the IPADDR / NETMASK /
 # GATEWAY / NAMESERVER / LEASE_TIME lines itself (and rewrites them each run).
 
-# where the packet driver is (3C5X9PD 0x60)
+# where the packet driver is ( 0x60)
 packetint 0x60
 # full-size Ethernet frames = faster file transfers
 mtu 1500
@@ -206,6 +252,10 @@ ftpsrv_exclude_drives AB
 ftpsrv_filebuffer_size 16
 ftpsrv_tcpbuffer_size 16
 ftpsrv_packets_per_poll 2
+$(if ($ne) { "# passive-mode data ports in a fixed range (FTPSRV wants at least 256), so an" + "
+" + "# emulator's NAT (86Box SLiRP) can forward them: 2048-2303" + "
+" + "ftpsrv_pasv_base 2048" + "
+" + "ftpsrv_pasv_ports 256" })
 "@
 
     Write-Dos (Join-Path $out 'FTPPASS.TXT') @"
@@ -216,6 +266,35 @@ ftpsrv_packets_per_poll 2
 $User $Password [none] [any] dele mkd rmd rnfr stor appe stou sitequit
 "@
 
+    Write-Dos (Join-Path $out 'SETUP.BAT') @"
+@echo off
+rem Dark Visions 486 - the whole network setup in one go, from this disk: the
+rem tools to C:\NET, the packet driver, an address (and the DNS server) by
+rem DHCP, then the FTP server for the PC. Card: $cardWord, I/O ${NicIo}h,
+rem IRQ $NicIrq. A real 3Com card needs CFGNIC once before this (then a power
+rem cycle); an emulated card is set up in the emulator's network settings.
+if not exist C:\NET\NUL md C:\NET
+copy *.* C:\NET > nul
+C:
+cd \NET
+if "%NETUP%"=="1" goto cfg
+$pktLoad
+set NETUP=1
+:cfg
+set MTCPCFG=C:\NET\MTCP.CFG
+C:\NET\DHCP -retries 3 -timeout 15
+if errorlevel 1 goto fail
+echo.
+echo Network is up: note the IPADDR above and tell the PC   net486 set-host ...
+echo Starting the FTP server (Ctrl-C stops it; SERVE starts it again).
+C:\NET\SERVE
+goto end
+:fail
+echo.
+echo DHCP got no answer. $failHint
+echo Check the packet driver's message above (it must print the card's address).
+:end
+"@
     Write-Dos (Join-Path $out 'NETINST.BAT') @"
 @echo off
 rem Dark Visions 486 - copy the network tools from this disk to C:\NET
@@ -226,7 +305,10 @@ echo Copied to C:\NET.   Next:   C:   CD \NET   CFGNIC      (one-time card setup
 echo The whole procedure is in README.TXT - open it with   EDIT README.TXT
 "@
 
-    Write-Dos (Join-Path $out 'CFGNIC.BAT') @"
+    if ($ne) { Write-Dos (Join-Path $out 'CFGNIC.BAT') ("@echo off" + "
+" + "echo Nothing to configure for the emulated NE2000: its I/O (" + $NicIo + "h) and IRQ (" + $NicIrq + ") are set" + "
+" + "echo in the emulator (86Box: Settings, Network, Novell NE2000, Configure).") }
+    else { Write-Dos (Join-Path $out 'CFGNIC.BAT') @"
 @echo off
 rem Dark Visions 486 - ONE-TIME setup of the 3Com 3C509B. Plain DOS, no network
 rem drivers loaded. Lines 1+2 are 3Com's PNPDSABL: wake the card from its Plug and
@@ -240,14 +322,15 @@ echo If the last message was "successfully configured": power the PC OFF, wait
 echo 10 seconds, power it ON, boot to DOS, then   CD \NET   and run   NET
 echo Card not found? See README.TXT. Full-screen tool any time: 3C5X9CFG
 "@
+    }
 
     Write-Dos (Join-Path $out 'NET.BAT') @"
 @echo off
 rem Dark Visions 486 - bring the network up: packet driver + address by DHCP.
 rem Run after every boot (or CALL C:\NET\NET.BAT from AUTOEXEC.BAT).
-rem Tight on conventional memory? Use  LH C:\NET\3C5X9PD 0x60  (needs UMBs).
+rem Tight on conventional memory? Use  LH $pktLoad  (needs UMBs).
 if "%NETUP%"=="1" goto cfg
-C:\NET\3C5X9PD 0x60
+$pktLoad
 set NETUP=1
 :cfg
 set MTCPCFG=C:\NET\MTCP.CFG
@@ -261,7 +344,7 @@ goto end
 echo.
 echo DHCP got no answer. Check the link light on the card and the cable, that
 echo the packet driver printed the card's MAC address, then run NET again.
-echo Diagnostics:  PKTTOOL STATS 0x60     3C5X9CFG (Tests: Run Tests)
+echo Diagnostics:  $diagHint
 :end
 "@
 
@@ -294,7 +377,74 @@ echo Job finished - starting the server again.
 goto loop
 "@
 
+    if ($ne) {
     Write-Dos (Join-Path $out 'README.TXT') @"
+DARK VISIONS 486 - NETWORK SETUP DISK, NE2000 EDITION         (built $today)
+======================================================================
+The same setup as the real 486's disk, for an emulated 486 (86Box) with a
+Novell NE2000 card: the PC copies game builds into C:\DARKV over the LAN and
+starts them (SERVE.BAT + the PC's net486.ps1).
+
+WHAT IS ON THIS DISK
+  NE2000.COM    Crynwr packet driver for the NE2000 (GPL, crynwr.com)
+  DHCP FTPSRV PING PKTTOOL NC FTP SNTP HTGET (.EXE)
+                mTCP $mtcpVer by Michael Brutman, GPLv3 (COPYING.TXT)
+  MTCP.CFG      mTCP settings: packet driver at int 0x60, FTP server options
+                (DHCP adds the address, gateway and DNS server lines itself)
+  FTPPASS.TXT   FTP server user for the PC:  $User / $Password
+  SETUP.BAT     everything in one go: copy to C:\NET, driver, DHCP, server
+  NETINST.BAT   copies everything to C:\NET        NET.BAT  driver + DHCP
+  SERVE.BAT     runs the FTP server in a loop (see HOW SERVE WORKS)
+  CFGNIC.BAT    does nothing here (the card is configured in the emulator)
+
+86BOX SETTINGS  (Settings, Network, card 1)
+  Adapter: Novell NE2000. Configure: base ${NicIo}h, IRQ $NicIrq (the defaults).
+  Mode: SLiRP (the PC has only Wi-Fi; PCap needs a wired adapter + Npcap).
+  The 486 then lives at 10.0.2.15 behind 86Box's NAT, so the PC reaches its
+  FTP server through forwarded ports: 2021 -> 21 (control) and 2048-2303
+  (the passive data ports). The PC writes those rules into the VM's
+  86box.cfg - with 86Box CLOSED (it rewrites the file on exit):
+      net486.ps1 slirp-cfg <path to the VM's 86box.cfg>
+  and then:   net486.ps1 set-host 127.0.0.1:2021
+  (With a wired adapter and Npcap, PCap mode needs none of this: the 486
+  gets a LAN address from the router like the real one.)
+  Machine: any 486 (i486SX to match the real one), 8-16 MB, a Cirrus Logic
+  GD54xx video card, a 1.44 MB drive A, a DOS hard disk.
+
+SETUP
+  A:   then   SETUP
+  NE2000.COM prints "My Ethernet address is ..." (the card was found), DHCP
+  prints the address (10.0.2.15 behind SLiRP; with PCap one from the router,
+  for example IPADDR 10.10.1.123 - then tell the PC: net486.ps1 set-host
+  10.10.1.123). The FTP server then runs.
+
+EVERY BOOT AFTER THAT
+  CD \NET   then   SERVE          (SERVE runs NET first when needed)
+  Optional: put   CALL C:\NET\NET.BAT   at the end of AUTOEXEC.BAT.
+
+HOW SERVE WORKS
+  FTPSRV runs until it is told to stop. The PC uploads C:\NET\JOB.BAT and
+  sends SITE QUIT: the server exits, JOB.BAT runs (for example: CD \DARKV
+  and DARKV), and when that is over the server starts again by itself.
+  Ctrl-C at the server stops it; then any key restarts it and Ctrl-C again
+  drops to DOS.
+
+IF SOMETHING DOES NOT WORK
+  "No NE2000 found" or no    the emulator's card is not an NE2000 at
+  Ethernet address printed     ${NicIo}h / IRQ $NicIrq, or its mode is Null
+  DHCP times out               PCap: Npcap installed? the right (wired)
+                               adapter chosen? SLiRP: should always answer
+                               (10.0.2.15). PKTTOOL STATS 0x60 shows packets
+                               in/out; "in" stays 0 = nothing reaches the card
+  Out of environment space     add to CONFIG.SYS:
+                               SHELL=C:\DOS\COMMAND.COM C:\DOS /E:1024 /P
+  game short of memory         NET.BAT: LH C:\NET\NE2000 ... (needs UMBs)
+
+NOTES
+  - Passwords travel in the clear; this is for the home LAN only.
+  - The real 486 uses the 3Com edition of this disk (net486.ps1 disk).
+"@
+    } else {    Write-Dos (Join-Path $out 'README.TXT') @"
 DARK VISIONS 486 - NETWORK SETUP DISK                    (built $today)
 ======================================================================
 Puts the 3Com EtherLink III card (3C509B-TPO, 10BASE-T) to work under plain
@@ -310,12 +460,16 @@ WHAT IS ON THIS DISK
                 mTCP $mtcpVer by Michael Brutman, GPLv3 (COPYING.TXT)
   MTCP.CFG      mTCP settings: packet driver at int 0x60, FTP server options
   FTPPASS.TXT   FTP server user for the PC:  $User / $Password
+  SETUP.BAT     all of it in one go: NETINST + NET + SERVE (the usual way)
   NETINST.BAT   copies everything to C:\NET
   CFGNIC.BAT    one-time card setup: PnP off, I/O ${NicIo}h, IRQ $NicIrq, twisted pair
   NET.BAT       loads the packet driver, gets an address by DHCP
   SERVE.BAT     runs the FTP server in a loop (see HOW SERVE WORKS)
 
 ONE-TIME SETUP  (plain DOS - exit Windows first)
+  Shortest way:  A:   then   SETUP   = steps 2, 5 and 7 below in one go. A real
+  card still needs step 3 (CFGNIC) once, before that. In 86Box skip step 3:
+  the card's I/O and IRQ are set in the emulator (3C509B, 300h, 10).
   1. Cable from the card to the switch or router. Any normal patch cable.
   2. A:   then   NETINST                -> the tools are now in C:\NET
   3. C:   then   CD \NET   then   CFGNIC
@@ -371,6 +525,7 @@ NOTES
   - Windows 3.1 needs none of this; run the game and SERVE from plain DOS.
   - Passwords travel in the clear; this is for the home LAN only.
 "@
+    }
 
     $items = Get-ChildItem -LiteralPath $out -File
     $total = ($items | Measure-Object -Property Length -Sum).Sum
@@ -380,6 +535,25 @@ NOTES
     else { Write-Warning "too big for one floppy by $($total - 1457664) bytes" }
 }
 
+function Do-SlirpCfg([string]$path) {
+    if (-not $path) { throw 'slirp-cfg needs the path of the VM''s 86box.cfg' }
+    if (-not (Test-Path -LiteralPath $path)) { throw "not found: $path" }
+    if (@(Get-Process -Name '86Box' -ErrorAction SilentlyContinue).Count -gt 0) { throw '86Box is running: close it first (it rewrites 86box.cfg on exit)' }
+    $t = [System.IO.File]::ReadAllText($path)
+    $nl = if ($t.Contains("`r`n")) { "`r`n" } else { "`n" }
+    Copy-Item -LiteralPath $path -Destination ($path + '.bak') -Force
+    # drop any earlier forwarding section (the unnumbered name is ignored by 86Box 6) and any
+    # stray rule lines left outside one
+    $t = [regex]::Replace($t, '(?m)^\[SLiRP Port Forwarding[^\]]*\]\r?\n(?:[^\[\r\n][^\r\n]*\r?\n)*', '')
+    $t = [regex]::Replace($t, '(?m)^\d+_(external|internal|protocol) = [^\r\n]*\r?\n', '')
+    # the control forward must stay OUTSIDE the passive data range 2048-2303 (FTPSRV rotates
+    # through every port of it, and a data connection landing on the control forward is a 425)
+    $s = '[SLiRP Port Forwarding #1]' + $nl + '0_external = 2021' + $nl + '0_internal = 21' + $nl
+    for ($i = 0; $i -lt 256; $i++) { $s += ('{0}_external = {1}' -f ($i + 1), (2048 + $i)) + $nl + ('{0}_internal = {1}' -f ($i + 1), (2048 + $i)) + $nl }
+    $t = $t.TrimEnd("`r`n") + $nl + $nl + $s
+    [System.IO.File]::WriteAllText($path, $t)
+    "[SLiRP Port Forwarding #1] written to $path (257 rules; backup: $path.bak). Start the VM, then: net486.ps1 set-host 127.0.0.1:2021"
+}
 function Do-Push {
     $h = Get-Target
     if ($Pack) { & (Join-Path $PSScriptRoot 'pack486.ps1') -NoZip }
@@ -405,14 +579,19 @@ function Do-Push {
     Push-Location $dir
     try {
         # one curl per batch keeps one control connection; the 486 logs in once per batch
-        $batch = @(); $i = 0
+        # one session for the whole push to an emulated 486 behind a NAT: FTPSRV keeps a finished
+        # session counted for a while there, and with ftpsrv_clients 3 a fourth login gets 421
+        $batch = @(); $i = 0; $batchSize = if ($script:SkipPasvIp) { 400 } else { 40 }
         foreach ($t in $todo) {
             $batch += $t.File.Name; $i++
-            if ($batch.Count -eq 40 -or $i -eq $todo.Count) {
+            if ($batch.Count -eq $batchSize -or $i -eq $todo.Count) {
                 $spec = if ($batch.Count -eq 1) { $batch[0] } else { '{' + ($batch -join ',') + '}' }
                 Invoke-Curl @('--ftp-create-dirs', '--upload-file', $spec, $url)
                 if ($script:curlExit -ne 0) { throw "curl failed (exit $script:curlExit) while uploading $($batch -join ' ')" }
                 $batch = @()
+                # an emulated 486 behind a NAT runs out of sockets when fed ~200 transfers without
+                # a breath (425 on every data connection after that): small batches, a pause between
+                if ($script:SkipPasvIp -and $i -lt $todo.Count) { Start-Sleep -Seconds 20 }
             }
         }
     } finally { Pop-Location }
@@ -494,6 +673,7 @@ function Do-Run([bool]$emptyJob) {
 
 switch ($Verb.ToLowerInvariant()) {
     'disk' { Do-Disk }
+    'slirp-cfg' { Do-SlirpCfg $Arg }
     'set-host' { if (-not $Arg) { throw 'set-host needs an address' }; Set-Content -LiteralPath $hostFile -Value $Arg -Encoding ASCII; "486 = $Arg (saved in $hostFile)" }
     'ping' { $h = Get-Target; if (Test-Port $h $Port 3000) { "$h answers on port $Port (FTPSRV is up)" } else { "$h does not answer on port $Port" } }
     'ls' { Do-Ls }

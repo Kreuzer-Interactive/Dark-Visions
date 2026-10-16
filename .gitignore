@@ -14,3 +14,10 @@ src/**/*BUILD.LOG
 src/**/*BLD.LOG
 # uGL library stub objects are inputs, not outputs
 !src/ugl/stubs/*.obj
+
+# game-run outputs and the shadow cache the game writes itself
+src/C3D.LOG
+src/C3DTEST.LOG
+src/tools/C3DTES_B.LOG
+src/SHADW2.BIN
+src/tools/hill_drive_frames.png

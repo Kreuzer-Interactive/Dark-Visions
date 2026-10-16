@@ -21,6 +21,9 @@ param(
   [switch]$FlipV,     # do NOT flip v: the default turns 3DS's bottom-up v into top-down rows
   [switch]$Unlit,     # lighting painted into the texture: up to 239 colours, no shade bands, renderer skips lighting
   [double]$Scale = 1.0,  # the car's size in place, about its wheel line: 1.15 = 15% bigger, same road position
+  [string]$Front = "",     # with -Backdrop: a 320x200 PNG inside $Src, any non-black pixel = backdrop in FRONT of the car (bit 7 of the index; GAME7's blit restores those pixels over the car)
+  [string]$Hill = "",      # a second painted 320x200 backdrop (the intro's hill drive) -> HILLROAD.BMP, sharing palette slots 0..15 with the first (16 colours between them)
+  [string]$HillFront = "", # its front mask, like -Front
   [switch]$KeepHidden # keep faces whose UV area is entirely transparent (they are dropped by default)
 )
 $ErrorActionPreference = 'Stop'
@@ -31,7 +34,7 @@ $img = [System.Drawing.Bitmap]::FromFile("$Src\$Texture")
 $TW = $img.Width
 if($img.Height -ne $TW -or ($TW -ne 64 -and $TW -ne 128)){ throw "texture must be 64x64 or 128x128 (got $($img.Width)x$($img.Height))" }
 $bands = if($Unlit){1}else{8}
-$cpb = [Math]::Floor(238 / $bands)      # colours per band: palette 16..253 is shared by the bands (254 = the renderer's ink mark)
+$cpb = if($Front){ [Math]::Floor(112 / $bands) } else { [Math]::Floor(238 / $bands) }   # colours per band: palette 16..253 shared by the bands (254 = the ink mark); 16..127 with a front layer (128..143 mirror the backdrop)
 $cols = @{}; $list = New-Object System.Collections.ArrayList
 [void]$list.Add(@(0,0,0)); $cols["0,0,0"]=0        # colour 0 = black (also transparent)
 $idx = New-Object byte[] ($TW*$TW)
@@ -164,6 +167,7 @@ $pal = New-Object byte[] 1024
 function SetPal($i,$r,$g,$bl){ $pal[$i*4]=[byte][Math]::Min(255,$bl); $pal[$i*4+1]=[byte][Math]::Min(255,$g); $pal[$i*4+2]=[byte][Math]::Min(255,$r) }
 SetPal 0 0 0 0; SetPal 1 0 170 0; SetPal 2 85 255 255; SetPal 3 170 85 0   # carr.pic CGA palette
 SetPal 255 255 0 255                                                         # colour key (never drawn)
+if($Front){ for($i=0;$i -lt 16;$i++){ $pal[128*4+$i*4]=$pal[$i*4]; $pal[128*4+$i*4+1]=$pal[$i*4+1]; $pal[128*4+$i*4+2]=$pal[$i*4+2] } }   # (filled again after the backdrop colours are known)
 for($bd=0;$bd -lt $bands;$bd++){ $sh = if($Unlit){1}else{0.3 + 1.2*$bd/($bands-1)}
   for($ci=0;$ci -lt $list.Count;$ci++){ $c=$list[$ci]; SetPal (16+$bd*$cpb+$ci) ([int]($c[0]*$sh)) ([int]($c[1]*$sh)) ([int]($c[2]*$sh)) } }
 $h=$TW*$bands; $pix = New-Object byte[] ($TW*$h)
@@ -173,27 +177,39 @@ for($bd=0;$bd -lt $bands;$bd++){ for($y=0;$y -lt $TW;$y++){ for($x=0;$x -lt $TW;
 # ---------- painted backdrop ----------
 # its colours take palette slots 0..15; a colour close to one of the four CGA colours gets
 # that CGA slot (0 black, 1 green, 2 cyan, 3 brown = the renderer's ink), the rest 4 upward
-if($Backdrop){
+$cga = @(@(0,0,0),@(0,170,0),@(85,255,255),@(170,85,0))
+$slots = @{}; $bpal = @{}; $script:next = 4
+# one backdrop -> an 8-bit BMP; the colour->slot table is shared, so a second backdrop
+# (-Hill) reuses the first's slots and both show with the one palette of CAR3D.BMP
+function WriteBackdrop($Backdrop, $Front, $OutName){
   $bgi = [System.Drawing.Bitmap]::FromFile("$Src\$Backdrop")
   if($bgi.Width -ne 320 -or $bgi.Height -ne 200){ throw "backdrop must be 320x200 (got $($bgi.Width)x$($bgi.Height))" }
-  $cga = @(@(0,0,0),@(0,170,0),@(85,255,255),@(170,85,0))
-  $slots = @{}; $bpal = @{}; $next = 4
   $bpix = New-Object byte[] (320*200)
   for($y=0;$y -lt 200;$y++){ for($x=0;$x -lt 320;$x++){ $c=$bgi.GetPixel($x,$y); $k="$($c.R),$($c.G),$($c.B)"
     if(-not $slots.ContainsKey($k)){
       $best=-1; $bd=999
       for($i=0;$i -lt 4;$i++){ if($bpal.ContainsKey($i)){ continue }; $d=[Math]::Abs($c.R-$cga[$i][0])+[Math]::Abs($c.G-$cga[$i][1])+[Math]::Abs($c.B-$cga[$i][2]); if($d -lt $bd){ $bd=$d; $best=$i } }
-      if($best -ge 0 -and $bd -le 60){ $idx=$best } else { if($next -gt 15){ throw "backdrop has more than 16 colours" }; $idx=$next; $next++ }
+      if($best -ge 0 -and $bd -le 60){ $idx=$best } else { if($script:next -gt 15){ throw "the backdrops have more than 16 colours between them" }; $idx=$script:next; $script:next++ }
       $slots[$k]=$idx; $bpal[$idx]=@([int]$c.R,[int]$c.G,[int]$c.B) }
     $bpix[(199-$y)*320+$x] = [byte]$slots[$k] } }
   foreach($i in $bpal.Keys){ $c=$bpal[$i]; SetPal $i $c[0] $c[1] $c[2] }
-  $fs = [IO.File]::Create("$Out\CARROAD.BMP"); $w = New-Object IO.BinaryWriter($fs)
+  if($Front){
+    $fi = [System.Drawing.Bitmap]::FromFile("$Src\$Front")
+    if($fi.Width -ne 320 -or $fi.Height -ne 200){ throw "front mask must be 320x200 (got $($fi.Width)x$($fi.Height))" }
+    $nfront=0
+    for($y=0;$y -lt 200;$y++){ for($x=0;$x -lt 320;$x++){ $c=$fi.GetPixel($x,$y); if(($c.R+$c.G+$c.B) -gt 96){ $bpix[(199-$y)*320+$x] = [byte]($bpix[(199-$y)*320+$x] -bor 128); $nfront++ } } }
+    $fi.Dispose()
+    for($i=0;$i -lt 16;$i++){ $pal[128*4+$i*4]=$pal[$i*4]; $pal[128*4+$i*4+1]=$pal[$i*4+1]; $pal[128*4+$i*4+2]=$pal[$i*4+2] }
+    "front layer: $Front, $nfront pixels in front of the car (palette 128..143 mirrors 0..15)" }
+  $fs = [IO.File]::Create("$Out\$OutName"); $w = New-Object IO.BinaryWriter($fs)
   $w.Write([byte]66); $w.Write([byte]77); $w.Write([int32](54+1024+$bpix.Length)); $w.Write([int32]0); $w.Write([int32](54+1024))
   $w.Write([int32]40); $w.Write([int32]320); $w.Write([int32]200); $w.Write([int16]1); $w.Write([int16]8); $w.Write([int32]0); $w.Write([int32]$bpix.Length)
   $w.Write([int32]2835); $w.Write([int32]2835); $w.Write([int32]256); $w.Write([int32]0)
   $w.Write($pal); $w.Write($bpix); $w.Close()
-  "CARROAD.BMP: $Backdrop, $($slots.Count) colours in palette slots " + (($bpal.Keys | Sort-Object) -join ",")
-} elseif(Test-Path "$Out\CARROAD.BMP"){ Remove-Item "$Out\CARROAD.BMP"; "CARROAD.BMP removed (no -Backdrop): the carr.pic composition is back" }
+  "$OutName`: $Backdrop, $($slots.Count) colours so far in palette slots " + (($bpal.Keys | Sort-Object) -join ",")
+}
+if($Backdrop){ WriteBackdrop $Backdrop $Front 'CARROAD.BMP' } elseif(Test-Path "$Out\CARROAD.BMP"){ Remove-Item "$Out\CARROAD.BMP"; "CARROAD.BMP removed (no -Backdrop): the carr.pic composition is back" }
+if($Hill){ WriteBackdrop $Hill $HillFront 'HILLROAD.BMP' }
 
 $fs = [IO.File]::Create("$Out\CAR3D.BMP"); $w = New-Object IO.BinaryWriter($fs)
 $w.Write([byte]66); $w.Write([byte]77); $w.Write([int32](54+1024+$pix.Length)); $w.Write([int32]0); $w.Write([int32](54+1024))
