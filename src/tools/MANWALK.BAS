@@ -8,12 +8,17 @@
 '----- Keys: Up/Down walk forward/back, Left/Right turn, Space puts a copy of
 '----- the model where he stands (up to 7, to load the renderer), C clears
 '----- them, V toggles the vertical-sync wait (the raw render rate shows), O
-'----- the silhouette ink, F the flat-fill threshold (off, 2, 4, 6 px), G the
+'----- cycles the outline (off, brown on his edge pixels, blue 1 px round
+'----- him, blue 2 px; MANWALK 2 or S2 starts with that one), [ and ] its
+'----- colour (the 16 CGA colours, blue to start with), F the flat-fill
+'----- threshold (off, 2, 4, 6 px), G the
 '----- quad gradient sharing (off, 24 px), A sets the copies walking in place.
 '----- The walk (MAN3D.ANI from tools\man3danim.ps1, frames of the model's
 '----- vertices) plays while he walks, a frame per 1/nframes of a stride, so
 '----- the planted foot stays put; standing, he takes the rest pose.
 DEFINT A-Z
+'----- his walking speed: x16 units a retrace (1.44 units, about 2 m/s)
+CONST WALK16 = 23.04
 '$INCLUDE: 'UGL.BI'
 
 TYPE Vtx
@@ -63,6 +68,11 @@ DECLARE SUB Fail (msg AS STRING)
 DECLARE SUB SaveShot (fil AS STRING)
 DECLARE SUB ShowFps (n AS INTEGER)
 DECLARE SUB DrawAll ()
+DECLARE SUB Ink (w1 AS INTEGER, stride AS INTEGER, rw AS INTEGER, rh AS INTEGER)
+DECLARE SUB OutlineCol (c AS INTEGER)
+DECLARE SUB ProjInst (i AS INTEGER)
+DECLARE FUNCTION RoomK! (z AS LONG)
+DECLARE FUNCTION RoomX! (z AS LONG)
 DECLARE SUB PrepAsm (yaw AS SINGLE)
 DECLARE SUB LoadAnim ()
 DECLARE SUB SetPose (f AS INTEGER)
@@ -145,17 +155,31 @@ DIM SHARED tris AS LONG
 DIM SHARED ox AS INTEGER, oy AS INTEGER, ox2 AS INTEGER, oy2 AS INTEGER
 DIM SHARED bmode AS INTEGER, unlit AS INTEGER
 DIM SHARED palb AS STRING, ovlTri AS STRING, ovlPrj AS STRING, ovlBop AS STRING
-DIM SHARED ovlEdge AS STRING, ovlBltm AS STRING, outl AS INTEGER
+DIM SHARED ovlEdge AS STRING, ovlBltm AS STRING, outl AS INTEGER, ovlEdgo AS STRING, ocol AS INTEGER
 DIM SHARED bgseg AS INTEGER, bgo AS INTEGER, wseg AS INTEGER, wko AS INTEGER, texW AS INTEGER
 DIM SHARED bx1 AS INTEGER, bx2 AS INTEGER, by1 AS INTEGER, by2 AS INTEGER
 
 DIM k AS STRING, ts AS INTEGER, yaw AS SINGLE, spin AS SINGLE, turn AS INTEGER, paused AS INTEGER
-DIM fx AS INTEGER, stp AS INTEGER, tnow AS LONG, tlast AS LONG, dt AS LONG, trav AS LONG
+DIM fx AS INTEGER, stp AS SINGLE, tnow AS LONG, tlast AS LONG, dt AS LONG, trav AS LONG
 DIM cxs AS INTEGER, cys AS INTEGER, pz AS LONG, px AS LONG, py AS LONG, zoom AS INTEGER
 DIM t0 AS SINGLE, el AS SINGLE, frames AS LONG, lang AS SINGLE, secs AS SINGLE
 DIM bf AS SINGLE, bi AS INTEGER, bn AS INTEGER, b1 AS SINGLE, b2 AS SINGLE, b3 AS SINGLE, b4 AS SINGLE, sd AS SINGLE
 DIM i AS INTEGER, j AS INTEGER, ymn AS INTEGER, pyu AS LONG, fwd AS INTEGER, rot AS INTEGER, sc AS INTEGER, lim AS LONG
-DIM tfps AS LONG, ffps AS INTEGER, fps AS INTEGER, scripted AS INTEGER, lastsc AS INTEGER, pf AS INTEGER
+'----- a house room (ROOM.CFG, written by tools\manwalk.ps1 -Room n): the camera
+'----- solved from the rooms' common template -- the picture centre (rcx, rcy,
+'----- px), the camera's height over the floor (rch) and the floor's extent
+'----- (depth rzn..rzf, half width rxh), in model units, and the horizontal focal length
+'----- (rfx: the screen's pixels are 1.2 times taller than wide); the backdrop is the room
+DIM SHARED roomOn AS INTEGER, rcx AS SINGLE, rcy AS SINGLE, rch AS SINGLE, rzn AS SINGLE, rzf AS SINGLE, rfx AS SINGLE
+'----- the floor's half width at its near and far edges (the drawn floor lines),
+'----- the size he keeps at the back (rbs: 1 = no shrink, the art's own perspective
+'----- gives zNear/zFar), the model's lowest point (his feet)
+DIM SHARED rxn AS SINGLE, rxf AS SINGLE, rbs AS SINGLE, rymn AS INTEGER
+'----- and his overall size against true scale (rsc: the room's own scale puts the
+'----- 2D sprite's height at the front edge; the sprite was drawn for mid-room)
+DIM SHARED rsc AS SINGLE
+DIM rfh AS INTEGER, rk AS SINGLE
+DIM tfps AS LONG, ffps AS INTEGER, fps AS INTEGER, scripted AS INTEGER, lastsc AS INTEGER, pf AS INTEGER, quit AS INTEGER
 
 	'----- MANWALK: the model (CAR3D.MDL/BMP, meant for the man) standing on the
 	'----- road scene, driven with tank controls: Up/Down walk along his
@@ -174,10 +198,11 @@ DIM tfps AS LONG, ffps AS INTEGER, fps AS INTEGER, scripted AS INTEGER, lastsc A
 	CALL LoadOvl("SHADBOP.OVL", ovlBop)
 	CALL LoadOvl("C3DEDGE.OVL", ovlEdge)
 	CALL LoadOvl("C3DBLTM.OVL", ovlBltm)
+	CALL LoadOvl("C3DEDGO.OVL", ovlEdgo)
 	CALL LoadOvl("C3DROT.OVL", ovlRot)
 	IF LEN(ovlRot) < 100 THEN PRINT "C3DROT.OVL missing (tools\build_car3d_asm.ps1)": END
 	IF LEN(ovlTri) < 100 OR LEN(ovlPrj) < 50 OR LEN(ovlBop) < 50 THEN PRINT "C3DTRI/C3DPRJ/SHADBOP.OVL missing (tools\build_car3d_asm.ps1)": END
-	IF LEN(ovlEdge) < 50 OR LEN(ovlBltm) < 50 THEN PRINT "C3DEDGE/C3DBLTM.OVL missing (tools\build_car3d_asm.ps1)": END
+	IF LEN(ovlEdge) < 50 OR LEN(ovlBltm) < 50 OR LEN(ovlEdgo) < 30 THEN PRINT "C3DEDGE/C3DEDGO/C3DBLTM.OVL missing (tools\build_car3d_asm.ps1)": END
 	'----- the 3x5 digits of the frame counter
 	FOR i = 0 TO 9: FOR j = 0 TO 4: READ dig(i, j): NEXT: NEXT
 	IF uglInit = 0 THEN PRINT "uglInit failed": END
@@ -236,17 +261,57 @@ DIM tfps AS LONG, ffps AS INTEGER, fps AS INTEGER, scripted AS INTEGER, lastsc A
 		IF my(i) < ymn THEN ymn = my(i)
 	NEXT
 	py = CLNG(GROUNDY) * 16 - ymn
+	roomOn = 0
+	rfh = FREEFILE
+	OPEN "ROOM.CFG" FOR BINARY AS #rfh
+	IF LOF(rfh) > 0 THEN roomOn = 1
+	CLOSE #rfh
+	IF roomOn THEN
+		rfh = FREEFILE
+		OPEN "ROOM.CFG" FOR INPUT AS #rfh
+		INPUT #rfh, rcx, rcy, rch, rzn, rzf, rxn, rxf, rfx, rbs, rsc
+		CLOSE #rfh
+		prq(22) = CINT(rcx * 16): prq(23) = CINT(rcy * 16): prq(24) = CINT(rfx * 16)
+		py = -CLNG(rch * 16) - ymn: rymn = ymn
+	ELSE
+		KILL "ROOM.CFG"
+	END IF
 	'----- he starts on the road's near part, facing the camera (yaw 0 = the
 	'----- model's front, -z, towards it); forward is where he faces
 	CALL PathPos(40, px, pyu, pz, 16)
+	'----- in a room: mid-floor, a little in front of the middle
+	IF roomOn THEN px = 0: pz = CLNG((rzn * .4 + rzf * .6) * 16)
 	yaw = 0
 	anf = 0: afcur = -1: aph = 0: ianim = 0
 	CALL LoadAnim
 	CALL PrepAsm(yaw)
 	outl = 1: ninst = 1: vsync = 1: lastsc = 0: flatT = 64: quadT = 384: dotT = 0   ' (dots: no measurable gain on the VM, so off; D cycles it)
+	outl = 2: ocol = 1
+	CALL OutlineCol(ocol)
 	scripted = 0
 	IF UCASE$(LEFT$(LTRIM$(COMMAND$), 1)) = "S" THEN scripted = 1
+	'----- the outline to start with: a digit after the S, or alone
+	k = LTRIM$(COMMAND$)
+	IF scripted THEN k = MID$(k, 2)
+	i = INSTR("0123", LEFT$(k, 1))
+	IF i > 0 AND LEN(k) > 0 THEN outl = i - 1
 	IF UCASE$(LEFT$(LTRIM$(COMMAND$), 1)) = "B" THEN CALL Bench
+	'----- the scripted check in a room: men at the floor's four corners and the
+	'----- front middle, in walk poses, so the scale can be judged across the floor
+	IF scripted AND roomOn THEN
+		FOR i = 0 TO 4
+			SELECT CASE i
+			CASE 0: pz = CLNG((rzn + 18) * 16): px = CLNG(-(RoomX!(pz) - 22 * RoomK!(pz)) * 16): plyaw = .5
+			CASE 1: pz = CLNG((rzn + 18) * 16): px = CLNG((RoomX!(pz) - 22 * RoomK!(pz)) * 16): plyaw = -.5
+			CASE 2: pz = CLNG((rzf - 18) * 16): px = CLNG(-(RoomX!(pz) - 22 * RoomK!(pz)) * 16): plyaw = 1.57
+			CASE 3: pz = CLNG((rzf - 18) * 16): px = CLNG((RoomX!(pz) - 22 * RoomK!(pz)) * 16): plyaw = 3.14
+			CASE 4: px = 0: pz = CLNG((rzn + 18) * 16): plyaw = 0
+			END SELECT
+			IF anf > 0 THEN CALL PoseInst(0, (i * 3) MOD anf, plyaw) ELSE CALL PoseInst(0, -1, plyaw)
+			CALL PlaceCopy(px, py, pz)
+		NEXT
+		px = 0: pz = CLNG((rzn + rzf) * 8): yaw = .8: CALL PoseInst(0, -1, yaw)
+	END IF
 	'----- PIT channel 0 in mode 2 so PitNow reads the time within a tick
 	OUT &H43, &H34: OUT &H40, 0: OUT &H40, 0
 	tlast = PitNow&: tfps = tlast: ffps = 0: fps = 0
@@ -255,18 +320,25 @@ DIM tfps AS LONG, ffps AS INTEGER, fps AS INTEGER, scripted AS INTEGER, lastsc A
 	DO
 		'----- the keys: the last scan code (port 60h) is a make code while a
 		'----- key is held and its break code (+128) once it is released; the
-		'----- BIOS buffer is drained so it never fills and beeps
-		k = INKEY$
-		IF k = CHR$(27) THEN EXIT DO
-		IF k = "o" OR k = "O" THEN outl = 1 - outl
-		plyaw = yaw
-		IF k = " " THEN CALL PlaceCopy(px, py, pz)
-		IF k = "c" OR k = "C" THEN ninst = 1: ox2 = -1
-		IF k = "v" OR k = "V" THEN vsync = 1 - vsync
-		IF k = "f" OR k = "F" THEN flatT = flatT + 32: IF flatT > 96 THEN flatT = 0
-		IF k = "g" OR k = "G" THEN quadT = 384 - quadT
-		IF k = "d" OR k = "D" THEN dotT = dotT + 8: IF dotT > 24 THEN dotT = 0
-		IF k = "a" OR k = "A" THEN ianim = 1 - ianim
+		'----- BIOS buffer is emptied every frame (a held arrow repeats into it
+		'----- faster than a slow frame takes one key out, and a full buffer beeps)
+		plyaw = yaw: quit = 0
+		DO
+			k = INKEY$
+			IF k = "" THEN EXIT DO
+			IF k = CHR$(27) THEN quit = 1
+			IF k = "o" OR k = "O" THEN outl = (outl + 1) MOD 4
+			IF k = "]" THEN ocol = (ocol + 1) MOD 16: CALL OutlineCol(ocol)
+			IF k = "[" THEN ocol = (ocol + 15) MOD 16: CALL OutlineCol(ocol)
+			IF k = " " THEN CALL PlaceCopy(px, py, pz)
+			IF k = "c" OR k = "C" THEN ninst = 1: ox2 = -1
+			IF k = "v" OR k = "V" THEN vsync = 1 - vsync
+			IF k = "f" OR k = "F" THEN flatT = flatT + 32: IF flatT > 96 THEN flatT = 0
+			IF k = "g" OR k = "G" THEN quadT = 384 - quadT
+			IF k = "d" OR k = "D" THEN dotT = dotT + 8: IF dotT > 24 THEN dotT = 0
+			IF k = "a" OR k = "A" THEN ianim = 1 - ianim
+		LOOP
+		IF quit THEN EXIT DO
 		sc = INP(&H60)
 		IF sc = 1 THEN EXIT DO
 		IF sc = 72 THEN fwd = 1: rot = 0
@@ -276,16 +348,17 @@ DIM tfps AS LONG, ffps AS INTEGER, fps AS INTEGER, scripted AS INTEGER, lastsc A
 		IF sc >= 128 THEN fwd = 0: rot = 0
 		IF scripted THEN
 			IF frames < 60 THEN fwd = 1: rot = 1 ELSE fwd = -1: rot = 0
-			IF frames = 20 OR frames = 40 OR frames = 70 THEN CALL PlaceCopy(px, py, pz)
+			IF roomOn = 0 AND (frames = 20 OR frames = 40 OR frames = 70) THEN CALL PlaceCopy(px, py, pz)
 		END IF
-		'----- the frame's time in retraces (the PIT), 1..4
+		'----- the frame's time in retraces (the PIT, 17045 ticks), exact, so he covers the
+		'----- same ground a second at any frame rate; at most 10 (a frame under 7 fps),
+		'----- so a stall never throws him across the room
 		tnow = PitNow&: dt = tnow - tlast: tlast = tnow
 		IF dt < 0 OR dt > 170450 THEN dt = 17045
-		stp = (dt + 8522) \ 17045
-		IF stp < 1 THEN stp = 1
-		IF stp > 4 THEN stp = 4
-		'----- turning: 2 degrees a retrace; walking: 1 unit a retrace (about
-		'----- 1.4 m/s), along the heading -- the model's front is -z at yaw 0,
+		stp = dt / 17045!
+		IF stp > 10 THEN stp = 10
+		'----- turning: 2 degrees a retrace; walking: 1.44 units a retrace (about
+		'----- 2 m/s), along the heading -- the model's front is -z at yaw 0,
 		'----- so forward = (-sin yaw, -cos yaw)
 		IF rot <> 0 THEN
 			yaw = yaw + rot * stp * .0349
@@ -293,13 +366,23 @@ DIM tfps AS LONG, ffps AS INTEGER, fps AS INTEGER, scripted AS INTEGER, lastsc A
 			IF yaw < 0 THEN yaw = yaw + 6.2832
 		END IF
 		IF fwd <> 0 THEN
-			px = px - CLNG(SIN(yaw) * 16 * stp * fwd)
-			pz = pz - CLNG(COS(yaw) * 16 * stp * fwd)
+			'----- (in a room he is drawn RoomK times his size; he walks that much faster
+			'----- so his feet keep their hold on the floor)
+			rk = 1: IF roomOn THEN rk = RoomK!(pz)
+			px = px - CLNG(SIN(yaw) * WALK16 * stp * fwd * rk)
+			pz = pz - CLNG(COS(yaw) * WALK16 * stp * fwd * rk)
 			'----- kept on the screen and off the camera: 140..900 units away,
 			'----- within the view's width at that depth
-			IF pz < 2240 THEN pz = 2240
-			IF pz > 14400 THEN pz = 14400
-			lim = pz \ 2
+			IF roomOn THEN
+				'----- the floor, less his reach (14 units) from the walls
+				IF pz < CLNG((rzn + 14) * 16) THEN pz = CLNG((rzn + 14) * 16)
+				IF pz > CLNG((rzf - 14) * 16) THEN pz = CLNG((rzf - 14) * 16)
+				lim = CLNG((RoomX!(pz) - 14 * RoomK!(pz)) * 16)
+			ELSE
+				IF pz < 2240 THEN pz = 2240
+				IF pz > 14400 THEN pz = 14400
+				lim = pz \ 2
+			END IF
 			IF px > lim THEN px = lim
 			IF px < -lim THEN px = -lim
 		END IF
@@ -307,12 +390,12 @@ DIM tfps AS LONG, ffps AS INTEGER, fps AS INTEGER, scripted AS INTEGER, lastsc A
 		'----- standing, the rest pose. The model is re-rotated and re-sorted only
 		'----- when its frame or heading changes
 		pf = -1
-		IF fwd <> 0 AND anf > 0 THEN aph = aph + 16 * stp * fwd: pf = AnimFrame%(aph)
+		IF fwd <> 0 AND anf > 0 THEN aph = aph + CLNG(WALK16 * stp * fwd): pf = AnimFrame%(aph)
 		IF pf <> afcur OR rot <> 0 THEN afcur = pf: CALL PoseInst(0, afcur, yaw)
 		'----- A: the copies walk in place, each at its own place in the cycle
 		IF ianim AND anf > 0 THEN
 			FOR i = 1 TO ninst - 1
-				iph(i) = iph(i) + 16 * stp: j = AnimFrame%(iph(i))
+				iph(i) = iph(i) + CLNG(WALK16 * stp): j = AnimFrame%(iph(i))
 				IF j <> ifr(i) THEN ifr(i) = j: CALL PoseInst(i, j, iyaw(i))
 			NEXT
 		END IF
@@ -326,7 +409,8 @@ DIM tfps AS LONG, ffps AS INTEGER, fps AS INTEGER, scripted AS INTEGER, lastsc A
 			tfps = tnow: ffps = 0
 		END IF
 		IF scripted THEN
-			IF frames = 60 THEN CALL SaveShot("MANWLK1.BMP")
+			'----- (the second shot with the outline in yellow: the colour keys' path)
+			IF frames = 60 THEN CALL SaveShot("MANWLK1.BMP"): ocol = 14: CALL OutlineCol(ocol)
 			IF frames = 120 THEN CALL SaveShot("MANWLK2.BMP"): EXIT DO
 		END IF
 	LOOP
@@ -392,12 +476,13 @@ SUB DrawAll
 	bx = 319: by = 199: ex = 0: ey = 0
 	FOR i = 0 TO ninst - 1
 		CALL SetInst(i)
-		CALL Project(ipx(i), ipy(i), ipz(i))
-		IF bx1 - 1 < bx THEN bx = bx1 - 1
-		IF by1 - 1 < by THEN by = by1 - 1
-		IF bx2 + 2 > ex THEN ex = bx2 + 2
-		IF by2 + 2 > ey THEN ey = by2 + 2
-		ibx(i) = bx1 - 1: iby(i) = by1 - 1: iex(i) = bx2 + 2: iey(i) = by2 + 2
+		CALL ProjInst(i)
+		'----- (3 px of margin: the blue outline's two rings, and the ink's skipped border)
+		IF bx1 - 3 < bx THEN bx = bx1 - 3
+		IF by1 - 3 < by THEN by = by1 - 3
+		IF bx2 + 4 > ex THEN ex = bx2 + 4
+		IF by2 + 4 > ey THEN ey = by2 + 4
+		ibx(i) = bx1 - 3: iby(i) = by1 - 3: iex(i) = bx2 + 4: iey(i) = by2 + 4
 		seq(i) = i
 	NEXT
 	'----- joined with the last frame's region, clamped
@@ -444,16 +529,90 @@ SUB DrawAll
 		tris = tris + prm(22)
 	NEXT
 	w1 = wo: IF wo > 32767 THEN w1 = wo - 65536
-	IF outl AND rw >= 2 AND rh >= 2 THEN
-		DEF SEG = VARSEG(ovlEdge)
-		CALL ABSOLUTE(BYVAL wseg, BYVAL w1, BYVAL WKW, BYVAL rw, BYVAL rh, SADD(ovlEdge))
-		DEF SEG
-	END IF
+	CALL Ink(w1, 320, rw, rh)
 	IF vsync THEN
 		WAIT &H3DA, 8, 8
 		WAIT &H3DA, 8
 	END IF
-	CALL RectCopyM(wseg, wo, &HA000, CLNG(by) * 320 + bx, rh, rw, 320, 320, 3)
+	CALL RectCopyM(wseg, wo, &HA000, CLNG(by) * 320 + bx, rh, rw, 320, 320, 15)
+END SUB
+
+'----- OutlineCol: CGA colour c (0..15) into palette slots 14 and 15 (the
+'----- outline's marks; the brown mode's mark is blitted as 15 as well)
+SUB OutlineCol (c AS INTEGER)
+	DIM r AS INTEGER, g AS INTEGER, b AS INTEGER, i AS INTEGER, hi AS INTEGER
+	hi = 0: IF c AND 8 THEN hi = 85
+	r = hi: g = hi: b = hi
+	IF c AND 4 THEN r = r + 170
+	IF c AND 2 THEN g = g + 170
+	IF c AND 1 THEN b = b + 170
+	IF c = 6 THEN g = 85
+	OUT &H3C8, 14
+	FOR i = 14 TO 15
+		OUT &H3C9, r \ 4: OUT &H3C9, g \ 4: OUT &H3C9, b \ 4
+		MID$(palb, i * 4 + 1, 3) = CHR$(b) + CHR$(g) + CHR$(r)
+	NEXT
+END SUB
+
+'----- Ink: the outline in the work buffer block at offset w1 (row stride, rw x rh).
+'----- outl 1: C3DEDGE marks his edge pixels that touch the background 254,
+'----- slot 15 in the blit, like the drawn outline of the 2D sprites; 2/3:
+'----- C3DEDGO rings him on the background side, his own edge pixels kept --
+'----- 15 for the first ring, 14 for the second (both the outline colour,
+'----- OutlineCol: [ and ] step it through the CGA colours)
+SUB Ink (w1 AS INTEGER, stride AS INTEGER, rw AS INTEGER, rh AS INTEGER)
+	DIM tm AS INTEGER
+	IF outl = 0 OR rw < 3 OR rh < 3 THEN EXIT SUB
+	IF outl = 1 THEN
+		DEF SEG = VARSEG(ovlEdge)
+		CALL ABSOLUTE(BYVAL wseg, BYVAL w1, BYVAL stride, BYVAL rw, BYVAL rh, SADD(ovlEdge))
+		DEF SEG
+		EXIT SUB
+	END IF
+	tm = 16 + 15 * 256
+	DEF SEG = VARSEG(ovlEdgo)
+	CALL ABSOLUTE(BYVAL wseg, BYVAL w1, BYVAL stride, BYVAL rw, BYVAL rh, BYVAL tm, SADD(ovlEdgo))
+	DEF SEG
+	IF outl = 3 THEN
+		tm = 15 + 14 * 256
+		DEF SEG = VARSEG(ovlEdgo)
+		CALL ABSOLUTE(BYVAL wseg, BYVAL w1, BYVAL stride, BYVAL rw, BYVAL rh, BYVAL tm, SADD(ovlEdgo))
+		DEF SEG
+	END IF
+END SUB
+
+'----- RoomK: his scale at depth z (x16 units) in a room: the art's perspective
+'----- shrinks him to zNear/zFar at the back wall; drawn this much bigger, his size
+'----- falls only to rbs there, evenly with the depth
+FUNCTION RoomK! (z AS LONG)
+	DIM t AS SINGLE, zz AS SINGLE
+	IF roomOn = 0 THEN RoomK! = 1: EXIT FUNCTION
+	zz = z / 16
+	t = (zz - rzn) / (rzf - rzn)
+	IF t < 0 THEN t = 0
+	IF t > 1 THEN t = 1
+	RoomK! = rsc * (1 + (rbs - 1) * t) * zz / rzn
+END FUNCTION
+
+'----- RoomX: the floor's half width at depth z (x16 units): the drawn floor line,
+'----- a straight line from the near corner to the far one
+FUNCTION RoomX! (z AS LONG)
+	RoomX! = rxn + (z / 16 - rzn) * (rxf - rxn) / (rzf - rzn)
+END FUNCTION
+
+'----- ProjInst: model i projected at its place; in a room at its RoomK scale (C3DPRJ
+'----- word 26), lowered so its feet stay on the floor
+SUB ProjInst (i AS INTEGER)
+	DIM k AS SINGLE, y AS LONG
+	IF roomOn THEN
+		k = RoomK!(ipz(i))
+		prq(26) = CINT(k * 256)
+		y = -CLNG(rch * 16) - CLNG(rymn * k)
+		CALL Project(ipx(i), y, ipz(i))
+	ELSE
+		prq(26) = 0
+		CALL Project(ipx(i), ipy(i), ipz(i))
+	END IF
 END SUB
 
 '----- PrepAsm: C3DROT -- the model rotated about Y by yaw into rx/ry/rz and
@@ -1021,6 +1180,7 @@ SUB LoadPalette
 	SEEK #fh, 55
 	s = INPUT$(1024, #fh)
 	CLOSE #fh
+	'----- (slots 14 and 15, above the backdrop's colours, are the outline: OutlineCol)
 	palb = s
 	FOR i = 0 TO 255
 		pal(i).blue = MID$(s, i * 4 + 1, 1)

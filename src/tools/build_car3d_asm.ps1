@@ -43,6 +43,12 @@
 #   block (21 INTEGERs): 0/1 rx seg/off  2/3 ry  4/5 rz  6/7 sx  8/9 sy  10 n
 #   11/12 px lo/hi  13/14 py  15/16 pz (LONG, x16 units)  17..20 out: minx maxx miny maxy
 #   21 output stride in bytes (0 = 2: separate sx/sy arrays; 8: the interleaved vertex array, 8/9 = base + 2)
+#   22/23 the picture centre in 1/16 px (0 = 160, 100): a level camera with its centre shifted, as the
+#   house rooms are drawn (the verticals stay vertical, the horizon above the back wall)
+#   24 the horizontal focal length x16 (0 = 256 x16 = 4096, as vertically): 320x200 pixels are 1.2 times
+#   taller than wide on a 4:3 screen, so a true-proportion view wants 307 across (4915); 25 is cleared
+#   26 the model's scale x256 (0 = 256 = 1; 27 is cleared): rx, ry, rz times k/256 before the place is added
+#   (the house rooms let him shrink less with depth than true perspective)
 #   sx = (160 + (rx+px)*256 \ max(rz+pz,16)) * 16 ; sy = (100 - (ry+py)*256 \ ...) * 16  (1/16 pixel)
 #
 # C3DTEST.OVL -- encoding self-test, see C3DTEST.BAS.
@@ -421,25 +427,31 @@ $tri128 = Build-Tri 7
 function Q($k) { return -64 + 2 * $k }
 $script:a = [Asm]::new()
 E @(0x55); E @(0x8B, 0xEC); E @(0x81, 0xEC, 0x40, 0x00); E @(0x1E, 0x56, 0x57, 0x06)
-MovDsM 8; MovRM 'si' 6; E @(0x8C, 0xD0); E @(0x8E, 0xC0); LeaDI (Q 0); E @(0xB9, 0x16, 0x00); E @(0xF3, 0xA5)
+MovDsM 8; MovRM 'si' 6; E @(0x8C, 0xD0); E @(0x8E, 0xC0); LeaDI (Q 0); E @(0xB9, 0x1C, 0x00); E @(0xF3, 0xA5)
+CmpMI8 (Q 26) 0; Jr 0x75 'ks1'; MovMI (Q 26) 256; Lbl 'ks1'        # the model's scale x256 (word 26, 27 = 0): 0 -> 1
+MovMI (Q 27) 0
+CmpMI8 (Q 24) 0; Jr 0x75 'fx1'; MovMI (Q 24) 4096; Lbl 'fx1'       # the horizontal focal length x16 (word 24, 25 = 0): 0 -> 256
+MovMI (Q 25) 0
 CmpMI8 (Q 21) 0; Jr 0x75 'st1'; MovMI (Q 21) 2; Lbl 'st1'          # the output stride (word 21): 0 -> 2
+CmpMI8 (Q 22) 0; Jr 0x75 'cx1'; MovMI (Q 22) 2560; Lbl 'cx1'       # the picture centre (words 22/23, 1/16 px): 0 -> 160, 100
+CmpMI8 (Q 23) 0; Jr 0x75 'cy1'; MovMI (Q 23) 1600; Lbl 'cy1'
 MovMI (Q 17) 32767; MovMI (Q 18) -32768; MovMI (Q 19) 32767; MovMI (Q 20) -32768
 MovMI -4 0
 Lbl 'ploop'
 MovRM 'ax' -4; CmpRM 'ax' (Q 10); Jn @(0x0F, 0x8D) 'pdone'
 E @(0xD1, 0xE0); MovMR -6 'ax'                                   # [bp-6] = i*2
 MovRM 'ax' -4; ImulRM 'ax' (Q 21); MovMR -8 'ax'                  # [bp-8] = i*stride (the outputs)
-MovDsM (Q 4); MovRM 'si' -6; AddRM 'si' (Q 5); E @(0x66, 0x0F, 0xBF, 0x04); Add32RM 'ax' (Q 15)   # eax = rz+pz
+MovDsM (Q 4); MovRM 'si' -6; AddRM 'si' (Q 5); E @(0x66, 0x0F, 0xBF, 0x04); E (@(0x66, 0x0F, 0xAF) + (MB $R['ax'] (Q 26))); E @(0x66, 0xC1, 0xF8, 0x08); Add32RM 'ax' (Q 15)   # eax = rz*k/256 + pz
 E @(0x66, 0x83, 0xF8, 0x10); Jr 0x7D 'z1'; E @(0x66, 0xB8, 0x10, 0x00, 0x00, 0x00); Lbl 'z1'      # min 16
 E @(0x66, 0x8B, 0xC8)                                            # ecx = zz
-MovDsM (Q 0); MovRM 'si' -6; AddRM 'si' (Q 1); E @(0x66, 0x0F, 0xBF, 0x04); Add32RM 'ax' (Q 11)
-E @(0x66, 0xC1, 0xE0, 0x0C); E @(0x66, 0x99); E @(0x66, 0xF7, 0xF9); E @(0x05, 0x00, 0x0A)       # ax = (160 + 256x/z) * 16
+MovDsM (Q 0); MovRM 'si' -6; AddRM 'si' (Q 1); E @(0x66, 0x0F, 0xBF, 0x04); E (@(0x66, 0x0F, 0xAF) + (MB $R['ax'] (Q 26))); E @(0x66, 0xC1, 0xF8, 0x08); Add32RM 'ax' (Q 11)
+E (@(0x66, 0x0F, 0xAF) + (MB $R['ax'] (Q 24))); E @(0x66, 0x99); E @(0x66, 0xF7, 0xF9); AddRM 'ax' (Q 22)   # ax = (cx + fx*x/z) * 16 (imul eax, dword [Q24])
 MovDsM (Q 6); MovRM 'si' -8; AddRM 'si' (Q 7); E @(0x89, 0x04)
 CmpRM 'ax' (Q 17); Jr 0x7D 'm1'; MovMR (Q 17) 'ax'; Lbl 'm1'
 CmpRM 'ax' (Q 18); Jr 0x7E 'm2'; MovMR (Q 18) 'ax'; Lbl 'm2'
-MovDsM (Q 2); MovRM 'si' -6; AddRM 'si' (Q 3); E @(0x66, 0x0F, 0xBF, 0x04); Add32RM 'ax' (Q 13)
+MovDsM (Q 2); MovRM 'si' -6; AddRM 'si' (Q 3); E @(0x66, 0x0F, 0xBF, 0x04); E (@(0x66, 0x0F, 0xAF) + (MB $R['ax'] (Q 26))); E @(0x66, 0xC1, 0xF8, 0x08); Add32RM 'ax' (Q 13)
 E @(0x66, 0xC1, 0xE0, 0x0C); E @(0x66, 0x99); E @(0x66, 0xF7, 0xF9)
-E @(0x8B, 0xC8); E @(0xB8, 0x40, 0x06); E @(0x2B, 0xC1)          # ax = (100 - 256y/z) * 16
+E @(0x8B, 0xC8); MovRM 'ax' (Q 23); E @(0x2B, 0xC1)              # ax = (cy - 256y/z) * 16
 MovDsM (Q 8); MovRM 'si' -8; AddRM 'si' (Q 9); E @(0x89, 0x04)
 CmpRM 'ax' (Q 19); Jr 0x7D 'm3'; MovMR (Q 19) 'ax'; Lbl 'm3'
 CmpRM 'ax' (Q 20); Jr 0x7E 'm4'; MovMR (Q 20) 'ax'; Lbl 'm4'
@@ -490,6 +502,41 @@ E @(0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x0A, 0x00)
 $edge = $script:a.Resolve()
 
 # =============================================================================
+# C3DEDGO: CALL ABSOLUTE(BYVAL seg, BYVAL off, BYVAL stride, BYVAL w, BYVAL h, BYVAL thr + mark*256, SADD(edgo$)) RETF 12
+#   outer outline: inside the w x h block, a background pixel (index < thr) with a solid
+#   left, right, upper or lower neighbour (index >= thr) becomes mark. The ring sits
+#   outside the model, its own edge pixels kept. mark < thr, so marks never count as
+#   solid in the same pass (no cascade); a second pass with thr = the first mark and a
+#   lower mark adds a second ring (thr 16 mark 15, then thr 15 mark 14 = 2 px). Skips
+#   the block's border rows and columns: the caller's box has that margin.
+#   [bp+6]=thr|mark [bp+8]=h [bp+10]=w [bp+12]=stride [bp+14]=off [bp+16]=seg
+# =============================================================================
+$script:a = [Asm]::new()
+E @(0x55); E @(0x8B, 0xEC); E @(0x1E, 0x56, 0x57, 0x53)                 # push bp; mov bp,sp; push ds,si,di,bx
+MovDsM 16; MovRM 'si' 14
+MovRM 'bx' 12                                                             # bx = stride
+E @(0x03, 0xF3); E @(0x46)                                                # si -> row 1, col 1
+MovRM 'dx' 6                                                              # dl = thr, dh = mark
+MovRM 'di' 8; E @(0x83, 0xEF, 0x02); Jr 0x7E 'odone'                     # di = h-2 rows
+Lbl 'orow'
+MovRM 'cx' 10; E @(0x83, 0xE9, 0x02); Jr 0x7E 'oadv'                     # cx = w-2
+Lbl 'opix'
+E @(0x8A, 0x04); E @(0x3A, 0xC2); Jr 0x73 'onext'                        # solid (or marked) itself -> nothing
+E @(0x38, 0x54, 0xFF); Jr 0x73 'omark'                                    # left
+E @(0x38, 0x54, 0x01); Jr 0x73 'omark'                                    # right
+E @(0x2B, 0xF3); E @(0x38, 0x14); E @(0x8D, 0x30); Jr 0x73 'omark'        # up (sub si,bx; cmp; lea si,[si+bx] keeps the flags)
+E @(0x38, 0x10); Jr 0x72 'onext'                                          # down
+Lbl 'omark'; E @(0x88, 0x34)                                              # [si] = mark
+Lbl 'onext'
+E @(0x46); Jr 0xE2 'opix'
+Lbl 'oadv'
+E @(0x03, 0xF3); SubRM 'si' 10; E @(0x83, 0xC6, 0x02)                     # next row, col 1
+E @(0x4F); Jr 0x75 'orow'
+Lbl 'odone'
+E @(0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x0C, 0x00)
+$edgo = $script:a.Resolve()
+
+# =============================================================================
 # C3DBLTM: CALL ABSOLUTE(BYVAL sseg, BYVAL soff, BYVAL dseg, BYVAL doff, BYVAL rows,
 #                        BYVAL rbytes, BYVAL sstride, BYVAL dstride, BYVAL colour, SADD(bltm$))  RETF 18
 #   rectangle copy like SHADBOP mode 0, but every 254 (the silhouette mark) becomes
@@ -538,6 +585,7 @@ $srcDir = "$PSScriptRoot\.."
 [System.IO.File]::WriteAllBytes("$srcDir\C3DTRI.OVL", $tri)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DT128.OVL", $tri128)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DEDGE.OVL", $edge)
+[System.IO.File]::WriteAllBytes("$srcDir\C3DEDGO.OVL", $edgo)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DBLTM.OVL", $bltm)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DPRJ.OVL", $prj)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DTEST.OVL", $tst)

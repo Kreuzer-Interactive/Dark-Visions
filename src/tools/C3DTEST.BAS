@@ -85,7 +85,7 @@ DIM px AS LONG, py AS LONG, pz AS LONG, zz AS LONG, ex AS INTEGER, ey AS INTEGER
 	prm(15) = VARSEG(bd(0)): prm(16) = VARPTR(bd(0))
 	prm(17) = VARSEG(ord(0)): prm(18) = VARPTR(ord(0))
 	prm(19) = VAL(COMMAND$): IF prm(19) = 0 THEN prm(19) = 1
-	prm(20) = 0: prm(21) = 0: prm(22) = -1: prm(24) = 0: prm(25) = 0
+	prm(20) = 0: prm(21) = 0: prm(22) = -1: prm(24) = 0: prm(25) = 0: prm(26) = 0: prm(27) = 0
 	DEF SEG = VARSEG(tri)
 	CALL ABSOLUTE(BYVAL VARSEG(prm(0)), BYVAL VARPTR(prm(0)), SADD(tri))
 	DEF SEG
@@ -160,7 +160,7 @@ DIM px AS LONG, py AS LONG, pz AS LONG, zz AS LONG, ex AS INTEGER, ey AS INTEGER
 	CALL LoSplit(px, prm(11), prm(12))
 	CALL LoSplit(py, prm(13), prm(14))
 	CALL LoSplit(pz, prm(15), prm(16))
-	prm(17) = -1: prm(18) = -1: prm(19) = -1: prm(20) = -1
+	prm(17) = -1: prm(18) = -1: prm(19) = -1: prm(20) = -1: prm(21) = 0: prm(22) = 0: prm(23) = 0: prm(24) = 0: prm(25) = 0: prm(26) = 0: prm(27) = 0
 	DEF SEG = VARSEG(prj)
 	CALL ABSOLUTE(BYVAL VARSEG(prm(0)), BYVAL VARPTR(prm(0)), SADD(prj))
 	DEF SEG
