@@ -608,6 +608,31 @@ E @(0x07, 0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x04, 0x00)
 $mse = $script:a.Resolve()
 
 # =============================================================================
+# C3DMCPY: CALL ABSOLUTE(BYVAL sseg, BYVAL soff, BYVAL dseg, BYVAL doff, BYVAL mseg, BYVAL moff,
+#                        BYVAL rows, BYVAL cols, BYVAL stride, BYVAL mstride, SADD(mcpy$)) RETF 20
+#   a rows x cols block copied from source to destination (row stride `stride`) where the mask's byte
+#   (its own row stride `mstride`) is not 0: MANWALK's furniture put back over the men behind it
+#   [bp+6]=mstride [bp+8]=stride [bp+10]=cols [bp+12]=rows [bp+14]=moff [bp+16]=mseg [bp+18]=doff
+#   [bp+20]=dseg [bp+22]=soff [bp+24]=sseg. The mask is read through FS (a 386 register QB leaves alone)
+# =============================================================================
+$script:a = [Asm]::new()
+E @(0x55); E @(0x8B, 0xEC); E @(0x1E, 0x56, 0x57, 0x53, 0x06)
+MovDsM 24; MovRM 'si' 22; MovEsM 20; MovRM 'di' 18; E (@(0x8E) + (MB 4 16)); MovRM 'bx' 14   # ds:si, es:di, fs:bx
+MovRM 'dx' 12
+Lbl 'mrow'
+MovRM 'cx' 10; Jr 0xE3 'madv'
+Lbl 'mpix'
+E @(0x64, 0x8A, 0x07); E @(0x84, 0xC0); Jr 0x74 'mskip'                   # mask byte 0: leave it
+E @(0x8A, 0x04); E @(0x26, 0x88, 0x05)                                    # es:[di] = [si]
+Lbl 'mskip'
+E @(0x46, 0x47, 0x43); Jr 0xE2 'mpix'
+Lbl 'madv'
+AddRM 'si' 8; SubRM 'si' 10; AddRM 'di' 8; SubRM 'di' 10; AddRM 'bx' 6; SubRM 'bx' 10
+E @(0x4A); Jr 0x75 'mrow'
+E @(0x07, 0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x14, 0x00)
+$mcpy = $script:a.Resolve()
+
+# =============================================================================
 # C3DBLTM: CALL ABSOLUTE(BYVAL sseg, BYVAL soff, BYVAL dseg, BYVAL doff, BYVAL rows,
 #                        BYVAL rbytes, BYVAL sstride, BYVAL dstride, BYVAL colour, SADD(bltm$))  RETF 18
 #   rectangle copy like SHADBOP mode 0, but every 254 (the silhouette mark) becomes
@@ -659,6 +684,7 @@ $srcDir = "$PSScriptRoot\.."
 [System.IO.File]::WriteAllBytes("$srcDir\C3DEDGO.OVL", $edgo)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DSKIN.OVL", $skin)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DMSE.OVL", $mse)
+[System.IO.File]::WriteAllBytes("$srcDir\C3DMCPY.OVL", $mcpy)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DBLTM.OVL", $bltm)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DPRJ.OVL", $prj)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DTEST.OVL", $tst)

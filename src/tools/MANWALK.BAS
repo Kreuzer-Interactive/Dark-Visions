@@ -40,6 +40,12 @@
 '----- he walks the waypoints. The arrow keys stop at the mask's edge (sliding
 '----- along it). MANWALK P: two scripted clicks round the furniture ->
 '----- MANPATH1/2.BMP, MANPATH.LOG.
+'----- The furniture in front (ROOM.OCC from src\ART\Rooms\roomN_front.png,
+'----- tools\occmask.ps1 makes a starter): pieces of the backdrop, each with its
+'----- mask and its depth (its floor line); the frame draws men and pieces far
+'----- to near, a piece being its backdrop pixels put back under its mask
+'----- (C3DMCPY.OVL), each man outlined as he is drawn -- so a man behind a
+'----- piece is hidden by it, outline and all, and one in front is not.
 '----- MANWALK I: the fidgets one after another, a shot of each
 '----- (MANIDL1..4.BMP), MANIDLE.DMP (a pose's vertices), then a turn each way
 '----- (MANTRN1/2.BMP).
@@ -127,6 +133,9 @@ DECLARE FUNCTION MaskAt% (x16 AS LONG, z16 AS LONG)
 DECLARE FUNCTION CellOf% (x16 AS LONG, z16 AS LONG)
 DECLARE FUNCTION LineClear% (ax AS LONG, az AS LONG, bx AS LONG, bz AS LONG)
 DECLARE SUB FindPath (sx16 AS LONG, sz16 AS LONG, tx AS LONG, tz AS LONG)
+DECLARE SUB LoadOcc ()
+DECLARE SUB OccApply (o AS INTEGER, bx AS INTEGER, by AS INTEGER, ex AS INTEGER, ey AS INTEGER)
+DECLARE SUB InkBox (i AS INTEGER, bx AS INTEGER, by AS INTEGER, ex AS INTEGER, ey AS INTEGER)
 DECLARE SUB Bench ()
 DECLARE FUNCTION Ms! (t1 AS LONG, t2 AS LONG)
 DECLARE SUB SetInst (i AS INTEGER)
@@ -206,6 +215,11 @@ DIM SHARED prs(0 TO 16) AS INTEGER
 DIM SHARED wmk(0 TO 3999) AS INTEGER, gwk(1) AS INTEGER, gpar(1) AS INTEGER, gq(1) AS INTEGER
 DIM SHARED wpx(0 TO 63) AS LONG, wpz(0 TO 63) AS LONG, pcx(0 TO 255) AS LONG, pcz(0 TO 255) AS LONG
 DIM SHARED ddx(0 TO 7) AS INTEGER, ddz(0 TO 7) AS INTEGER, bitv(0 TO 7) AS INTEGER
+'----- the front pieces: their masks one after another in ocm() (a byte a pixel),
+'----- each one's box on screen, its mask's start, its depth (x16 units: the floor
+'----- under its lowest pixel), and their order far to near
+DIM SHARED ocm(1) AS INTEGER, ocx0(0 TO 15) AS INTEGER, ocy0(0 TO 15) AS INTEGER, ocw(0 TO 15) AS INTEGER, och(0 TO 15) AS INTEGER
+DIM SHARED ooff(0 TO 15) AS INTEGER, odep(0 TO 15) AS LONG, oord(0 TO 15) AS INTEGER
 '----- the turning steps: their clips (-1 none) to his left and right, the feet
 '----- they pivot on (rest x,z x16: 0 left, 1 right), the step playing (tcl, -1 none)
 '----- and how far into it (1/30 s of the clip); nfid the fidgets (kind 0)
@@ -222,6 +236,7 @@ DIM SHARED nv AS INTEGER, nf AS INTEGER, inc AS INTEGER, ovlSkin AS STRING, idle
 DIM SHARED msOn AS INTEGER, curOn AS INTEGER, mcx AS INTEGER, mcy AS INTEGER, ocx AS INTEGER, ocy AS INTEGER
 DIM SHARED mreg(0 TO 3) AS INTEGER, ovlMse AS STRING, curs(0 TO 10) AS STRING
 DIM SHARED wmOn AS INTEGER, gnx AS INTEGER, gnz AS INTEGER, gx0 AS INTEGER, gz0 AS INTEGER, nwp AS INTEGER, iwp AS INTEGER, pathms AS SINGLE
+DIM SHARED nocc AS INTEGER, ovlMcpy AS STRING
 DIM SHARED vdc AS LONG, bg AS LONG
 DIM SHARED lx AS INTEGER, ly AS INTEGER, lz AS INTEGER
 DIM SHARED tris AS LONG
@@ -283,6 +298,7 @@ DIM pathchk AS INTEGER, opx AS LONG, opz AS LONG, nbad AS LONG, gtol AS SINGLE
 	CALL LoadOvl("C3DEDGO.OVL", ovlEdgo)
 	CALL LoadOvl("C3DSKIN.OVL", ovlSkin)
 	CALL LoadOvl("C3DMSE.OVL", ovlMse)
+	CALL LoadOvl("C3DMCPY.OVL", ovlMcpy)
 	CALL LoadOvl("C3DROT.OVL", ovlRot)
 	IF LEN(ovlRot) < 100 THEN PRINT "C3DROT.OVL missing (tools\build_car3d_asm.ps1)": END
 	IF LEN(ovlTri) < 100 OR LEN(ovlPrj) < 50 OR LEN(ovlBop) < 50 THEN PRINT "C3DTRI/C3DPRJ/SHADBOP.OVL missing (tools\build_car3d_asm.ps1)": END
@@ -311,6 +327,7 @@ DIM pathchk AS INTEGER, opx AS LONG, opz AS LONG, nbad AS LONG, gtol AS SINGLE
 		prq(22) = CINT(rcx * 16): prq(23) = CINT(rcy * 16): prq(24) = CINT(rfx * 16)
 		py = -CLNG(rch * 16) - ymn: rymn = ymn
 		CALL LoadWalk
+		CALL LoadOcc
 	ELSE
 		KILL "ROOM.CFG"
 	END IF
@@ -774,6 +791,7 @@ DIM pathchk AS INTEGER, opx AS LONG, opz AS LONG, nbad AS LONG, gtol AS SINGLE
 		i = FREEFILE
 		OPEN "MANWALK.LOG" FOR OUTPUT AS #i
 		PRINT #i, "MANWALK S: verts"; nv; " faces"; nf; " models"; ninst; " frames"; frames; " secs"; INT(el * 10) / 10; " fps"; INT(frames / (el + .001)); " polys/frame"; INT(tris / (frames + 1)); " last shown"; fps; " free"; FRE(-1)
+		PRINT #i, "pieces"; nocc; " walk mask"; wmOn
 		CLOSE #i
 	END IF
 	END
@@ -874,17 +892,26 @@ SUB DrawAll
 		NEXT
 	NEXT
 	prm(20) = 0: prm(21) = 0: prm(24) = flatT + dotT * 256: prm(25) = quadT OR &H8000
+	'----- the men far to near, each front piece put back once the men behind it
+	'----- are drawn (with pieces, each man is outlined as he is drawn)
+	k = 0
 	FOR j = 0 TO ninst - 1
 		i = seq(j)
+		DO WHILE k < nocc
+			IF odep(oord(k)) <= ipz(i) THEN EXIT DO
+			CALL OccApply(oord(k), bx, by, ex, ey): k = k + 1
+		LOOP
 		CALL SetInst(i)
 		prm(22) = 0
 		DEF SEG = VARSEG(ovlTri)
 		CALL ABSOLUTE(BYVAL VARSEG(prm(0)), BYVAL VARPTR(prm(0)), SADD(ovlTri))
 		DEF SEG
 		tris = tris + prm(22)
+		IF nocc > 0 THEN CALL InkBox(i, bx, by, ex, ey)
 	NEXT
+	DO WHILE k < nocc: CALL OccApply(oord(k), bx, by, ex, ey): k = k + 1: LOOP
 	w1 = wo: IF wo > 32767 THEN w1 = wo - 65536
-	CALL Ink(w1, 320, rw, rh)
+	IF nocc = 0 THEN CALL Ink(w1, 320, rw, rh)
 	IF curOn THEN CALL CurDraw(mcx, mcy)
 	IF vsync THEN
 		WAIT &H3DA, 8, 8
@@ -1040,6 +1067,78 @@ SUB FindPath (sx16 AS LONG, sz16 AS LONG, tx AS LONG, tz AS LONG)
 		a = b
 	LOOP
 	pathms = Ms!(t1, PitNow&)
+END SUB
+
+'----- LoadOcc: ROOM.OCC ("C3O1", n%, then per piece x0% y0% w% h% base%, then
+'----- the masks, w x h bytes each) -> the front pieces, sorted far to near;
+'----- none (nocc = 0) without the file or C3DMCPY.OVL
+SUB LoadOcc
+	DIM fh AS INTEGER, tag AS STRING, n AS INTEGER, k AS INTEGER, j AS INTEGER, b AS INTEGER, tot AS INTEGER, s AS STRING, ln AS LONG
+	nocc = 0
+	IF LEN(ovlMcpy) < 30 THEN EXIT SUB
+	fh = FREEFILE
+	OPEN "ROOM.OCC" FOR BINARY AS #fh
+	ln = LOF(fh)
+	IF ln < 6 THEN
+		CLOSE #fh
+		IF ln = 0 THEN KILL "ROOM.OCC"
+		EXIT SUB
+	END IF
+	tag = SPACE$(4): GET #fh, 1, tag: GET #fh, , n
+	IF tag <> "C3O1" OR n < 1 OR n > 16 THEN CLOSE #fh: EXIT SUB
+	tot = 0
+	FOR k = 0 TO n - 1
+		GET #fh, , ocx0(k): GET #fh, , ocy0(k): GET #fh, , ocw(k): GET #fh, , och(k): GET #fh, , b
+		ooff(k) = tot: tot = tot + ocw(k) * och(k)
+		'----- its depth: the floor where its lowest pixel stands
+		IF b > rcy + 1 THEN odep(k) = CLNG(256 * rch / (b - rcy) * 16) ELSE odep(k) = 2147483647
+		oord(k) = k
+	NEXT
+	REDIM ocm(0 TO tot \ 2 + 1) AS INTEGER
+	s = SPACE$(tot): GET #fh, , s: CLOSE #fh
+	DEF SEG = VARSEG(ocm(0))
+	FOR k = 0 TO tot - 1: POKE VARPTR(ocm(0)) + k, ASC(MID$(s, k + 1, 1)): NEXT
+	DEF SEG
+	'----- far to near
+	FOR k = 1 TO n - 1
+		FOR j = 0 TO n - 1 - k
+			IF odep(oord(j)) < odep(oord(j + 1)) THEN SWAP oord(j), oord(j + 1)
+		NEXT
+	NEXT
+	nocc = n
+END SUB
+
+'----- OccApply: front piece o put back -- the backdrop under its mask copied into
+'----- the work buffer, within the frame's box (bx, by)..(ex, ey)
+SUB OccApply (o AS INTEGER, bx AS INTEGER, by AS INTEGER, ex AS INTEGER, ey AS INTEGER)
+	DIM x0 AS INTEGER, y0 AS INTEGER, x1 AS INTEGER, y1 AS INTEGER, a AS LONG, s1 AS INTEGER, d1 AS INTEGER, m1 AS INTEGER, nr AS INTEGER, nc AS INTEGER, mseg AS INTEGER, mw AS INTEGER
+	x0 = ocx0(o): IF bx > x0 THEN x0 = bx
+	y0 = ocy0(o): IF by > y0 THEN y0 = by
+	x1 = ocx0(o) + ocw(o) - 1: IF ex < x1 THEN x1 = ex
+	y1 = ocy0(o) + och(o) - 1: IF ey < y1 THEN y1 = ey
+	IF x1 < x0 OR y1 < y0 THEN EXIT SUB
+	a = CLNG(bgo) + CLNG(y0) * 320 + x0: IF a > 32767 THEN a = a - 65536
+	s1 = a
+	a = CLNG(wko) + CLNG(y0) * 320 + x0: IF a > 32767 THEN a = a - 65536
+	d1 = a
+	m1 = VARPTR(ocm(0)) + ooff(o) + (y0 - ocy0(o)) * ocw(o) + (x0 - ocx0(o))
+	nr = y1 - y0 + 1: nc = x1 - x0 + 1: mseg = VARSEG(ocm(0)): mw = ocw(o)
+	DEF SEG = VARSEG(ovlMcpy)
+	CALL ABSOLUTE(BYVAL bgseg, BYVAL s1, BYVAL wseg, BYVAL d1, BYVAL mseg, BYVAL m1, BYVAL nr, BYVAL nc, BYVAL 320, BYVAL mw, SADD(ovlMcpy))
+	DEF SEG
+END SUB
+
+'----- InkBox: model i's outline, within its own box (kept inside the frame's)
+SUB InkBox (i AS INTEGER, bx AS INTEGER, by AS INTEGER, ex AS INTEGER, ey AS INTEGER)
+	DIM x0 AS INTEGER, y0 AS INTEGER, x1 AS INTEGER, y1 AS INTEGER, a AS LONG, w1 AS INTEGER
+	x0 = ibx(i): IF bx > x0 THEN x0 = bx
+	y0 = iby(i): IF by > y0 THEN y0 = by
+	x1 = iex(i): IF ex < x1 THEN x1 = ex
+	y1 = iey(i): IF ey < y1 THEN y1 = ey
+	IF x1 - x0 < 2 OR y1 - y0 < 2 THEN EXIT SUB
+	a = CLNG(wko) + CLNG(y0) * 320 + x0: IF a > 32767 THEN a = a - 65536
+	w1 = a
+	CALL Ink(w1, 320, x1 - x0 + 1, y1 - y0 + 1)
 END SUB
 
 '----- Mouse: INT 33h with mreg() as ax, bx, cx, dx (C3DMSE.OVL)

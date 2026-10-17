@@ -97,7 +97,30 @@ if (-not $NoStage) {
     $wm.Dispose(); "walk mask: room${Room}_walk.png, $nw walkable pixels"
   }
   [IO.File]::WriteAllBytes("$st\ROOM.WLK", $wb)
-  foreach ($x in 'C3DT128.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'SHADBOP.OVL', 'C3DEDGE.OVL', 'C3DEDGO.OVL', 'C3DBLTM.OVL', 'C3DROT.OVL', 'C3DSKIN.OVL', 'C3DMSE.OVL') { Copy-Item "$src\$x" $st -Force }
+  # the room's front pieces (src\ART\Rooms\roomN_front.png, tools\occmask.ps1 makes a starter; a colour a
+  # piece) -> ROOM.OCC: "C3O1", n%, per piece x0% y0% w% h% base% (its lowest row), then the masks, a byte
+  # a pixel; empty = none
+  $fpng = "$src\ART\Rooms\room${Room}_front.png"; $ob = [byte[]]@()
+  if ($Room -gt 0 -and (Test-Path $fpng)) {
+    Add-Type -AssemblyName System.Drawing
+    $fm = [System.Drawing.Bitmap]::FromFile($fpng); $px = @{}
+    for ($y = 0; $y -lt 200; $y++) { for ($x = 0; $x -lt 320; $x++) { $c = $fm.GetPixel($x, $y); if ($c.R + $c.G + $c.B -gt 0) { $key = $c.ToArgb(); if (-not $px.ContainsKey($key)) { $px[$key] = New-Object System.Collections.Generic.List[int] }; $px[$key].Add($y * 320 + $x) } } }
+    $fm.Dispose()
+    $hdr = New-Object System.Collections.Generic.List[byte]; $msk = New-Object System.Collections.Generic.List[byte]
+    $hdr.AddRange([Text.Encoding]::ASCII.GetBytes('C3O1')); $hdr.AddRange([BitConverter]::GetBytes([int16]$px.Count))
+    foreach ($key in $px.Keys) {
+      $l = $px[$key]; $x0 = 320; $y0 = 200; $x1 = 0; $y1 = 0
+      foreach ($q in $l) { $qx = $q % 320; $qy = [Math]::Floor($q / 320); if ($qx -lt $x0) { $x0 = $qx }; if ($qx -gt $x1) { $x1 = $qx }; if ($qy -lt $y0) { $y0 = $qy }; if ($qy -gt $y1) { $y1 = $qy } }
+      $w = $x1 - $x0 + 1; $hh = $y1 - $y0 + 1; $mb = New-Object byte[] ($w * $hh)
+      foreach ($q in $l) { $mb[([Math]::Floor($q / 320) - $y0) * $w + ($q % 320 - $x0)] = 1 }
+      foreach ($v in $x0, $y0, $w, $hh, $y1) { $hdr.AddRange([BitConverter]::GetBytes([int16]$v)) }
+      $msk.AddRange($mb)
+    }
+    $hdr.AddRange($msk); $ob = $hdr.ToArray()
+    "front pieces: room${Room}_front.png, $($px.Count) pieces"
+  }
+  [IO.File]::WriteAllBytes("$st\ROOM.OCC", $ob)
+  foreach ($x in 'C3DT128.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'SHADBOP.OVL', 'C3DEDGE.OVL', 'C3DEDGO.OVL', 'C3DBLTM.OVL', 'C3DROT.OVL', 'C3DSKIN.OVL', 'C3DMSE.OVL', 'C3DMCPY.OVL') { Copy-Item "$src\$x" $st -Force }
   Copy-Item "$src\tools\MANWALK.EXE" $st -Force
   # the walk, baked from the model just converted (its vertex order)
   if ($Anim) { & "$PSScriptRoot\man3dfbx.ps1" -Import $Anim -Mdl "$st\CAR3D.MDL" -Out "$st\MAN3D.ANI" -Preview "$art\man_walk.png" | Select-String 'fbx:|skin|stride|->' }
@@ -111,7 +134,7 @@ if (-not $NoStage) {
 }
 if ($Push486) {
   $net = "$PSScriptRoot\net486.ps1"
-  foreach ($x in 'MANWALK.EXE', 'CAR3D.MDL', 'CAR3D.BMP', 'CARROAD.BMP', 'C3DT128.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'SHADBOP.OVL', 'C3DEDGE.OVL', 'C3DEDGO.OVL', 'C3DBLTM.OVL', 'C3DROT.OVL', 'C3DSKIN.OVL', 'C3DMSE.OVL', 'MAN3D.ANI', 'MANIDLE.ANI', 'ROOM.CFG', 'ROOM.WLK') {
+  foreach ($x in 'MANWALK.EXE', 'CAR3D.MDL', 'CAR3D.BMP', 'CARROAD.BMP', 'C3DT128.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'SHADBOP.OVL', 'C3DEDGE.OVL', 'C3DEDGO.OVL', 'C3DBLTM.OVL', 'C3DROT.OVL', 'C3DSKIN.OVL', 'C3DMSE.OVL', 'C3DMCPY.OVL', 'MAN3D.ANI', 'MANIDLE.ANI', 'ROOM.CFG', 'ROOM.WLK', 'ROOM.OCC') {
     & $net push -Source "$st\$x" -Dest /drive_c/manwalk -All | Select-Object -Last 1
   }
   if ($Check -or $Bench) {
