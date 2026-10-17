@@ -11,7 +11,8 @@ $src = (Resolve-Path "$tools\..").Path
 $net = "$tools\net486.ps1"
 $up = (& $net ping 2>&1 | Out-String) -match 'is up'
 if (-not $up) { "486: FTP server not answering (restart SERVE on it)"; exit 1 }
-$files = @('GAME.EXE', 'C3DT128.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'C3DEDGE.OVL', 'C3DBLTM.OVL', 'C3DROT.OVL', 'C3DBLTF.OVL', 'SHADBOP.OVL', 'CAR3D.MDL', 'CAR3D.BMP', 'CARROAD.BMP', 'HILLROAD.BMP', 'HOUSE.PIC', 'ENTER.PIC')
+$files = @('GAME.EXE', 'C3DT128.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'C3DEDGE.OVL', 'C3DBLTM.OVL', 'C3DROT.OVL', 'C3DBLTF.OVL', 'SHADBOP.OVL', 'CAR3D.MDL', 'CAR3D.BMP', 'CARROAD.BMP', 'HILLROAD.BMP', 'HOUSE.PIC', 'ENTER.PIC', 'C3DTAB.DAT', 'JOED.BIN', 'SHADW2.BIN')
+# (the last three are the caches the game writes itself -- C3DTAB.DAT keyed to this EXE's size -- pushed so the 486's first run is quick too)
 foreach ($f in $files) {
     $p = Join-Path $src $f
     if (Test-Path $p) { & $net push -Source $p -All | Select-Object -Last 1 } else { "missing: $p" }

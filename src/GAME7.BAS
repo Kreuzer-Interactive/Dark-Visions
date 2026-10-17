@@ -119,6 +119,14 @@ DECLARE FUNCTION C3dHold% (secs AS SINGLE)
 DECLARE SUB C3dFree ()
 DECLARE SUB C3dShot (fil AS STRING)
 DECLARE FUNCTION C3dTicks& ()
+DECLARE FUNCTION C3dTabKey& ()
+DECLARE FUNCTION C3dTabLoad% (blk AS INTEGER)
+DECLARE SUB C3dTabSave ()
+'----- GAME2 (the binary-cache helpers)
+DECLARE SUB BinGetI (fh AS INTEGER, a%(), n AS INTEGER)
+DECLARE SUB BinGetL (fh AS INTEGER, a&(), n AS INTEGER)
+DECLARE SUB BinPutI (fh AS INTEGER, a%(), n AS INTEGER)
+DECLARE SUB BinPutL (fh AS INTEGER, a&(), n AS INTEGER)
 '----- GAME6
 DECLARE FUNCTION VgaOpen& (pref AS INTEGER, xr AS INTEGER, yr AS INTEGER, np AS INTEGER)
 DECLARE SUB VgaClose ()
@@ -209,6 +217,14 @@ DIM SHARED c3dReady AS INTEGER, hillOn AS INTEGER, c3dNeed AS LONG, c3dFre0 AS L
 '----- the hill scene's numbers kept aside with its tables (C3dHillSave)
 DIM SHARED hPX0 AS INTEGER, hPDX AS INTEGER, hPY0 AS INTEGER, hPDY AS INTEGER, hPZ0 AS INTEGER, hPDZ AS INTEGER
 DIM SHARED hBendN AS INTEGER, hBendE AS INTEGER, hSPD AS INTEGER
+'----- the drive tables' cache, C3DTAB.DAT (C3dTabKey/Load/Save): the floats of
+'----- C3dWay, C3dBend and C3dHeadPitch take a 486SX ten seconds, the finished
+'----- tables read back a fraction of one. Keyed to the EXE's size, the path
+'----- DATA, the scenes' constants and the model, so a new build or path makes
+'----- them afresh (and rewrites the file). TABVER: bump it when the table
+'----- MATHS changes in a way none of those catch
+DIM SHARED tabDirty AS INTEGER, tabKey AS LONG
+CONST TABVER = 1
 DIM SHARED tk(0 TO 7) AS INTEGER
 DIM SHARED wpx(0 TO 15) AS INTEGER, wpy(0 TO 15) AS INTEGER, wpz(0 TO 15) AS INTEGER, wpp(0 TO 15) AS INTEGER
 '----- the heading over the drive: the artist's take of 2026-10-14 with the
@@ -285,7 +301,7 @@ END SUB
 '----- addresses the blobs use are taken at play time. 0 = not available (the
 '----- CGA car instead), -1 = ready
 FUNCTION IntroCar3DLoad% (f3 AS SINGLE, f10 AS SINGLE, f1 AS SINGLE, f6 AS SINGLE)
-	DIM tneed AS LONG
+	DIM tneed AS LONG, ok AS INTEGER
 	IntroCar3DLoad% = 0
 	c3dReady = 0
 	dbg = VAL(ENVIRON$("C3DDUMP"))
@@ -324,11 +340,14 @@ FUNCTION IntroCar3DLoad% (f3 AS SINGLE, f10 AS SINGLE, f1 AS SINGLE, f6 AS SINGL
 	IF C3dLoadTexture% = 0 THEN GOTO c3dlfail
 	CALL C3dMark("texture")
 	CALL StartupPart(", texture")
-	'----- the hill scene's tables (C3dWay's floats take a second on the 486)
-	'----- and its track, kept aside by C3dHillSave; then the road's
+	'----- the hill scene's tables (from the cache, or C3dWay's floats) and its
+	'----- track, kept aside by C3dHillSave; then the road's
+	tabKey = C3dTabKey&: tabDirty = 0
 	IF hillOn THEN
 		CALL C3dSceneHill
-		CALL C3dWay
+		ok = 0
+		IF edit = 0 THEN ok = C3dTabLoad%(1)
+		IF ok = 0 THEN CALL C3dWay: tabDirty = -1
 		'----- the track is made to last the drive at the scene's pace (8.313
 		'----- notes a retrace), the car waiting at the door through the
 		'----- thunder; if the track cannot be that long, the pace follows it
@@ -344,7 +363,10 @@ FUNCTION IntroCar3DLoad% (f3 AS SINGLE, f10 AS SINGLE, f1 AS SINGLE, f6 AS SINGL
 		CALL StartupPart(", hill")
 	END IF
 	CALL C3dSceneRoad
-	CALL C3dBend
+	ok = 0
+	IF edit = 0 THEN ok = C3dTabLoad%(0)
+	IF ok = 0 THEN CALL C3dBend: tabDirty = -1
+	IF tabDirty AND edit = 0 THEN CALL C3dTabSave
 	CALL C3dMark("road tables")
 	CALL StartupLine(", road.")
 	CALL StartupLine("Z_Init: " + LTRIM$(STR$(c3dNeed \ 1024)) + " KB of " + LTRIM$(STR$(c3dFre0 \ 1024)) + " KB free for the car.")
@@ -742,6 +764,122 @@ SUB C3dTrack (need AS LONG)
 	LOOP WHILE tc >= 50
 	FOR j = 1 TO 3: trkF(n) = CINT(sf6): n = n + 1: NEXT
 	trkLen = n
+END SUB
+
+'----- C3dTabKey: what the cached tables depend on, folded into one number:
+'----- TABVER, the model's lowest point (ymin), the hill waypoints and the
+'----- heading knots (DATA), both scenes' constants, the table CONSTs, the
+'----- EXE's size (any rebuild starts the cache afresh) and a recorded turn
+'----- (C3DTURN.DAT) if there is one
+FUNCTION C3dTabKey&
+	DIM k AS LONG, i AS INTEGER, n AS INTEGER, v AS INTEGER, fh AS INTEGER, s AS STRING
+	k = TABVER
+	k = (k * 31 + ymin) MOD 1000003
+	RESTORE hillWay
+	READ n
+	k = (k * 31 + n) MOD 1000003
+	IF n > 16 THEN n = 16
+	FOR i = 1 TO n * 4: READ v: k = (k * 31 + v) MOD 1000003: NEXT
+	RESTORE turnKnots
+	FOR i = 1 TO NKNOT: READ v: k = (k * 31 + v) MOD 1000003: NEXT
+	FOR i = 0 TO 1
+		IF i = 0 THEN CALL C3dSceneHill ELSE CALL C3dSceneRoad
+		k = (k * 31 + PX0) MOD 1000003: k = (k * 31 + PDX) MOD 1000003: k = (k * 31 + PY0) MOD 1000003
+		k = (k * 31 + PDY) MOD 1000003: k = (k * 31 + PZ0) MOD 1000003: k = (k * 31 + PDZ) MOD 1000003
+		k = (k * 31 + BENDS) MOD 1000003: k = (k * 31 + BENDM) MOD 1000003: k = (k * 31 + BENDX) MOD 1000003
+		k = (k * 31 + BENDY) MOD 1000003: k = (k * 31 + BENDZ) MOD 1000003: k = (k * 31 + BENDL) MOD 1000003
+		k = (k * 31 + SPD) MOD 1000003: k = (k * 31 + PITCHE) MOD 1000003: k = (k * 31 + PITCHS) MOD 1000003
+		k = (k * 31 + HEADM) MOD 1000003: k = (k * 31 + PACEX) MOD 1000003
+	NEXT
+	k = (k * 31 + HILLCAR) MOD 1000003: k = (k * 31 + HEADW) MOD 1000003: k = (k * 31 + BENDNS) MOD 1000003
+	k = (k * 31 + BENDMAX) MOD 1000003: k = (k * 31 + TMAX) MOD 1000003: k = (k * 31 + TURNK) MOD 1000003
+	IF FileExists%("GAME.EXE") THEN
+		fh = FREEFILE
+		OPEN "GAME.EXE" FOR BINARY AS #fh
+		k = (k * 31 + LOF(fh) MOD 65521) MOD 1000003
+		CLOSE #fh
+	END IF
+	IF FileExists%("C3DTURN.DAT") THEN
+		fh = FREEFILE
+		OPEN "C3DTURN.DAT" FOR BINARY AS #fh
+		k = (k * 31 + LOF(fh) MOD 65521) MOD 1000003
+		IF LOF(fh) > 0 AND LOF(fh) < 16000 THEN
+			s = SPACE$(LOF(fh))
+			GET #fh, 1, s
+			FOR i = 1 TO LEN(s) - 1 STEP 2: k = (k * 31 + CVI(MID$(s, i, 2))) MOD 1000003: NEXT
+		END IF
+		CLOSE #fh
+	END IF
+	C3dTabKey& = k
+END FUNCTION
+
+'----- C3dTabLoad: the scene's finished tables from C3DTAB.DAT into tpx..tsp,
+'----- bendN, bendE and PX0.. (blk 1 = the hill's block, 0 = the road's, after
+'----- that scene's constants are set); 0 = no cache, or not this build's.
+'----- Layout: "C3T1", key&, the road block's position&, hill flag%, the hill
+'----- block, the road block; a block = n1%, n2%, bendN%, bendE%, PX0..PDZ (6
+'----- ints), n1 longs each of tpx, tpy, tpz, n2 ints each of tcs, tsn, tcp, tsp
+FUNCTION C3dTabLoad% (blk AS INTEGER)
+	DIM fh AS INTEGER, tag AS STRING, k AS LONG, ro AS LONG, hf AS INTEGER, n1 AS INTEGER, n2 AS INTEGER
+	C3dTabLoad% = 0
+	IF FileExists%("C3DTAB.DAT") = 0 THEN EXIT FUNCTION
+	fh = FREEFILE
+	OPEN "C3DTAB.DAT" FOR BINARY AS #fh
+	IF LOF(fh) < 34 THEN CLOSE #fh: EXIT FUNCTION
+	tag = SPACE$(4)
+	GET #fh, 1, tag
+	GET #fh, , k
+	GET #fh, , ro
+	GET #fh, , hf
+	IF tag <> "C3T1" OR k <> tabKey THEN CLOSE #fh: EXIT FUNCTION
+	IF blk = 1 THEN
+		IF hf = 0 THEN CLOSE #fh: EXIT FUNCTION
+	ELSE
+		IF ro < 15 OR ro > LOF(fh) THEN CLOSE #fh: EXIT FUNCTION
+		SEEK #fh, ro
+	END IF
+	GET #fh, , n1
+	GET #fh, , n2
+	IF n1 < 2 OR n1 > BENDMAX + 1 OR n2 < 2 OR n2 > TMAX + 1 THEN CLOSE #fh: EXIT FUNCTION
+	IF SEEK(fh) + 15 + CLNG(n1) * 12 + CLNG(n2) * 8 > LOF(fh) THEN CLOSE #fh: EXIT FUNCTION
+	GET #fh, , bendN: GET #fh, , bendE
+	GET #fh, , PX0: GET #fh, , PDX: GET #fh, , PY0: GET #fh, , PDY: GET #fh, , PZ0: GET #fh, , PDZ
+	IF bendN <> n1 - 1 OR BENDS + bendE <> n2 - 1 THEN CLOSE #fh: EXIT FUNCTION
+	CALL BinGetL(fh, tpx(), n1): CALL BinGetL(fh, tpy(), n1): CALL BinGetL(fh, tpz(), n1)
+	CALL BinGetI(fh, tcs(), n2): CALL BinGetI(fh, tsn(), n2): CALL BinGetI(fh, tcp(), n2): CALL BinGetI(fh, tsp(), n2)
+	CLOSE #fh
+	C3dTabLoad% = -1
+END FUNCTION
+
+'----- C3dTabSave: C3DTAB.DAT written afresh -- the hill's block from the h*
+'----- copies (C3dHillSave), the road's from tpx..tsp (the road scene current)
+SUB C3dTabSave
+	DIM fh AS INTEGER, tag AS STRING, ro AS LONG, hf AS INTEGER, n1 AS INTEGER, n2 AS INTEGER
+	IF FileExists%("C3DTAB.DAT") THEN KILL "C3DTAB.DAT"
+	fh = FREEFILE
+	OPEN "C3DTAB.DAT" FOR BINARY AS #fh
+	tag = "C3T1": PUT #fh, 1, tag
+	PUT #fh, , tabKey
+	ro = 0: PUT #fh, , ro
+	hf = 0: IF hillOn THEN hf = 1
+	PUT #fh, , hf
+	IF hf THEN
+		n1 = hBendN + 1: n2 = hBendE + 1
+		PUT #fh, , n1: PUT #fh, , n2
+		PUT #fh, , hBendN: PUT #fh, , hBendE
+		PUT #fh, , hPX0: PUT #fh, , hPDX: PUT #fh, , hPY0: PUT #fh, , hPDY: PUT #fh, , hPZ0: PUT #fh, , hPDZ
+		CALL BinPutL(fh, hpx(), n1): CALL BinPutL(fh, hpy(), n1): CALL BinPutL(fh, hpz(), n1)
+		CALL BinPutI(fh, hcs(), n2): CALL BinPutI(fh, hsn(), n2): CALL BinPutI(fh, hcp(), n2): CALL BinPutI(fh, hsp(), n2)
+	END IF
+	ro = SEEK(fh)
+	n1 = bendN + 1: n2 = BENDS + bendE + 1
+	PUT #fh, , n1: PUT #fh, , n2
+	PUT #fh, , bendN: PUT #fh, , bendE
+	PUT #fh, , PX0: PUT #fh, , PDX: PUT #fh, , PY0: PUT #fh, , PDY: PUT #fh, , PZ0: PUT #fh, , PDZ
+	CALL BinPutL(fh, tpx(), n1): CALL BinPutL(fh, tpy(), n1): CALL BinPutL(fh, tpz(), n1)
+	CALL BinPutI(fh, tcs(), n2): CALL BinPutI(fh, tsn(), n2): CALL BinPutI(fh, tcp(), n2): CALL BinPutI(fh, tsp(), n2)
+	PUT #fh, 9, ro
+	CLOSE #fh
 END SUB
 
 '----- C3dFlash: the backdrop's black palette slots white (on) or back

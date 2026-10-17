@@ -1531,3 +1531,121 @@ SUB PShiftB (sh AS INTEGER)
 	NEXT
 	sdwPRdy = 1
 END SUB
+
+'----- the binary caches' helpers: n INTEGERs or LONGs of an array through a
+'----- 4 KB string (GET/PUT of a string is one DOS read; an element at a time
+'----- is a DOS call each). Used by GAME7's C3DTAB.DAT and FaceLoad's JOED.BIN
+SUB BinGetI (fh AS INTEGER, a%(), n AS INTEGER)
+	DIM s AS STRING, i AS INTEGER, p AS INTEGER, k AS INTEGER
+	p = 0
+	DO WHILE p < n
+		k = n - p: IF k > 2048 THEN k = 2048
+		s = SPACE$(k * 2)
+		GET #fh, , s
+		FOR i = 0 TO k - 1: a%(p + i) = CVI(MID$(s, i * 2 + 1, 2)): NEXT
+		p = p + k
+	LOOP
+END SUB
+
+SUB BinGetL (fh AS INTEGER, a&(), n AS INTEGER)
+	DIM s AS STRING, i AS INTEGER, p AS INTEGER, k AS INTEGER
+	p = 0
+	DO WHILE p < n
+		k = n - p: IF k > 1024 THEN k = 1024
+		s = SPACE$(k * 4)
+		GET #fh, , s
+		FOR i = 0 TO k - 1: a&(p + i) = CVL(MID$(s, i * 4 + 1, 4)): NEXT
+		p = p + k
+	LOOP
+END SUB
+
+SUB BinPutI (fh AS INTEGER, a%(), n AS INTEGER)
+	DIM s AS STRING, i AS INTEGER, p AS INTEGER, k AS INTEGER
+	p = 0
+	DO WHILE p < n
+		k = n - p: IF k > 2048 THEN k = 2048
+		s = SPACE$(k * 2)
+		FOR i = 0 TO k - 1: MID$(s, i * 2 + 1, 2) = MKI$(a%(p + i)): NEXT
+		PUT #fh, , s
+		p = p + k
+	LOOP
+END SUB
+
+SUB BinPutL (fh AS INTEGER, a&(), n AS INTEGER)
+	DIM s AS STRING, i AS INTEGER, p AS INTEGER, k AS INTEGER
+	p = 0
+	DO WHILE p < n
+		k = n - p: IF k > 1024 THEN k = 1024
+		s = SPACE$(k * 4)
+		FOR i = 0 TO k - 1: MID$(s, i * 4 + 1, 4) = MKL$(a&(p + i)): NEXT
+		PUT #fh, , s
+		p = p + k
+	LOOP
+END SUB
+
+'----- FaceLoad: Joe's face sprites, JOED.PCT and JOED.MSK (up to 126 rows of
+'----- 8 numbers: a row for each of the 8 directions' arrays) -- from the
+'----- binary cache JOED.BIN when its key is the two text files' lengths, else
+'----- parsed with INPUT # as GAME.BAS always did (1.5 s on a 486SX) and the
+'----- cache written for next time. Layout: "JOF1", key&, n1%, n2%, the 8
+'----- picture arrays (n1 ints each), the 8 mask arrays (n2 ints each)
+SUB FaceLoad (fd%(), fu%(), fr%(), fl%(), fdl%(), fdr%(), ful%(), fur%(), mfd%(), mfu%(), mfr%(), mfl%(), mfdl%(), mfdr%(), mful%(), mfur%())
+	DIM fh AS INTEGER, fb AS INTEGER, i AS INTEGER, n1 AS INTEGER, n2 AS INTEGER, kk AS LONG, k2 AS LONG, tag AS STRING
+	fh = FREEFILE
+	OPEN "JOED.PCT" FOR INPUT AS #fh
+	kk = LOF(fh)
+	CLOSE #fh
+	fh = FREEFILE
+	OPEN "JOED.MSK" FOR INPUT AS #fh
+	kk = kk * 65536 + LOF(fh)
+	CLOSE #fh
+	fb = FREEFILE
+	OPEN "JOED.BIN" FOR BINARY AS #fb
+	IF LOF(fb) >= 12 THEN
+		tag = SPACE$(4)
+		GET #fb, 1, tag
+		GET #fb, , k2
+		GET #fb, , n1
+		GET #fb, , n2
+		IF tag = "JOF1" AND k2 = kk AND n1 >= 1 AND n1 <= 126 AND n2 >= 1 AND n2 <= 126 AND LOF(fb) >= 12 + (CLNG(n1) + n2) * 16 THEN
+			CALL BinGetI(fb, fd%(), n1): CALL BinGetI(fb, fu%(), n1): CALL BinGetI(fb, fr%(), n1): CALL BinGetI(fb, fl%(), n1)
+			CALL BinGetI(fb, fdl%(), n1): CALL BinGetI(fb, fdr%(), n1): CALL BinGetI(fb, ful%(), n1): CALL BinGetI(fb, fur%(), n1)
+			CALL BinGetI(fb, mfd%(), n2): CALL BinGetI(fb, mfu%(), n2): CALL BinGetI(fb, mfr%(), n2): CALL BinGetI(fb, mfl%(), n2)
+			CALL BinGetI(fb, mfdl%(), n2): CALL BinGetI(fb, mfdr%(), n2): CALL BinGetI(fb, mful%(), n2): CALL BinGetI(fb, mfur%(), n2)
+			CLOSE #fb
+			EXIT SUB
+		END IF
+	END IF
+	CLOSE #fb
+	'----- the text files
+	n1 = 0: n2 = 0
+	fh = FREEFILE
+	OPEN "JOED.PCT" FOR INPUT AS #fh
+	FOR i = 0 TO 125
+		IF EOF(fh) THEN EXIT FOR
+		INPUT #fh, fd%(i), fu%(i), fr%(i), fl%(i), fdl%(i), fdr%(i), ful%(i), fur%(i)
+		n1 = i + 1
+	NEXT
+	CLOSE #fh
+	fh = FREEFILE
+	OPEN "JOED.MSK" FOR INPUT AS #fh
+	FOR i = 0 TO 125
+		IF EOF(fh) THEN EXIT FOR
+		INPUT #fh, mfd%(i), mfu%(i), mfr%(i), mfl%(i), mfdl%(i), mfdr%(i), mful%(i), mfur%(i)
+		n2 = i + 1
+	NEXT
+	CLOSE #fh
+	IF n1 < 1 OR n2 < 1 THEN EXIT SUB
+	'----- the cache for next time
+	fb = FREEFILE
+	OPEN "JOED.BIN" FOR BINARY AS #fb
+	tag = "JOF1": PUT #fb, 1, tag
+	PUT #fb, , kk
+	PUT #fb, , n1
+	PUT #fb, , n2
+	CALL BinPutI(fb, fd%(), n1): CALL BinPutI(fb, fu%(), n1): CALL BinPutI(fb, fr%(), n1): CALL BinPutI(fb, fl%(), n1)
+	CALL BinPutI(fb, fdl%(), n1): CALL BinPutI(fb, fdr%(), n1): CALL BinPutI(fb, ful%(), n1): CALL BinPutI(fb, fur%(), n1)
+	CALL BinPutI(fb, mfd%(), n2): CALL BinPutI(fb, mfu%(), n2): CALL BinPutI(fb, mfr%(), n2): CALL BinPutI(fb, mfl%(), n2)
+	CALL BinPutI(fb, mfdl%(), n2): CALL BinPutI(fb, mfdr%(), n2): CALL BinPutI(fb, mful%(), n2): CALL BinPutI(fb, mfur%(), n2)
+	CLOSE #fb
+END SUB

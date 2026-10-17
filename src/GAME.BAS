@@ -69,6 +69,7 @@ DECLARE SUB OvReg (ovf%(), afrm%(), amfrm%(), anpf!, ovh!, ovnext!, PX!, PY!)
 DECLARE SUB ClimbSeq (up%, x!, y0!, y1!, sfrq!, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
 DECLARE SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
 DECLARE SUB ShadLoad (sdt%())
+DECLARE SUB FaceLoad (fd%(), fu%(), fr%(), fl%(), fdl%(), fdr%(), ful%(), fur%(), mfd%(), mfu%(), mfr%(), mfl%(), mfdl%(), mfdr%(), mful%(), mfur%())
 DECLARE SUB ShadRoom (q2$)
 DECLARE SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, sdt%(), bop$, blt$, fbg%())
 DECLARE SUB PGrab (lf2$, fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%())
@@ -1782,17 +1783,8 @@ loadgame:
 '----- joeface: load Joe face sprites, pick direction toward player
 joeface:
 	CLOSE
-	OPEN "joed.pct" FOR INPUT AS #1
-	FOR i = 0 TO 125
-		IF EOF(1) THEN GOTO 9705
-		INPUT #1, fd(i), fu(i), fr(i), fl(i), fdl(i), fdr(i), ful(i), fur(i)
-	NEXT
-	9705 CLOSE
-	OPEN "joed.msk" FOR INPUT AS #1
-	FOR i = 0 TO 125
-		IF EOF(1) THEN GOTO 9710
-		INPUT #1, mfd(i), mfu(i), mfr(i), mfl(i), mfdl(i), mfdr(i), mful(i), mfur(i)
-	NEXT
+	'----- (GAME2 FaceLoad: the INPUT # loops that were here, behind the JOED.BIN cache)
+	CALL FaceLoad(fd(), fu(), fr(), fl(), fdl(), fdr(), ful(), fur(), mfd(), mfu(), mfr(), mfl(), mfdl(), mfdr(), mful(), mfur())
 
 	9710 dx2 = jx - b
 	dy2 = jy - a
