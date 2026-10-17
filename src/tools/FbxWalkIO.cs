@@ -312,6 +312,13 @@ public class FbxScene {
     // matrices fit, the mesh's global taken from its node
     static double Diff(double[] a, double[] b) { double d = 0; for (int i = 0; i < 12; i++) d += Math.Abs(a[i] - b[i]); return d; }
     public string Convention = "";
+    // one cluster's skin matrix at t: its control points (the mesh's bind space) -> the mesh's space at t
+    public double[] ClusterMatrix(Cluster c, long t) {
+        double[] meshG = Global(MeshModelId, Start);
+        double[] asMax = M34.Mul(M34.Inv(c.TL), meshG);
+        double[] boneFromMesh = Diff(c.Tr, asMax) < Diff(c.Tr, meshG) ? c.Tr : M34.Mul(M34.Inv(c.TL), c.Tr);
+        return M34.Mul(M34.Inv(meshG), M34.Mul(Global(c.Bone, t), boneFromMesh));
+    }
     public double[][] Deform(long t) {
         int n = CP.Length / 3; double[][] acc = new double[n][]; double[] ws = new double[n];
         for (int i = 0; i < n; i++) acc[i] = new double[3];

@@ -1,0 +1,6 @@
+# name first last loop (frames at 30 fps; each clip starts and ends in the breathing loop's frame 0 pose)
+breathe 0 72 1
+look 80 164 0
+watch 172 244 0
+scratch 252 322 0
+tap 330 390 0

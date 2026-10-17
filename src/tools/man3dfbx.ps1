@@ -13,6 +13,18 @@
 #                                the ground -> dist\manwalk\MAN3D.ANI for MANWALK; the stride (the cycle's
 #                                length, so the planted foot stays put) is measured from the feet
 #
+#   man3dfbx.ps1 -Idle           export: the idle clips instead (tools\WalkRig.cs IdleAnim: a breathing loop
+#                                and the fidgets look, watch, scratch, tap, one after another on the
+#                                timeline at 30 fps) -> man_idle.max/.fbx and man_idle_clips.txt (each
+#                                clip's name, first and last frame, kind: 0 a fidget, 1 the breathing
+#                                loop, 2/3 the turning step to his left/right; keep it in step if you
+#                                move or lengthen a clip in Max). With -KeysFrom <the edited man_idle.fbx>
+#                                the clips there keep the artist's keys; clips past its end (new ones)
+#                                come from IdleAnim
+#   man3dfbx.ps1 -Idle -Import <fbx>   import: the clips from the edited man_idle.fbx (its _clips.txt beside
+#                                it) -> dist\manwalk\MANIDLE.ANI: the bones' matrices at 15 fps, held
+#                                poses merged (C3I1, skinned in MANWALK by C3DSKIN.OVL)
+#
 #   The vertex order is the one fbx2tds.ps1 + car3dcnv.ps1 make from the same mesh: the import checks
 #   the FBX's mesh against the staged CAR3D.MDL vertex by vertex and refuses a mismatch (a changed mesh
 #   needs restaging: manwalk.ps1 -Anim <fbx> does both).
@@ -28,7 +40,8 @@ param(
   [double]$Cycle = 0,
   [switch]$NoGround,
   [string]$Preview = "",
-  [string]$KeysFrom = ""     # export: take the bones' keys from this animated FBX (the artist's edited walk) instead of the keyed walk
+  [string]$KeysFrom = "",    # export: take the bones' keys from this animated FBX (the artist's edited walk) instead of the keyed walk
+  [switch]$Idle              # the idle clips (man_idle.fbx, MANIDLE.ANI) instead of the walk
 )
 $ErrorActionPreference = 'Stop'
 if (-not ('WalkRig' -as [type])) { Add-Type -Path "$PSScriptRoot\WalkRig.cs" }
@@ -55,7 +68,7 @@ if (-not $Import) {
   # exporter writes them, so the rig is built in Max: the mesh imported, a "Rig" point with the
   # mesh's transform, a point per bone at its joint, a Skin modifier with these weights added in
   # the rest pose, then the walk keyed; Max saves the scene and exports the FBX)
-  if (-not $Out) { $Out = "$PSScriptRoot\..\ART\Man3d\man_walk.fbx" }
+  if (-not $Out) { $Out = if ($Idle) { "$PSScriptRoot\..\ART\Man3d\man_idle.fbx" } else { "$PSScriptRoot\..\ART\Man3d\man_walk.fbx" } }
   $Out = Join-Path (Resolve-Path (Split-Path $Out)).Path (Split-Path $Out -Leaf)
   $maxOut = [IO.Path]::ChangeExtension($Out, '.max')
   $batch = Get-ChildItem 'C:\Program Files\Autodesk\3ds Max *\3dsmaxbatch.exe' -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
@@ -73,7 +86,13 @@ if (-not $Import) {
   $srcFbx = (Resolve-Path $Source).Path
   $scene = [FbxScene]::Load($srcFbx); $scene.FindMesh(); $scene.Split()
   $rig = [WalkRig]::Load($Mdl); $off = Match $scene $rig
-  $rig.Rig(); $rig.Bake($nf)
+  $rig.Rig()
+  if ($Idle) {
+    $ia = New-Object IdleAnim $rig; $ksLast = -1
+    if ($KeysFrom) { $ksLast = [int][Math]::Round(($KS.Stop - $KS.Start) / $KS.FrameTicks) - 1; "keys from $([IO.Path]::GetFileName($KeysFrom)) for frames 0..$ksLast, IdleAnim's after" }
+    foreach ($c in $ia.Clips) { if ($c.Start -le $ksLast -and $c.Start + $c.Len -gt $ksLast + 1) { throw "clip $($c.Name) straddles the end of the edited file" } }
+    $nf = $ia.Total + 1
+  } else { $rig.Bake($nf) }
   # MDL (y up, front -z, centred) -> the mesh's own space (z up): x, -z, y plus the offset
   function ML($p) { return @(($p[0] + $off[0]), (-($p[2] + $off[2])), ($p[1] + $off[1])) }
   $nb = 13; $names = [WalkRig]::BoneName; $par = [WalkRig]::Parent
@@ -98,6 +117,7 @@ if (-not $Import) {
   # the keys: per frame, per bone, the local matrix (rows = the axes' images, Max's row-vector form)
   $keys = @()
   if ($KeysFrom) {
+    # (also for -Idle: the rest offsets, then the edited frames below)
     # each bone's key relative to its parent; its translation moved by the change of the joint's rest
     # offset (the new mesh's joints against the walk's), so the skin and the keys agree
     $restOld = @(); $moved = 0.0
@@ -108,6 +128,8 @@ if (-not $Import) {
       $d = [Math]::Abs($rl[3] - $localT[$b][0]) + [Math]::Abs($rl[7] - $localT[$b][1]) + [Math]::Abs($rl[11] - $localT[$b][2]); if ($d -gt $moved) { $moved = $d }
     }
     "joints: the new mesh's against the walk's rest, largest move $([Math]::Round($moved, 3)) units"
+  }
+  if ($KeysFrom -and -not $Idle) {
     for ($f = 0; $f -lt $nf; $f++) {
       $t = [long]($KS.Start + ($KS.Stop - $KS.Start) * $f / $nf); $row = @()
       for ($b = 0; $b -lt $nb; $b++) {
@@ -118,6 +140,34 @@ if (-not $Import) {
       }
       $keys += "#(" + ($row -join ',') + ")"
     }
+  } elseif ($Idle) {
+    # the idle timeline: each frame's world matrices -> each bone's key against its parent
+    $iref = @{}
+    for ($f = 0; $f -lt $nf; $f++) {
+      if ($f -le $ksLast) {
+        # the artist's frame, as the walk's -KeysFrom takes it
+        $t = [long]($KS.Start + $KS.FrameTicks * $f); $row = @()
+        for ($b = 0; $b -lt $nb; $b++) {
+          $pnode = if ($par[$b] -lt 0) { $kid['Rig'] } else { $kid[$names[$par[$b]]] }
+          $m = [M34]::Mul([M34]::Inv($KS.Global($pnode, $t)), $KS.Global($kid[$names[$b]], $t))
+          $tt = @(($m[3] - $restOld[$b][0] + $localT[$b][0]), ($m[7] - $restOld[$b][1] + $localT[$b][1]), ($m[11] - $restOld[$b][2] + $localT[$b][2]))
+          $row += "(matrix3 " + (P3 @($m[0], $m[4], $m[8])) + " " + (P3 @($m[1], $m[5], $m[9])) + " " + (P3 @($m[2], $m[6], $m[10])) + " " + (P3 $tt) + ")"
+        }
+        $keys += "#(" + ($row -join ',') + ")"
+        continue
+      }
+      $W = $ia.World($ia.AtTimeline($f)); $K = $ia.MaxKeys($W, [double[]]$off); $row = @()
+      for ($b = 0; $b -lt $nb; $b++) { $m = $K[$b]; $row += "(matrix3 " + (P3 @($m[0], $m[4], $m[8])) + " " + (P3 @($m[1], $m[5], $m[9])) + " " + (P3 @($m[2], $m[6], $m[10])) + " " + (P3 @($m[3], $m[7], $m[11])) + ")" }
+      $keys += "#(" + ($row -join ',') + ")"
+      $fx = New-Object float[] $rig.NV; $fy = New-Object float[] $rig.NV; $fz = New-Object float[] $rig.NV
+      for ($i = 0; $i -lt $rig.NV; $i++) { $q = $ia.Skin($W, $i); $fx[$i] = $q[0]; $fy[$i] = $q[1]; $fz[$i] = $q[2] }
+      $iref[$f] = @($fx, $fy, $fz)
+    }
+    $clipf = [IO.Path]::ChangeExtension($Out, $null).TrimEnd('.') + '_clips.txt'
+    $lines = @('# name first last kind (frames at 30 fps; kind 0 a fidget, 1 the breathing loop, 2/3 the turning step to his left/right; each clip starts and ends in the breathing loop''s frame 0 pose)')
+    foreach ($c in $ia.Clips) { $lines += "$($c.Name) $($c.Start) $($c.Start + $c.Len) $($c.Kind)" }
+    [IO.File]::WriteAllLines($clipf, $lines)
+    "clips: " + (($ia.Clips | ForEach-Object { "$($_.Name) $($_.Start)..$($_.Start + $_.Len)" }) -join ', ') + " -> $([IO.Path]::GetFileName($clipf))"
   } else {
   for ($f = 0; $f -lt $nf; $f++) {
     $A = $rig.Angles($f / $nf); $row = @()
@@ -221,8 +271,10 @@ close lf
     $N2 = [FbxScene]::Load($Out); $N2.FindMesh(); $N2.FindAnim()
     $nid = @{}; foreach ($kv in $N2.Obj.GetEnumerator()) { if ($kv.Value.Name -eq 'Model') { $nid[[FbxScene]::NameOf($kv.Value)] = $kv.Key } }
     $worst = 0.0
-    for ($f = 0; $f -lt $nf; $f++) {
-      $t1 = [long]($KS.Start + ($KS.Stop - $KS.Start) * $f / $nf); $t2 = [long]($N2.Start + ($N2.Stop - $N2.Start) * $f / $nf)
+    $fmax = if ($Idle) { $ksLast + 1 } else { $nf }
+    for ($f = 0; $f -lt $fmax; $f++) {
+      if ($Idle) { $t1 = [long]($KS.Start + $KS.FrameTicks * $f); $t2 = [long]($N2.Start + $N2.FrameTicks * $f) }
+      else { $t1 = [long]($KS.Start + ($KS.Stop - $KS.Start) * $f / $nf); $t2 = [long]($N2.Start + ($N2.Stop - $N2.Start) * $f / $nf) }
       for ($b = 0; $b -lt $nb; $b++) {
         $pa = if ($par[$b] -lt 0) { 'Rig' } else { $names[$par[$b]] }
         $m1 = [M34]::Mul([M34]::Inv($KS.Global($kid[$pa], $t1)), $KS.Global($kid[$names[$b]], $t1))
@@ -230,27 +282,86 @@ close lf
         foreach ($k in 0, 1, 2, 4, 5, 6, 8, 9, 10) { $d = [Math]::Abs($m1[$k] - $m2[$k]); if ($d -gt $worst) { $worst = $d } }
       }
     }
-    "the rebuilt walk's bone rotations against the edited walk's: worst matrix element off by $([Math]::Round($worst, 5))"
-    "-> $Out"; "-> $maxOut"
-    return
+    "the rebuilt file's bone rotations against the edited one's: worst matrix element off by $([Math]::Round($worst, 5))"
+    if (-not $Idle) { "-> $Out"; "-> $maxOut"; return }
   }
   # Max's own skinning against the rig's frames: every vertex, every frame
-  $ref = @{}; for ($f = 0; $f -lt $nf; $f++) { $ref[$f] = @($rig.FX[$f], $rig.FY[$f], $rig.FZ[$f]) }
+  if ($Idle) { $ref = $iref } else { $ref = @{}; for ($f = 0; $f -lt $nf; $f++) { $ref[$f] = @($rig.FX[$f], $rig.FY[$f], $rig.FZ[$f]) } }
   $cpToSplit = @{}; for ($i = 0; $i -lt $rig.NV; $i++) { $cp = $scene.SplitCP[$i]; if (-not $cpToSplit.ContainsKey($cp)) { $cpToSplit[$cp] = $i } }
   $worst = 0.0
   foreach ($line in Get-Content $chk) {
     $w = $line.Split(' '); $f = [int]$w[0]; $cp = [int]$w[2] - 1
-    $i = $cpToSplit[$cp]; if ($null -eq $i) { continue }
+    $i = $cpToSplit[$cp]; if ($null -eq $i -or -not $ref.ContainsKey($f)) { continue }
     $x = [double]::Parse($w[3], $IC) - $off[0]; $y = [double]::Parse($w[5], $IC) - $off[1]; $z = -[double]::Parse($w[4], $IC) - $off[2]
     $d = [Math]::Abs($x - $ref[$f][0][$i]) + [Math]::Abs($y - $ref[$f][1][$i]) + [Math]::Abs($z - $ref[$f][2][$i])
     if ($d -gt $worst) { $worst = $d }
   }
-  "Max's skinned mesh against the rig's own frames: worst vertex off by $([Math]::Round($worst, 3)) units"
+  "Max's skinned mesh against the rig's own frames$(if ($Idle -and $ksLast -ge 0) { ' (the new ones)' }): worst vertex off by $([Math]::Round($worst, 3)) units"
   "-> $Out"
   "-> $maxOut"
   return
 }
 # ======================================================== import
+if ($Idle) {
+  # the idle clips: each bone's skin matrix from the FBX at 15 fps -> a world matrix in the model's
+  # space; the FBX's own weights per vertex; a frame kept only when some vertex moved 0.25 units since
+  # the last kept one (the rest add to its time)
+  if (-not $Out) { $Out = Join-Path (Split-Path $Mdl) 'MANIDLE.ANI' }
+  $fbxIn = (Resolve-Path $Import).Path
+  $clipf = [IO.Path]::ChangeExtension($fbxIn, $null).TrimEnd('.') + '_clips.txt'
+  if (-not (Test-Path $clipf)) { throw "no $([IO.Path]::GetFileName($clipf)) beside the FBX (it names the clips' frames)" }
+  $scene = [FbxScene]::Load($fbxIn); $scene.FindMesh(); $scene.Split(); $scene.FindAnim(); $scene.FindSkin()
+  if ($scene.Clusters.Count -eq 0) { throw "the FBX has no skin (export it from Max with Skins on)" }
+  $rig = [WalkRig]::Load($Mdl); $off = Match $scene $rig; $rig.Rig()
+  $ia = New-Object IdleAnim $rig
+  $names = [WalkRig]::BoneName; $bix = @{}; for ($b = 0; $b -lt 13; $b++) { $bix[$names[$b]] = $b }
+  $cl = @{}; foreach ($c in $scene.Clusters) { if (-not $bix.ContainsKey($c.Name)) { throw "the skin has a bone $($c.Name) the rig does not know" }; $cl[$bix[$c.Name]] = $c }
+  for ($b = 0; $b -lt 13; $b++) { if (-not $cl.ContainsKey($b)) { throw "the skin has no bone $($names[$b])" } }
+  # the weights: per control point its two strongest bones
+  $ncp = $scene.CP.Length / 3; $wl = @{}
+  foreach ($b in $cl.Keys) { $c = $cl[$b]; for ($k = 0; $k -lt $c.Idx.Length; $k++) { $cp = [int]$c.Idx[$k]; if ($c.W[$k] -le 0) { continue }; if (-not $wl.ContainsKey($cp)) { $wl[$cp] = @() }; $wl[$cp] += ,@($b, $c.W[$k]) } }
+  $ia.FB1 = New-Object int[] $rig.NV; $ia.FB2 = New-Object int[] $rig.NV; $bw = New-Object int[] $rig.NV; $odd = 0
+  for ($i = 0; $i -lt $rig.NV; $i++) {
+    $l = @($wl[$scene.SplitCP[$i]] | Sort-Object { -$_[1] })
+    if ($l.Count -eq 0) { throw "vertex $i has no skin weight" }
+    $b1 = $l[0][0]; $b2 = $b1
+    if ($l.Count -gt 1 -and $l[1][1] -ge 0.25 * ($l[0][1] + $l[1][1])) { $b2 = $l[1][0]; if ([Math]::Abs($l[0][1] - $l[1][1]) -gt 0.1 * ($l[0][1] + $l[1][1])) { $odd++ } }
+    $ia.FB1[$i] = $b1; $ia.FB2[$i] = $b2; $bw[$i] = $b1 + 256 * $b2
+  }
+  if ($odd) { "note: $odd vertices have two bones not half and half: the engine blends them half and half" }
+  $clips = @(Get-Content $clipf | Where-Object { $_ -match '^\s*[A-Za-z]' } | ForEach-Object { $w = $_.Trim() -split '\s+'; [pscustomobject]@{ Name = $w[0]; First = [int]$w[1]; Last = [int]$w[2]; Kind = [int]$w[3]; Loop = ([int]$w[3] -ne 0) } })
+  $cn = New-Object 'System.Collections.Generic.List[string]'; $cloop = New-Object 'System.Collections.Generic.List[int]'
+  $cdur = New-Object 'System.Collections.Generic.List[System.Collections.Generic.List[int]]'; $cfr = New-Object 'System.Collections.Generic.List[System.Collections.Generic.List[double[][]]]'
+  $worstFbx = 0.0; $worstQ = 0.0; $tot = 0
+  function WorldAt($fr) {
+    $t = [long]($scene.Start + $scene.FrameTicks * $fr)
+    $W = New-Object 'double[][]' 13
+    for ($b = 0; $b -lt 13; $b++) { $W[$b] = [IdleAnim]::FromMesh($scene.ClusterMatrix($cl[$b], $t), [double[]]$off) }
+    return ,$W
+  }
+  foreach ($c in $clips) {
+    $durs = New-Object 'System.Collections.Generic.List[int]'; $frs = New-Object 'System.Collections.Generic.List[double[][]]'
+    for ($fr = $c.First; $fr -lt $c.Last; $fr += 2) {
+      $W = WorldAt $fr
+      if ($fr -eq $c.First + 2 * [int](($c.Last - $c.First) / 4)) {
+        # the matrices against the FBX's own deformation (Max's skin, read the walk import's way)
+        $def = $scene.Deform([long]($scene.Start + $scene.FrameTicks * $fr))
+        for ($i = 0; $i -lt $rig.NV; $i++) { $p = $def[$scene.SplitCP[$i]]; $q = $ia.SkinF($W, $i); $d = [Math]::Abs($p[0] - $off[0] - $q[0]) + [Math]::Abs($p[2] - $off[1] - $q[1]) + [Math]::Abs(-$p[1] - $off[2] - $q[2]); if ($d -gt $worstFbx) { $worstFbx = $d } }
+      }
+      $W = $ia.Ground($W)
+      if ($frs.Count -gt 0 -and $ia.FrameDiff($frs[$frs.Count - 1], $W) -lt 0.25) { $durs[$durs.Count - 1] += 2; continue }
+      $frs.Add($W); $durs.Add(2)
+      $e = $ia.QuantErr($W); if ($e -gt $worstQ) { $worstQ = $e }
+    }
+    $cn.Add($c.Name); $cloop.Add($c.Kind); $cdur.Add($durs); $cfr.Add($frs); $tot += $frs.Count
+    "  $($c.Name): frames $($c.First)..$($c.Last), $($frs.Count) kept of $([Math]::Ceiling(($c.Last - $c.First) / 2))$(@('', ', loops', ', turning left', ', turning right')[$c.Kind])"
+  }
+  if ($tot -gt 200) { throw "$tot frames: MANWALK holds 200 at most (shorten the clips)" }
+  [IdleAnim]::SaveAni($Out, $rig.NV, $bw, $cn, $cloop, $cdur, $cfr)
+  "the matrices against the FBX's skin: worst vertex off by $([Math]::Round($worstFbx, 4)) units; the file's integers: $([Math]::Round($worstQ, 3)) units"
+  "-> $Out ($((Get-Item $Out).Length) bytes, $tot frames)"
+  return
+}
 if (-not $Out) { $Out = Join-Path (Split-Path $Mdl) 'MAN3D.ANI' }
 $scene = [FbxScene]::Load((Resolve-Path $Import).Path); $scene.FindMesh(); $scene.Split(); $scene.FindAnim(); $scene.FindSkin()
 if ($scene.Clusters.Count -eq 0) { throw "the FBX has no skin (export it from Max with Skins on)" }

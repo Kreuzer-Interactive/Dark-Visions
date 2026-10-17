@@ -537,6 +537,77 @@ E @(0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x0C, 0x00)
 $edgo = $script:a.Resolve()
 
 # =============================================================================
+# C3DSKIN: CALL ABSOLUTE(BYVAL pseg, BYVAL poff, SADD(skin$)) RETF 4  -- block of 17 words:
+#   0/1 mx seg/off  2/3 my  4/5 mz    the rest pose (x16 units)
+#   6/7 out x seg/off  8/9 out y  10/11 out z
+#   12 nv   13/14 bones seg/off: a word per vertex, low byte bone 1, high byte bone 2 (equal = rigid,
+#           else the two results averaged)
+#   15/16 matrices seg/off: 12 words per bone, r00 r01 r02 tx r10 r11 r12 ty r20 r21 r22 tz
+#           (rotation x16384, translation x16 units)
+#   out = (r . v + 8192) >> 14 + t per row (the idle poses of MANWALK, MANIDLE.ANI)
+#   locals: the block copied to [bp-34..-1] (word k at bp-34+2k); x y z dwords at bp-38/-42/-46,
+#   results at bp-50/-54/-58, i*2 at bp-60, the count at bp-62
+# =============================================================================
+$script:a = [Asm]::new()
+E @(0x55); E @(0x8B, 0xEC); E @(0x83, 0xEC, 0x40); E @(0x1E, 0x56, 0x57, 0x53, 0x06)
+E @(0x16, 0x07)                                                           # es = ss
+MovDsM 8; MovRM 'si' 6
+E @(0x8D, 0x7E, 0xDE); E @(0xB9, 0x11, 0x00); E @(0xFC); E @(0xF3, 0xA5)  # the block -> [bp-34]
+E @(0xC7, 0x46, 0xC4, 0x00, 0x00)                                         # i*2 = 0
+MovRM 'ax' -10; MovMR -62 'ax'
+E @(0x85, 0xC0); Jn @(0x0F, 0x8E) 'sdone'
+Lbl 'sv'
+MovRM 'bx' -60
+MovDsM -34; MovRM 'si' -32; E @(0x03, 0xF3); E @(0x66, 0x0F, 0xBF, 0x04); E @(0x66, 0x89, 0x46, 0xDA)   # x
+MovDsM -30; MovRM 'si' -28; E @(0x03, 0xF3); E @(0x66, 0x0F, 0xBF, 0x04); E @(0x66, 0x89, 0x46, 0xD6)   # y
+MovDsM -26; MovRM 'si' -24; E @(0x03, 0xF3); E @(0x66, 0x0F, 0xBF, 0x04); E @(0x66, 0x89, 0x46, 0xD2)   # z
+MovDsM -8; MovRM 'si' -6; E @(0x03, 0xF3); E @(0x8B, 0x14)                # dl, dh = the bones
+MovDsM -4
+E @(0x8A, 0xC2); CallN 'sxf'
+E @(0x3A, 0xD6); Jr 0x74 'sone'
+E @(0x66, 0xFF, 0x76, 0xCE); E @(0x66, 0xFF, 0x76, 0xCA); E @(0x66, 0xFF, 0x76, 0xC6)
+E @(0x8A, 0xC6); CallN 'sxf'
+E @(0x66, 0x59); E @(0x66, 0x01, 0x4E, 0xC6); E @(0x66, 0xD1, 0x7E, 0xC6)  # z = (z1 + z2) >> 1
+E @(0x66, 0x59); E @(0x66, 0x01, 0x4E, 0xCA); E @(0x66, 0xD1, 0x7E, 0xCA)
+E @(0x66, 0x59); E @(0x66, 0x01, 0x4E, 0xCE); E @(0x66, 0xD1, 0x7E, 0xCE)
+Lbl 'sone'
+MovDsM -22; MovRM 'si' -20; E @(0x03, 0xF3); E @(0x8B, 0x46, 0xCE); E @(0x89, 0x04)
+MovDsM -18; MovRM 'si' -16; E @(0x03, 0xF3); E @(0x8B, 0x46, 0xCA); E @(0x89, 0x04)
+MovDsM -14; MovRM 'si' -12; E @(0x03, 0xF3); E @(0x8B, 0x46, 0xC6); E @(0x89, 0x04)
+E @(0x83, 0x46, 0xC4, 0x02)                                               # i*2 += 2
+E @(0xFF, 0x4E, 0xC2); Jn @(0x0F, 0x85) 'sv'
+Lbl 'sdone'
+E @(0x07, 0x5B, 0x5F, 0x5E, 0x1F); E @(0x8B, 0xE5); E @(0x5D); E @(0xCA, 0x04, 0x00)
+# sxf: bone al's matrix (ds = its segment) applied to x, y, z -> [bp-50], [bp-54], [bp-58]
+Lbl 'sxf'
+MovRM 'si' -2; E @(0x32, 0xE4); E @(0x6B, 0xC0, 0x18); E @(0x03, 0xF0)     # si = matrices + bone*24
+foreach ($sr in 0, 1, 2) {
+  $d = 8 * $sr
+  E @(0x66, 0x0F, 0xBF, 0x44, $d); E @(0x66, 0x0F, 0xAF, 0x46, 0xDA)
+  E @(0x66, 0x0F, 0xBF, 0x4C, ($d + 2)); E @(0x66, 0x0F, 0xAF, 0x4E, 0xD6); E @(0x66, 0x03, 0xC1)
+  E @(0x66, 0x0F, 0xBF, 0x4C, ($d + 4)); E @(0x66, 0x0F, 0xAF, 0x4E, 0xD2); E @(0x66, 0x03, 0xC1)
+  E @(0x66, 0x05, 0x00, 0x20, 0x00, 0x00); E @(0x66, 0xC1, 0xF8, 0x0E)
+  E @(0x66, 0x0F, 0xBF, 0x4C, ($d + 6)); E @(0x66, 0x03, 0xC1)
+  E @(0x66, 0x89, 0x46, (0xCE - 4 * $sr))
+}
+E @(0xC3)
+$skin = $script:a.Resolve()
+
+# =============================================================================
+# C3DMSE: CALL ABSOLUTE(BYVAL seg, BYVAL off, SADD(mse$)) RETF 4 -- the mouse driver (INT 33h):
+#   words 0..3 = ax, bx, cx, dx in, and the driver's ax, bx, cx, dx back (MANWALK: QB's CALL
+#   INTERRUPT lives in QB.LIB, which the tools do not link). The caller checks the vector first.
+# =============================================================================
+$script:a = [Asm]::new()
+E @(0x55); E @(0x8B, 0xEC); E @(0x1E, 0x56, 0x57, 0x53, 0x06)
+MovDsM 8; MovRM 'si' 6
+E @(0x8B, 0x04); E @(0x8B, 0x5C, 0x02); E @(0x8B, 0x4C, 0x04); E @(0x8B, 0x54, 0x06)   # ax bx cx dx = the block
+E @(0x1E, 0x56, 0x55); E @(0xCD, 0x33); E @(0x5D, 0x5E, 0x1F)               # int 33h (ds, si, bp kept)
+E @(0x89, 0x04); E @(0x89, 0x5C, 0x02); E @(0x89, 0x4C, 0x04); E @(0x89, 0x54, 0x06)   # back to the block
+E @(0x07, 0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x04, 0x00)
+$mse = $script:a.Resolve()
+
+# =============================================================================
 # C3DBLTM: CALL ABSOLUTE(BYVAL sseg, BYVAL soff, BYVAL dseg, BYVAL doff, BYVAL rows,
 #                        BYVAL rbytes, BYVAL sstride, BYVAL dstride, BYVAL colour, SADD(bltm$))  RETF 18
 #   rectangle copy like SHADBOP mode 0, but every 254 (the silhouette mark) becomes
@@ -586,6 +657,8 @@ $srcDir = "$PSScriptRoot\.."
 [System.IO.File]::WriteAllBytes("$srcDir\C3DT128.OVL", $tri128)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DEDGE.OVL", $edge)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DEDGO.OVL", $edgo)
+[System.IO.File]::WriteAllBytes("$srcDir\C3DSKIN.OVL", $skin)
+[System.IO.File]::WriteAllBytes("$srcDir\C3DMSE.OVL", $mse)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DBLTM.OVL", $bltm)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DPRJ.OVL", $prj)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DTEST.OVL", $tst)
