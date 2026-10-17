@@ -31,6 +31,15 @@
 '----- from the backdrop). MANWALK W: a click to walk and one to face,
 '----- scripted -> MANGO1/2.BMP and MANGO.LOG (where he ended against where
 '----- the click was).
+'----- In a room with a walk mask (ROOM.WLK from src\ART\Rooms\roomN_walk.png,
+'----- tools\walkmask.ps1 makes a starter): where his feet may stand. A click
+'----- finds a path on a floor grid (GCELL units a cell, a cell walkable when
+'----- the mask is at its centre's place on screen): breadth first from where he
+'----- stands, the nearest reachable cell when the click itself cannot be
+'----- reached, the cells' path pulled straight where the floor between is clear;
+'----- he walks the waypoints. The arrow keys stop at the mask's edge (sliding
+'----- along it). MANWALK P: two scripted clicks round the furniture ->
+'----- MANPATH1/2.BMP, MANPATH.LOG.
 '----- MANWALK I: the fidgets one after another, a shot of each
 '----- (MANIDL1..4.BMP), MANIDLE.DMP (a pose's vertices), then a turn each way
 '----- (MANTRN1/2.BMP).
@@ -41,6 +50,8 @@ CONST WALK16 = 23.04
 CONST TURNDEG = 360
 '----- his turning speed, radians a retrace (6 degrees: 420 a second)
 CONST TURNRATE = .1047
+'----- the path grid's cell (units, about 22 cm)
+CONST GCELL = 10
 '$INCLUDE: 'UGL.BI'
 
 TYPE Vtx
@@ -111,6 +122,11 @@ DECLARE FUNCTION Atn2! (y AS SINGLE, x AS SINGLE)
 DECLARE SUB CurCopy (x AS INTEGER, y AS INTEGER)
 DECLARE SUB CurDraw (x AS INTEGER, y AS INTEGER)
 DECLARE SUB CurBlit (x AS INTEGER, y AS INTEGER)
+DECLARE SUB LoadWalk ()
+DECLARE FUNCTION MaskAt% (x16 AS LONG, z16 AS LONG)
+DECLARE FUNCTION CellOf% (x16 AS LONG, z16 AS LONG)
+DECLARE FUNCTION LineClear% (ax AS LONG, az AS LONG, bx AS LONG, bz AS LONG)
+DECLARE SUB FindPath (sx16 AS LONG, sz16 AS LONG, tx AS LONG, tz AS LONG)
 DECLARE SUB Bench ()
 DECLARE FUNCTION Ms! (t1 AS LONG, t2 AS LONG)
 DECLARE SUB SetInst (i AS INTEGER)
@@ -184,6 +200,12 @@ DIM SHARED kx(0 TO MAXV) AS INTEGER, ky(0 TO MAXV) AS INTEGER, kz(0 TO MAXV) AS 
 DIM SHARED icum(0 TO 199) AS INTEGER, icst(0 TO 7) AS INTEGER, icnt(0 TO 7) AS INTEGER, ilen(0 TO 7) AS INTEGER, ilp(0 TO 7) AS INTEGER
 DIM SHARED iclp(0 TO MAXI - 1) AS INTEGER, itm(0 TO MAXI - 1) AS SINGLE, iwt(0 TO MAXI - 1) AS SINGLE, ilst(0 TO MAXI - 1) AS INTEGER
 DIM SHARED prs(0 TO 16) AS INTEGER
+'----- the walk mask (320 x 200, a bit a pixel, rows of 40 bytes), the path grid
+'----- (gnx x gnz cells of GCELL units from gx0, gz0: walkable, the search's
+'----- parents and queue), the waypoints of the path being walked (x16 units)
+DIM SHARED wmk(0 TO 3999) AS INTEGER, gwk(1) AS INTEGER, gpar(1) AS INTEGER, gq(1) AS INTEGER
+DIM SHARED wpx(0 TO 63) AS LONG, wpz(0 TO 63) AS LONG, pcx(0 TO 255) AS LONG, pcz(0 TO 255) AS LONG
+DIM SHARED ddx(0 TO 7) AS INTEGER, ddz(0 TO 7) AS INTEGER, bitv(0 TO 7) AS INTEGER
 '----- the turning steps: their clips (-1 none) to his left and right, the feet
 '----- they pivot on (rest x,z x16: 0 left, 1 right), the step playing (tcl, -1 none)
 '----- and how far into it (1/30 s of the clip); nfid the fidgets (kind 0)
@@ -199,6 +221,7 @@ DIM SHARED nv AS INTEGER, nf AS INTEGER, inc AS INTEGER, ovlSkin AS STRING, idle
 '----- (last frame's at ocx,ocy), the INT 33h registers ax bx cx dx, the arrow
 DIM SHARED msOn AS INTEGER, curOn AS INTEGER, mcx AS INTEGER, mcy AS INTEGER, ocx AS INTEGER, ocy AS INTEGER
 DIM SHARED mreg(0 TO 3) AS INTEGER, ovlMse AS STRING, curs(0 TO 10) AS STRING
+DIM SHARED wmOn AS INTEGER, gnx AS INTEGER, gnz AS INTEGER, gx0 AS INTEGER, gz0 AS INTEGER, nwp AS INTEGER, iwp AS INTEGER, pathms AS SINGLE
 DIM SHARED vdc AS LONG, bg AS LONG
 DIM SHARED lx AS INTEGER, ly AS INTEGER, lz AS INTEGER
 DIM SHARED tris AS LONG
@@ -238,6 +261,7 @@ DIM yaw0 AS SINGLE, pvk AS INTEGER, pvx AS SINGLE, pvz AS SINGLE, ttest AS LONG,
 DIM goMode AS INTEGER, gox AS LONG, goz AS LONG, clk AS INTEGER, csx AS INTEGER, csy AS INTEGER, lmb AS INTEGER, mb AS INTEGER
 DIM gdx AS SINGLE, gdz AS SINGLE, gdist AS SINGLE, gd AS SINGLE, gturn AS SINGLE, gstep AS SINGLE, dyw AS SINGLE, wst AS SINGLE
 DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS LONG
+DIM pathchk AS INTEGER, opx AS LONG, opz AS LONG, nbad AS LONG, gtol AS SINGLE
 
 	'----- MANWALK: the model (CAR3D.MDL/BMP, meant for the man) standing on the
 	'----- road scene, driven with tank controls: Up/Down walk along his
@@ -266,6 +290,40 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 	'----- the 3x5 digits of the frame counter
 	FOR i = 0 TO 9: FOR j = 0 TO 4: READ dig(i, j): NEXT: NEXT
 	FOR i = 0 TO 10: READ curs(i): NEXT
+	'----- (every dynamic array sized before any segment is taken: a REDIM may move
+	'----- the others, the backdrop and work buffers and the texture bands with them)
+	'----- his feet on the ground plane: the model's lowest point at GROUNDY
+	ymn = 32767
+	FOR i = 0 TO nv - 1
+		IF my(i) < ymn THEN ymn = my(i)
+	NEXT
+	py = CLNG(GROUNDY) * 16 - ymn
+	roomOn = 0
+	rfh = FREEFILE
+	OPEN "ROOM.CFG" FOR BINARY AS #rfh
+	IF LOF(rfh) > 0 THEN roomOn = 1
+	CLOSE #rfh
+	IF roomOn THEN
+		rfh = FREEFILE
+		OPEN "ROOM.CFG" FOR INPUT AS #rfh
+		INPUT #rfh, rcx, rcy, rch, rzn, rzf, rxn, rxf, rfx, rbs, rsc
+		CLOSE #rfh
+		prq(22) = CINT(rcx * 16): prq(23) = CINT(rcy * 16): prq(24) = CINT(rfx * 16)
+		py = -CLNG(rch * 16) - ymn: rymn = ymn
+		CALL LoadWalk
+	ELSE
+		KILL "ROOM.CFG"
+	END IF
+	'----- he starts on the road's near part, facing the camera (yaw 0 = the
+	'----- model's front, -z, towards it); forward is where he faces
+	CALL PathPos(40, px, pyu, pz, 16)
+	'----- in a room: mid-floor, a little in front of the middle
+	IF roomOn THEN px = 0: pz = CLNG((rzn * .4 + rzf * .6) * 16)
+	yaw = 0
+	anf = 0: afcur = -1: aph = 0: ianim = 0
+	CALL LoadAnim
+	RANDOMIZE TIMER
+	CALL LoadIdle
 	IF uglInit = 0 THEN PRINT "uglInit failed": END
 	vdc = uglSetVideoDC(UGL.8BIT, 320, 200, 1)
 	IF vdc = 0 THEN Fail "no mode 13h"
@@ -273,10 +331,10 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 	IF bg = 0 THEN Fail "no memory for the backdrop"
 	uglSetWrkPage 0
 	uglSetVisPage 0
-	bgseg = NormSeg(VARSEG(bgb(0)), VARPTR(bgb(0))): bgo = VARPTR(bgb(0)) AND 15
-	wseg = NormSeg(VARSEG(wkb(0)), VARPTR(wkb(0))): wko = VARPTR(wkb(0)) AND 15
 	CALL LoadPalette
 	CALL LoadTexture
+	bgseg = NormSeg(VARSEG(bgb(0)), VARPTR(bgb(0))): bgo = VARPTR(bgb(0)) AND 15
+	wseg = NormSeg(VARSEG(wkb(0)), VARPTR(wkb(0))): wko = VARPTR(wkb(0)) AND 15
 	CALL LoadBackdrop
 	ox = 0: oy = 0: ox2 = -1: oy2 = -1
 	prm(0) = wseg: prm(1) = wko: prm(2) = WKW: prm(3) = WKH
@@ -316,37 +374,6 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 	FOR i = 0 TO nv - 1: vt(i * 4 + 2) = tu(i): vt(i * 4 + 3) = tv(i): NEXT
 	prq(21) = 8
 	IF unlit THEN prm(15) = 0
-	'----- his feet on the ground plane: the model's lowest point at GROUNDY
-	ymn = 32767
-	FOR i = 0 TO nv - 1
-		IF my(i) < ymn THEN ymn = my(i)
-	NEXT
-	py = CLNG(GROUNDY) * 16 - ymn
-	roomOn = 0
-	rfh = FREEFILE
-	OPEN "ROOM.CFG" FOR BINARY AS #rfh
-	IF LOF(rfh) > 0 THEN roomOn = 1
-	CLOSE #rfh
-	IF roomOn THEN
-		rfh = FREEFILE
-		OPEN "ROOM.CFG" FOR INPUT AS #rfh
-		INPUT #rfh, rcx, rcy, rch, rzn, rzf, rxn, rxf, rfx, rbs, rsc
-		CLOSE #rfh
-		prq(22) = CINT(rcx * 16): prq(23) = CINT(rcy * 16): prq(24) = CINT(rfx * 16)
-		py = -CLNG(rch * 16) - ymn: rymn = ymn
-	ELSE
-		KILL "ROOM.CFG"
-	END IF
-	'----- he starts on the road's near part, facing the camera (yaw 0 = the
-	'----- model's front, -z, towards it); forward is where he faces
-	CALL PathPos(40, px, pyu, pz, 16)
-	'----- in a room: mid-floor, a little in front of the middle
-	IF roomOn THEN px = 0: pz = CLNG((rzn * .4 + rzf * .6) * 16)
-	yaw = 0
-	anf = 0: afcur = -1: aph = 0: ianim = 0
-	CALL LoadAnim
-	RANDOMIZE TIMER
-	CALL LoadIdle
 	CALL PrepAsm(yaw)
 	outl = 1: ninst = 1: vsync = 1: lastsc = 0: flatT = 64: quadT = 384: dotT = 0   ' (dots: no measurable gain on the VM, so off; D cycles it)
 	outl = 2: ocol = 1
@@ -355,6 +382,7 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 	IF UCASE$(LEFT$(LTRIM$(COMMAND$), 1)) = "S" THEN scripted = 1
 	IF UCASE$(LEFT$(LTRIM$(COMMAND$), 1)) = "I" THEN scripted = 1: idlechk = 1
 	IF UCASE$(LEFT$(LTRIM$(COMMAND$), 1)) = "W" THEN scripted = 1: gochk = 1
+	IF UCASE$(LEFT$(LTRIM$(COMMAND$), 1)) = "P" THEN scripted = 1: gochk = 1: pathchk = 1
 	'----- the mouse: only with a driver behind INT 33h (a zero vector, or one
 	'----- pointing at an IRET, would hang or do nothing); reset, its range the
 	'----- screen (x in 0..639 in mode 13h), its arrow's two colours
@@ -417,10 +445,11 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 	END IF
 	FOR i = 0 TO 7: shot(i) = 0: NEXT
 	pvk = -1: ttest = -1: goMode = 0: clk = 0: lmb = 0: gph = 0
-	'----- MANWALK W: him mid-floor facing the camera
+	'----- MANWALK W: him mid-floor facing the camera; P: in front of the bed
 	IF gochk THEN
 		px = 0: yaw = 0
 		IF roomOn THEN pz = CLNG((rzn + rzf) * 8)
+		IF pathchk THEN px = -1600: pz = 17920
 		CALL PoseInst(0, -1, yaw)
 	END IF
 	'----- PIT channel 0 in mode 2 so PitNow reads the time within a tick
@@ -486,7 +515,28 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 		END IF
 		'----- MANWALK W: a left click to the front right of the floor; when he is
 		'----- there, a right click up at the back left
-		IF gochk THEN
+		IF pathchk THEN
+			'----- MANWALK P: into the gap between the bed and the dresser at the back,
+			'----- then onto the bed (he stops in front of it); every frame he must be
+			'----- on the mask
+			fwd = 0: rot = 0
+			IF MaskAt%(px, pz) = 0 THEN nbad = nbad + 1
+			IF frames = 5 THEN clk = 1: csx = 158: csy = 137: gph = 1
+			IF gph >= 1 AND goMode = 0 AND clk = 0 AND frames > 6 THEN
+				CALL SaveShot("MANPATH" + LTRIM$(STR$(gph)) + ".BMP")
+				i = FREEFILE
+				IF gph = 1 THEN OPEN "MANPATH.LOG" FOR OUTPUT AS #i ELSE OPEN "MANPATH.LOG" FOR APPEND AS #i
+				PRINT #i, "click"; csx; csy; ": path"; nwp; "waypoints";
+				FOR k2 = 0 TO nwp - 1: PRINT #i, " ("; wpx(k2) \ 16; ","; wpz(k2) \ 16; ")";: NEXT
+				PRINT #i, ""
+				PRINT #i, "   he is at"; px \ 16; pz \ 16; " after"; frames - gt0; "frames; frames off the mask so far"; nbad; " search"; INT(pathms * 10) / 10; "ms"
+				CLOSE #i
+				IF gph = 1 THEN clk = 1: csx = 131: csy = 139: gph = 2 ELSE EXIT DO
+			END IF
+			IF frames > 3000 THEN EXIT DO
+			curOn = 1: mcx = csx: mcy = csy
+		END IF
+		IF gochk AND pathchk = 0 THEN
 			fwd = 0: rot = 0
 			IF frames = 5 THEN clk = 1: csx = 250: csy = 172: gph = 1
 			IF gph = 1 AND goMode = 0 AND frames > 6 THEN
@@ -511,7 +561,15 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 			curOn = 1: mcx = csx: mcy = csy
 		END IF
 		'----- a click: where on the floor (a walk is kept to the floor, a face is not)
-		IF clk = 1 THEN CALL FloorPick(csx, csy, 1, gox, goz): goMode = 1: gt0 = frames
+		IF clk = 1 THEN
+			CALL FloorPick(csx, csy, 1, gox, goz): goMode = 1: gt0 = frames
+			'----- with a walk mask: the path there, walked waypoint by waypoint
+			nwp = 0
+			IF wmOn THEN
+				CALL FindPath(px, pz, gox, goz)
+				IF nwp > 0 THEN iwp = 0: gox = wpx(0): goz = wpz(0) ELSE goMode = 0
+			END IF
+		END IF
 		IF clk = 2 THEN CALL FloorPick(csx, csy, 0, gox, goz): goMode = 2: gt0 = frames
 		clk = 0
 		'----- going there: the heading to it; well off it (35 degrees), he turns on
@@ -519,7 +577,16 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 		gturn = 99: gstep = -1
 		IF goMode > 0 THEN
 			gdx = gox - px: gdz = goz - pz: gdist = SQR(gdx * gdx + gdz * gdz)
-			IF gdist < 8 THEN goMode = 0: fwd = 0: rot = 0
+			'----- a waypoint on the way is passed a unit off; the last one is landed on
+			gtol = 8: IF goMode = 1 AND iwp < nwp - 1 THEN gtol = 16
+			IF gdist < gtol THEN
+				IF goMode = 1 AND iwp < nwp - 1 THEN
+					iwp = iwp + 1: gox = wpx(iwp): goz = wpz(iwp)
+					gdx = gox - px: gdz = goz - pz: gdist = SQR(gdx * gdx + gdz * gdz)
+				ELSE
+					goMode = 0: fwd = 0: rot = 0
+				END IF
+			END IF
 		END IF
 		IF goMode > 0 THEN
 			gd = Atn2!(-gdx, -gdz) - yaw
@@ -530,7 +597,8 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 			IF gd < -.002 THEN rot = -1
 			gturn = ABS(gd): fwd = 0
 			IF goMode = 1 THEN
-				IF ABS(gd) < .6 THEN fwd = 1
+				'----- (round a corner of the path he walks on through 50 degrees)
+				IF ABS(gd) < .6 OR (iwp > 0 AND ABS(gd) < .87) THEN fwd = 1
 				gstep = gdist
 			ELSE
 				IF rot = 0 THEN goMode = 0
@@ -565,8 +633,13 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 					pvz = pz + (tfz(k2) * c0 - tfx(k2) * s0) * rk
 				END IF
 				c0 = COS(yaw): s0 = SIN(yaw)
+				opx = px: opz = pz
 				px = CLNG(pvx - (tfx(k2) * c0 + tfz(k2) * s0) * rk)
 				pz = CLNG(pvz - (tfz(k2) * c0 - tfx(k2) * s0) * rk)
+				'----- (not off the walk mask: there he turns about his middle instead)
+				IF wmOn THEN
+					IF MaskAt%(px, pz) = 0 AND MaskAt%(opx, opz) <> 0 THEN px = opx: pz = opz: pvk = -1
+				END IF
 			END IF
 		ELSE
 			pvk = -1
@@ -577,8 +650,22 @@ DIM gochk AS INTEGER, gph AS INTEGER, gt0 AS LONG, v AS LONG, vs AS LONG, vo AS 
 			rk = 1: IF roomOn THEN rk = RoomK!(pz)
 			wst = WALK16 * stp * rk
 			IF gstep >= 0 AND wst > gstep THEN wst = gstep
+			opx = px: opz = pz
 			px = px - CLNG(SIN(yaw) * wst * fwd)
 			pz = pz - CLNG(COS(yaw) * wst * fwd)
+			'----- the walk mask: off it he does not go (along its edge he slides);
+			'----- already off it (a turn's pivot can do that) he may move
+			IF wmOn THEN
+				IF MaskAt%(px, pz) = 0 AND MaskAt%(opx, opz) <> 0 THEN
+					IF MaskAt%(px, opz) THEN
+						pz = opz
+					ELSEIF MaskAt%(opx, pz) THEN
+						px = opx
+					ELSE
+						px = opx: pz = opz
+					END IF
+				END IF
+			END IF
 			'----- kept on the screen and off the camera: 140..900 units away,
 			'----- within the view's width at that depth
 			IF roomOn THEN
@@ -805,6 +892,154 @@ SUB DrawAll
 	END IF
 	CALL RectCopyM(wseg, wo, &HA000, CLNG(by) * 320 + bx, rh, rw, 320, 320, 15)
 	IF curOn THEN CALL CurBlit(ocx, ocy): CALL CurBlit(mcx, mcy): ocx = mcx: ocy = mcy
+END SUB
+
+'----- LoadWalk: ROOM.WLK (8000 bytes: the walk mask, 1 bit a pixel, high bit
+'----- left) -> wmk(); the path grid over the floor, each cell walkable when the
+'----- mask is at its centre. Nothing (wmOn = 0: the floor's own bounds only)
+'----- without the file
+SUB LoadWalk
+	DIM fh AS INTEGER, s AS STRING, k AS INTEGER, ix AS INTEGER, iz AS INTEGER, c AS INTEGER
+	wmOn = 0
+	fh = FREEFILE
+	OPEN "ROOM.WLK" FOR BINARY AS #fh
+	IF LOF(fh) <> 8000 THEN
+		k = (LOF(fh) = 0)
+		CLOSE #fh
+		IF k THEN KILL "ROOM.WLK"
+		EXIT SUB
+	END IF
+	s = SPACE$(8000): GET #fh, 1, s: CLOSE #fh
+	FOR k = 0 TO 3999: wmk(k) = CVI(MID$(s, k * 2 + 1, 2)): NEXT
+	FOR k = 0 TO 7: bitv(k) = 128 \ (2 ^ k): NEXT
+	'----- the eight steps: the four straight ones first
+	ddx(0) = 1: ddz(0) = 0: ddx(1) = -1: ddz(1) = 0: ddx(2) = 0: ddz(2) = 1: ddx(3) = 0: ddz(3) = -1
+	ddx(4) = 1: ddz(4) = 1: ddx(5) = -1: ddz(5) = 1: ddx(6) = 1: ddz(6) = -1: ddx(7) = -1: ddz(7) = -1
+	wmOn = 1
+	gx0 = -INT(rxn) - GCELL: gnx = INT(2 * rxn / GCELL) + 3
+	gz0 = INT(rzn): gnz = INT((rzf - rzn) / GCELL) + 2
+	REDIM gwk(0 TO gnx * gnz - 1) AS INTEGER, gpar(0 TO gnx * gnz - 1) AS INTEGER, gq(0 TO gnx * gnz - 1) AS INTEGER
+	FOR iz = 0 TO gnz - 1
+		FOR ix = 0 TO gnx - 1
+			c = iz * gnx + ix
+			gwk(c) = MaskAt%(CLNG(gx0 * 16) + CLNG(ix) * GCELL * 16 + GCELL * 8, CLNG(gz0 * 16) + CLNG(iz) * GCELL * 16 + GCELL * 8)
+		NEXT
+	NEXT
+END SUB
+
+'----- MaskAt: the walk mask at the floor point (x16, z16), x16 units: 1 walkable
+FUNCTION MaskAt% (x16 AS LONG, z16 AS LONG)
+	DIM z AS SINGLE, sx AS INTEGER, sy AS INTEGER, b AS INTEGER
+	MaskAt% = 0
+	IF z16 < 160 THEN EXIT FUNCTION
+	z = z16 / 16!
+	sx = CINT(rcx + rfx * (x16 / 16!) / z): sy = CINT(rcy + 256 * rch / z)
+	IF sx < 0 OR sx > 319 OR sy < 0 OR sy > 199 THEN EXIT FUNCTION
+	DEF SEG = VARSEG(wmk(0)): b = PEEK(VARPTR(wmk(0)) + sy * 40 + sx \ 8): DEF SEG
+	IF b AND bitv(sx AND 7) THEN MaskAt% = 1
+END FUNCTION
+
+'----- CellOf: the path grid's cell under (x16, z16), kept on the grid
+FUNCTION CellOf% (x16 AS LONG, z16 AS LONG)
+	DIM ix AS LONG, iz AS LONG
+	ix = (x16 - CLNG(gx0) * 16) \ (GCELL * 16): iz = (z16 - CLNG(gz0) * 16) \ (GCELL * 16)
+	IF ix < 0 THEN ix = 0
+	IF ix > gnx - 1 THEN ix = gnx - 1
+	IF iz < 0 THEN iz = 0
+	IF iz > gnz - 1 THEN iz = gnz - 1
+	CellOf% = iz * gnx + ix
+END FUNCTION
+
+'----- LineClear: the floor between two points (x16 units) walkable all along --
+'----- the grid's cells every half a cell (the first point's own cell not asked)
+FUNCTION LineClear% (ax AS LONG, az AS LONG, bx AS LONG, bz AS LONG)
+	DIM n AS LONG, k AS LONG, dx AS LONG, dz AS LONG
+	LineClear% = 0
+	dx = bx - ax: dz = bz - az
+	n = ABS(dx): IF ABS(dz) > n THEN n = ABS(dz)
+	n = n \ (GCELL * 8) + 1
+	FOR k = 1 TO n
+		IF gwk(CellOf%(ax + dx * k \ n, az + dz * k \ n)) = 0 THEN EXIT FUNCTION
+	NEXT
+	LineClear% = 1
+END FUNCTION
+
+'----- FindPath: from (sx16, sz16) towards (tx, tz) -> wpx/wpz, nwp waypoints
+'----- (0: nowhere to go). Breadth first over the grid's walkable cells, eight
+'----- ways (a diagonal only past two walkable sides); the goal the target's cell,
+'----- or the reached cell nearest it; the cells' centres back from the goal,
+'----- then pulled straight: from each waypoint on to the farthest one the floor
+'----- is clear to. The last waypoint is the target itself when it is walkable
+SUB FindPath (sx16 AS LONG, sz16 AS LONG, tx AS LONG, tz AS LONG)
+	DIM s AS INTEGER, g AS INTEGER, c AS INTEGER, n AS INTEGER, d AS INTEGER, qh AS INTEGER, qt AS INTEGER
+	DIM ix AS INTEGER, iz AS INTEGER, nx AS INTEGER, nz AS INTEGER, m AS INTEGER, a AS INTEGER, b AS INTEGER, k AS INTEGER
+	DIM best AS LONG, dd AS LONG, gx AS INTEGER, gz AS INTEGER, t1 AS LONG
+	t1 = PitNow&
+	nwp = 0
+	FOR c = 0 TO gnx * gnz - 1: gpar(c) = -1: NEXT
+	s = CellOf%(sx16, sz16)
+	gpar(s) = s: qh = 0: qt = 1: gq(0) = s
+	DO WHILE qh < qt
+		c = gq(qh): qh = qh + 1
+		ix = c MOD gnx: iz = c \ gnx
+		FOR d = 0 TO 7
+			nx = ix + ddx(d): nz = iz + ddz(d)
+			IF nx >= 0 AND nx < gnx AND nz >= 0 AND nz < gnz THEN
+				n = nz * gnx + nx
+				IF gpar(n) < 0 THEN
+					IF gwk(n) THEN
+						IF d < 4 THEN
+							gpar(n) = c: gq(qt) = n: qt = qt + 1
+						ELSEIF gwk(iz * gnx + nx) <> 0 AND gwk(nz * gnx + ix) <> 0 THEN
+							gpar(n) = c: gq(qt) = n: qt = qt + 1
+						END IF
+					END IF
+				END IF
+			END IF
+		NEXT
+	LOOP
+	'----- the goal: the target's own cell if reached, else the reached cell nearest it
+	g = CellOf%(tx, tz)
+	IF gpar(g) < 0 OR gwk(g) = 0 THEN
+		gx = g MOD gnx: gz = g \ gnx: best = 2147483647
+		FOR k = 0 TO qt - 1
+			c = gq(k)
+			IF gwk(c) OR c = s THEN
+				nx = c MOD gnx - gx: nz = c \ gnx - gz: dd = CLNG(nx) * nx + CLNG(nz) * nz
+				IF dd < best THEN best = dd: g = c
+			END IF
+		NEXT
+		tx = CLNG(gx0) * 16 + CLNG(g MOD gnx) * GCELL * 16 + GCELL * 8
+		tz = CLNG(gz0) * 16 + CLNG(g \ gnx) * GCELL * 16 + GCELL * 8
+	ELSEIF MaskAt%(tx, tz) = 0 THEN
+		tx = CLNG(gx0) * 16 + CLNG(g MOD gnx) * GCELL * 16 + GCELL * 8
+		tz = CLNG(gz0) * 16 + CLNG(g \ gnx) * GCELL * 16 + GCELL * 8
+	END IF
+	'----- the cells back from the goal (pcx/pcz: the start, the cells, the target)
+	m = 0: c = g
+	DO WHILE c <> s AND m < 250
+		pcx(m) = CLNG(gx0) * 16 + CLNG(c MOD gnx) * GCELL * 16 + GCELL * 8
+		pcz(m) = CLNG(gz0) * 16 + CLNG(c \ gnx) * GCELL * 16 + GCELL * 8
+		m = m + 1: c = gpar(c)
+	LOOP
+	pcx(m) = sx16: pcz(m) = sz16: m = m + 1
+	FOR k = 0 TO m \ 2 - 1
+		SWAP pcx(k), pcx(m - 1 - k): SWAP pcz(k), pcz(m - 1 - k)
+	NEXT
+	pcx(m - 1) = tx: pcz(m - 1) = tz
+	IF m = 1 THEN pcx(1) = tx: pcz(1) = tz: m = 2
+	'----- pulled straight
+	a = 0
+	DO WHILE a < m - 1 AND nwp < 64
+		b = a + 1
+		DO WHILE b < m - 1
+			IF LineClear%(pcx(a), pcz(a), pcx(b + 1), pcz(b + 1)) = 0 THEN EXIT DO
+			b = b + 1
+		LOOP
+		wpx(nwp) = pcx(b): wpz(nwp) = pcz(b): nwp = nwp + 1
+		a = b
+	LOOP
+	pathms = Ms!(t1, PitNow&)
 END SUB
 
 '----- Mouse: INT 33h with mreg() as ax, bx, cx, dx (C3DMSE.OVL)

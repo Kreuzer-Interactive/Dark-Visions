@@ -4,6 +4,7 @@
 #   manwalk.ps1 -Model man3d.3ds     the procedural model instead (any .3ds in src\ART\Man3d)
 #   manwalk.ps1 -Anim src\ART\Man3d\man_walk.fbx   the walk as edited in 3ds Max (exported as FBX, Bake Animation on)
 #   manwalk.ps1 -Room 8              the man in a house room (1..11: they share one template) instead of on the road
+#   manwalk.ps1 -PathCheck           headless: MANWALK P -> two scripted clicks round the furniture: MANPATH1/2.BMP + MANPATH.LOG
 #   manwalk.ps1 -GoCheck             headless: MANWALK W -> a scripted click to walk and one to face: MANGO1/2.BMP + MANGO.LOG
 #   manwalk.ps1 -IdleCheck           headless: MANWALK I -> the fidgets' shots dist\manwalk\MANIDL1..4.BMP, MANIDLE.DMP, a turn each way MANTRN1/2.BMP
 #   manwalk.ps1 -Check               headless: MANWALK S -> dist\manwalk\MANWLK1/2.BMP + MANWALK.LOG, printed
@@ -27,6 +28,7 @@ param(
   [switch]$Check,
   [switch]$IdleCheck,
   [switch]$GoCheck,
+  [switch]$PathCheck,
   [switch]$Bench,
   [switch]$Push486,
   [switch]$NoStage
@@ -85,6 +87,16 @@ if (-not $NoStage) {
     "his height: $FrontHeight px at the front edge, $([Math]::Round($mid)) at mid-room, $([Math]::Round($back)) at the back wall (scale $([Math]::Round($rsc, 3)) over true size at the front)"
   }
   [IO.File]::WriteAllText("$st\ROOM.CFG", $cfg)   # empty = the road
+  # the room's walk mask (src\ART\Rooms\roomN_walk.png, tools\walkmask.ps1 makes a starter) -> ROOM.WLK,
+  # 1 bit a pixel (white = his feet may stand there), high bit left; empty = no mask
+  $wpng = "$src\ART\Rooms\room${Room}_walk.png"; $wb = [byte[]]@()
+  if ($Room -gt 0 -and (Test-Path $wpng)) {
+    Add-Type -AssemblyName System.Drawing
+    $wm = [System.Drawing.Bitmap]::FromFile($wpng); $wb = New-Object byte[] 8000; $nw = 0
+    for ($y = 0; $y -lt 200; $y++) { for ($x = 0; $x -lt 320; $x++) { $c = $wm.GetPixel($x, $y); if ($c.R + $c.G + $c.B -gt 384) { $wb[$y * 40 + [Math]::Floor($x / 8)] = $wb[$y * 40 + [Math]::Floor($x / 8)] -bor (128 -shr ($x % 8)); $nw++ } } }
+    $wm.Dispose(); "walk mask: room${Room}_walk.png, $nw walkable pixels"
+  }
+  [IO.File]::WriteAllBytes("$st\ROOM.WLK", $wb)
   foreach ($x in 'C3DT128.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'SHADBOP.OVL', 'C3DEDGE.OVL', 'C3DEDGO.OVL', 'C3DBLTM.OVL', 'C3DROT.OVL', 'C3DSKIN.OVL', 'C3DMSE.OVL') { Copy-Item "$src\$x" $st -Force }
   Copy-Item "$src\tools\MANWALK.EXE" $st -Force
   # the walk, baked from the model just converted (its vertex order)
@@ -99,7 +111,7 @@ if (-not $NoStage) {
 }
 if ($Push486) {
   $net = "$PSScriptRoot\net486.ps1"
-  foreach ($x in 'MANWALK.EXE', 'CAR3D.MDL', 'CAR3D.BMP', 'CARROAD.BMP', 'C3DT128.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'SHADBOP.OVL', 'C3DEDGE.OVL', 'C3DEDGO.OVL', 'C3DBLTM.OVL', 'C3DROT.OVL', 'C3DSKIN.OVL', 'C3DMSE.OVL', 'MAN3D.ANI', 'MANIDLE.ANI', 'ROOM.CFG') {
+  foreach ($x in 'MANWALK.EXE', 'CAR3D.MDL', 'CAR3D.BMP', 'CARROAD.BMP', 'C3DT128.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'SHADBOP.OVL', 'C3DEDGE.OVL', 'C3DEDGO.OVL', 'C3DBLTM.OVL', 'C3DROT.OVL', 'C3DSKIN.OVL', 'C3DMSE.OVL', 'MAN3D.ANI', 'MANIDLE.ANI', 'ROOM.CFG', 'ROOM.WLK') {
     & $net push -Source "$st\$x" -Dest /drive_c/manwalk -All | Select-Object -Last 1
   }
   if ($Check -or $Bench) {
@@ -119,7 +131,7 @@ if ($Push486) {
   return
 }
 $conf = Join-Path $env:TEMP 'manwalk_run.conf'
-$auto = if ($GoCheck) { 'MANWALK W' } elseif ($IdleCheck) { 'MANWALK I' } elseif ($Bench) { 'MANWALK B' } elseif ($Check) { "MANWALK S$Outline" } else { "MANWALK $Outline" }
+$auto = if ($PathCheck) { 'MANWALK P' } elseif ($GoCheck) { 'MANWALK W' } elseif ($IdleCheck) { 'MANWALK I' } elseif ($Bench) { 'MANWALK B' } elseif ($Check) { "MANWALK S$Outline" } else { "MANWALK $Outline" }
 @"
 [sdl]
 autolock=false
@@ -135,12 +147,13 @@ D:
 $auto
 exit
 "@ | Set-Content $conf -Encoding ASCII
-if ($Check -or $Bench -or $IdleCheck -or $GoCheck) {
-  foreach ($x in 'MANWLK1.BMP', 'MANWLK2.BMP', 'MANWALK.LOG', 'MANIDL1.BMP', 'MANIDL2.BMP', 'MANIDL3.BMP', 'MANIDL4.BMP', 'MANIDLE.DMP', 'MANTRN1.BMP', 'MANTRN2.BMP', 'MANGO1.BMP', 'MANGO2.BMP', 'MANGO.LOG') { if (Test-Path "$st\$x") { [IO.File]::Delete("$st\$x") } }
+if ($Check -or $Bench -or $IdleCheck -or $GoCheck -or $PathCheck) {
+  foreach ($x in 'MANWLK1.BMP', 'MANWLK2.BMP', 'MANWALK.LOG', 'MANIDL1.BMP', 'MANIDL2.BMP', 'MANIDL3.BMP', 'MANIDL4.BMP', 'MANIDLE.DMP', 'MANTRN1.BMP', 'MANTRN2.BMP', 'MANGO1.BMP', 'MANGO2.BMP', 'MANGO.LOG', 'MANPATH1.BMP', 'MANPATH2.BMP', 'MANPATH.LOG') { if (Test-Path "$st\$x") { [IO.File]::Delete("$st\$x") } }
   $p = Start-Process -FilePath 'C:\dosbox-x\dosbox-x.exe' -ArgumentList @('-conf', "`"$conf`"", '-nogui', '-silent') -PassThru
   if (-not $p.WaitForExit(90000)) { $p.Kill(); "timed out" }
   Get-Content "$st\MANWALK.LOG" -ErrorAction SilentlyContinue
   if ($GoCheck) { Get-Content "$st\MANGO.LOG" -ErrorAction SilentlyContinue }
+  if ($PathCheck) { Get-Content "$st\MANPATH.LOG" -ErrorAction SilentlyContinue }
 } else {
   Start-Process -FilePath 'C:\dosbox-x\dosbox-x.exe' -ArgumentList @('-conf', "`"$conf`"", '-nogui') | Out-Null
   "DOSBox-X opened on $st : arrows to walk and turn, Esc to quit"
