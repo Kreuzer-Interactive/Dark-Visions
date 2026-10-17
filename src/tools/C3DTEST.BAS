@@ -18,7 +18,7 @@ DECLARE SUB LoSplit (v AS LONG, lo AS INTEGER, hi AS INTEGER)
 DIM SHARED prm(0 TO 63) AS INTEGER
 DIM SHARED wk(0 TO 255) AS INTEGER
 DIM SHARED tx(0 TO 2063) AS INTEGER
-DIM SHARED sx(0 TO 7) AS INTEGER, sy(0 TO 7) AS INTEGER, tu(0 TO 7) AS INTEGER, tv(0 TO 7) AS INTEGER
+DIM SHARED sx(0 TO 7) AS INTEGER, sy(0 TO 7) AS INTEGER, tu(0 TO 7) AS INTEGER, tv(0 TO 7) AS INTEGER, vt(0 TO 31) AS INTEGER
 DIM SHARED fa(0 TO 3) AS Fac, bd(0 TO 3) AS INTEGER, ord(0 TO 3) AS INTEGER, bt(0 TO 7) AS INTEGER
 DIM SHARED rx(0 TO 7) AS INTEGER, ry(0 TO 7) AS INTEGER, rz(0 TO 7) AS INTEGER
 DIM SHARED mx(0 TO 7) AS INTEGER, my(0 TO 7) AS INTEGER, mz(0 TO 7) AS INTEGER
@@ -85,17 +85,17 @@ DIM px AS LONG, py AS LONG, pz AS LONG, zz AS LONG, ex AS INTEGER, ey AS INTEGER
 	prm(15) = VARSEG(bd(0)): prm(16) = VARPTR(bd(0))
 	prm(17) = VARSEG(ord(0)): prm(18) = VARPTR(ord(0))
 	prm(19) = VAL(COMMAND$): IF prm(19) = 0 THEN prm(19) = 1
-	prm(20) = 0: prm(21) = 0: prm(22) = -1
+	prm(20) = 0: prm(21) = 0: prm(22) = -1: prm(24) = 0: prm(25) = 0
 	DEF SEG = VARSEG(tri)
 	CALL ABSOLUTE(BYVAL VARSEG(prm(0)), BYVAL VARPTR(prm(0)), SADD(tri))
 	DEF SEG
 	PRINT #fh, "tri: count"; prm(19); " faces drawn"; prm(22)
-	PRINT #fh, "slots x,y,u,v:"; prm(24); prm(25); prm(26); prm(27); "|"; prm(28); prm(29); prm(30); prm(31); "|"; prm(32); prm(33); prm(34); prm(35)
-	PRINT #fh, "dx1 dy1 dx2 dy2:"; prm(36); prm(37); prm(38); prm(39); " du1 du2 dv1 dv2:"; prm(40); prm(41); prm(42); prm(43)
-	PRINT #fh, "det:"; CLNG(prm(45)) * 65536 + (prm(44) AND &HFFFF&); " dudx dvdx dudy dvdy:"; prm(46); prm(47); prm(48); prm(49)
-	PRINT #fh, "xaccL:"; CLNG(prm(51)) * 65536 + (prm(50) AND &HFFFF&); " xstepL:"; CLNG(prm(53)) * 65536 + (prm(52) AND &HFFFF&)
-	PRINT #fh, "xaccS:"; CLNG(prm(55)) * 65536 + (prm(54) AND &HFFFF&); " xstepS:"; CLNG(prm(57)) * 65536 + (prm(56) AND &HFFFF&)
-	PRINT #fh, "cy yend lleft ordi foff tseg:"; prm(58); prm(59); prm(60); prm(61); prm(62); prm(63)
+	PRINT #fh, "slots x,y,u,v:"; prm(26); prm(27); prm(28); prm(29); "|"; prm(30); prm(31); prm(32); prm(33); "|"; prm(34); prm(35); prm(36); prm(37)
+	PRINT #fh, "dx1 dy1 dx2 dy2:"; prm(38); prm(39); prm(40); prm(41); " du1 du2 dv1 dv2:"; prm(42); prm(43); prm(44); prm(45)
+	PRINT #fh, "det:"; CLNG(prm(47)) * 65536 + (prm(46) AND &HFFFF&); " dudx dvdx dudy dvdy:"; prm(48); prm(49); prm(50); prm(51)
+	PRINT #fh, "xaccL:"; CLNG(prm(53)) * 65536 + (prm(52) AND &HFFFF&); " xstepL:"; CLNG(prm(55)) * 65536 + (prm(54) AND &HFFFF&)
+	PRINT #fh, "xaccS:"; CLNG(prm(57)) * 65536 + (prm(56) AND &HFFFF&); " xstepS:"; CLNG(prm(59)) * 65536 + (prm(58) AND &HFFFF&)
+	PRINT #fh, "cy yend lleft:"; prm(60); prm(61); prm(62)
 	DEF SEG = wseg
 	FOR y = 0 TO 15
 		s = ""
@@ -104,6 +104,45 @@ DIM px AS LONG, py AS LONG, pz AS LONG, zz AS LONG, ex AS INTEGER, ey AS INTEGER
 		NEXT
 		PRINT #fh, s
 	NEXT
+	'----- 2a. the same through the interleaved vertex layout (bit 15 of word 25):
+	'----- the dump must be the one above
+	DEF SEG
+	FOR i = 0 TO 7: vt(i * 4) = sx(i): vt(i * 4 + 1) = sy(i): vt(i * 4 + 2) = tu(i): vt(i * 4 + 3) = tv(i): NEXT
+	FOR i = 0 TO 255: wk(i) = 0: NEXT
+	prm(5) = VARSEG(vt(0)): prm(6) = VARPTR(vt(0)): prm(22) = -1: prm(24) = 0: prm(25) = &H8000
+	DEF SEG = VARSEG(tri)
+	CALL ABSOLUTE(BYVAL VARSEG(prm(0)), BYVAL VARPTR(prm(0)), SADD(tri))
+	DEF SEG
+	PRINT #fh, "interleaved: faces drawn"; prm(22)
+	DEF SEG = wseg
+	FOR y = 0 TO 15
+		s = ""
+		FOR x = 0 TO 31
+			s = s + RIGHT$("0" + HEX$(PEEK(woff + y * 32 + x)), 2) + " "
+		NEXT
+		PRINT #fh, s
+	NEXT
+	DEF SEG
+	prm(5) = VARSEG(sx(0)): prm(6) = VARPTR(sx(0)): prm(25) = 0
+	'----- 2b. the same faces with the flat fill on (word 24 = 32767: every face is
+	'----- "small"): each face one texel's colour, the one at the midpoint of its
+	'----- first two vertices after the y-sort; drawn count unchanged
+	DEF SEG
+	FOR i = 0 TO 255: wk(i) = 0: NEXT
+	prm(22) = -1: prm(24) = 32767: prm(25) = 0
+	DEF SEG = VARSEG(tri)
+	CALL ABSOLUTE(BYVAL VARSEG(prm(0)), BYVAL VARPTR(prm(0)), SADD(tri))
+	DEF SEG
+	PRINT #fh, "flat: faces drawn"; prm(22)
+	DEF SEG = wseg
+	FOR y = 0 TO 15
+		s = ""
+		FOR x = 0 TO 31
+			s = s + RIGHT$("0" + HEX$(PEEK(woff + y * 32 + x)), 2) + " "
+		NEXT
+		PRINT #fh, s
+	NEXT
+	prm(24) = 0
 	DEF SEG
 
 	'----- 3. projection

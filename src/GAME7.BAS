@@ -199,7 +199,14 @@ DIM SHARED tpx(1) AS LONG, tpy(1) AS LONG, tpz(1) AS LONG, tcs(1) AS INTEGER, ts
 DIM SHARED tyaw(1) AS SINGLE, toff(1) AS INTEGER, tcp(1) AS INTEGER, tsp(1) AS INTEGER
 DIM SHARED hpx(1) AS LONG, hpy(1) AS LONG, hpz(1) AS LONG, hcs(1) AS INTEGER, hsn(1) AS INTEGER, hcp(1) AS INTEGER, hsp(1) AS INTEGER
 DIM SHARED qx(1) AS SINGLE, qy(1) AS SINGLE, qa(1) AS SINGLE, qp(1) AS SINGLE, tpit(1) AS INTEGER, trkF(1) AS INTEGER
-DIM SHARED sx(1) AS INTEGER, sy(1) AS INTEGER, tu(1) AS INTEGER, tv(1) AS INTEGER
+'----- the vertices as the raster reads them (2026-10-16): x,y (projected,
+'----- 1/16 px) and u,v (8.8 texels) interleaved, 4 words a vertex, one segment
+DIM SHARED vt(1) AS INTEGER
+'----- the rasteriser's thresholds, 1/16 px: a face smaller than C3DFLAT both
+'----- ways is filled flat with one texel (no gradients, no divides); a quad's
+'----- second triangle shorter than C3DQUAD shares the first one's gradients
+CONST C3DFLAT = 64
+CONST C3DQUAD = 384
 DIM SHARED fa(1) AS C3dFac
 DIM SHARED fband(1) AS INTEGER, ord(1) AS INTEGER, lnk(1) AS INTEGER, bkt(1) AS INTEGER
 DIM SHARED bgb(1) AS INTEGER, wkb(1) AS INTEGER
@@ -977,8 +984,7 @@ FUNCTION C3dLoadModel%
 	IF LOF(fh) < 10 + CLNG(nv) * 20 + CLNG(nf) * 22 THEN CLOSE #fh: EXIT FUNCTION
 	REDIM mx(0 TO nv - 1) AS INTEGER, my(0 TO nv - 1) AS INTEGER, mz(0 TO nv - 1) AS INTEGER
 	REDIM rx(0 TO nv - 1) AS INTEGER, ry(0 TO nv - 1) AS INTEGER, rz(0 TO nv - 1) AS INTEGER
-	REDIM sx(0 TO nv - 1) AS INTEGER, sy(0 TO nv - 1) AS INTEGER
-	REDIM tu(0 TO nv - 1) AS INTEGER, tv(0 TO nv - 1) AS INTEGER
+	REDIM vt(0 TO nv * 4 - 1) AS INTEGER
 	REDIM fa(0 TO nf - 1) AS C3dFac
 	REDIM fband(0 TO nf - 1) AS INTEGER, ord(0 TO nf - 1) AS INTEGER
 	REDIM lnk(0 TO nf - 1) AS INTEGER, bkt(0 TO 255) AS INTEGER
@@ -1000,10 +1006,10 @@ FUNCTION C3dLoadModel%
 		'----- texel coordinates, 8.8 fixed point over the texture's width
 		t = CLNG(vt.u * (CLNG(texW) * 256 - 64)): IF t < 0 THEN t = 0
 		IF t > CLNG(texW) * 256 - 1 THEN t = CLNG(texW) * 256 - 1
-		tu(i) = t
+		vt(i * 4 + 2) = t
 		t = CLNG(vt.v * (CLNG(texW) * 256 - 64)): IF t < 0 THEN t = 0
 		IF t > CLNG(texW) * 256 - 1 THEN t = CLNG(texW) * 256 - 1
-		tv(i) = t
+		vt(i * 4 + 3) = t
 	NEXT
 	FOR f = 0 TO nf - 1
 		GET #fh, , fa(f)
@@ -1123,19 +1129,19 @@ SUB C3dPoint
 	wseg = C3dSeg%(VARSEG(wkb(0)), VARPTR(wkb(0))): wko = VARPTR(wkb(0)) AND 15
 	prm(0) = wseg: prm(1) = wko: prm(2) = WKW: prm(3) = WKH
 	prm(4) = VARSEG(bt(0)): prm(23) = VARPTR(bt(0))
-	prm(5) = VARSEG(sx(0)): prm(6) = VARPTR(sx(0))
-	prm(7) = VARSEG(sy(0)): prm(8) = VARPTR(sy(0))
-	prm(9) = VARSEG(tu(0)): prm(10) = VARPTR(tu(0))
-	prm(11) = VARSEG(tv(0)): prm(12) = VARPTR(tv(0))
+	prm(5) = VARSEG(vt(0)): prm(6) = VARPTR(vt(0))      ' the interleaved vertices (bit 15 of word 25)
+	prm(7) = 0: prm(8) = 0: prm(9) = 0: prm(10) = 0: prm(11) = 0: prm(12) = 0
 	prm(13) = VARSEG(fa(0)): prm(14) = VARPTR(fa(0))
 	prm(15) = VARSEG(fband(0)): prm(16) = VARPTR(fband(0))
+	IF unlit THEN prm(15) = 0                            ' every face band 0: the texture segment read once
 	prm(17) = VARSEG(ord(0)): prm(18) = VARPTR(ord(0))
 	prm(19) = nf
 	prq(0) = VARSEG(rx(0)): prq(1) = VARPTR(rx(0))
 	prq(2) = VARSEG(ry(0)): prq(3) = VARPTR(ry(0))
 	prq(4) = VARSEG(rz(0)): prq(5) = VARPTR(rz(0))
-	prq(6) = VARSEG(sx(0)): prq(7) = VARPTR(sx(0))
-	prq(8) = VARSEG(sy(0)): prq(9) = VARPTR(sy(0))
+	prq(6) = VARSEG(vt(0)): prq(7) = VARPTR(vt(0))
+	prq(8) = prq(6): prq(9) = prq(7) + 2
+	prq(21) = 8                                           ' the projection writes x,y 8 bytes apart
 	prq(10) = nv
 	prr(0) = VARSEG(mx(0)): prr(1) = VARPTR(mx(0))
 	prr(2) = VARSEG(my(0)): prr(3) = VARPTR(my(0))
@@ -1500,6 +1506,7 @@ SUB C3dDraw (px AS LONG, py AS LONG, pz AS LONG)
 	wo = CLNG(wko) + CLNG(by - dy) * WKW + (bx - dx)
 	CALL C3dCopy(bgseg, CLNG(bgo) + CLNG(by - BGY0) * 320 + bx, wseg, wo, rh, rw, 320, WKW)
 	prm(20) = dx * 16: prm(21) = dy * 16: prm(22) = 0
+	prm(24) = C3DFLAT: prm(25) = C3DQUAD OR &H8000
 	DEF SEG = VARSEG(ovlTri)
 	CALL ABSOLUTE(BYVAL VARSEG(prm(0)), BYVAL VARPTR(prm(0)), SADD(ovlTri))
 	DEF SEG
@@ -1619,7 +1626,7 @@ SUB C3dFree
 	REDIM tyaw(1) AS SINGLE, toff(1) AS INTEGER, tcp(1) AS INTEGER, tsp(1) AS INTEGER
 	REDIM hpx(1) AS LONG, hpy(1) AS LONG, hpz(1) AS LONG, hcs(1) AS INTEGER, hsn(1) AS INTEGER, hcp(1) AS INTEGER, hsp(1) AS INTEGER
 	REDIM qx(1) AS SINGLE, qy(1) AS SINGLE, qa(1) AS SINGLE, qp(1) AS SINGLE, tpit(1) AS INTEGER, trkF(1) AS INTEGER
-	REDIM sx(1) AS INTEGER, sy(1) AS INTEGER, tu(1) AS INTEGER, tv(1) AS INTEGER
+	REDIM vt(1) AS INTEGER
 	REDIM fa(1) AS C3dFac
 	REDIM fband(1) AS INTEGER, ord(1) AS INTEGER, lnk(1) AS INTEGER, bkt(1) AS INTEGER
 	REDIM bgb(1) AS INTEGER, wkb(1) AS INTEGER

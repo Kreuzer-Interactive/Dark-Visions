@@ -24,12 +24,25 @@
 #   19 count            number of entries in ord
 #   20 dx  21 dy        screen position of the work buffer in 1/16 pixel: buffer x = sx - dx
 #   22 out: faces drawn   23 band table offset (see 4)
+#   24 low byte: the flat threshold -- a face narrower and shorter than this (1/16 px) is filled
+#                        flat with one texel (the midpoint of its first two vertices): no gradients,
+#                        no divides, rep stosb rows. 0 = never. (a 50 px man is nearly all such faces)
+#      high byte: the dot threshold -- a face smaller than this both ways is one pixel, its
+#                        centre, in that texel: no edges at all. 0 = never.
+#   25 quad threshold    a quad's second triangle shorter than this reuses the first one's texture
+#                        gradients (the same plane; the perspective difference is below a texel on
+#                        a small quad). 0 = never. Bit 15 set = the vertices are ONE interleaved
+#                        array x,y,u,v (8 bytes each) at 5/6 (7..12 unused): 3 segment loads a face
+#                        instead of 18.
+#   15 = 0               (band seg 0) every face is band 0: the texture segment is read once
+#   26..63 out: the rasteriser's locals [bp-80..bp-5] after the call (debug: C3DTEST prints them)
 #   A face is drawn when (x1-x0)*(y2-y0)-(x2-x0)*(y1-y0) > 0 (screen y down,
 #   converter's outward winding). Texel index 255 = transparent.
 #
 # C3DPRJ.OVL  -- CALL ABSOLUTE(BYVAL qseg, BYVAL qoff, SADD(prj$))     (RETF 4)
 #   block (21 INTEGERs): 0/1 rx seg/off  2/3 ry  4/5 rz  6/7 sx  8/9 sy  10 n
 #   11/12 px lo/hi  13/14 py  15/16 pz (LONG, x16 units)  17..20 out: minx maxx miny maxy
+#   21 output stride in bytes (0 = 2: separate sx/sy arrays; 8: the interleaved vertex array, 8/9 = base + 2)
 #   sx = (160 + (rx+px)*256 \ max(rz+pz,16)) * 16 ; sy = (100 - (ry+py)*256 \ ...) * 16  (1/16 pixel)
 #
 # C3DTEST.OVL -- encoding self-test, see C3DTEST.BAS.
@@ -129,25 +142,54 @@ $DUDX = -36; $DVDX = -34; $DUDY = -32; $DVDY = -30
 $XACCL = -28; $XSTEPL = -24; $XACCS = -20; $XSTEPS = -16   # dwords
 $CY = -12; $YEND = -10; $LLEFT = -8; $ORDI = -6; $FOFF = -4; $TSEG = -2; $TMP = -40   # TMP reuses DET (dead once the gradients exist)
 
+# ---- [bp+disp16] emitters for the locals below -128 ----------------------------
+function MB16($reg, $d16) { return [byte[]]@([byte](0x80 -bor ($reg -shl 3) -bor 6)) + (W16 $d16) }   # modrm for [bp+disp16]
+function MovRMw($reg, $d16)    { E (@(0x8B) + (MB16 $R[$reg] $d16)) }
+function MovMRw($d16, $reg)    { E (@(0x89) + (MB16 $R[$reg] $d16)) }
+function MovMIw($d16, $imm)    { E (@(0xC7) + (MB16 0 $d16) + (W16 $imm)) }
+function CmpRMw($reg, $d16)    { E (@(0x3B) + (MB16 $R[$reg] $d16)) }
+function CmpMI8w($d16, $imm)   { E (@(0x83) + (MB16 7 $d16) + @((D8 $imm))) }
+function Mov32RMw($reg, $d16)  { E (@(0x66, 0x8B) + (MB16 $R[$reg] $d16)) }
+function Mov32MRw($d16, $reg)  { E (@(0x66, 0x89) + (MB16 $R[$reg] $d16)) }
+function Add32MRw($d16, $reg)  { E (@(0x66, 0x01) + (MB16 $R[$reg] $d16)) }
+function Add32RMw($reg, $d16)  { E (@(0x66, 0x03) + (MB16 $R[$reg] $d16)) }
+# the locals below the disp8 frame (2026-10-16): the two thresholds (block words 24, 25),
+# the flat fill's flag and colour, the quad's gradient sharing, the row accumulators
+$FLATT = -130; $QUADT = -132; $FLATF = -134; $FCOL = -136; $GRADOK = -138; $GRADDONE = -140
+$TUY = -144; $TVY = -148; $DUDY16 = -152; $DVDY16 = -156         # dwords
+$LAYOUT = -158; $UNLIT = -160                                      # bit 15 of word 25: interleaved vertices; band seg 0: one texture
+$DOTT = -162; $W16 = -164; $H16 = -166                              # the dot threshold (high byte of word 24); the face box
+$FRAME = 168
+
 # one blob per texture size: $tsh = log2(texture width), 6 = 64 texels, 7 = 128
 function Build-Tri([int]$tsh) {
 $tmask = [byte]((1 -shl $tsh) - 1)
 $script:a = [Asm]::new()
-E @(0x55); E @(0x8B, 0xEC); E @(0x81, 0xEC, 0x80, 0x00)      # push bp; mov bp,sp; sub sp,128
+E @(0x55); E @(0x8B, 0xEC); E (@(0x81, 0xEC) + (W16 $FRAME))   # push bp; mov bp,sp; sub sp,FRAME
 E @(0x1E, 0x56, 0x57, 0x06)                                    # push ds,si,di,es
 MovDsM 8; MovRM 'si' 6                                         # ds:si = pseg:poff
 E @(0x8C, 0xD0); E @(0x8E, 0xC0)                               # mov ax,ss; mov es,ax
 LeaDI (P 0); E @(0xB9, 0x18, 0x00); E @(0xF3, 0xA5)            # lea di,[bp-128]; mov cx,24; rep movsw
+E @(0xAD); E @(0x8B, 0xC8); E @(0x32, 0xED); E @(0x8A, 0xCC); MovMRw $DOTT 'cx'   # word 24: high byte = the dot threshold
+E @(0x32, 0xE4); MovMRw $FLATT 'ax'; E @(0xAD)                              # low byte = the flat threshold; word 25
+E @(0x8B, 0xC8); E @(0x81, 0xE1, 0x00, 0x80); MovMRw $LAYOUT 'cx'   # bit 15 of word 25 = the interleaved vertex layout
+E @(0x25, 0xFF, 0x7F); MovMRw $QUADT 'ax'
+MovMIw $UNLIT 0
+CmpMI8 (P 15) 0; Jr 0x75 'lit'                                        # band seg 0: every face band 0 -> one texture segment, read once
+MovDsM (P 4); MovRM 'si' (P 23); E @(0x8B, 0x04); MovMR $TSEG 'ax'; MovMIw $UNLIT 1
+Lbl 'lit'
 MovMI (P 22) 0                                                 # drawn = 0
 MovMI $ORDI 0
 Lbl 'outer'
 MovRM 'ax' $ORDI; CmpRM 'ax' (P 19); Jn @(0x0F, 0x8D) 'done'  # jge done
 MovDsM (P 17); MovRM 'si' (P 18); E @(0xD1, 0xE0); E @(0x03, 0xF0)   # ds:si = ord + i*2
 E @(0x8B, 0x1C)                                                # mov bx,[si]  (face f)
+CmpMI8w $UNLIT 0; Jr 0x75 'band1'                               # (unlit: TSEG is set once at entry)
 MovDsM (P 15); MovRM 'si' (P 16); E @(0x8B, 0xC3); E @(0xD1, 0xE0); E @(0x03, 0xF0)   # band[f]
 E @(0x8B, 0x04); E @(0xD1, 0xE0)                               # mov ax,[si]; shl ax,1
 MovDsM (P 4); MovRM 'si' (P 23); E @(0x03, 0xF0); E @(0x8B, 0x04)   # band segment table [P4:P23]
 MovMR $TSEG 'ax'                                               # tseg for this face
+Lbl 'band1'
 E @(0x8B, 0xC3); E @(0xD1, 0xE0); E @(0xD1, 0xE0); E @(0x03, 0xC3); E @(0xD1, 0xE0)   # ax = 10*f
 AddRM 'ax' (P 14); MovMR $FOFF 'ax'
 # load a,b,c into slots 0,1,2
@@ -163,31 +205,42 @@ MovRM 'ax' $X2; SubRM 'ax' $X0; MovMR $DX2 'ax'
 MovRM 'ax' $Y2; SubRM 'ax' $Y0; MovMR $DY2 'ax'
 Cross32 $DX1 $DY2 $DX2 $DY1
 E @(0x66, 0x0B, 0xC0); Jn @(0x0F, 0x8E) 'nextpoly'             # or eax,eax; jle nextpoly
+MovMIw $GRADOK 0; MovMIw $GRADDONE 0
 CallN 'TRI'
-# quad: d >= 0 -> triangle (a,c,d)
+# quad: d >= 0 -> triangle (a,c,d); its texture gradients are the first triangle's when the
+# quad is small (word 25: the second triangle's height in 1/16 px below which they are shared)
 MovDsM (P 13); MovRM 'si' $FOFF; E @(0x8B, 0x44, 0x06); E @(0x0B, 0xC0); Jr 0x78 'nextpoly'   # js
 foreach ($pair in @(@(0, $X0), @(4, $X1), @(6, $X2))) {
   MovDsM (P 13); MovRM 'si' $FOFF
   if ($pair[0] -eq 0) { E @(0x8B, 0x04) } else { E @(0x8B, 0x44, [byte]$pair[0]) }
   E (@(0xBF) + (W16 $pair[1])); CallN 'LDV'
 }
+MovRMw 'ax' $GRADDONE; MovMRw $GRADOK 'ax'
 CallN 'TRI'
 Lbl 'nextpoly'
 IncM $ORDI; JmpN 'outer'
 Lbl 'done'
-# write back: word 22 = faces drawn; words 24..63 = the rasteriser locals [bp-80..bp-1] (debug)
+# write back: word 22 = faces drawn; words 26..63 = the rasteriser locals [bp-80..bp-5] (debug)
 MovEsM 8; MovRM 'di' 6
 MovRM 'ax' (P 22); E @(0x26, 0x89, 0x45, 0x2C)                  # mov es:[di+44],ax
-E @(0x83, 0xC7, 0x30); E @(0x8C, 0xD0); E @(0x8E, 0xD8); LeaSI -80; E @(0xB9, 0x28, 0x00); E @(0xF3, 0xA5)
+E @(0x83, 0xC7, 0x34); E @(0x8C, 0xD0); E @(0x8E, 0xD8); LeaSI -80; E @(0xB9, 0x26, 0x00); E @(0xF3, 0xA5)
 E @(0x07, 0x5F, 0x5E, 0x1F); E @(0x8B, 0xE5); E @(0x5D); E @(0xCA, 0x04, 0x00)   # pops; mov sp,bp; pop bp; retf 4
 
 # ---- LDV: ax = vertex index, di = slot offset (bp-relative) --------------------
 Lbl 'LDV'
+CmpMI8w $LAYOUT 0; Jn @(0x0F, 0x85) 'LDV8'                     # the interleaved layout: one segment, four words a vertex
 E @(0xD1, 0xE0); E @(0x8B, 0xC8)                               # shl ax,1; mov cx,ax
 MovDsM (P 5);  E @(0x8B, 0xF1); AddRM 'si' (P 6);  E @(0x8B, 0x04); SubRM 'ax' (P 20); E @(0x89, 0x03)         # x = sx-dx -> [bp+di]
 MovDsM (P 7);  E @(0x8B, 0xF1); AddRM 'si' (P 8);  E @(0x8B, 0x04); SubRM 'ax' (P 21); E @(0x89, 0x43, 0x02)   # y = sy-dy
 MovDsM (P 9);  E @(0x8B, 0xF1); AddRM 'si' (P 10); E @(0x8B, 0x04); E @(0x89, 0x43, 0x04)                      # u
 MovDsM (P 11); E @(0x8B, 0xF1); AddRM 'si' (P 12); E @(0x8B, 0x04); E @(0x89, 0x43, 0x06)                      # v
+E @(0xC3)
+# ---- LDV8: the same from an interleaved array x,y,u,v (8 bytes a vertex) at P5:P6 ------
+Lbl 'LDV8'
+E @(0xC1, 0xE0, 0x03); MovDsM (P 5); E @(0x8B, 0xF0); AddRM 'si' (P 6)              # ds:si = base + i*8
+E @(0xAD); SubRM 'ax' (P 20); E @(0x89, 0x03)                                       # x - dx
+E @(0xAD); SubRM 'ax' (P 21); E @(0x89, 0x43, 0x02)                                 # y - dy
+E @(0xAD); E @(0x89, 0x43, 0x04); E @(0xAD); E @(0x89, 0x43, 0x06)                  # u, v
 E @(0xC3)
 
 # ---- SWAP: 4 words at [bp+di] <-> [bp+si] -------------------------------------
@@ -219,22 +272,69 @@ MovRM 'ax' $X1; SubRM 'ax' $X0; MovMR $DX1 'ax'
 MovRM 'ax' $Y1; SubRM 'ax' $Y0; MovMR $DY1 'ax'
 MovRM 'ax' $X2; SubRM 'ax' $X0; MovMR $DX2 'ax'
 MovRM 'ax' $Y2; SubRM 'ax' $Y0; MovMR $DY2 'ax'
+Cross32 $DX1 $DY2 $DX2 $DY1; Mov32MR $DET 'ax'
+E @(0x66, 0x0B, 0xC0); Jr 0x75 't2'; E @(0xC3); Lbl 't2'                            # det == 0 -> ret
+MovMI $LLEFT 1; Jr 0x7F 'lf'; MovMI $LLEFT 0; Lbl 'lf'                               # (flags still det's sign)
+MovMIw $FLATF 0
+# ---- the face's box: H16 = y2-y0 (sorted), W16 = max x - min x, in 1/16 px
+MovRM 'ax' $Y2; SubRM 'ax' $Y0; MovMRw $H16 'ax'
+MovRM 'ax' $X0; MovRM 'cx' $X0                                                       # ax = min x, cx = max x
+CmpRM 'ax' $X1; Jr 0x7E 'f1'; MovRM 'ax' $X1; Lbl 'f1'
+CmpRM 'ax' $X2; Jr 0x7E 'f2'; MovRM 'ax' $X2; Lbl 'f2'
+CmpRM 'cx' $X1; Jr 0x7D 'f3'; MovRM 'cx' $X1; Lbl 'f3'
+CmpRM 'cx' $X2; Jr 0x7D 'f4'; MovRM 'cx' $X2; Lbl 'f4'
+E @(0x2B, 0xC8); MovMRw $W16 'cx'
+# ---- the dot: a face smaller than the dot threshold both ways is one pixel, its centre,
+# in the texel at the midpoint of its first two vertices (a key texel drops it)
+CmpMI8w $DOTT 0; Jn @(0x0F, 0x8E) 'notdot'
+MovRMw 'ax' $H16; CmpRMw 'ax' $DOTT; Jn @(0x0F, 0x8D) 'notdot'
+MovRMw 'ax' $W16; CmpRMw 'ax' $DOTT; Jn @(0x0F, 0x8D) 'notdot'
+CallN 'MIDTEX'; Jr 0x75 'd1'; E @(0xC3); Lbl 'd1'                                     # al = the texel (zf: the key)
+E @(0x8B, 0xD8)                                                                      # bx = colour
+MovRM 'ax' $Y0; AddRM 'ax' $Y1; AddRM 'ax' $Y2; E @(0xB9, 0x55, 0x55); E @(0xF7, 0xE9)   # dx:ax = sum*21845 (/3 << 16)
+E @(0x8B, 0xC2); E @(0xC1, 0xF8, 0x04); ImulM16 (P 2)                                   # ax = (sum/3 >> 4) * w
+E @(0x8B, 0xC8)                                                                      # cx = row offset
+MovRM 'ax' $X0; AddRM 'ax' $X1; AddRM 'ax' $X2; E @(0xBA, 0x55, 0x55); E @(0xF7, 0xEA)   # dx:ax = sum*21845
+E @(0x8B, 0xC2); E @(0xC1, 0xF8, 0x04); E @(0x03, 0xC1); AddRM 'ax' (P 1); E @(0x8B, 0xF8)   # di = doff + row + x
+MovEsM (P 0); E @(0x8B, 0xC3); E @(0x26, 0x88, 0x05)                                  # es:[di] = colour
+IncM (P 22)
+E @(0xC3)
+Lbl 'notdot'
+# ---- the flat fill: a face smaller than the flat threshold (1/16 px) in both directions
+# is filled with that one texel (no gradients, no divides, a rep stosb per row)
+CmpMI8w $FLATT 0; Jn @(0x0F, 0x8E) 'textured'                                        # threshold 0: never
+MovRMw 'ax' $H16; CmpRMw 'ax' $FLATT; Jn @(0x0F, 0x8D) 'textured'
+MovRMw 'ax' $W16; CmpRMw 'ax' $FLATT; Jn @(0x0F, 0x8D) 'textured'
+CallN 'MIDTEX'; Jr 0x75 'f5'; E @(0xC3); Lbl 'f5'                                     # the texel; the key -> the face is not drawn
+MovMRw $FCOL 'ax'; MovMIw $FLATF 1
+JmpN 'edges'
+Lbl 'textured'
+# gradients per pixel (8.8): the numerators are in texel*(1/16 px) and det in (1/16 px)^2,
+# so the quotient is 1/16 of the per-pixel value: scale the numerator by 16 first.
+# A quad's second triangle keeps the first one's gradients when the quad is small (word 25)
+CmpMI8w $GRADOK 0; Jr 0x74 'grads'
+MovRM 'ax' $Y2; SubRM 'ax' $Y0; CmpRMw 'ax' $QUADT; Jn @(0x0F, 0x8C) 'gradsok'
+Lbl 'grads'
 MovRM 'ax' $U1; SubRM 'ax' $U0; MovMR $DU1 'ax'
 MovRM 'ax' $U2; SubRM 'ax' $U0; MovMR $DU2 'ax'
 MovRM 'ax' $V1; SubRM 'ax' $V0; MovMR $DV1 'ax'
 MovRM 'ax' $V2; SubRM 'ax' $V0; MovMR $DV2 'ax'
-Cross32 $DX1 $DY2 $DX2 $DY1; Mov32MR $DET 'ax'
-E @(0x66, 0x0B, 0xC0); Jr 0x75 't2'; E @(0xC3); Lbl 't2'                            # det == 0 -> ret
-# gradients per pixel (8.8): the numerators are in texel*(1/16 px) and det in (1/16 px)^2,
-# so the quotient is 1/16 of the per-pixel value: scale the numerator by 16 first
 Cross32 $DU1 $DY2 $DU2 $DY1; E @(0x66, 0xC1, 0xE0, 0x04); E @(0x66, 0x99); Idiv32M $DET; MovMR $DUDX 'ax'
 Cross32 $DV1 $DY2 $DV2 $DY1; E @(0x66, 0xC1, 0xE0, 0x04); E @(0x66, 0x99); Idiv32M $DET; MovMR $DVDX 'ax'
 Cross32 $DU2 $DX1 $DU1 $DX2; E @(0x66, 0xC1, 0xE0, 0x04); E @(0x66, 0x99); Idiv32M $DET; MovMR $DUDY 'ax'
 Cross32 $DV2 $DX1 $DV1 $DX2; E @(0x66, 0xC1, 0xE0, 0x04); E @(0x66, 0x99); Idiv32M $DET; MovMR $DVDY 'ax'
-Mov32RM 'ax' $DET; E @(0x66, 0x0B, 0xC0); MovMI $LLEFT 1; Jr 0x7F 'lf'; MovMI $LLEFT 0; Lbl 'lf'
+MovMIw $GRADDONE 1
+Lbl 'gradsok'
+# the row accumulators: dudy*(cy0*16+8-y0) at the first row, + dudy*16 a row (v alike)
+Movsx32RM 'ax' $DUDY; E @(0x66, 0xC1, 0xE0, 0x04); Mov32MRw $DUDY16 'ax'
+Movsx32RM 'ax' $DVDY; E @(0x66, 0xC1, 0xE0, 0x04); Mov32MRw $DVDY16 'ax'
+Lbl 'edges'
 # rows: a row cy is covered when its centre (cy*16+8) lies in [y0, y2); first row = (y0+7)>>4
 MovRM 'ax' $Y0; E @(0x05, 0x07, 0x00); E @(0xC1, 0xF8, 0x04); MovMR $CY 'ax'       # cy0
 MovRM 'ax' $Y1; E @(0x05, 0x07, 0x00); E @(0xC1, 0xF8, 0x04); MovMR $YEND 'ax'     # cy1
+MovRM 'cx' $CY; E @(0xC1, 0xE1, 0x04); E @(0x83, 0xC1, 0x08); SubRM 'cx' $Y0; E @(0x66, 0x0F, 0xBF, 0xC9)   # ecx = cy0*16+8-y0
+Movsx32RM 'ax' $DUDY; E @(0x66, 0x0F, 0xAF, 0xC1); Mov32MRw $TUY 'ax'
+Movsx32RM 'ax' $DVDY; E @(0x66, 0x0F, 0xAF, 0xC1); Mov32MRw $TVY 'ax'
 # long edge DDA: slope (16.16 px per row) = (dx2<<16)/dy2; start x = x0 + slope*(centre of row cy0 - y0)/16
 Movsx32RM 'ax' $DX2; E @(0x66, 0xC1, 0xE0, 0x10); E @(0x66, 0x99); Movsx32RM 'cx' $DY2; E @(0x66, 0xF7, 0xF9); Mov32MR $XSTEPL 'ax'
 MovRM 'cx' $CY; E @(0xC1, 0xE1, 0x04); E @(0x83, 0xC1, 0x08); SubRM 'cx' $Y0; E @(0x66, 0x0F, 0xBF, 0xC9)   # ecx = sub-row offset 0..15
@@ -265,6 +365,15 @@ Lbl 'tridone'
 IncM (P 22)
 E @(0xC3)
 
+# ---- MIDTEX: al = the texel at the midpoint of slots 0 and 1 (ah = 0), zf = it is the key
+Lbl 'MIDTEX'
+Movsx32RM 'ax' $U0; Movsx32RM 'cx' $U1; E @(0x66, 0x03, 0xC1); E @(0x66, 0xC1, 0xF8, 0x09)   # eax = (u0+u1)/2 >> 8
+E @(0x25, $tmask, 0x00); E @(0x8B, 0xD8)                                                     # bx = u & mask
+Movsx32RM 'ax' $V0; Movsx32RM 'cx' $V1; E @(0x66, 0x03, 0xC1); E @(0x66, 0xC1, 0xF8, 0x09)
+E @(0x25, $tmask, 0x00); E @(0xC1, 0xE0, [byte]$tsh); E @(0x03, 0xC3); E @(0x8B, 0xF0)      # si = v*width + u
+MovDsM $TSEG; E @(0x8A, 0x04); E @(0x32, 0xE4); E @(0x3C, 0xFF)                            # al = texel; cmp al,255
+E @(0xC3)
+
 # ---- SPANS: scanlines CY..YEND-1 --------------------------------------------------
 Lbl 'SPANS'
 MovRM 'ax' $CY; CmpRM 'ax' $YEND; Jr 0x7C 'sp0'; E @(0xC3); Lbl 'sp0'
@@ -274,18 +383,18 @@ CmpMI8 $LLEFT 0; Jr 0x75 'l1'; E @(0x91); Lbl 'l1'               # long on right
 E @(0x2B, 0xC8); Jn @(0x0F, 0x8E) 'spnext'                        # cx = xr-xl; jle spnext
 MovMR $TMP 'ax'; E @(0x8B, 0xF1)                                  # xl; si = count
 MovRM 'ax' $CY; ImulM16 (P 2); AddRM 'ax' (P 1); AddRM 'ax' $TMP; E @(0x8B, 0xF8)   # di = doff + y*w + xl
-# texel start at the first pixel's centre: u = u0 + (dudx*(xl*16+8-x0) + dudy*(cy*16+8-y0))/16
-MovRM 'ax' $TMP; E @(0xC1, 0xE0, 0x04); E @(0x05, 0x08, 0x00); SubRM 'ax' $X0; MovMR $TMP 'ax'   # TMP = dx16
-MovRM 'ax' $CY; E @(0xC1, 0xE0, 0x04); E @(0x05, 0x08, 0x00); SubRM 'ax' $Y0; E @(0x8B, 0xD8)     # bx = dy16
-Movsx32RM 'cx' $TMP; E @(0x66, 0x0F, 0xBF, 0xD3)                                                   # ecx = dx16, edx = dy16
-Movsx32RM 'ax' $DUDX; E @(0x66, 0x0F, 0xAF, 0xC1); E @(0x66, 0x50)                                 # push dudx*dx16
-Movsx32RM 'bx' $DUDY; E @(0x66, 0x0F, 0xAF, 0xDA); E @(0x66, 0x58); E @(0x66, 0x03, 0xC3)          # + dudy*dy16
-E @(0x66, 0xC1, 0xF8, 0x04); AddRM 'ax' $U0; E @(0x50)                                             # push u
-Movsx32RM 'ax' $DVDX; E @(0x66, 0x0F, 0xAF, 0xC1); E @(0x66, 0x50)
-Movsx32RM 'bx' $DVDY; E @(0x66, 0x0F, 0xAF, 0xDA); E @(0x66, 0x58); E @(0x66, 0x03, 0xC3)
+MovEsM (P 0)
+CmpMI8w $FLATF 0; Jr 0x74 'spantex'
+MovRMw 'ax' $FCOL; E @(0x8B, 0xCE); E @(0xF3, 0xAA); JmpN 'spnext'   # the flat row: mov cx,count; rep stosb
+Lbl 'spantex'
+# texel start at the first pixel's centre: u = u0 + (dudx*(xl*16+8-x0) + TUY)/16, TUY = dudy*(cy*16+8-y0)
+MovRM 'ax' $TMP; E @(0xC1, 0xE0, 0x04); E @(0x05, 0x08, 0x00); SubRM 'ax' $X0; E @(0x66, 0x0F, 0xBF, 0xC8)   # ecx = dx16
+Movsx32RM 'ax' $DUDX; E @(0x66, 0x0F, 0xAF, 0xC1); Add32RMw 'ax' $TUY                              # dudx*dx16 + TUY
+E @(0x66, 0xC1, 0xF8, 0x04); AddRM 'ax' $U0; E @(0x8B, 0xD8)                                       # bx = u
+Movsx32RM 'ax' $DVDX; E @(0x66, 0x0F, 0xAF, 0xC1); Add32RMw 'ax' $TVY
 E @(0x66, 0xC1, 0xF8, 0x04); AddRM 'ax' $V0; E @(0x8B, 0xD0)                                       # dx = v
-E @(0x5B); E @(0x8B, 0xCE)                                        # pop bx (u); cx = count
-MovEsM (P 0); MovDsM $TSEG
+E @(0x8B, 0xCE)                                                   # cx = count
+MovDsM $TSEG
 Lbl 'pix'
 E @(0x8A, 0xC6); E @(0x25, $tmask, 0x00); E @(0xC1, 0xE0, [byte]$tsh); E @(0x8B, 0xF0)   # si = (v & mask) * width
 E @(0x8A, 0xC7); E @(0x25, $tmask, 0x00); E @(0x03, 0xF0)                                 # + (u & mask), ah cleared
@@ -297,6 +406,8 @@ AddRM 'bx' $DUDX; AddRM 'dx' $DVDX; Jr 0xE2 'pix'
 Lbl 'spnext'
 Mov32RM 'ax' $XSTEPL; Add32MR $XACCL 'ax'
 Mov32RM 'ax' $XSTEPS; Add32MR $XACCS 'ax'
+Mov32RMw 'ax' $DUDY16; Add32MRw $TUY 'ax'
+Mov32RMw 'ax' $DVDY16; Add32MRw $TVY 'ax'
 IncM $CY; MovRM 'ax' $CY; CmpRM 'ax' $YEND; Jn @(0x0F, 0x8C) 'sploop'
 E @(0xC3)
 return $script:a.Resolve()
@@ -310,24 +421,26 @@ $tri128 = Build-Tri 7
 function Q($k) { return -64 + 2 * $k }
 $script:a = [Asm]::new()
 E @(0x55); E @(0x8B, 0xEC); E @(0x81, 0xEC, 0x40, 0x00); E @(0x1E, 0x56, 0x57, 0x06)
-MovDsM 8; MovRM 'si' 6; E @(0x8C, 0xD0); E @(0x8E, 0xC0); LeaDI (Q 0); E @(0xB9, 0x15, 0x00); E @(0xF3, 0xA5)
+MovDsM 8; MovRM 'si' 6; E @(0x8C, 0xD0); E @(0x8E, 0xC0); LeaDI (Q 0); E @(0xB9, 0x16, 0x00); E @(0xF3, 0xA5)
+CmpMI8 (Q 21) 0; Jr 0x75 'st1'; MovMI (Q 21) 2; Lbl 'st1'          # the output stride (word 21): 0 -> 2
 MovMI (Q 17) 32767; MovMI (Q 18) -32768; MovMI (Q 19) 32767; MovMI (Q 20) -32768
 MovMI -4 0
 Lbl 'ploop'
 MovRM 'ax' -4; CmpRM 'ax' (Q 10); Jn @(0x0F, 0x8D) 'pdone'
 E @(0xD1, 0xE0); MovMR -6 'ax'                                   # [bp-6] = i*2
+MovRM 'ax' -4; ImulRM 'ax' (Q 21); MovMR -8 'ax'                  # [bp-8] = i*stride (the outputs)
 MovDsM (Q 4); MovRM 'si' -6; AddRM 'si' (Q 5); E @(0x66, 0x0F, 0xBF, 0x04); Add32RM 'ax' (Q 15)   # eax = rz+pz
 E @(0x66, 0x83, 0xF8, 0x10); Jr 0x7D 'z1'; E @(0x66, 0xB8, 0x10, 0x00, 0x00, 0x00); Lbl 'z1'      # min 16
 E @(0x66, 0x8B, 0xC8)                                            # ecx = zz
 MovDsM (Q 0); MovRM 'si' -6; AddRM 'si' (Q 1); E @(0x66, 0x0F, 0xBF, 0x04); Add32RM 'ax' (Q 11)
 E @(0x66, 0xC1, 0xE0, 0x0C); E @(0x66, 0x99); E @(0x66, 0xF7, 0xF9); E @(0x05, 0x00, 0x0A)       # ax = (160 + 256x/z) * 16
-MovDsM (Q 6); MovRM 'si' -6; AddRM 'si' (Q 7); E @(0x89, 0x04)
+MovDsM (Q 6); MovRM 'si' -8; AddRM 'si' (Q 7); E @(0x89, 0x04)
 CmpRM 'ax' (Q 17); Jr 0x7D 'm1'; MovMR (Q 17) 'ax'; Lbl 'm1'
 CmpRM 'ax' (Q 18); Jr 0x7E 'm2'; MovMR (Q 18) 'ax'; Lbl 'm2'
 MovDsM (Q 2); MovRM 'si' -6; AddRM 'si' (Q 3); E @(0x66, 0x0F, 0xBF, 0x04); Add32RM 'ax' (Q 13)
 E @(0x66, 0xC1, 0xE0, 0x0C); E @(0x66, 0x99); E @(0x66, 0xF7, 0xF9)
 E @(0x8B, 0xC8); E @(0xB8, 0x40, 0x06); E @(0x2B, 0xC1)          # ax = (100 - 256y/z) * 16
-MovDsM (Q 8); MovRM 'si' -6; AddRM 'si' (Q 9); E @(0x89, 0x04)
+MovDsM (Q 8); MovRM 'si' -8; AddRM 'si' (Q 9); E @(0x89, 0x04)
 CmpRM 'ax' (Q 19); Jr 0x7D 'm3'; MovMR (Q 19) 'ax'; Lbl 'm3'
 CmpRM 'ax' (Q 20); Jr 0x7E 'm4'; MovMR (Q 20) 'ax'; Lbl 'm4'
 IncM -4; JmpN 'ploop'

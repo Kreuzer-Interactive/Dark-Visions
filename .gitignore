@@ -23,3 +23,7 @@ src/SHADW2.BIN
 src/tools/hill_drive_frames.png
 src/C3DTAB.DAT
 src/JOED.BIN
+
+# debug output: the hill-drive frame dumps (C3DDUMP=2) and tool build logs
+src/C3DHILL*.BMP
+src/tools/*_B.LOG
