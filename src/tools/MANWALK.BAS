@@ -9,10 +9,16 @@
 '----- the model where he stands (up to 7, to load the renderer), C clears
 '----- them, V toggles the vertical-sync wait (the raw render rate shows), O
 '----- cycles the outline (off, brown on his edge pixels, blue 1 px round
-'----- him, blue 2 px; MANWALK 2 or S2 starts with that one), [ and ] its
+'----- him, blue 2 px, blue only where his black meets a black floor, the same inside his edge; MANWALK 2 or S2
+'----- starts with that one), [ and ] its
 '----- colour (the 16 CGA colours, blue to start with), F the flat-fill
 '----- threshold (off, 2, 4, 6 px), G the
 '----- quad gradient sharing (off, 24 px), A sets the copies walking in place.
+'----- A second character (JAMES.MDL / .BMP, his walk JAMESW.ANI and idle clips
+'----- JAMESI.ANI -- tools\manwalk.ps1 -Npc makes them, only the clips he may play):
+'----- he stands in the room idling on his own clock; Tab drives him instead (the
+'----- other one stays where he is, idling), C hides or shows him. Two characters
+'----- at most (MAXI), so the copies (Space) are only for the man alone.
 '----- The walk (MAN3D.ANI from tools\man3danim.ps1, frames of the model's
 '----- vertices) plays while he walks, a frame per 1/nframes of a stride, so
 '----- the planted foot stays put. Standing, he breathes (MANIDLE.ANI from
@@ -67,15 +73,18 @@ DEFINT A-Z
 
 
 '$DYNAMIC
-DIM mx(0 TO MAXV) AS INTEGER, my(0 TO MAXV) AS INTEGER, mz(0 TO MAXV) AS INTEGER
-'----- the walk: nframes x { x(nv), y(nv), z(nv) } (x16 units); anf frames, a
-'----- cycle of acyc x16 units; aph the player's place in it (the distance
-'----- walked), afcur his frame (-1 = the rest pose); the copies' own (A)
-DIM afr(1) AS INTEGER
+'----- (the second index of the per-model arrays: the model slot, 0 the man, 1 the second
+'----- character -- JAMES.MDL / .BMP / JAMESW.ANI / JAMESI.ANI, when they are there)
+DIM mx(0 TO MAXV, 0 TO 1) AS INTEGER, my(0 TO MAXV, 0 TO 1) AS INTEGER, mz(0 TO MAXV, 0 TO 1) AS INTEGER
+DIM nvm(0 TO 1) AS INTEGER, nfm(0 TO 1) AS INTEGER
+'----- the walk: nframes x { x(nv), y(nv), z(nv) } (x16 units), slot 0's in afr, slot 1's
+'----- in afr1; anf frames, a cycle of acyc x16 units; aph the driven one's place in it
+'----- (the distance walked), afcur his frame (-1 = the rest pose); the other's own (A)
+DIM afr(1) AS INTEGER, afr1(1) AS INTEGER, anf(0 TO 1) AS INTEGER, acyc(0 TO 1) AS INTEGER
 DIM rx(0 TO MAXV) AS INTEGER, ry(0 TO MAXV) AS INTEGER, rz(0 TO MAXV) AS INTEGER
 DIM SHARED sx(0 TO MAXV) AS INTEGER, sy(0 TO MAXV) AS INTEGER
 DIM SHARED tu(0 TO MAXV) AS INTEGER, tv(0 TO MAXV) AS INTEGER
-DIM SHARED fa(0 TO MAXF) AS Fac
+DIM fa(0 TO MAXF, 0 TO 1) AS Fac
 DIM SHARED nx(0 TO MAXF) AS INTEGER, ny(0 TO MAXF) AS INTEGER, nz(0 TO MAXF) AS INTEGER
 DIM SHARED fband(0 TO MAXF) AS INTEGER
 DIM ord(0 TO MAXF) AS INTEGER
@@ -102,15 +111,16 @@ DIM SHARED aph AS LONG, afcur AS INTEGER, ianim AS INTEGER, plyaw AS SINGLE
 DIM SHARED iyaw(0 TO MAXI - 1) AS SINGLE, iph(0 TO MAXI - 1) AS LONG, ifr(0 TO MAXI - 1) AS INTEGER
 '----- where each walk frame starts in the cycle (x16 units): the planted
 '----- foot's travel frame by frame (MAN3D.ANI C3A2), even for a C3A1 file
-DIM acum(0 TO 23) AS INTEGER
+DIM acum(0 TO 23, 0 TO 1) AS INTEGER
 '----- the idle clips (MANIDLE.ANI): 13 bones x 12 words a frame in idm(), each
 '----- vertex's bones in ibw() (low byte, high byte), the skinned pose in kx/ky/kz;
 '----- clip c is frames icst(c).. (icnt of them, icum = each one's start in 1/30 s,
 '----- ilen the clip's length, ilp loops); per model: its clip (0 = breathing),
 '----- time in it, the wait for its next fidget (1/30 s) and its last fidget
-DIM idm(1) AS INTEGER, ibw(0 TO MAXV) AS INTEGER
+DIM idm(1) AS INTEGER, idm1(1) AS INTEGER, ibw(0 TO MAXV, 0 TO 1) AS INTEGER
 DIM kx(0 TO MAXV) AS INTEGER, ky(0 TO MAXV) AS INTEGER, kz(0 TO MAXV) AS INTEGER
-DIM icum(0 TO 199) AS INTEGER, icst(0 TO 7) AS INTEGER, icnt(0 TO 7) AS INTEGER, ilen(0 TO 7) AS INTEGER, ilp(0 TO 7) AS INTEGER
+DIM icum(0 TO 199, 0 TO 1) AS INTEGER, icst(0 TO 7, 0 TO 1) AS INTEGER, icnt(0 TO 7, 0 TO 1) AS INTEGER, ilen(0 TO 7, 0 TO 1) AS INTEGER, ilp(0 TO 7, 0 TO 1) AS INTEGER
+DIM inc(0 TO 1) AS INTEGER, nfid(0 TO 1) AS INTEGER
 DIM iclp(0 TO MAXI - 1) AS INTEGER, itm(0 TO MAXI - 1) AS SINGLE, iwt(0 TO MAXI - 1) AS SINGLE, ilst(0 TO MAXI - 1) AS INTEGER
 DIM prs(0 TO 16) AS INTEGER
 '----- the walk mask (320 x 200, a bit a pixel, rows of 40 bytes), the path grid
@@ -133,7 +143,9 @@ DIM ospx(1 TO 25) AS INTEGER, ospy(1 TO 25) AS INTEGER, ospd(1 TO 25) AS INTEGER
 '----- the turning steps: their clips (-1 none) to his left and right, the feet
 '----- they pivot on (rest x,z x16: 0 left, 1 right), the step playing (tcl, -1 none)
 '----- and how far into it (1/30 s of the clip); nfid the fidgets (kind 0)
-DIM tcf(0 TO 1) AS INTEGER, tfx(0 TO 1) AS SINGLE, tfz(0 TO 1) AS SINGLE
+DIM tcf(0 TO 1, 0 TO 1) AS INTEGER, tfx(0 TO 1, 0 TO 1) AS SINGLE, tfz(0 TO 1, 0 TO 1) AS SINGLE
+'----- (slot 1's texture: bt1, its one band in tb1 -- both models are unlit, one band each)
+DIM SHARED bt1(0 TO 7) AS INTEGER, rymnm(0 TO 1) AS INTEGER
 DIM SHARED tb0(0 TO 7) AS INTEGER, tb1(0 TO 7) AS INTEGER, tb2(0 TO 7) AS INTEGER, tb3(0 TO 7) AS INTEGER
 DIM SHARED tb4(0 TO 7) AS INTEGER, tb5(0 TO 7) AS INTEGER, tb6(0 TO 7) AS INTEGER, tb7(0 TO 7) AS INTEGER
 DIM SHARED bt(0 TO 7) AS INTEGER
@@ -153,6 +165,11 @@ DIM SHARED ox AS INTEGER, oy AS INTEGER, ox2 AS INTEGER, oy2 AS INTEGER
 DIM SHARED bmode AS INTEGER, unlit AS INTEGER
 DIM SHARED palb AS STRING, ovlTri AS STRING, ovlPrj AS STRING, ovlBop AS STRING
 DIM SHARED ovlEdge AS STRING, ovlBltm AS STRING, outl AS INTEGER, ovlEdgo AS STRING, ocol AS INTEGER
+'----- (outline 4: the dark-colour flags for C3DEDGK, 16-byte aligned inside dkt at dkal; -1 = not built)
+DIM SHARED ovlEdgk AS STRING, ovlEdgi AS STRING, dkal AS INTEGER
+'$DYNAMIC
+DIM SHARED dkt(0 TO 139) AS INTEGER
+'$STATIC
 DIM SHARED texW AS INTEGER
 DIM SHARED bx1 AS INTEGER, bx2 AS INTEGER, by1 AS INTEGER, by2 AS INTEGER
 
@@ -170,11 +187,12 @@ DIM i AS INTEGER, j AS INTEGER, ymn AS INTEGER, pyu AS LONG, fwd AS INTEGER, rot
 '----- the floor's half width at its near and far edges (the drawn floor lines),
 '----- the size he keeps at the back (rbs: 1 = no shrink, the art's own perspective
 '----- gives zNear/zFar), the model's lowest point (his feet)
-DIM SHARED rymn AS INTEGER
 '----- and his overall size against true scale (rsc: the room's own scale puts the
 '----- 2D sprite's height at the front edge; the sprite was drawn for mid-room)
 DIM rfh AS INTEGER, rk AS SINGLE
 DIM tfps AS LONG, ffps AS INTEGER, fps AS INTEGER, scripted AS INTEGER, lastsc AS INTEGER, pf AS INTEGER, quit AS INTEGER
+'----- the character driven (0 the man, 1 the second one; Tab swaps them)
+DIM pc AS INTEGER, swp AS INTEGER
 DIM shot(0 TO 7) AS INTEGER, nshot AS INTEGER, k2 AS INTEGER
 DIM yaw0 AS SINGLE, pvk AS INTEGER, pvx AS SINGLE, pvz AS SINGLE, ttest AS LONG, c0 AS SINGLE, s0 AS SINGLE
 '----- going where a click said: goMode 1 walk to (gox, goz), 2 turn to face it
@@ -200,29 +218,36 @@ DIM hact AS INTEGER, hface AS INTEGER, hotchk AS INTEGER, hh AS INTEGER, hk AS I
 	texW = TexWidth%
 	IF texW <> 64 AND texW <> 128 THEN PRINT "CAR3D.BMP must be 64 or 128 texels wide": END
 	CALL LoadModel
+	CALL LoadModel2
 	IF texW = 128 THEN CALL LoadOvl("C3DT128.OVL", ovlTri) ELSE CALL LoadOvl("C3DTRI.OVL", ovlTri)
 	CALL LoadOvl("C3DPRJ.OVL", ovlPrj)
 	CALL LoadOvl("SHADBOP.OVL", ovlBop)
 	CALL LoadOvl("C3DEDGE.OVL", ovlEdge)
 	CALL LoadOvl("C3DBLTM.OVL", ovlBltm)
 	CALL LoadOvl("C3DEDGO.OVL", ovlEdgo)
+	CALL LoadOvl("C3DEDGK.OVL", ovlEdgk)
+	CALL LoadOvl("C3DEDGI.OVL", ovlEdgi)
 	CALL LoadOvl("C3DSKIN.OVL", ovlSkin)
 	CALL LoadOvl("C3DMSE.OVL", ovlMse)
 	CALL LoadOvl("C3DMCPY.OVL", ovlMcpy)
 	CALL LoadOvl("C3DROT.OVL", ovlRot)
 	IF LEN(ovlRot) < 100 THEN PRINT "C3DROT.OVL missing (tools\build_car3d_asm.ps1)": END
 	IF LEN(ovlTri) < 100 OR LEN(ovlPrj) < 50 OR LEN(ovlBop) < 50 THEN PRINT "C3DTRI/C3DPRJ/SHADBOP.OVL missing (tools\build_car3d_asm.ps1)": END
-	IF LEN(ovlEdge) < 50 OR LEN(ovlBltm) < 50 OR LEN(ovlEdgo) < 30 THEN PRINT "C3DEDGE/C3DEDGO/C3DBLTM.OVL missing (tools\build_car3d_asm.ps1)": END
+	IF LEN(ovlEdge) < 50 OR LEN(ovlBltm) < 50 OR LEN(ovlEdgo) < 30 OR LEN(ovlEdgk) < 30 OR LEN(ovlEdgi) < 30 THEN PRINT "C3DEDGE/C3DEDGO/C3DEDGK/C3DEDGI/C3DBLTM.OVL missing (tools\build_car3d_asm.ps1)": END
 	'----- the 3x5 digits of the frame counter
 	FOR i = 0 TO 9: FOR j = 0 TO 4: READ dig(i, j): NEXT: NEXT
 	FOR i = 0 TO 10: READ curs(i): NEXT
 	'----- (every dynamic array sized before any segment is taken: a REDIM may move
 	'----- the others, the backdrop and work buffers and the texture bands with them)
 	'----- his feet on the ground plane: the model's lowest point at GROUNDY
-	ymn = 32767
-	FOR i = 0 TO nv - 1
-		IF my(i) < ymn THEN ymn = my(i)
+	FOR j = 0 TO nmod - 1
+		ymn = 32767
+		FOR i = 0 TO nvm(j) - 1
+			IF my(i, j) < ymn THEN ymn = my(i, j)
+		NEXT
+		rymnm(j) = ymn
 	NEXT
+	ymn = rymnm(0)
 	py = CLNG(GROUNDY) * 16 - ymn
 	roomOn = 0
 	rfh = FREEFILE
@@ -235,7 +260,7 @@ DIM hact AS INTEGER, hface AS INTEGER, hotchk AS INTEGER, hh AS INTEGER, hk AS I
 		INPUT #rfh, rcx, rcy, rch, rzn, rzf, rxn, rxf, rfx, rbs, rsc
 		CLOSE #rfh
 		prq(22) = CINT(rcx * 16): prq(23) = CINT(rcy * 16): prq(24) = CINT(rfx * 16)
-		py = -CLNG(rch * 16) - ymn: rymn = ymn
+		py = -CLNG(rch * 16) - ymn
 		CALL LoadWalk
 		CALL LoadOcc
 		CALL LoadPac
@@ -248,10 +273,12 @@ DIM hact AS INTEGER, hface AS INTEGER, hotchk AS INTEGER, hh AS INTEGER, hk AS I
 	'----- in a room: mid-floor, a little in front of the middle
 	IF roomOn THEN px = 0: pz = CLNG((rzn * .4 + rzf * .6) * 16)
 	yaw = 0
-	anf = 0: afcur = -1: aph = 0: ianim = 0
-	CALL LoadAnim
+	afcur = -1: aph = 0: ianim = 2: pc = 0
+	CALL LoadAnim(0, "MAN3D.ANI")
+	IF nmod = 2 THEN CALL LoadAnim(1, "JAMESW.ANI")
 	RANDOMIZE TIMER
-	CALL LoadIdle
+	CALL LoadIdle(0, "MANIDLE.ANI")
+	IF nmod = 2 THEN CALL LoadIdle(1, "JAMESI.ANI")
 	IF uglInit = 0 THEN PRINT "uglInit failed": END
 	vdc = uglSetVideoDC(UGL.8BIT, 320, 200, 1)
 	IF vdc = 0 THEN Fail "no mode 13h"
@@ -266,46 +293,53 @@ DIM hact AS INTEGER, hface AS INTEGER, hotchk AS INTEGER, hh AS INTEGER, hk AS I
 	CALL LoadBackdrop
 	ox = 0: oy = 0: ox2 = -1: oy2 = -1
 	prm(0) = wseg: prm(1) = wko: prm(2) = WKW: prm(3) = WKH
-	prm(4) = VARSEG(bt(0)): prm(23) = VARPTR(bt(0))
 	prm(5) = VARSEG(sx(0)): prm(6) = VARPTR(sx(0))
 	prm(7) = VARSEG(sy(0)): prm(8) = VARPTR(sy(0))
 	prm(9) = VARSEG(tu(0)): prm(10) = VARPTR(tu(0))
 	prm(11) = VARSEG(tv(0)): prm(12) = VARPTR(tv(0))
-	prm(13) = VARSEG(fa(0)): prm(14) = VARPTR(fa(0))
 	prm(15) = VARSEG(fband(0)): prm(16) = VARPTR(fband(0))
 	prm(17) = VARSEG(ord(0)): prm(18) = VARPTR(ord(0))
-	prm(19) = nf
 	prq(0) = VARSEG(rx(0)): prq(1) = VARPTR(rx(0))
 	prq(2) = VARSEG(ry(0)): prq(3) = VARPTR(ry(0))
 	prq(4) = VARSEG(rz(0)): prq(5) = VARPTR(rz(0))
 	prq(6) = VARSEG(sx(0)): prq(7) = VARPTR(sx(0))
 	prq(8) = VARSEG(sy(0)): prq(9) = VARPTR(sy(0))
-	prq(10) = nv
 	lang = -2.3
 	lx = CINT(COS(lang) * 205): ly = 154: lz = CINT(SIN(lang) * 205)
 	'----- the rotate-and-sort block (C3DROT: the model x16 -> rx/ry/rz, the
-	'----- faces bucket-sorted into ord; lnk and head are its scratch)
-	prr(0) = VARSEG(mx(0)): prr(1) = VARPTR(mx(0))
-	prr(2) = VARSEG(my(0)): prr(3) = VARPTR(my(0))
-	prr(4) = VARSEG(mz(0)): prr(5) = VARPTR(mz(0))
+	'----- faces bucket-sorted into ord; lnk and head are its scratch); the model's
+	'----- own words (its faces, counts, texture) come from UseModel
+	prr(0) = VARSEG(mx(0, 0)): prr(1) = VARPTR(mx(0, 0))
+	prr(2) = VARSEG(my(0, 0)): prr(3) = VARPTR(my(0, 0))
+	prr(4) = VARSEG(mz(0, 0)): prr(5) = VARPTR(mz(0, 0))
 	prr(6) = VARSEG(rx(0)): prr(7) = VARPTR(rx(0))
 	prr(8) = VARSEG(ry(0)): prr(9) = VARPTR(ry(0))
 	prr(10) = VARSEG(rz(0)): prr(11) = VARPTR(rz(0))
-	prr(12) = nv
-	prr(15) = VARSEG(fa(0)): prr(16) = VARPTR(fa(0))
 	prr(17) = VARSEG(ord(0)): prr(18) = VARPTR(ord(0))
-	prr(19) = nf
 	prr(20) = VARSEG(lnk(0)): prr(21) = VARPTR(lnk(0))
 	prr(22) = VARSEG(head(0)): prr(23) = VARPTR(head(0))
 	prr(24) = 256: prr(25) = 0
-	FOR i = 0 TO nf - 1: fband(i) = 0: NEXT
-	FOR i = 0 TO nv - 1: vt(i * 4 + 2) = tu(i): vt(i * 4 + 3) = tv(i): NEXT
+	FOR i = 0 TO MAXF: fband(i) = 0: NEXT
 	prq(21) = 8
 	IF unlit THEN prm(15) = 0
+	CALL UseModel(0)
 	CALL PrepAsm(yaw)
 	outl = 1: ninst = 1: vsync = 1: lastsc = 0: flatT = 64: quadT = 384: dotT = 0   ' (dots: no measurable gain on the VM, so off; D cycles it)
-	outl = 2: ocol = 1
+	outl = 2: ocol = 1: dkal = -1
 	CALL OutlineCol(ocol)
+	'----- the second character: standing towards the back on the left (in a room), further
+	'----- along the road (outside), three-quarters to the camera, in his idle clips
+	IF nmod = 2 THEN
+		ninst = 2: iyaw(1) = .6: iph(1) = 0
+		IF roomOn THEN
+			ipz(1) = CLNG((rzn * .35 + rzf * .65) * 16): ipx(1) = -CLNG(RoomX!(ipz(1)) * 7)
+		ELSE
+			CALL PathPos(90, ipx(1), ipy(1), ipz(1), 16): ipy(1) = CLNG(GROUNDY) * 16 - rymnm(1)
+		END IF
+		ifr(1) = IdlePose%(1, 0, 0)
+		CALL PoseInst(1, ifr(1), iyaw(1))
+		CALL UseModel(0)
+	END IF
 	scripted = 0: idlechk = 0
 	IF UCASE$(LEFT$(LTRIM$(COMMAND$), 1)) = "S" THEN scripted = 1
 	IF UCASE$(LEFT$(LTRIM$(COMMAND$), 1)) = "I" THEN scripted = 1: idlechk = 1
@@ -347,7 +381,7 @@ DIM hact AS INTEGER, hface AS INTEGER, hotchk AS INTEGER, hh AS INTEGER, hk AS I
 	'----- the outline to start with: a digit after the S, or alone
 	k = LTRIM$(COMMAND$)
 	IF scripted THEN k = MID$(k, 2)
-	i = INSTR("0123", LEFT$(k, 1))
+	i = INSTR("012345", LEFT$(k, 1))
 	IF i > 0 AND LEN(k) > 0 THEN outl = i - 1
 	IF UCASE$(LEFT$(LTRIM$(COMMAND$), 1)) = "B" THEN CALL Bench
 	'----- the scripted check in a room: men at the floor's four corners and the
@@ -361,7 +395,7 @@ DIM hact AS INTEGER, hface AS INTEGER, hotchk AS INTEGER, hh AS INTEGER, hk AS I
 			CASE 3: pz = CLNG((rzf - 18) * 16): px = CLNG((RoomX!(pz) - 22 * RoomK!(pz)) * 16): plyaw = 3.14
 			CASE 4: px = 0: pz = CLNG((rzn + 18) * 16): plyaw = 0
 			END SELECT
-			IF anf > 0 THEN CALL PoseInst(0, (i * 3) MOD anf, plyaw) ELSE CALL PoseInst(0, -1, plyaw)
+			IF anf(0) > 0 THEN CALL PoseInst(0, (i * 3) MOD anf(0), plyaw) ELSE CALL PoseInst(0, -1, plyaw)
 			CALL PlaceCopy(px, py, pz)
 		NEXT
 		px = 0: pz = CLNG((rzn + rzf) * 8): yaw = .8: CALL PoseInst(0, -1, yaw)
@@ -396,17 +430,30 @@ DIM hact AS INTEGER, hface AS INTEGER, hotchk AS INTEGER, hh AS INTEGER, hk AS I
 			k = INKEY$
 			IF k = "" THEN EXIT DO
 			IF k = CHR$(27) THEN quit = 1
-			IF k = "o" OR k = "O" THEN outl = (outl + 1) MOD 4
+			IF k = "o" OR k = "O" THEN outl = (outl + 1) MOD 6
 			IF k = "]" THEN ocol = (ocol + 1) MOD 16: CALL OutlineCol(ocol)
 			IF k = "[" THEN ocol = (ocol + 15) MOD 16: CALL OutlineCol(ocol)
 			IF k = " " THEN CALL PlaceCopy(px, py, pz)
-			IF k = "c" OR k = "C" THEN ninst = 1: ox2 = -1
+			IF k = "c" OR k = "C" THEN IF nmod < 2 THEN ninst = 1: ox2 = -1
+			IF (k = "c" OR k = "C") AND nmod = 2 AND pc = 0 THEN ninst = 3 - ninst: ox2 = -1
 			IF k = "v" OR k = "V" THEN vsync = 1 - vsync
 			IF k = "f" OR k = "F" THEN flatT = flatT + 32: IF flatT > 96 THEN flatT = 0
 			IF k = "g" OR k = "G" THEN quadT = 384 - quadT
 			IF k = "d" OR k = "D" THEN dotT = dotT + 8: IF dotT > 24 THEN dotT = 0
 			IF k = "a" OR k = "A" THEN ianim = (ianim + 1) MOD 3
+			'----- Tab: drive the other character (the one let go stands and idles where he is)
+			IF k = CHR$(9) THEN swp = 1
 		LOOP
+		'----- (MANWALK S: Tab halfway, so the second half walks the other character)
+		IF scripted AND frames = 60 AND idlechk = 0 AND gochk = 0 THEN swp = 1
+		IF swp AND nmod = 2 AND ninst = 2 THEN
+			ipx(pc) = px: ipy(pc) = py: ipz(pc) = pz: iyaw(pc) = yaw: iph(pc) = aph: ifr(pc) = afcur
+			iclp(pc) = 0: itm(pc) = 0: iwt(pc) = 120
+			pc = 1 - pc
+			px = ipx(pc): py = ipy(pc): pz = ipz(pc): yaw = iyaw(pc): aph = iph(pc): afcur = ifr(pc)
+			goMode = 0: hact = 0: hface = 0: tcl = -1: pvk = -1: fwd = 0: rot = 0
+		END IF
+		swp = 0
 		IF quit THEN EXIT DO
 		sc = INP(&H60)
 		'----- (with a mouse the port may hold a PS/2 mouse byte instead: Esc comes
@@ -599,17 +646,17 @@ DIM hact AS INTEGER, hface AS INTEGER, hotchk AS INTEGER, hh AS INTEGER, hk AS I
 			'----- foot (his left turning left, yaw rising) -- its place on the floor
 			'----- kept from the turn's start, his own place following from it
 			k2 = 0: IF rot < 0 THEN k2 = 1
-			IF fwd = 0 AND inc > 0 AND tcf(k2) >= 0 THEN
+			IF fwd = 0 AND inc(pc) > 0 AND tcf(k2, pc) >= 0 THEN
 				rk = 1: IF roomOn THEN rk = RoomK!(pz)
 				IF pvk <> k2 THEN
 					pvk = k2: c0 = COS(yaw0): s0 = SIN(yaw0)
-					pvx = px + (tfx(k2) * c0 + tfz(k2) * s0) * rk
-					pvz = pz + (tfz(k2) * c0 - tfx(k2) * s0) * rk
+					pvx = px + (tfx(k2, pc) * c0 + tfz(k2, pc) * s0) * rk
+					pvz = pz + (tfz(k2, pc) * c0 - tfx(k2, pc) * s0) * rk
 				END IF
 				c0 = COS(yaw): s0 = SIN(yaw)
 				opx = px: opz = pz
-				px = CLNG(pvx - (tfx(k2) * c0 + tfz(k2) * s0) * rk)
-				pz = CLNG(pvz - (tfz(k2) * c0 - tfx(k2) * s0) * rk)
+				px = CLNG(pvx - (tfx(k2, pc) * c0 + tfz(k2, pc) * s0) * rk)
+				pz = CLNG(pvz - (tfz(k2, pc) * c0 - tfx(k2, pc) * s0) * rk)
 				'----- (not off the walk mask: there he turns about his middle instead)
 				IF wmOn THEN
 					IF MaskAt%(px, pz) = 0 AND MaskAt%(opx, opz) <> 0 THEN px = opx: pz = opz: pvk = -1
@@ -659,35 +706,40 @@ DIM hact AS INTEGER, hface AS INTEGER, hotchk AS INTEGER, hh AS INTEGER, hk AS I
 		'----- standing, the rest pose. The model is re-rotated and re-sorted only
 		'----- when its frame or heading changes
 		pf = -1
-		IF fwd <> 0 AND anf > 0 THEN aph = aph + CLNG(wst / rk * fwd): pf = AnimFrame%(aph)
+		IF fwd <> 0 AND anf(pc) > 0 THEN aph = aph + CLNG(wst / rk * fwd): pf = AnimFrame%(pc, aph)
 		'----- standing: the idle clips (turning holds him in the breathing loop)
 		IF fwd <> 0 THEN
-			iclp(0) = 0: itm(0) = 0: iwt(0) = 120: tcl = -1: pvk = -1
+			iclp(pc) = 0: itm(pc) = 0: iwt(pc) = 120: tcl = -1: pvk = -1
 		ELSE
 			'----- a turning step (or the last one finishing), else the idle clips
-			pf = TurnPose%(rot, stp * TURNRATE * 57.296)
+			pf = TurnPose%(pc, rot, stp * TURNRATE * 57.296)
 			IF pf >= 0 THEN
-				j = IdlePose%(0, 0, 1)
+				j = IdlePose%(pc, 0, 1)
 			ELSE
-				pf = IdlePose%(0, stp * 30 / 70, ABS(rot))
+				pf = IdlePose%(pc, stp * 30 / 70, ABS(rot))
 			END IF
 		END IF
-		IF pf <> afcur OR rot <> 0 THEN afcur = pf: CALL PoseInst(0, afcur, yaw)
+		IF pf <> afcur OR rot <> 0 THEN afcur = pf: CALL PoseInst(pc, afcur, yaw)
 		'----- A: the copies walk in place, each at its own place in the cycle; again:
 		'----- they stand and fidget, each on its own time
-		IF ianim = 2 AND inc > 0 THEN
-			FOR i = 1 TO ninst - 1
+		IF ianim = 2 THEN
+			FOR i = 0 TO ninst - 1
+				IF i = pc THEN GOTO nexti2
 				j = IdlePose%(i, stp * 30 / 70, 0)
 				IF j <> ifr(i) THEN ifr(i) = j: CALL PoseInst(i, j, iyaw(i))
+nexti2:
 			NEXT
 		END IF
-		IF ianim = 1 AND anf > 0 THEN
-			FOR i = 1 TO ninst - 1
-				iph(i) = iph(i) + CLNG(WALK16 * stp): j = AnimFrame%(iph(i))
+		IF ianim = 1 THEN
+			FOR i = 0 TO ninst - 1
+				j = i: IF nmod < 2 THEN j = 0
+				IF i = pc OR anf(j) = 0 THEN GOTO nexti1
+				iph(i) = iph(i) + CLNG(WALK16 * stp): j = AnimFrame%(j, iph(i))
 				IF j <> ifr(i) THEN ifr(i) = j: CALL PoseInst(i, j, iyaw(i))
+nexti1:
 			NEXT
 		END IF
-		ipx(0) = px: ipy(0) = py: ipz(0) = pz
+		ipx(pc) = px: ipy(pc) = py: ipz(pc) = pz: iyaw(pc) = yaw
 		CALL DrawAll
 		frames = frames + 1: ffps = ffps + 1
 		'----- the frame rate over the last half second or so
@@ -701,27 +753,27 @@ DIM hact AS INTEGER, hface AS INTEGER, hotchk AS INTEGER, hh AS INTEGER, hk AS I
 		IF idlechk THEN
 			i = iclp(0)
 			IF i > 0 THEN
-				IF shot(i) = 0 AND itm(0) >= ilen(i) * .4 THEN
+				IF shot(i) = 0 AND itm(0) >= ilen(i, 0) * .4 THEN
 					shot(i) = 1: nshot = nshot + 1
 					CALL SaveShot("MANIDL" + LTRIM$(STR$(i)) + ".BMP")
 					IF i = 1 THEN
 						j = FREEFILE
 						OPEN "MANIDLE.DMP" FOR BINARY AS #j
 						PUT #j, , afcur
-						FOR k2 = 0 TO nv - 1: PUT #j, , kx(k2): NEXT
-						FOR k2 = 0 TO nv - 1: PUT #j, , ky(k2): NEXT
-						FOR k2 = 0 TO nv - 1: PUT #j, , kz(k2): NEXT
+						FOR k2 = 0 TO nvm(0) - 1: PUT #j, , kx(k2): NEXT
+						FOR k2 = 0 TO nvm(0) - 1: PUT #j, , ky(k2): NEXT
+						FOR k2 = 0 TO nvm(0) - 1: PUT #j, , kz(k2): NEXT
 						CLOSE #j
 					END IF
 				END IF
 			END IF
-			IF nshot >= nfid AND i = 0 AND ttest < 0 THEN ttest = frames
+			IF nshot >= nfid(0) AND i = 0 AND ttest < 0 THEN ttest = frames
 			IF ttest >= 0 THEN
 				'----- the planted foot's place on screen, frame by frame (MANTURN.LOG)
 				k2 = 0: IF frames - ttest >= 45 THEN k2 = 1
 				c0 = 0: s0 = 0: j = 0
-				FOR i = 0 TO nv - 1
-					IF (ibw(i) AND 255) = 5 + 3 * k2 THEN c0 = c0 + vt(i * 4): s0 = s0 + vt(i * 4 + 1): j = j + 1
+				FOR i = 0 TO nvm(0) - 1
+					IF (ibw(i, 0) AND 255) = 5 + 3 * k2 THEN c0 = c0 + vt(i * 4): s0 = s0 + vt(i * 4 + 1): j = j + 1
 				NEXT
 				IF frames = ttest THEN OPEN "MANTURN.LOG" FOR OUTPUT AS #9 ELSE OPEN "MANTURN.LOG" FOR APPEND AS #9
 				PRINT #9, frames - ttest; rot; INT(yaw * 573) / 10; INT(c0 / j / 1.6) / 10; INT(s0 / j / 1.6) / 10; afcur
@@ -763,6 +815,7 @@ DATA "1222221 ", "12222221", "122211  ", "1211    ", "11      "
 '----- SetInst: the projection and the raster pointed at model i's rotated
 '----- vertices and sort order (0 = the player: Prep's own arrays)
 SUB SetInst (i AS INTEGER)
+	IF nmod < 2 THEN CALL UseModel(0) ELSE CALL UseModel(i)
 	IF i = 0 THEN
 		prq(0) = VARSEG(rx(0)): prq(1) = VARPTR(rx(0))
 		prq(2) = VARSEG(ry(0)): prq(3) = VARPTR(ry(0))
@@ -784,14 +837,14 @@ END SUB
 '----- as one more model
 SUB PlaceCopy (px AS LONG, py AS LONG, pz AS LONG)
 	DIM i AS INTEGER, n AS INTEGER
-	IF ninst >= MAXI THEN EXIT SUB
+	IF ninst >= MAXI OR nmod = 2 THEN EXIT SUB
 	n = ninst
 	FOR i = 0 TO nv - 1: rxs(i, n) = rx(i): rys(i, n) = ry(i): rzs(i, n) = rz(i): NEXT
 	FOR i = 0 TO nf - 1: ords(i, n) = ord(i): NEXT
 	FOR i = 0 TO nv * 4 - 1: vts(i, n) = vt(i): NEXT
 	ipx(n) = px: ipy(n) = py: ipz(n) = pz
-	iyaw(n) = plyaw: iph(n) = aph + CLNG(n) * acyc \ 3: ifr(n) = afcur
-	iclp(n) = 0: itm(n) = RND * ilen(0): iwt(n) = 60 + RND * 240: ilst(n) = 0
+	iyaw(n) = plyaw: iph(n) = aph + CLNG(n) * acyc(0) \ 3: ifr(n) = afcur
+	iclp(n) = 0: itm(n) = RND * ilen(0, 0): iwt(n) = 60 + RND * 240: ilst(n) = 0
 	ninst = ninst + 1
 END SUB
 
@@ -914,6 +967,29 @@ END SUB
 
 
 
+'----- DarkSeg: the segment of the dark-colour table (C3DEDGK, outline 4): 256 flags at
+'----- its offset 0 -- a palette colour this dark (r+g+b < 48 of 765: the backdrop's and his
+'----- blacks; not the outline's own slots 14 and 15) is 1. Built when first wanted and again
+'----- whenever a REDIM has moved dkt to a different 16-byte alignment
+FUNCTION DarkSeg%
+	DIM a AS LONG, s AS LONG, o AS LONG, al AS INTEGER, i AS INTEGER, c AS INTEGER, p AS INTEGER
+	s = VARSEG(dkt(0)): IF s < 0 THEN s = s + 65536
+	o = VARPTR(dkt(0)): IF o < 0 THEN o = o + 65536
+	a = s * 16 + o: al = (16 - (a AND 15)) AND 15
+	IF al <> dkal THEN
+		DEF SEG = VARSEG(dkt(0))
+		FOR i = 0 TO 255
+			c = ASC(MID$(palb, i * 4 + 1, 1)) + ASC(MID$(palb, i * 4 + 2, 1)) + ASC(MID$(palb, i * 4 + 3, 1))
+			p = 0: IF c < 48 AND i <> 14 AND i <> 15 THEN p = 1
+			POKE o + al + i, p
+		NEXT
+		DEF SEG
+		dkal = al
+	END IF
+	a = (a + al) \ 16: IF a > 32767 THEN a = a - 65536
+	DarkSeg% = a
+END FUNCTION
+
 '----- OutlineCol: CGA colour c (0..15) into palette slots 14 and 15 (the
 '----- outline's marks; the brown mode's mark is blitted as 15 as well)
 SUB OutlineCol (c AS INTEGER)
@@ -937,9 +1013,25 @@ END SUB
 '----- C3DEDGO rings him on the background side, his own edge pixels kept --
 '----- 15 for the first ring, 14 for the second (both the outline colour,
 '----- OutlineCol: [ and ] step it through the CGA colours)
+'----- outl 4: C3DEDGK, the 1 px ring only where a black pixel of his meets a black background
+'----- outl 5: C3DEDGI, the same drawn on his own black edge pixels instead (his size kept)
 SUB Ink (w1 AS INTEGER, stride AS INTEGER, rw AS INTEGER, rh AS INTEGER)
-	DIM tm AS INTEGER
+	DIM tm AS INTEGER, ts AS INTEGER
 	IF outl = 0 OR rw < 3 OR rh < 3 THEN EXIT SUB
+	IF outl = 4 THEN
+		tm = 16 + 15 * 256: ts = DarkSeg%
+		DEF SEG = VARSEG(ovlEdgk)
+		CALL ABSOLUTE(BYVAL wseg, BYVAL w1, BYVAL stride, BYVAL rw, BYVAL rh, BYVAL tm, BYVAL ts, SADD(ovlEdgk))
+		DEF SEG
+		EXIT SUB
+	END IF
+	IF outl = 5 THEN
+		tm = 16 + 15 * 256: ts = DarkSeg%
+		DEF SEG = VARSEG(ovlEdgi)
+		CALL ABSOLUTE(BYVAL wseg, BYVAL w1, BYVAL stride, BYVAL rw, BYVAL rh, BYVAL tm, BYVAL ts, SADD(ovlEdgi))
+		DEF SEG
+		EXIT SUB
+	END IF
 	IF outl = 1 THEN
 		DEF SEG = VARSEG(ovlEdge)
 		CALL ABSOLUTE(BYVAL wseg, BYVAL w1, BYVAL stride, BYVAL rw, BYVAL rh, SADD(ovlEdge))
@@ -965,7 +1057,7 @@ SUB ProjInst (i AS INTEGER)
 	IF roomOn THEN
 		k = RoomK!(ipz(i))
 		prq(26) = CINT(k * 256)
-		y = -CLNG(rch * 16) - CLNG(rymn * k)
+		IF nmod < 2 THEN y = -CLNG(rch * 16) - CLNG(rymnm(0) * k) ELSE y = -CLNG(rch * 16) - CLNG(rymnm(i) * k)
 		CALL Project(ipx(i), y, ipz(i))
 	ELSE
 		prq(26) = 0
@@ -1034,7 +1126,7 @@ SUB Bench
 		tr = tr4(0)
 		'----- the loop's fixed cost: every face degenerate (a=b=c), so only the
 		'----- per-face loads and the cull run
-		FOR i = 0 TO nf - 1: sb(i) = fa(i).b: sc2(i) = fa(i).c: fa(i).b = fa(i).a: fa(i).c = fa(i).a: NEXT
+		FOR i = 0 TO nf - 1: sb(i) = fa(i, 0).b: sc2(i) = fa(i, 0).c: fa(i, 0).b = fa(i, 0).a: fa(i, 0).c = fa(i, 0).a: NEXT
 		prm(24) = 0: prm(25) = &H8000
 		t1 = PitNow&
 		FOR i = 1 TO n
@@ -1044,7 +1136,7 @@ SUB Bench
 			DEF SEG
 		NEXT
 		t2 = PitNow&: tcull = Ms!(t1, t2) / n
-		FOR i = 0 TO nf - 1: fa(i).b = sb(i): fa(i).c = sc2(i): NEXT
+		FOR i = 0 TO nf - 1: fa(i, 0).b = sb(i): fa(i, 0).c = sc2(i): NEXT
 		'----- the ink
 		t1 = PitNow&
 		FOR i = 1 TO n
@@ -1077,10 +1169,10 @@ SUB Bench
 			t2 = PitNow&: tt = Ms!(t1, t2) / n: IF rep = 1 OR tt < tf2 THEN tf2 = tt
 		NEXT
 		tf2a = 0
-		IF anf > 0 THEN
+		IF anf(0) > 0 THEN
 			FOR rep = 1 TO 3
 				t1 = PitNow&
-				FOR i = 1 TO n: CALL PoseInst(0, i MOD anf, 0): CALL PoseInst(1, (i + 5) MOD anf, .6): CALL DrawAll: NEXT
+				FOR i = 1 TO n: CALL PoseInst(0, i MOD anf(0), 0): CALL PoseInst(1, (i + 5) MOD anf(0), .6): CALL DrawAll: NEXT
 				t2 = PitNow&: tt = Ms!(t1, t2) / n: IF rep = 1 OR tt < tf2a THEN tf2a = tt
 			NEXT
 			CALL PoseInst(0, -1, 0): CALL PoseInst(1, -1, .6)
@@ -1092,7 +1184,7 @@ SUB Bench
 			t2 = PitNow&: tt = Ms!(t1, t2) / n: IF rep = 1 OR tt < tf4 THEN tf4 = tt
 		NEXT
 		PRINT #fh, "     frames, no vsync: 1 model"; INT(tf1 * 100) / 100; " ms ("; INT(1000 / tf1); " fps)  2 models"; INT(tf2 * 100) / 100; " ("; INT(1000 / tf2); ")  4 models"; INT(tf4 * 100) / 100; " ("; INT(1000 / tf4); ")"
-		IF anf > 0 THEN PRINT #fh, "     2 models walking, both re-posed every frame (the worst case):"; INT(tf2a * 100) / 100; " ms ("; INT(1000 / tf2a); " fps)"
+		IF anf(0) > 0 THEN PRINT #fh, "     2 models walking, both re-posed every frame (the worst case):"; INT(tf2a * 100) / 100; " ms ("; INT(1000 / tf2a); " fps)"
 		ninst = 1: ox2 = -1
 	NEXT
 	'----- the rotate-and-sort, asm and QB; the loop's own overhead
@@ -1155,9 +1247,9 @@ SUB Prep (yaw AS SINGLE)
 	DIM nxr AS INTEGER, nzr AS INTEGER, sh AS INTEGER, band AS INTEGER, d AS INTEGER
 	cs = CINT(COS(yaw) * 256): sn = CINT(SIN(yaw) * 256)
 	FOR i = 0 TO nv - 1
-		rx(i) = (CLNG(mx(i)) * cs + CLNG(mz(i)) * sn) \ 256
-		rz(i) = (CLNG(mz(i)) * cs - CLNG(mx(i)) * sn) \ 256
-		ry(i) = my(i)
+		rx(i) = (CLNG(mx(i, 0)) * cs + CLNG(mz(i, 0)) * sn) \ 256
+		rz(i) = (CLNG(mz(i, 0)) * cs - CLNG(mx(i, 0)) * sn) \ 256
+		ry(i) = my(i, 0)
 	NEXT
 	FOR i = 0 TO 255: head(i) = -1: NEXT
 	FOR f = 0 TO nf - 1
@@ -1174,7 +1266,7 @@ SUB Prep (yaw AS SINGLE)
 			fband(f) = band
 		END IF
 		'----- depth bucket by the summed z (x16 units, about +-4000)
-		d = (rz(fa(f).a) + rz(fa(f).b) + rz(fa(f).c) + 4096) \ 32
+		d = (rz(fa(f, 0).a) + rz(fa(f, 0).b) + rz(fa(f, 0).c) + 4096) \ 32
 		IF d < 0 THEN d = 0
 		IF d > 255 THEN d = 255
 		lnk(f) = head(d): head(d) = f
@@ -1409,7 +1501,7 @@ END SUB
 '----- CAR3D.MDL (see tools\car3dcnv.ps1): floats in the file, converted once
 '----- to x16 (vertices), 8.8 texels (u,v) and x256 (normals) integers
 SUB LoadModel
-	DIM fh AS INTEGER, i AS INTEGER, h AS Hdr, vt AS Vtx, nm AS Nrm, t AS LONG
+	DIM fh AS INTEGER, i AS INTEGER, h AS Hdr, vv AS Vtx, nm AS Nrm, t AS LONG
 	fh = FREEFILE
 	OPEN "CAR3D.MDL" FOR BINARY AS #fh
 	IF LOF(fh) = 0 THEN CLOSE #fh: PRINT "CAR3D.MDL missing": END
@@ -1417,23 +1509,73 @@ SUB LoadModel
 	IF h.magic <> "C3D2" THEN CLOSE #fh: PRINT "CAR3D.MDL: wrong format (rerun tools\car3dcnv.ps1)": END
 	nv = h.nv: nf = h.nf: unlit = h.flags AND 1
 	IF nv > MAXV + 1 OR nf > MAXF + 1 THEN CLOSE #fh: PRINT "model too big": END
+	nvm(0) = nv: nfm(0) = nf: nmod = 1
 	FOR i = 0 TO nv - 1
-		GET #fh, , vt
-		mx(i) = CINT(vt.x * 16): my(i) = CINT(vt.y * 16): mz(i) = CINT(vt.z * 16)
-		'----- texel coordinates, 8.8 fixed point over the texture's width
-		t = CLNG(vt.u * (CLNG(texW) * 256 - 64)): IF t < 0 THEN t = 0
+		GET #fh, , vv
+		mx(i, 0) = CINT(vv.x * 16): my(i, 0) = CINT(vv.y * 16): mz(i, 0) = CINT(vv.z * 16)
+		'----- texel coordinates, 8.8 fixed point over the texture's width (into the
+		'----- interleaved vertices too: x, y from the projection, u, v these)
+		t = CLNG(vv.u * (CLNG(texW) * 256 - 64)): IF t < 0 THEN t = 0
 		IF t > CLNG(texW) * 256 - 1 THEN t = CLNG(texW) * 256 - 1
-		tu(i) = t
-		t = CLNG(vt.v * (CLNG(texW) * 256 - 64)): IF t < 0 THEN t = 0
+		tu(i) = t: vt(i * 4 + 2) = t
+		t = CLNG(vv.v * (CLNG(texW) * 256 - 64)): IF t < 0 THEN t = 0
 		IF t > CLNG(texW) * 256 - 1 THEN t = CLNG(texW) * 256 - 1
-		tv(i) = t
+		tv(i) = t: vt(i * 4 + 3) = t
 	NEXT
-	FOR i = 0 TO nf - 1: GET #fh, , fa(i): NEXT
+	FOR i = 0 TO nf - 1: GET #fh, , fa(i, 0): NEXT
 	FOR i = 0 TO nf - 1
 		GET #fh, , nm
 		nx(i) = CINT(nm.x * 256): ny(i) = CINT(nm.y * 256): nz(i) = CINT(nm.z * 256)
 	NEXT
 	CLOSE #fh
+END SUB
+
+'----- LoadModel2: the second character into slot 1 -- JAMES.MDL (car3dcnv's format, unlit,
+'----- the man's mesh or its own) with JAMES.BMP (its texture, the same width as CAR3D.BMP's,
+'----- its colours in CAR3D.BMP's palette: tools\manwalk.ps1 merges them); u, v straight into
+'----- slot 1's interleaved vertices. Either file missing: one character (nmod 1)
+SUB LoadModel2
+	DIM fh AS INTEGER, i AS INTEGER, h AS Hdr, vv AS Vtx, t AS LONG, w AS INTEGER, n AS LONG, s AS STRING
+	fh = FREEFILE
+	OPEN "JAMES.BMP" FOR BINARY AS #fh
+	n = LOF(fh): w = 0
+	IF n >= 1078 THEN s = SPACE$(4): GET #fh, 19, s: w = CVI(LEFT$(s, 2))
+	CLOSE #fh
+	IF n = 0 THEN KILL "JAMES.BMP"
+	IF n < 1078 OR w <> texW THEN EXIT SUB
+	fh = FREEFILE
+	OPEN "JAMES.MDL" FOR BINARY AS #fh
+	IF LOF(fh) = 0 THEN CLOSE #fh: KILL "JAMES.MDL": EXIT SUB
+	GET #fh, , h
+	IF h.magic <> "C3D2" OR h.nv > MAXV + 1 OR h.nf > MAXF + 1 OR (h.flags AND 1) = 0 THEN CLOSE #fh: EXIT SUB
+	nvm(1) = h.nv: nfm(1) = h.nf
+	FOR i = 0 TO h.nv - 1
+		GET #fh, , vv
+		mx(i, 1) = CINT(vv.x * 16): my(i, 1) = CINT(vv.y * 16): mz(i, 1) = CINT(vv.z * 16)
+		t = CLNG(vv.u * (CLNG(texW) * 256 - 64)): IF t < 0 THEN t = 0
+		IF t > CLNG(texW) * 256 - 1 THEN t = CLNG(texW) * 256 - 1
+		vts(i * 4 + 2, 1) = t
+		t = CLNG(vv.v * (CLNG(texW) * 256 - 64)): IF t < 0 THEN t = 0
+		IF t > CLNG(texW) * 256 - 1 THEN t = CLNG(texW) * 256 - 1
+		vts(i * 4 + 3, 1) = t
+	NEXT
+	FOR i = 0 TO h.nf - 1: GET #fh, , fa(i, 1): NEXT
+	CLOSE #fh
+	nmod = 2
+END SUB
+
+'----- UseModel: the rotate, projection and raster blocks pointed at slot m's model -- its
+'----- faces, vertex and face counts, texture (nv and nf become its)
+SUB UseModel (m AS INTEGER)
+	nv = nvm(m): nf = nfm(m)
+	prq(10) = nv: prr(12) = nv: prr(19) = nf: prm(19) = nf
+	prr(15) = VARSEG(fa(0, m)): prr(16) = VARPTR(fa(0, m))
+	prm(13) = prr(15): prm(14) = prr(16)
+	IF m = 0 THEN
+		prm(4) = VARSEG(bt(0)): prm(23) = VARPTR(bt(0))
+	ELSE
+		prm(4) = VARSEG(bt1(0)): prm(23) = VARPTR(bt1(0))
+	END IF
 END SUB
 
 '----- the 256 BGRA entries of CAR3D.BMP -> DAC
@@ -1457,19 +1599,34 @@ END SUB
 
 '----- the pixels of CAR3D.BMP (texW wide, texW*bands rows, stored bottom-up)
 '----- -> one 16-byte-aligned array per lighting band, its segment in bt(b)
-'----- (band b's texel row y sits at that segment, offset y*texW)
+'----- (band b's texel row y sits at that segment, offset y*texW); with a second
+'----- character, JAMES.BMP (unlit, one band) into tb1, its segment in bt1 -- then
+'----- CAR3D.BMP must be unlit too. Every array sized first, the segments taken
+'----- after the last REDIM (one can move the others), then the pixels copied in
 SUB LoadTexture
 	DIM fh AS INTEGER, r AS INTEGER, h AS INTEGER, w AS INTEGER, bands AS INTEGER, b AS INTEGER, y AS INTEGER, s AS STRING
+	DIM tp AS INTEGER
 	fh = FREEFILE
 	OPEN "CAR3D.BMP" FOR BINARY AS #fh
 	s = SPACE$(4)
 	GET #fh, 19, s: w = CVI(LEFT$(s, 2))
 	GET #fh, 23, s: h = CVI(LEFT$(s, 2))
-	IF w <> texW THEN CLOSE #fh: Fail "CAR3D.BMP width changed"
+	CLOSE #fh
+	IF w <> texW THEN Fail "CAR3D.BMP width changed"
 	bands = h \ w
-	IF bands < 1 OR bands > 8 OR bands * w <> h THEN CLOSE #fh: Fail "CAR3D.BMP must be W x (W*bands)"
+	IF bands < 1 OR bands > 8 OR bands * w <> h THEN Fail "CAR3D.BMP must be W x (W*bands)"
+	IF bands > 1 AND nmod = 2 THEN Fail "two characters: CAR3D.BMP must be unlit (one band)"
 	FOR b = 0 TO bands - 1: CALL BandAlloc(b, w): NEXT
+	IF nmod = 2 THEN
+		CALL BandAlloc(1, w)
+		tp = VARPTR(tb0(0)): bt(0) = NormSeg(VARSEG(tb0(0)), tp + ((16 - (tp AND 15)) AND 15))
+		tp = VARPTR(tb1(0)): bt(1) = NormSeg(VARSEG(tb1(0)), tp + ((16 - (tp AND 15)) AND 15))
+		FOR b = 0 TO 7: bt1(b) = bt(1): NEXT
+		bt(1) = bt(0)
+	END IF
 	FOR b = bands TO 7: bt(b) = bt(bands - 1): NEXT
+	fh = FREEFILE
+	OPEN "CAR3D.BMP" FOR BINARY AS #fh
 	s = SPACE$(w)
 	SEEK #fh, 1079
 	FOR r = 0 TO h - 1
@@ -1477,6 +1634,16 @@ SUB LoadTexture
 		y = h - 1 - r
 		b = y \ w
 		CALL RectCopy(VARSEG(s), CLNG(SADD(s)), bt(b), CLNG(y - b * w) * w, 1, w, w, w)
+	NEXT
+	CLOSE #fh
+	IF nmod < 2 THEN EXIT SUB
+	fh = FREEFILE
+	OPEN "JAMES.BMP" FOR BINARY AS #fh
+	SEEK #fh, 1079
+	FOR r = 0 TO w - 1
+		GET #fh, , s
+		y = w - 1 - r
+		CALL RectCopy(VARSEG(s), CLNG(SADD(s)), bt1(0), CLNG(y) * w, 1, w, w, w)
 	NEXT
 	CLOSE #fh
 END SUB

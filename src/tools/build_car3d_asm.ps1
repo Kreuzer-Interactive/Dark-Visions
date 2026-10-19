@@ -25,7 +25,7 @@
 #   20 dx  21 dy        screen position of the work buffer in 1/16 pixel: buffer x = sx - dx
 #   22 out: faces drawn   23 band table offset (see 4)
 #   24 low byte: the flat threshold -- a face narrower and shorter than this (1/16 px) is filled
-#                        flat with one texel (the midpoint of its first two vertices): no gradients,
+#                        flat with one texel (inside it: (2 v0 + v1 + v2) / 4 in UV): no gradients,
 #                        no divides, rep stosb rows. 0 = never. (a 50 px man is nearly all such faces)
 #      high byte: the dot threshold -- a face smaller than this both ways is one pixel, its
 #                        centre, in that texel: no edges at all. 0 = never.
@@ -291,7 +291,7 @@ CmpRM 'cx' $X1; Jr 0x7D 'f3'; MovRM 'cx' $X1; Lbl 'f3'
 CmpRM 'cx' $X2; Jr 0x7D 'f4'; MovRM 'cx' $X2; Lbl 'f4'
 E @(0x2B, 0xC8); MovMRw $W16 'cx'
 # ---- the dot: a face smaller than the dot threshold both ways is one pixel, its centre,
-# in the texel at the midpoint of its first two vertices (a key texel drops it)
+# in the texel inside it at (2 v0 + v1 + v2) / 4 (a key texel drops it)
 CmpMI8w $DOTT 0; Jn @(0x0F, 0x8E) 'notdot'
 MovRMw 'ax' $H16; CmpRMw 'ax' $DOTT; Jn @(0x0F, 0x8D) 'notdot'
 MovRMw 'ax' $W16; CmpRMw 'ax' $DOTT; Jn @(0x0F, 0x8D) 'notdot'
@@ -371,11 +371,16 @@ Lbl 'tridone'
 IncM (P 22)
 E @(0xC3)
 
-# ---- MIDTEX: al = the texel at the midpoint of slots 0 and 1 (ah = 0), zf = it is the key
+# ---- MIDTEX: al = the texel at (2 slot 0 + slot 1 + slot 2) / 4 (ah = 0), zf = it is the key -- a point
+# inside the triangle (halfway along its median from vertex 0), not on an edge: an edge lies on its UV
+# island's border, where the texel next door belongs to another part of the texture (the colour spill on
+# the seams of small, flat-filled faces)
 Lbl 'MIDTEX'
-Movsx32RM 'ax' $U0; Movsx32RM 'cx' $U1; E @(0x66, 0x03, 0xC1); E @(0x66, 0xC1, 0xF8, 0x09)   # eax = (u0+u1)/2 >> 8
+Movsx32RM 'ax' $U0; E @(0x66, 0x03, 0xC0); Movsx32RM 'cx' $U1; E @(0x66, 0x03, 0xC1); Movsx32RM 'cx' $U2; E @(0x66, 0x03, 0xC1)
+E @(0x66, 0xC1, 0xF8, 0x0A)                                                                  # eax = (2 u0 + u1 + u2)/4 >> 8
 E @(0x25, $tmask, 0x00); E @(0x8B, 0xD8)                                                     # bx = u & mask
-Movsx32RM 'ax' $V0; Movsx32RM 'cx' $V1; E @(0x66, 0x03, 0xC1); E @(0x66, 0xC1, 0xF8, 0x09)
+Movsx32RM 'ax' $V0; E @(0x66, 0x03, 0xC0); Movsx32RM 'cx' $V1; E @(0x66, 0x03, 0xC1); Movsx32RM 'cx' $V2; E @(0x66, 0x03, 0xC1)
+E @(0x66, 0xC1, 0xF8, 0x0A)
 E @(0x25, $tmask, 0x00); E @(0xC1, 0xE0, [byte]$tsh); E @(0x03, 0xC3); E @(0x8B, 0xF0)      # si = v*width + u
 MovDsM $TSEG; E @(0x8A, 0x04); E @(0x32, 0xE4); E @(0x3C, 0xFF)                            # al = texel; cmp al,255
 E @(0xC3)
@@ -537,6 +542,54 @@ E @(0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x0C, 0x00)
 $edgo = $script:a.Resolve()
 
 # =============================================================================
+# C3DEDGK: CALL ABSOLUTE(BYVAL seg, BYVAL off, BYVAL stride, BYVAL w, BYVAL h, BYVAL thr + mark*256, BYVAL tseg, SADD(edgk$)) RETF 14
+#   C3DEDGO's ring, but only where it is needed to see him: a BLACK background pixel (index < thr,
+#   dark in the table) next to a BLACK pixel of his (left/right/up/down, index >= thr, dark) becomes
+#   mark -- a black coat on a black floor gets its edge, his coloured parts and anything over a
+#   coloured background none. The table: 256 flag bytes at tseg:0000 (bit 0 = a dark colour) and
+#   one word after it at tseg:0100 the routine uses itself (w - 2). Skips the block's border.
+#   [bp+6]=tseg [bp+8]=thr|mark [bp+10]=h [bp+12]=w [bp+14]=stride [bp+16]=off [bp+18]=seg
+#   registers: ds:si the pixel, es the table, bp the stride (after the parameters are read), bl
+#   a pixel (bh 0: es:[bx] its flags), dl thr dh mark, di rows, cx columns
+# =============================================================================
+#   C3DEDGI (-Inside): the same with his side and the floor's swapped -- his own BLACK edge pixel next to a
+#   BLACK background pixel becomes mark (an inside line: his silhouette keeps its size). Same call.
+function Build-Edgk([bool]$inside) {
+$pj = if ($inside) { 0x82 } else { 0x83 }; $nj = if ($inside) { 0x73 } else { 0x72 }   # the pixel's side test, a neighbour's
+$script:a = [Asm]::new()
+E @(0x55); E @(0x8B, 0xEC); E @(0x1E, 0x56, 0x57, 0x53, 0x06)           # push bp; mov bp,sp; push ds,si,di,bx,es
+MovEsM 6; MovDsM 18; MovRM 'si' 16
+MovRM 'dx' 8                                                              # dl = thr, dh = mark
+MovRM 'di' 10; E @(0x83, 0xEF, 0x02); Jn @(0x0F, 0x8E) 'kdone'           # di = h-2 rows
+MovRM 'ax' 12; E @(0x83, 0xE8, 0x02); Jn @(0x0F, 0x8E) 'kdone'           # ax = w-2
+E @(0x26, 0xA3, 0x00, 0x01)                                               # mov es:[0100],ax
+MovRM 'ax' 14; E @(0x8B, 0xE8)                                            # bp = stride
+E @(0x03, 0xF5); E @(0x46)                                                # si -> row 1, col 1
+E @(0x32, 0xFF)                                                           # xor bh,bh
+Lbl 'krow'
+E @(0x26, 0x8B, 0x0E, 0x00, 0x01)                                         # cx = w-2
+Lbl 'kpix'
+E @(0x8A, 0x1C); E @(0x38, 0xD3); Jn @(0x0F, $pj) 'knext'               # his (or marked) -> nothing
+E @(0x26, 0xF6, 0x07, 0x01); Jn @(0x0F, 0x84) 'knext'                    # a coloured background -> nothing
+E @(0x8A, 0x5C, 0xFF); E @(0x38, 0xD3); Jr $nj 'kl'; E @(0x26, 0xF6, 0x07, 0x01); Jn @(0x0F, 0x85) 'kmark'; Lbl 'kl'   # left
+E @(0x8A, 0x5C, 0x01); E @(0x38, 0xD3); Jr $nj 'kr'; E @(0x26, 0xF6, 0x07, 0x01); Jn @(0x0F, 0x85) 'kmark'; Lbl 'kr'   # right
+E @(0x2B, 0xF5); E @(0x8A, 0x1C); E @(0x03, 0xF5)                         # up: sub si,bp; mov bl,[si]; add si,bp
+E @(0x38, 0xD3); Jr $nj 'ku'; E @(0x26, 0xF6, 0x07, 0x01); Jn @(0x0F, 0x85) 'kmark'; Lbl 'ku'
+E @(0x3E, 0x8A, 0x1A)                                                     # down: mov bl,ds:[bp+si]
+E @(0x38, 0xD3); Jr $nj 'knext'; E @(0x26, 0xF6, 0x07, 0x01); Jr 0x74 'knext'
+Lbl 'kmark'; E @(0x88, 0x34)                                              # [si] = mark
+Lbl 'knext'
+E @(0x46); E @(0x49); Jn @(0x0F, 0x85) 'kpix'                             # inc si; dec cx; jnz
+E @(0x03, 0xF5); E @(0x26, 0x2B, 0x36, 0x00, 0x01)                        # next row, col 1: si += stride - (w-2)
+E @(0x4F); Jn @(0x0F, 0x85) 'krow'
+Lbl 'kdone'
+E @(0x07, 0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x0E, 0x00)
+return $script:a.Resolve()
+}
+$edgk = Build-Edgk $false
+$edgi = Build-Edgk $true
+
+# =============================================================================
 # C3DSKIN: CALL ABSOLUTE(BYVAL pseg, BYVAL poff, SADD(skin$)) RETF 4  -- block of 17 words:
 #   0/1 mx seg/off  2/3 my  4/5 mz    the rest pose (x16 units)
 #   6/7 out x seg/off  8/9 out y  10/11 out z
@@ -633,6 +686,57 @@ E @(0x07, 0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x14, 0x00)
 $mcpy = $script:a.Resolve()
 
 # =============================================================================
+# C3DCGA: CALL ABSOLUTE(BYVAL bseg, BYVAL boff, BYVAL w, BYVAL h, BYVAL lseg, BYVAL loff,
+#                       BYVAL aseg, BYVAL aoff, BYVAL mseg, BYVAL moff, SADD(cga$)) RETF 20
+#   the game's 3D man (GAME8): a w x h byte box (row stride w; 0 = nothing there) -> a CGA
+#   SCREEN 1 GET/PUT pair: art (2 bits a pixel, the colour) and mask (11 where nothing is,
+#   00 where he is), each "w*2, h" then rows of (w*2+7)\8 bytes, high bits first. Pass 1 maps
+#   every byte through the 256-byte table at lseg:loff (0 -> 0, else 80h + colour 0..3); pass 2
+#   packs, and leaves the box all 0 for the next render. Drawn with PUT mask AND, PUT art OR.
+#   [bp+6]=moff [bp+8]=mseg [bp+10]=aoff [bp+12]=aseg [bp+14]=loff [bp+16]=lseg [bp+18]=h
+#   [bp+20]=w [bp+22]=boff [bp+24]=bseg; [bp-2] = rows left
+# =============================================================================
+$script:a = [Asm]::new()
+E @(0x55); E @(0x8B, 0xEC); E @(0x83, 0xEC, 0x04); E @(0x1E, 0x56, 0x57, 0x53, 0x06)
+# pass 1: es:di the box, ds:bx the table; xlat every byte
+MovEsM 24; MovRM 'di' 22; MovDsM 16; MovRM 'bx' 14
+MovRM 'ax' 20; E @(0xF7, 0x66, 0x12); E @(0x8B, 0xC8); E @(0xFC); Jr 0xE3 'cskip'   # cx = w*h
+Lbl 'cmap'
+E @(0x26, 0x8A, 0x05); E @(0xD7); E @(0xAA); Jr 0xE2 'cmap'                 # al = es:[di]; xlat; stosb
+Lbl 'cskip'
+# the two headers: w*2, h
+MovEsM 12; MovRM 'di' 10
+MovRM 'ax' 20; E @(0xD1, 0xE0); E @(0xAB); MovRM 'ax' 18; E @(0xAB)
+E (@(0x8E) + (MB 4 8)); MovRM 'bx' 6                                       # fs:bx the mask
+MovRM 'ax' 20; E @(0xD1, 0xE0); E @(0x64, 0x89, 0x07); E @(0x83, 0xC3, 0x02)
+MovRM 'ax' 18; E @(0x64, 0x89, 0x07); E @(0x83, 0xC3, 0x02)
+# pass 2: ds:si the box (cleared as read), ah = art byte, dh = mask byte, dl = pixels to a byte
+MovDsM 24; MovRM 'si' 22
+MovRM 'ax' 18; MovMR -2 'ax'
+Lbl 'crow'
+MovRM 'cx' 20; E @(0xB2, 0x04)
+Lbl 'cpix'
+E @(0x8A, 0x04); E @(0xC6, 0x04, 0x00); E @(0x46)                         # al = [si]; [si] = 0
+E @(0xC0, 0xE4, 0x02); E @(0xC0, 0xE6, 0x02)                              # shl ah,2; shl dh,2
+E @(0xA8, 0x80); Jr 0x75 'copq'
+E @(0x80, 0xCE, 0x03); Jr 0xEB 'cnxt'                                     # nothing: mask 11
+Lbl 'copq'
+E @(0x24, 0x03); E @(0x0A, 0xE0)                                          # him: art = colour
+Lbl 'cnxt'
+E @(0xFE, 0xCA); Jr 0x75 'ccont'
+E @(0x26, 0x88, 0x25); E @(0x47); E @(0x64, 0x88, 0x37); E @(0x43); E @(0xB2, 0x04)   # a byte each
+Lbl 'ccont'
+Jr 0xE2 'cpix'
+E @(0x80, 0xFA, 0x04); Jr 0x74 'crdone'                                   # a part byte left?
+Lbl 'cpad'
+E @(0xC0, 0xE4, 0x02); E @(0xC0, 0xE6, 0x02); E @(0x80, 0xCE, 0x03); E @(0xFE, 0xCA); Jr 0x75 'cpad'
+E @(0x26, 0x88, 0x25); E @(0x47); E @(0x64, 0x88, 0x37); E @(0x43)
+Lbl 'crdone'
+E @(0xFF, 0x4E, 0xFE); Jn @(0x0F, 0x85) 'crow'
+E @(0x07, 0x5B, 0x5F, 0x5E, 0x1F); E @(0x8B, 0xE5); E @(0x5D); E @(0xCA, 0x14, 0x00)
+$cga = $script:a.Resolve()
+
+# =============================================================================
 # C3DBLTM: CALL ABSOLUTE(BYVAL sseg, BYVAL soff, BYVAL dseg, BYVAL doff, BYVAL rows,
 #                        BYVAL rbytes, BYVAL sstride, BYVAL dstride, BYVAL colour, SADD(bltm$))  RETF 18
 #   rectangle copy like SHADBOP mode 0, but every 254 (the silhouette mark) becomes
@@ -682,9 +786,12 @@ $srcDir = "$PSScriptRoot\.."
 [System.IO.File]::WriteAllBytes("$srcDir\C3DT128.OVL", $tri128)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DEDGE.OVL", $edge)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DEDGO.OVL", $edgo)
+[System.IO.File]::WriteAllBytes("$srcDir\C3DEDGK.OVL", $edgk)
+[System.IO.File]::WriteAllBytes("$srcDir\C3DEDGI.OVL", $edgi)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DSKIN.OVL", $skin)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DMSE.OVL", $mse)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DMCPY.OVL", $mcpy)
+[System.IO.File]::WriteAllBytes("$srcDir\C3DCGA.OVL", $cga)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DBLTM.OVL", $bltm)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DPRJ.OVL", $prj)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DTEST.OVL", $tst)

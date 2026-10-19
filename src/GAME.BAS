@@ -62,6 +62,10 @@ DECLARE SUB introShowCarr ()
 DECLARE SUB introFadeCredit ()
 DECLARE SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
 DECLARE SUB MapView (hasmap AS INTEGER, curRoom AS INTEGER, vis AS LONG, mvint AS INTEGER, msen AS SINGLE)
+DECLARE SUB Man3dInit ()
+DECLARE SUB Man3dFree ()
+DECLARE SUB Man3dIdle (ovf%(), ms!)
+DECLARE SUB Man3dRoom (q$, co!, p1!, p2!, p3!, nopl!)
 DECLARE SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%(), ovf%())
 DECLARE SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
 DECLARE SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
@@ -76,7 +80,10 @@ DECLARE SUB PGrab (lf2$, fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl
 DECLARE SUB LookDir (bx!, ay!, px2!, py2!, d2$)
 DECLARE SUB DialGame (sf3!, sf4!, ob() AS SINGLE)
 DECLARE SUB BurnShow ()
-DECLARE SUB CursorPats (px!(), py!(), pc!(), npix!())
+DECLARE SUB CursorPats (px%(), py%(), pc%(), npix%())
+DECLARE SUB HovExit (mx%, my%, hr%, ox%(), oy%(), oi%(), tg$(), bs!(), cs!(), ob!(), nshp!)
+DECLARE SUB MSnap (mx%, my%, sr%, b!, a!, k$, ox%(), oy%(), oi%(), ky$())
+DECLARE FUNCTION HitNext% (s%, b%, a%, ox%(), oy%())
 DECLARE SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 DECLARE SUB LoadBoxes (rm$, bxa%())
 DECLARE SUB SnapFloor (sx!, sy!, bxa%())
@@ -142,7 +149,7 @@ DIM SHARED mhsx AS INTEGER, mhsy AS INTEGER, mxor, mraw
 DIM SHARED mregx AS RegTypeX, moutx AS RegTypeX
 DIM SHARED cmask(31) AS INTEGER
 DIM SHARED arow$(15)
-DIM SHARED px(4, 80), py(4, 80), pc(4, 80), npix(4)
+DIM SHARED px(4, 80) AS INTEGER, py(4, 80) AS INTEGER, pc(4, 80) AS INTEGER, npix(4) AS INTEGER
 DIM SHARED curbuf(100), cdrawn, cox, coy
 DIM SHARED mx AS INTEGER, my AS INTEGER, nmx AS INTEGER, nmy AS INTEGER, lmx AS INTEGER, lmy AS INTEGER
 DIM SHARED fontData(2047) AS INTEGER
@@ -262,9 +269,12 @@ DIM SHARED mrn
 DIM SHARED gp(100)
 DIM SHARED er1(400)
 DIM SHARED d(300)
-DIM SHARED tilarr(12900) AS INTEGER
-DIM SHARED iconarr(9600) AS INTEGER
-DIM SHARED kmarr(9600) AS INTEGER
+'----- the inventory's tiles, icons and masks (~64 KB): invhi rebuilds them from
+'----- its .PICs every time it opens, so they exist only while it is open (sized
+'----- there, freed at invdone) -- room play gets the far heap (the 3D man needs it)
+DIM SHARED tilarr(0) AS INTEGER
+DIM SHARED iconarr(0) AS INTEGER
+DIM SHARED kmarr(0) AS INTEGER
 DIM SHARED dsav(250) AS INTEGER
 DIM SHARED tix(65) AS INTEGER
 DIM SHARED cilist(40) AS INTEGER
@@ -363,6 +373,8 @@ DRAW "bm1,1c1r3d3l1u2l1d2l1u2"
 GET (1, 1)-(4, 4), d
 a$ = "2"
 q$ = "room4"
+'----- (quickstart=N, N > 1: room N instead -- testing the 3D man in the template rooms)
+IF qkon > 1 THEN q$ = "room" + LTRIM$(STR$(qkon))
 GOSUB loadroom
 GOSUB face
 GOTO mainloop
@@ -478,12 +490,11 @@ action:
 	GOSUB clrtxt: txr = 0
 	acthit = 0: wantbs = 0
 	cl = cl + 8
-	FOR i = 1 TO 257
-		IF b = ox(i) AND a = oy(i) THEN GOTO 6170
-		6130 IF oy(i) <> 0# THEN GOTO 6150
-		i = 257
-	6150 NEXT
-	RETURN
+	'----- the next hit point at (b, a) after i (GAME2 HitNext: integers -- in floats this
+	'----- scan cost a 486SX ~100 ms); the checks below come back here to go on past it
+	i = 0
+	6130 i = HitNext%(CINT(i) + 1, CINT(b), CINT(a), ox(), oy())
+	IF i = 0 THEN RETURN
 
 '----- Object hit: validate verb and conditions
 6170 oh = i
@@ -609,6 +620,8 @@ gotoroom:
 '      Loads INVTIL1/2.PIC, GETs the 36 45x54 tiles into tilarr, then PUTs the
 '      carried items into a 7-col grid with a movable selection ring.
 doinv:
+	'----- (the 3D man's heap back for the full-screen pages; loadroom reloads him)
+	CALL Man3dFree
 	CALL invhi
 	GOTO invret
 
@@ -616,6 +629,7 @@ doinv:
 '----- shares invret so the room is reloaded after the mode switch
 domanual:
 	IF msen = 1 THEN CALL erasecur
+	CALL Man3dFree
 	CALL ManualShow(msen)
 	GOTO invret
 
@@ -624,6 +638,7 @@ domanual:
 '----- return path (reload the room, player stays where he stood via lrq$)
 domap:
 	IF msen = 1 THEN CALL erasecur
+	CALL Man3dFree
 	CALL MapView(CINT(ob(16)), CINT(mrn), CLNG(ob(64)), mvint, msen)
 invret:
 	GOSUB loadroom
@@ -639,6 +654,7 @@ invret:
 '----- reload the room -- also repaints after a Load or a plain resume)
 domenu:
 	IF msen = 1 THEN CALL erasecur
+	CALL Man3dFree
 	CALL MainMenu(fontData(), mvint, msen, slvAct, 0)
 	IF slvAct = 2 THEN RUN
 	'----- a manual load invalidates any armed/pending revive snapshot, and
@@ -696,6 +712,8 @@ mainloop:
 	GOSUB joy
 	GOSUB mousepoll
 	GOSUB animtick
+	'----- the 3D man breathing and fidgeting standing (GAME8; nothing for the sprite)
+	CALL Man3dIdle(ovf(), msen)
 	IF lf$ <> sdwlf$ THEN sdwlf$ = lf$: CALL PGrab(lf$, fd(), mfd(), fu(), mfu(), fr(), mfr(), fl(), mfl(), fdl(), mfdl(), fdr(), mfdr(), ful(), mful(), fur(), mfur())
 	CALL ShadTick(q$, cl, h9, t1, t2, t3, CINT(ob(43)), pjx, pjy, b, a, sdwDat(), sdwB1$, sdwB2$, fbg())
 	IF ob(43) = 1 AND tk$ = "" THEN cv = CINT(cl): tk$ = "y"
@@ -1632,6 +1650,8 @@ loadroom:
 	IF LEFT$(q$, 4) = "room" THEN mrn = VAL(MID$(q$, 5)): IF mrn >= 1 AND mrn <= 12 THEN ob(64) = CLNG(ob(64)) OR CLNG(2 ^ (mrn - 1))
 	IF q$ <> lrq$ THEN pjx = 140: pjy = 130
 	lrq$ = q$
+	CALL C3dMark("room " + q$ + STR$(FRE(-1)) + STR$(FRE("")))
+	CALL Man3dRoom(q$, co, pa1, pa2, pa3, nopl)
 	GET (pjx, pjy)-(pjx + 30, pjy + 30), fbg
 	GOSUB hitzones
 	IF q$ <> "title" THEN GOTO walkout
@@ -1778,6 +1798,7 @@ loadgame:
 	IF wlkOn = 0 THEN CALL LoadWalks(cwa(), cmwa(), cwb(), cmwb())
 	GOSUB joeface
 	CALL C3dMark("loadgame faces")
+	CALL Man3dInit
 	RETURN
 
 '----- joeface: load Joe face sprites, pick direction toward player
@@ -2095,27 +2116,8 @@ synchit:
 '----- breaks at first oy=0 exactly like action, so it never snaps to an entry action can't reach
 msnap:
 	IF snr <= 0 THEN RETURN
-	' tie-break: a hotspot exactly under the cursor's own cell wins over an expanded (snapped) neighbour
-	FOR sni = 1 TO 257
-		IF oy(sni) = 0# THEN EXIT FOR
-		IF ox(sni) = b AND oy(sni) = a AND ky$(oi(sni)) = a$ THEN RETURN
-	NEXT
-	snd = snr * snr + 1
-	snx = -1
-	FOR sni = 1 TO 257
-		IF oy(sni) = 0# THEN EXIT FOR
-		sdx = mx - ox(sni)
-		sdy = my - oy(sni)
-		IF ky$(oi(sni)) = a$ AND ABS(sdx) <= snr AND ABS(sdy) <= snr THEN
-			sdd = sdx * sdx + sdy * sdy
-			IF sdd < snd THEN
-				snd = sdd
-				snx = ox(sni)
-				sny = oy(sni)
-			END IF
-		END IF
-	NEXT
-	IF snx >= 0 THEN b = snx: a = sny
+	'----- (GAME2 MSnap: integers -- in floats this took a 486SX ~220 ms a click)
+	CALL MSnap(mx, my, CINT(snr), b, a, a$, ox(), oy(), oi(), ky$())
 	RETURN
 
 '----- near a walkout exit? morph cursor to point the way the player leaves (exitcursor)
@@ -2123,27 +2125,8 @@ msnap:
 '----- edge walkout (stand-point exits, e.g. the room8 concealed door); else NW arrow
 hovexit:
 	IF exsen <> 1 THEN RETURN
-	newshp = 0
-	hvdir$ = ""
-	hvb = hovr * hovr + 1
-	FOR hvi = 1 TO 257
-		IF oy(hvi) = 0# THEN EXIT FOR
-		hvo = CINT(oi(hvi))
-		IF (LEFT$(tg$(hvo), 1) = "w" OR LEFT$(tg$(hvo), 1) = "e") AND (bs(hvo) = 0 OR ob(bs(hvo)) = 1) AND (cs(hvo) = 0 OR ob(cs(hvo)) = 0) THEN
-			hvx = mx - ox(hvi)
-			hvy = my - oy(hvi)
-			IF ABS(hvx) <= hovr AND ABS(hvy) <= hovr THEN
-				hvd = hvx * hvx + hvy * hvy
-				IF hvd < hvb THEN hvb = hvd: hvdir$ = RIGHT$(tg$(hvo), 1)
-			END IF
-		END IF
-	NEXT
-	IF hvb <= hovr * hovr THEN
-		IF hvdir$ = "n" THEN newshp = 1
-		IF hvdir$ = "s" THEN newshp = 2
-		IF hvdir$ = "e" THEN newshp = 3
-		IF hvdir$ = "w" THEN newshp = 4
-	END IF
+	'----- (GAME2 HovExit: integer-only -- this loop in floats took a 486SX 160 ms a move)
+	CALL HovExit(mx, my, CINT(hovr), ox(), oy(), oi(), tg$(), bs(), cs(), ob(), newshp)
 	IF newshp = cshp THEN RETURN
 	CALL erasecur
 	cshp = newshp
@@ -2541,9 +2524,12 @@ END SUB
 
 
 SUB drawcur
+	'----- (integers throughout: a 486SX has no FPU, a float costs ~40 us)
+	DIM mi AS INTEGER, cs1 AS INTEGER
 	GET (mx, my)-(mx + 15, my + 9), curbuf
-	FOR mi = 0 TO npix(cshp) - 1
-		PSET (mx + px(cshp, mi), my + py(cshp, mi)), pc(cshp, mi)
+	cs1 = cshp
+	FOR mi = 0 TO npix(cs1) - 1
+		PSET (mx + px(cs1, mi), my + py(cs1, mi)), pc(cs1, mi)
 	NEXT
 	cox = mx: coy = my: cdrawn = 1
 END SUB
@@ -2558,6 +2544,7 @@ SUB invhi
 	PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
 	CLS
 	tst = 330: ist = 245
+	REDIM tilarr(12900) AS INTEGER, iconarr(9600) AS INTEGER, kmarr(9600) AS INTEGER
 	FOR ivi = 1 TO 30: tix(ivi) = ivi - 1: NEXT
 	tix(49) = 30: tix(36) = 31: tix(34) = 32: tix(35) = 33
 	'----- the unreadable formula (52, combine step 1) has its own tile 37
@@ -2709,6 +2696,7 @@ SUB invhi
 	IF cic > 0 THEN lvsel = cilist(isel)
 	IF msen = 1 THEN CALL erasecur
 	FOR ivi = 1 TO 36: nwf(iord(ivi)) = 0: NEXT
+	ERASE tilarr, iconarr, kmarr
 	SCREEN 1
 	EXIT SUB
 

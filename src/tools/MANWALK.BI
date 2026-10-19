@@ -58,19 +58,22 @@ DECLARE SUB ShowFps (n AS INTEGER)
 DECLARE SUB DrawAll ()
 DECLARE SUB Ink (w1 AS INTEGER, stride AS INTEGER, rw AS INTEGER, rh AS INTEGER)
 DECLARE SUB OutlineCol (c AS INTEGER)
+DECLARE FUNCTION DarkSeg% ()
 DECLARE SUB ProjInst (i AS INTEGER)
 DECLARE FUNCTION RoomK! (z AS LONG)
 DECLARE FUNCTION RoomX! (z AS LONG)
 DECLARE SUB PrepAsm (yaw AS SINGLE)
-DECLARE SUB LoadAnim ()
-DECLARE SUB SetPose (f AS INTEGER)
+DECLARE SUB LoadAnim (m AS INTEGER, fil AS STRING)
+DECLARE SUB SetPose (m AS INTEGER, f AS INTEGER)
 DECLARE SUB RotTo (i AS INTEGER)
 DECLARE SUB PoseInst (i AS INTEGER, f AS INTEGER, yaw AS SINGLE)
-DECLARE FUNCTION AnimFrame% (ph AS LONG)
-DECLARE SUB LoadIdle ()
-DECLARE SUB IdleSkin (g AS INTEGER)
+DECLARE FUNCTION AnimFrame% (m AS INTEGER, ph AS LONG)
+DECLARE SUB LoadIdle (m AS INTEGER, fil AS STRING)
+DECLARE SUB IdleSkin (m AS INTEGER, g AS INTEGER)
 DECLARE FUNCTION IdlePose% (i AS INTEGER, d AS SINGLE, hold AS INTEGER)
-DECLARE FUNCTION TurnPose% (r AS INTEGER, dd AS SINGLE)
+DECLARE FUNCTION TurnPose% (m AS INTEGER, r AS INTEGER, dd AS SINGLE)
+DECLARE SUB UseModel (m AS INTEGER)
+DECLARE SUB LoadModel2 ()
 DECLARE SUB Mouse ()
 DECLARE SUB FloorPick (qx AS INTEGER, qy AS INTEGER, clampit AS INTEGER, tx AS LONG, tz AS LONG)
 DECLARE FUNCTION Atn2! (y AS SINGLE, x AS SINGLE)
@@ -94,11 +97,13 @@ DECLARE SUB Bench ()
 DECLARE FUNCTION Ms! (t1 AS LONG, t2 AS LONG)
 DECLARE SUB SetInst (i AS INTEGER)
 DECLARE SUB PlaceCopy (px AS LONG, py AS LONG, pz AS LONG)
-CONST MAXV = 1023
-CONST MAXF = 1023
+CONST MAXV = 639
+CONST MAXF = 639
 CONST WKW = 320
 CONST WKH = 200
-CONST MAXI = 8
+'----- two characters at most on screen: model slot = character = instance (0 the man,
+'----- the player to start with; 1 the second character, JAMES.* -- Tab swaps who is driven)
+CONST MAXI = 2
 '----- the drive: a straight, level world line (x16 units) from screen (77,154)
 '----- at depth 420 (the sprite started at x 57; the turned car is wider, so
 '----- 20 px further in keeps its tail on screen) to depth 740 under the
@@ -128,12 +133,17 @@ COMMON SHARED hpo() AS INTEGER, oky() AS STRING * 1, obs() AS INTEGER, omsg() AS
 COMMON SHARED ospd() AS INTEGER, nhot AS INTEGER, hsaid AS INTEGER, hlast AS INTEGER, phx AS INTEGER, phy AS INTEGER
 COMMON SHARED bgseg AS INTEGER, bgo AS INTEGER, wseg AS INTEGER, wko AS INTEGER, curs() AS STRING, mreg() AS INTEGER
 COMMON SHARED ovlMse AS STRING
-'----- the data the animation module (MWANIM.BAS) and the main one share
-COMMON SHARED ovlSkin AS STRING, inc AS INTEGER, nv AS INTEGER, nf AS INTEGER, ibw() AS INTEGER, icst() AS INTEGER
+'----- the data the animation module (MWANIM.BAS) and the main one share. Per model slot m
+'----- (the second index, or the array's own index): the rest pose mx/my/mz, the faces, the
+'----- walk (afr = slot 0's frames, afr1 slot 1's; anf, acyc, acum), the idle clips (idm /
+'----- idm1, ibw, the clip tables, inc, nfid, the turning steps tcf/tfx/tfz); nv and nf are
+'----- the CURRENT model's (UseModel), nvm/nfm each slot's; nmod the slots loaded
+COMMON SHARED ovlSkin AS STRING, inc() AS INTEGER, nv AS INTEGER, nf AS INTEGER, ibw() AS INTEGER, icst() AS INTEGER
 COMMON SHARED icnt() AS INTEGER, ilp() AS INTEGER, icum() AS INTEGER, ilen() AS INTEGER, idm() AS INTEGER, iclp() AS INTEGER
-COMMON SHARED itm() AS SINGLE, iwt() AS SINGLE, ilst() AS INTEGER, nfid AS INTEGER, tcf() AS INTEGER, tcl AS INTEGER
+COMMON SHARED itm() AS SINGLE, iwt() AS SINGLE, ilst() AS INTEGER, nfid() AS INTEGER, tcf() AS INTEGER, tcl AS INTEGER
 COMMON SHARED tfx() AS SINGLE, tfz() AS SINGLE, mx() AS INTEGER, my() AS INTEGER, mz() AS INTEGER, prs() AS INTEGER
 COMMON SHARED kx() AS INTEGER, ky() AS INTEGER, kz() AS INTEGER, idlechk AS INTEGER, tph AS SINGLE, afr() AS INTEGER
-COMMON SHARED anf AS INTEGER, acyc AS INTEGER, acum() AS INTEGER, prr() AS INTEGER, ovlRot AS STRING, rx() AS INTEGER
+COMMON SHARED anf() AS INTEGER, acyc() AS INTEGER, acum() AS INTEGER, prr() AS INTEGER, ovlRot AS STRING, rx() AS INTEGER
 COMMON SHARED ry() AS INTEGER, rz() AS INTEGER, ord() AS INTEGER, rxs() AS INTEGER, rys() AS INTEGER, rzs() AS INTEGER
-COMMON SHARED ords() AS INTEGER
+COMMON SHARED ords() AS INTEGER, afr1() AS INTEGER, idm1() AS INTEGER, nvm() AS INTEGER, nfm() AS INTEGER, nmod AS INTEGER
+COMMON SHARED fa() AS Fac

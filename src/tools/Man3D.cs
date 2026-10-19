@@ -29,6 +29,7 @@ public class Man3D
         Color.FromArgb(0,170,170),    // 4 C  cyan
         Color.FromArgb(0,170,0),      // 5 N  green
         Color.FromArgb(0,0,0),        // 6 B  ink black (outline, same look as 0 on screen)
+        Color.FromArgb(0,0,170),      // 7 U  CGA blue (James's suit)
     };
     public const byte K = 0, O = 1, G = 2, L = 3, C = 4, N = 5, B = 6, T = 255;
 

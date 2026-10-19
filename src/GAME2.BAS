@@ -22,6 +22,13 @@ DECLARE SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
 DECLARE SUB ShadBlt (ss AS INTEGER, so AS LONG, tx AS INTEGER, ty AS INTEGER, rw AS INTEGER, rb AS INTEGER, pjx2 AS INTEGER, pjy2 AS INTEGER, blt$)
 DECLARE SUB ShadPCmp (bs AS INTEGER, bo AS INTEGER, tx AS INTEGER, ty AS INTEGER, rw AS INTEGER, rb AS INTEGER, bop$)
 DECLARE SUB ShadFbg (fbg%(), tx AS INTEGER, ty AS INTEGER, rw AS INTEGER, rb AS INTEGER)
+DECLARE SUB PGrab3 (a%(), m%(), bx%, by%, bw%, bh%)
+'----- the 3D man (GAME8, dark.ini man3d=1): in his rooms the watchers compose HIM
+'----- (his box, his art + mask from the last stand) and refresh HIS save-under
+DECLARE FUNCTION Man3dOn% ()
+DECLARE SUB Man3dBox (bx%, by%, bw%, bh%)
+DECLARE SUB Man3dFbg (tx%, ty%, rw%, rb%)
+DECLARE SUB C3dMark (s AS STRING)
 
 '----- shadow-door watchers (ALL rooms): warning light + pacing silhouette
 '----- per door, gated on the killer-schedule lookahead ("would walking
@@ -51,14 +58,24 @@ DIM SHARED sdwNxt(20) AS SINGLE, sdwDst$(20)
 '----- per-watcher "the strip under the standing player is stale" flag
 DIM SHARED sdwDty(20) AS INTEGER
 '----- the standing player composed INTO the watcher frames (his mask makes
-'----- it exact): PGrab copies the current facing's 31x31 GET pair here;
-'----- ShadTick re-shifts it to the byte phase of (pjx AND 3) once per stand
-'----- (sdwPLX/PLY track the shift position; sdwPNew = grab happened).
-'----- Shifted rows are 10 bytes (9 + even-pad), 31 rows = 155 ints each.
-DIM SHARED sdwPS(130) AS INTEGER, sdwPM(130) AS INTEGER
-DIM SHARED sdwPSh(160) AS INTEGER, sdwPMh(160) AS INTEGER
+'----- it exact): PGrab copies the current facing's 31x31 GET pair here (the
+'----- 3D man's: PGrab3, from GAME8 after each stand, his box up to 56 x 64);
+'----- ShadTick re-shifts it to the byte phase of (his box x AND 3) once per
+'----- stand (sdwPLX/PLY track the shift position; sdwPNew = grab happened).
+'----- His size: sdwPW x sdwPH pixels, sdwSRB bytes a GET row, shifted rows of
+'----- sdwDRB bytes (SRB + 1, even), his visible body columns sdwBo1..sdwBo2 of
+'----- the box -- the sprite's 31 x 31, 8, 10, 7..23. Far heap (DGROUP is full).
+'$DYNAMIC
+DIM SHARED sdwPS(0) AS INTEGER, sdwPM(0) AS INTEGER
+DIM SHARED sdwPSh(0) AS INTEGER, sdwPMh(0) AS INTEGER
+'$STATIC
 DIM SHARED sdwPRdy AS INTEGER, sdwPNew AS INTEGER
 DIM SHARED sdwPLX AS INTEGER, sdwPLY AS INTEGER
+DIM SHARED sdwPW AS INTEGER, sdwPH AS INTEGER, sdwSRB AS INTEGER, sdwDRB AS INTEGER, sdwBo1 AS INTEGER, sdwBo2 AS INTEGER
+'----- M3DUMP=3 (environment, testing the 3D man): every watcher paces as if the killer
+'----- were next door, and the screen is saved at the 3rd and 8th frame composed with him
+'----- in it (M3SHAD1/2.PIC)
+DIM SHARED sdwTst AS INTEGER, sdwTn AS INTEGER, sdwMv AS INTEGER
 '----- last-seen clock: cl moves on every action, and actions re-stamp the
 '----- player's (pre-light) fbg save-under over lit pools via face/PStand
 DIM SHARED sdwLCl AS SINGLE
@@ -407,6 +424,14 @@ END SUB
 
 '----- does the player's 31x31 box intersect rect x1..x2 / y1..y2? (np = nopl close-up)
 SUB OvPlayer (x1, y1, x2, y2, pjx2, pjy2, np, ov%)
+	DIM b1 AS INTEGER, b2 AS INTEGER, b3 AS INTEGER, b4 AS INTEGER
+	IF Man3dOn% THEN
+		ov% = 0
+		IF np = 1 THEN EXIT SUB
+		CALL Man3dBox(b1, b2, b3, b4)
+		IF b3 > 0 THEN IF x1 < b1 + b3 AND x2 >= b1 AND y1 < b2 + b4 AND y2 >= b2 THEN ov% = 1
+		EXIT SUB
+	END IF
 	ov% = 0
 	IF np = 1 THEN EXIT SUB
 	IF x1 < pjx2 + 31 AND x2 >= pjx2 AND y1 < pjy2 + 31 AND y2 >= pjy2 THEN ov% = 1
@@ -424,6 +449,22 @@ END SUB
 '----- fps counter (moved from GAME.BAS -- 64K ceiling): fpsc/fpst ride in COMMON
 SUB FpsTick
 	fpsc = fpsc + 1
+	'----- (M3DUMP=7, testing: the mouse moved 3 px every pass -- the cursor redrawn,
+	'----- the hover checks run -- and the rate logged as for 6)
+	'----- (M3DUMP=9 or 10, testing clicks: the mouse parked once at M3MX, M3MY -- then
+	'----- DOSBox-X AUTOTYPE presses the verb keys there)
+	IF sdwTst >= 9 AND sdwMv = 0 THEN
+		DIM mr9 AS RegType
+		sdwMv = 1
+		mr9.ax = 4: mr9.cx = VAL(ENVIRON$("M3MX")) * 2: mr9.dx = VAL(ENVIRON$("M3MY"))
+		CALL INTERRUPT(&H33, mr9, mr9)
+	END IF
+	IF sdwTst = 7 THEN
+		DIM mr AS RegType
+		sdwMv = (sdwMv + 3) MOD 480
+		mr.ax = 4: mr.cx = (40 + ABS(sdwMv - 240)) * 2: mr.dx = 60 + (sdwMv MOD 80)
+		CALL INTERRUPT(&H33, mr, mr)
+	END IF
 	fd! = TIMER - fpst
 	IF fd! < 0 OR fd! >= 2 THEN
 		fpst = TIMER
@@ -433,6 +474,12 @@ SUB FpsTick
 		IF fv! > 99999 THEN fv! = 99999
 		LOCATE 1, 35
 		PRINT USING "#####"; fv!;
+		'----- (M3DUMP=6, testing: the rate logged every 5 s, the game ended after four)
+		IF sdwTst = 6 OR sdwTst = 7 THEN
+			sdwTn = sdwTn + 1
+			IF sdwTn MOD 5 = 0 THEN CALL C3dMark("main loop" + STR$(INT(fv!)) + " passes a second")
+			IF sdwTn >= 21 THEN END
+		END IF
 		fpst = TIMER
 		fpsc = 0
 	END IF
@@ -720,7 +767,7 @@ SUB LoadConfig
 				IF k$ = "walkto" THEN wksen = tv
 				IF k$ = "intro" THEN inon = tv
 				IF k$ = "logo" THEN lgon = tv
-				IF k$ = "quickstart" THEN qkon = tv
+				IF k$ = "quickstart" THEN qkon = tv: IF VAL(v$) > 1 THEN qkon = VAL(v$)
 				IF k$ = "revive" THEN rvon = tv
 				IF k$ = "hitzone_look" AND tv = 1 THEN hzon$ = hzon$ + "l"
 				IF k$ = "hitzone_get" AND tv = 1 THEN hzon$ = hzon$ + "g"
@@ -803,11 +850,77 @@ SUB KillChk (q2$, w!, h9b!, t1b!, t2b!, t3b!, f3b!, kw%)
 	IF q2$ = "room4" AND w! > t3b! AND w! < f3b! THEN kw% = kw% OR 2
 END SUB
 
+'----- HovExit (GAME.BAS hovexit, exitcursor=1): the cursor shape for the exit hit
+'----- point nearest the mouse within hr px (1..4 = n s e w arrows, 0 = the pointer)
+'----- -- an exit is a hit point tagged w../e.. whose bs/cs conditions hold. Integers
+'----- only, and the box test first (two compares) so the rest runs for a few points:
+'----- in floats every point cost a 486SX ~0.8 ms, 160 ms a mouse move in a busy room
+SUB HovExit (mx%, my%, hr%, ox%(), oy%(), oi%(), tg$(), bs!(), cs!(), ob!(), nshp!)
+	DIM i AS INTEGER, o AS INTEGER, dx AS INTEGER, dy AS INTEGER, b AS INTEGER, d AS LONG, best AS LONG
+	DIM c AS STRING * 1, hd AS STRING * 1
+	best = CLNG(hr%) * hr% + 1: hd = " "
+	FOR i = 1 TO 257
+		IF oy%(i) = 0 THEN EXIT FOR
+		dx = mx% - ox%(i)
+		IF dx < -hr% OR dx > hr% THEN GOTO hxnx
+		dy = my% - oy%(i)
+		IF dy < -hr% OR dy > hr% THEN GOTO hxnx
+		o = oi%(i)
+		c = tg$(o)
+		IF c <> "w" AND c <> "e" THEN GOTO hxnx
+		b = bs!(o): IF b <> 0 THEN IF ob!(b) <> 1 THEN GOTO hxnx
+		b = cs!(o): IF b <> 0 THEN IF ob!(b) <> 0 THEN GOTO hxnx
+		d = CLNG(dx) * dx + CLNG(dy) * dy
+		IF d < best THEN best = d: hd = RIGHT$(tg$(o), 1)
+hxnx:
+	NEXT
+	nshp! = 0
+	IF best <= CLNG(hr%) * hr% THEN nshp! = INSTR("nsew", hd)
+END SUB
+
+'----- MSnap (GAME.BAS msnap, mousesnap=N): a click snaps to the nearest hit point of its
+'----- verb k$ within sr px (a circle), unless one of that verb is right under the cursor's
+'----- cell (b, a); stops at the first empty entry, as the action scan does. Integers
+'----- only, box test first: in floats this took a 486SX ~220 ms, twice a click
+SUB MSnap (mx%, my%, sr%, b!, a!, k$, ox%(), oy%(), oi%(), ky$())
+	DIM i AS INTEGER, bi AS INTEGER, ai AS INTEGER, dx AS INTEGER, dy AS INTEGER, sx AS INTEGER, sy AS INTEGER
+	DIM d AS LONG, best AS LONG
+	bi = b!: ai = a!
+	FOR i = 1 TO 257
+		IF oy%(i) = 0 THEN EXIT FOR
+		IF ox%(i) = bi THEN IF oy%(i) = ai THEN IF ky$(oi%(i)) = k$ THEN EXIT SUB
+	NEXT
+	best = CLNG(sr%) * sr% + 1: sx = -1
+	FOR i = 1 TO 257
+		IF oy%(i) = 0 THEN EXIT FOR
+		dx = mx% - ox%(i)
+		IF dx < -sr% OR dx > sr% THEN GOTO msnx
+		dy = my% - oy%(i)
+		IF dy < -sr% OR dy > sr% THEN GOTO msnx
+		IF ky$(oi%(i)) <> k$ THEN GOTO msnx
+		d = CLNG(dx) * dx + CLNG(dy) * dy
+		IF d < best THEN best = d: sx = ox%(i): sy = oy%(i)
+msnx:
+	NEXT
+	IF sx >= 0 THEN b! = sx: a! = sy
+END SUB
+
+'----- HitNext (GAME.BAS action): the first hit point from s at exactly (b, a), 0 = none
+'----- before the first empty entry
+FUNCTION HitNext% (s%, b%, a%, ox%(), oy%())
+	DIM i AS INTEGER
+	HitNext% = 0
+	FOR i = s% TO 257
+		IF oy%(i) = 0 THEN EXIT FUNCTION
+		IF ox%(i) = b% THEN IF oy%(i) = a% THEN HitNext% = i: EXIT FUNCTION
+	NEXT
+END FUNCTION
+
 '----- CursorPats: build the 5 software-cursor pixel grids (0=NW pointer,
 '----- 1=up 2=down 3=right 4=left exit arrows) into px/py/pc/npix.
 '----- Moved VERBATIM from GAME.BAS setgrid/grdnw..grdlf (64K ceiling).
 '----- X = outline pixel (pc 1), 0 = fill pixel (pc 2), . = clear
-SUB CursorPats (px!(), py!(), pc!(), npix!())
+SUB CursorPats (px%(), py%(), pc%(), npix%())
 	DIM ar$(15)
 	FOR s% = 0 TO 4
 		FOR mr% = 0 TO 15
@@ -861,11 +974,11 @@ SUB CursorPats (px!(), py!(), pc!(), npix!())
 		FOR mr% = 0 TO 15
 			FOR mc% = 0 TO 15
 				mch$ = MID$(ar$(mr%), mc% + 1, 1)
-				IF mch$ = "X" THEN px(s%, npc%) = mc%: py(s%, npc%) = mr%: pc(s%, npc%) = 1: npc% = npc% + 1
-				IF mch$ = "0" THEN px(s%, npc%) = mc%: py(s%, npc%) = mr%: pc(s%, npc%) = 2: npc% = npc% + 1
+				IF mch$ = "X" THEN px%(s%, npc%) = mc%: py%(s%, npc%) = mr%: pc%(s%, npc%) = 1: npc% = npc% + 1
+				IF mch$ = "0" THEN px%(s%, npc%) = mc%: py%(s%, npc%) = mr%: pc%(s%, npc%) = 2: npc% = npc% + 1
 			NEXT
 		NEXT
-		npix(s%) = npc%
+		npix%(s%) = npc%
 	NEXT
 END SUB
 
@@ -877,6 +990,9 @@ END SUB
 '----- ends sit outside the lit wedge) + 6 count-prefixed arrays: idle (PSET),
 '----- lit (PSET), keep (AND), outside-restore (OR), shUp, shDn (AND).
 SUB ShadLoad (sdt%())
+	'----- the player pair's buffers (far heap: a secondary module's DIMs never run, so
+	'----- they are sized here, once, at loadgame)
+	REDIM sdwPS(460) AS INTEGER, sdwPM(460) AS INTEGER, sdwPSh(520) AS INTEGER, sdwPMh(520) AS INTEGER
 	DIM sv AS INTEGER, sn2 AS INTEGER, si2 AS INTEGER, sof AS INTEGER, sar AS INTEGER, sdi AS INTEGER
 	DIM fb AS INTEGER, k AS INTEGER, n AS INTEGER, m AS INTEGER, p AS INTEGER, srcLen AS LONG, s AS STRING, tag AS STRING
 	sdwOn = 0: sdwN = 0
@@ -980,6 +1096,7 @@ END SUB
 '----- whose room matches into the active set (no art is stamped: doorways
 '----- stay baked; watchers draw only when they arm)
 SUB ShadRoom (q2$)
+	sdwTst = VAL(ENVIRON$("M3DUMP"))
 	DIM sdi AS INTEGER
 	sdwHave = 0: sdwNAct = 0
 	IF sdwOn = 0 THEN EXIT SUB
@@ -1019,7 +1136,16 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 	'----- the strip under him stays stale (he covers it) and is repainted
 	'----- via sdwDty once he steps clear
 	DIM po AS INTEGER, sl2 AS LONG, co AS INTEGER, ai AS INTEGER
+	DIM ppx AS INTEGER, ppy AS INTEGER, pw3 AS INTEGER, ph3 AS INTEGER
 	IF sdwOn = 0 OR sdwHave = 0 THEN EXIT SUB
+	'----- where he is: the sprite's box at (pjx, pjy), or the 3D man's last stand box
+	'----- (none while he is not drawn)
+	IF Man3dOn% THEN
+		CALL Man3dBox(ppx, ppy, pw3, ph3)
+		IF pw3 = 0 THEN ppx = -999: ppy = -999
+	ELSE
+		ppx = CINT(pjxv!): ppy = CINT(pjyv!)
+	END IF
 	'----- an action just ran (cl moved): face/PStand may have stamped a
 	'----- STALE save-under box over a lit pool -- at his NEW stand, or at
 	'----- the OLD one a walk just left (sdwPLX/PLY still hold it; the
@@ -1031,8 +1157,8 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 		FOR ai = 1 TO sdwNAct
 			sdi = sdwAct(ai)
 			po = 0
-			IF pjxv! < sdwTX(sdi) + sdwTW(sdi) AND pjxv! + 31 > sdwTX(sdi) AND pjyv! < sdwTY(sdi) + sdwTH(sdi) AND pjyv! + 31 > sdwTY(sdi) THEN po = 1
-			IF sdwPLX < sdwTX(sdi) + sdwTW(sdi) AND sdwPLX + 31 > sdwTX(sdi) AND sdwPLY < sdwTY(sdi) + sdwTH(sdi) AND sdwPLY + 31 > sdwTY(sdi) THEN po = 1
+			IF ppx < sdwTX(sdi) + sdwTW(sdi) AND ppx + sdwPW > sdwTX(sdi) AND ppy < sdwTY(sdi) + sdwTH(sdi) AND ppy + sdwPH > sdwTY(sdi) THEN po = 1
+			IF sdwPLX < sdwTX(sdi) + sdwTW(sdi) AND sdwPLX + sdwPW > sdwTX(sdi) AND sdwPLY < sdwTY(sdi) + sdwTH(sdi) AND sdwPLY + sdwPH > sdwTY(sdi) THEN po = 1
 			IF po = 1 THEN
 				IF sdwArm(sdi) = 2 THEN
 					sdwNxt(sdi) = 0
@@ -1044,8 +1170,8 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 	END IF
 	'----- (re)shift the player pair when a new grab arrived or he moved
 	'----- (positions only change between ticks -- walks block the idle loop)
-	IF sdwPNew = 1 OR (sdwPRdy = 1 AND (sdwPLX <> CINT(pjxv!) OR sdwPLY <> CINT(pjyv!))) THEN
-		sdwPLX = CINT(pjxv!): sdwPLY = CINT(pjyv!)
+	IF sdwPNew = 1 OR (sdwPRdy = 1 AND (sdwPLX <> ppx OR sdwPLY <> ppy)) THEN
+		sdwPLX = ppx: sdwPLY = ppy
 		CALL PShiftB(sdwPLX AND 3)
 		sdwPNew = 0
 	END IF
@@ -1059,6 +1185,7 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 		'----- far room), 2 = killer IS there. Probing future arrival steps is
 		'----- exact: the schedule is a table.
 		sdwWant(sdi) = 0
+		IF sdwTst = 3 THEN sdwWant(sdi) = 2: sdwOfs(sdi) = 0: GOTO sdtst
 		IF klon <> 0 THEN
 			'----- the lit-curtain endgame owns room4: never spoil it
 			IF sdwDst$(sdi) <> "room4" OR ob43% <> 1 THEN
@@ -1079,9 +1206,10 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 				END IF
 			END IF
 		END IF
+		sdtst:
 		'----- player overlap: draws still happen, banded around him (ShadBlt)
 		po = 0
-		IF pjxv! < sdwTX(sdi) + sdwTW(sdi) AND pjxv! + 31 > sdwTX(sdi) AND pjyv! < sdwTY(sdi) + sdwTH(sdi) AND pjyv! + 31 > sdwTY(sdi) THEN po = 1
+		IF ppx < sdwTX(sdi) + sdwTW(sdi) AND ppx + sdwPW > sdwTX(sdi) AND ppy < sdwTY(sdi) + sdwTH(sdi) AND ppy + sdwPH > sdwTY(sdi) THEN po = 1
 		'----- cursor overlap: the mouse cursor is a SOFTWARE sprite (drawcur/
 		'----- erasecur in GAME.BAS, 16x10 glyph + save-under) -- a blit under
 		'----- it stamps it out, and its own restore later stamps stale art.
@@ -1253,7 +1381,7 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 		'----- composed background (so any later engine erase stamps CURRENT
 		'----- pixels, never a pre-light box), THEN compose him into the frame
 		IF po = 1 AND sdwPRdy = 1 THEN
-			CALL ShadFbg(fbg%(), sdwTX(sdi), sdwTY(sdi), rw, rb)
+			IF Man3dOn% THEN CALL Man3dFbg(sdwTX(sdi), sdwTY(sdi), rw, rb) ELSE CALL ShadFbg(fbg%(), sdwTX(sdi), sdwTY(sdi), rw, rb)
 			CALL ShadPCmp(bs, bo, sdwTX(sdi), sdwTY(sdi), rw, rb, bop$)
 		END IF
 		GOSUB curoff
@@ -1261,8 +1389,12 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 		IF po = 1 AND sdwPRdy = 1 THEN
 			'----- he's IN the frame: full-rect blit, no bands
 			CALL ShadBlt(bs, sl2, sdwTX(sdi), sdwTY(sdi), rw, rb, -99, -99, blt$)
+			IF sdwTst = 3 THEN
+				sdwTn = sdwTn + 1
+				IF sdwTn = 3 OR sdwTn = 8 THEN DEF SEG = &HB800: BSAVE "M3SHAD" + LTRIM$(STR$(1 - (sdwTn = 8))) + ".PIC", 0, 16384: DEF SEG
+			END IF
 		ELSE
-			CALL ShadBlt(bs, sl2, sdwTX(sdi), sdwTY(sdi), rw, rb, CINT(pjxv!), CINT(pjyv!), blt$)
+			CALL ShadBlt(bs, sl2, sdwTX(sdi), sdwTY(sdi), rw, rb, ppx, ppy, blt$)
 		END IF
 		sdwDty(sdi) = po
 		sdnext:
@@ -1281,13 +1413,13 @@ SUB ShadTick (q2$, clv!, h9b!, t1b!, t2b!, t3b!, ob43%, pjxv!, pjyv!, bv!, av!, 
 		DEF SEG = VARSEG(bop$)
 		CALL ABSOLUTE(BYVAL VARSEG(sdt%(so2)), BYVAL VARPTR(sdt%(so2)), BYVAL bs, BYVAL bo, BYVAL rw, BYVAL rb, BYVAL rb, BYVAL rb, BYVAL 0, SADD(bop$))
 		DEF SEG
-		CALL ShadFbg(fbg%(), sdwTX(sdi), sdwTY(sdi), rw, rb)
+		IF Man3dOn% THEN CALL Man3dFbg(sdwTX(sdi), sdwTY(sdi), rw, rb) ELSE CALL ShadFbg(fbg%(), sdwTX(sdi), sdwTY(sdi), rw, rb)
 		CALL ShadPCmp(bs, bo, sdwTX(sdi), sdwTY(sdi), rw, rb, bop$)
 		sl2 = bo: IF sl2 < 0 THEN sl2 = sl2 + 65536
 		CALL ShadBlt(bs, sl2, sdwTX(sdi), sdwTY(sdi), rw, rb, -99, -99, blt$)
 	ELSE
 		sl2 = VARPTR(sdt%(so2)): IF sl2 < 0 THEN sl2 = sl2 + 65536
-		CALL ShadBlt(VARSEG(sdt%(so2)), sl2, sdwTX(sdi), sdwTY(sdi), sdwTH(sdi), sdwRB(sdi), CINT(pjxv!), CINT(pjyv!), blt$)
+		CALL ShadBlt(VARSEG(sdt%(so2)), sl2, sdwTX(sdi), sdwTY(sdi), sdwTH(sdi), sdwRB(sdi), ppx, ppy, blt$)
 	END IF
 	RETURN
 	'----- local: first real draw this pass while the software cursor overlaps
@@ -1310,8 +1442,8 @@ SUB ShadBlt (ss AS INTEGER, so AS LONG, tx AS INTEGER, ty AS INTEGER, rw AS INTE
 	DIM rx1 AS INTEGER, nr AS INTEGER, b2 AS LONG, ov AS INTEGER
 	rx1 = tx \ 4
 	ov = 1
-	IF pjx2 + 30 < tx OR pjx2 > tx + rb * 4 - 1 THEN ov = 0
-	IF pjy2 + 30 < ty OR pjy2 > ty + rw - 1 THEN ov = 0
+	IF pjx2 + sdwPW - 1 < tx OR pjx2 > tx + rb * 4 - 1 THEN ov = 0
+	IF pjy2 + sdwPH - 1 < ty OR pjy2 > ty + rw - 1 THEN ov = 0
 	DEF SEG = VARSEG(blt$)
 	IF ov = 0 THEN
 		b2 = so: IF b2 > 32767 THEN b2 = b2 - 65536
@@ -1323,9 +1455,9 @@ SUB ShadBlt (ss AS INTEGER, so AS LONG, tx AS INTEGER, ty AS INTEGER, rw AS INTE
 	'----- not the whole box -- a skip as wide as the box starves small pools
 	'----- (the north fan) that sit almost entirely inside it
 	oy1 = pjy2: IF oy1 < ty THEN oy1 = ty
-	oy2 = pjy2 + 30: IF oy2 > ty + rw - 1 THEN oy2 = ty + rw - 1
-	cb1 = (pjx2 + 7) \ 4: IF cb1 < rx1 THEN cb1 = rx1
-	cb2 = (pjx2 + 23) \ 4: IF cb2 > rx1 + rb - 1 THEN cb2 = rx1 + rb - 1
+	oy2 = pjy2 + sdwPH - 1: IF oy2 > ty + rw - 1 THEN oy2 = ty + rw - 1
+	cb1 = (pjx2 + sdwBo1) \ 4: IF cb1 < rx1 THEN cb1 = rx1
+	cb2 = (pjx2 + sdwBo2) \ 4: IF cb2 > rx1 + rb - 1 THEN cb2 = rx1 + rb - 1
 	nr = oy1 - ty
 	IF nr > 0 THEN
 		b2 = so: IF b2 > 32767 THEN b2 = b2 - 65536
@@ -1361,11 +1493,11 @@ SUB ShadPCmp (bs AS INTEGER, bo AS INTEGER, tx AS INTEGER, ty AS INTEGER, rw AS 
 	jx = sdwPLY - ty
 	sv2 = 0
 	IF jx < 0 THEN sv2 = -jx: jx = 0
-	so2 = 31 - sv2
+	so2 = sdwPH - sv2
 	IF jx + so2 > rw THEN so2 = rw - jx
 	IF so2 <= 0 THEN EXIT SUB
 	kw2 = sdwPLX \ 4 - tx \ 4
-	kw3 = 0: si3 = 9
+	kw3 = 0: si3 = sdwSRB + 1
 	IF kw2 < 0 THEN kw3 = -kw2: si3 = si3 - kw3: kw2 = 0
 	IF kw2 + si3 > rb THEN si3 = rb - kw2
 	IF si3 <= 0 THEN EXIT SUB
@@ -1374,13 +1506,13 @@ SUB ShadPCmp (bs AS INTEGER, bo AS INTEGER, tx AS INTEGER, ty AS INTEGER, rw AS 
 	IF d2 > 32767 THEN d2 = d2 - 65536
 	DEF SEG = VARSEG(bop$)
 	sl2 = VARPTR(sdwPMh(0)): IF sl2 < 0 THEN sl2 = sl2 + 65536
-	sl2 = sl2 + sv2 * 10 + kw3
+	sl2 = sl2 + sv2 * sdwDRB + kw3
 	IF sl2 > 32767 THEN sl2 = sl2 - 65536
-	CALL ABSOLUTE(BYVAL VARSEG(sdwPMh(0)), BYVAL CINT(sl2), BYVAL bs, BYVAL CINT(d2), BYVAL so2, BYVAL si3, BYVAL 10, BYVAL rb, BYVAL 1, SADD(bop$))
+	CALL ABSOLUTE(BYVAL VARSEG(sdwPMh(0)), BYVAL CINT(sl2), BYVAL bs, BYVAL CINT(d2), BYVAL so2, BYVAL si3, BYVAL sdwDRB, BYVAL rb, BYVAL 1, SADD(bop$))
 	sl2 = VARPTR(sdwPSh(0)): IF sl2 < 0 THEN sl2 = sl2 + 65536
-	sl2 = sl2 + sv2 * 10 + kw3
+	sl2 = sl2 + sv2 * sdwDRB + kw3
 	IF sl2 > 32767 THEN sl2 = sl2 - 65536
-	CALL ABSOLUTE(BYVAL VARSEG(sdwPSh(0)), BYVAL CINT(sl2), BYVAL bs, BYVAL CINT(d2), BYVAL so2, BYVAL si3, BYVAL 10, BYVAL rb, BYVAL 2, SADD(bop$))
+	CALL ABSOLUTE(BYVAL VARSEG(sdwPSh(0)), BYVAL CINT(sl2), BYVAL bs, BYVAL CINT(d2), BYVAL so2, BYVAL si3, BYVAL sdwDRB, BYVAL rb, BYVAL 2, SADD(bop$))
 	DEF SEG
 END SUB
 
@@ -1396,14 +1528,14 @@ SUB ShadFbg (fbg%(), tx AS INTEGER, ty AS INTEGER, rw AS INTEGER, rb AS INTEGER)
 	DIM sh AS INTEGER, c1 AS INTEGER, fi AS INTEGER
 	DIM b0 AS INTEGER, b1 AS INTEGER, ob AS INTEGER
 	DIM shl2 AS INTEGER, shr2 AS INTEGER
-	DIM bofs AS LONG, t2 AS LONG, t3 AS LONG
+	DIM bofs AS LONG, t2 AS LONG, t3 AS LONG, bi AS LONG
 	c1 = sdwPLX \ 4 - tx \ 4
 	IF c1 < 0 THEN EXIT SUB
-	IF c1 + 9 > rb THEN EXIT SUB
+	IF c1 + sdwSRB + 1 > rb THEN EXIT SUB
 	r1 = ty - sdwPLY
 	IF r1 < 0 THEN r1 = 0
 	r2 = ty + rw - 1 - sdwPLY
-	IF r2 > 30 THEN r2 = 30
+	IF r2 > sdwPH - 1 THEN r2 = sdwPH - 1
 	IF r2 < r1 THEN EXIT SUB
 	sh = sdwPLX AND 3
 	shl2 = 1
@@ -1417,14 +1549,16 @@ SUB ShadFbg (fbg%(), tx AS INTEGER, ty AS INTEGER, rw AS INTEGER, rb AS INTEGER)
 	FOR r = r1 TO r2
 		t2 = bofs + (sdwPLY + r - ty) * CLNG(rb) + c1
 		b0 = PEEK(t2)
-		FOR k = 0 TO 7
+		FOR k = 0 TO sdwSRB - 1
 			b1 = PEEK(t2 + k + 1)
 			ob = ((b0 * shl2) AND 255) OR (b1 \ shr2)
 			b0 = b1
-			fi = 2 + r * 4 + k \ 2
+			'----- byte 4 + r * SRB + k of the GET array (2 header words, then the rows)
+			bi = 4 + CLNG(r) * sdwSRB + k
+			fi = bi \ 2
 			t3 = fbg%(fi)
 			IF t3 < 0 THEN t3 = t3 + 65536
-			IF k AND 1 THEN
+			IF bi AND 1 THEN
 				t3 = (t3 AND 255) + CLNG(ob) * 256
 			ELSE
 				t3 = (t3 AND 65280) + ob
@@ -1441,6 +1575,8 @@ END SUB
 '----- changes (a 17-arg call, but only on facing changes).
 SUB PGrab (lf2$, fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%())
 	DIM i AS INTEGER
+	IF Man3dOn% THEN EXIT SUB
+	sdwPW = 31: sdwPH = 31: sdwSRB = 8: sdwDRB = 10: sdwBo1 = 7: sdwBo2 = 23
 	FOR i = 0 TO 125
 		SELECT CASE lf2$
 			CASE "2": sdwPS(i) = fd%(i): sdwPM(i) = mfd%(i)
@@ -1457,6 +1593,18 @@ SUB PGrab (lf2$, fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl
 	sdwPNew = 1
 END SUB
 
+'----- PGrab3: the 3D man's pair (GAME8 after each stand draw: a%() art, m%() mask,
+'----- GET arrays of his bw x bh box at bx, by) -- his sizes for the watchers
+SUB PGrab3 (a%(), m%(), bx%, by%, bw%, bh%)
+	DIM i AS INTEGER, n AS INTEGER
+	sdwPW = bw%: sdwPH = bh%: sdwSRB = (bw% * 2 + 7) \ 8
+	sdwDRB = sdwSRB + 1: IF sdwDRB AND 1 THEN sdwDRB = sdwDRB + 1
+	sdwBo1 = 3: sdwBo2 = bw% - 4
+	n = 2 + (CLNG(sdwSRB) * bh% + 1) \ 2
+	FOR i = 0 TO n: sdwPS(i) = a%(i): sdwPM(i) = m%(i): NEXT
+	sdwPNew = 1
+END SUB
+
 '----- PShiftB: rebuild the byte-phase-shifted player pair for the current
 '----- stand position (shift = pjx AND 3). Source = 31x31 GET arrays (2
 '----- header ints + 8 bytes/row); dest = headerless 10-byte rows (9 data +
@@ -1466,7 +1614,7 @@ SUB PShiftB (sh AS INTEGER)
 	DIM r AS INTEGER, k AS INTEGER, bi AS INTEGER, v AS INTEGER
 	DIM lomask AS INTEGER, shr2 AS INTEGER, shl2 AS INTEGER
 	DIM pb AS INTEGER, cb AS INTEGER, fillm AS INTEGER, fills AS INTEGER
-	DIM db AS INTEGER, si AS INTEGER, t2 AS LONG
+	DIM db AS INTEGER, si AS INTEGER, t2 AS LONG, sbi AS LONG
 	shr2 = 1
 	FOR k = 1 TO sh * 2
 		shr2 = shr2 * 2
@@ -1474,18 +1622,18 @@ SUB PShiftB (sh AS INTEGER)
 	lomask = shr2 - 1
 	shl2 = 256 \ shr2
 	fillm = 255: fills = 0
-	FOR r = 0 TO 30
+	FOR r = 0 TO sdwPH - 1
 		pb = fillm: cb = fills
-		FOR k = 0 TO 9
-			'----- source byte k of this row (8 real bytes, then fill).
+		FOR k = 0 TO sdwDRB - 1
+			'----- source byte k of this row (SRB real bytes, then fill).
 			'----- UNSIGNED split via LONG: QB's \ truncates toward zero, so
 			'----- -1 \ 256 = 0 -- the high byte of a negative int must be
 			'----- extracted after a +65536 wrap or FF reads as 00
-			IF k < 8 THEN
-				si = 2 + r * 4 + k \ 2
-				t2 = sdwPM(si)
+			IF k < sdwSRB THEN
+				sbi = 4 + CLNG(r) * sdwSRB + k
+				t2 = sdwPM(sbi \ 2)
 				IF t2 < 0 THEN t2 = t2 + 65536
-				IF k AND 1 THEN v = t2 \ 256 ELSE v = t2 AND 255
+				IF sbi AND 1 THEN v = t2 \ 256 ELSE v = t2 AND 255
 			ELSE
 				v = 255
 			END IF
@@ -1493,7 +1641,7 @@ SUB PShiftB (sh AS INTEGER)
 			IF sh = 0 THEN db = 0
 			db = db OR (v \ shr2)
 			pb = v
-			bi = r * 5 + k \ 2
+			bi = r * (sdwDRB \ 2) + k \ 2
 			IF k AND 1 THEN
 				'----- LONG for the high byte: db * 256 overflows INTEGER for
 				'----- db >= 128 (error 6 was being eaten by errhand, leaving
@@ -1506,12 +1654,12 @@ SUB PShiftB (sh AS INTEGER)
 			END IF
 		NEXT
 		pb = 0
-		FOR k = 0 TO 9
-			IF k < 8 THEN
-				si = 2 + r * 4 + k \ 2
-				t2 = sdwPS(si)
+		FOR k = 0 TO sdwDRB - 1
+			IF k < sdwSRB THEN
+				sbi = 4 + CLNG(r) * sdwSRB + k
+				t2 = sdwPS(sbi \ 2)
 				IF t2 < 0 THEN t2 = t2 + 65536
-				IF k AND 1 THEN v = t2 \ 256 ELSE v = t2 AND 255
+				IF sbi AND 1 THEN v = t2 \ 256 ELSE v = t2 AND 255
 			ELSE
 				v = 0
 			END IF
@@ -1519,7 +1667,7 @@ SUB PShiftB (sh AS INTEGER)
 			IF sh = 0 THEN db = 0
 			db = db OR (v \ shr2)
 			pb = v
-			bi = r * 5 + k \ 2
+			bi = r * (sdwDRB \ 2) + k \ 2
 			IF k AND 1 THEN
 				t2 = CLNG(db) * 256 + (sdwPSh(bi) AND 255)
 				IF t2 > 32767 THEN t2 = t2 - 65536

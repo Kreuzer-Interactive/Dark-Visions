@@ -26,6 +26,20 @@
 '----- 4 meta ints per overlay (x, y, pct start, msk start; 0 = no mask), frame data
 '----- packed after -- re-PUT every overlay whose box intersects the player's 31x31.
 DECLARE SUB OvTop (px!, py!, ovf%())
+DECLARE SUB OvTopBox (bx%, by%, bw%, bh%, ovf%())
+DECLARE SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
+DECLARE SUB PStepP (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
+'----- the 3D man (GAME8, dark.ini man3d=1): in his rooms PStand and PStepP draw him
+'----- instead of the sprite; the game's positions and facings stay the sprite's
+DECLARE FUNCTION Man3dOn% ()
+DECLARE SUB Man3dStand (d$, px!, py!, ovf%())
+DECLARE SUB Man3dBox (bx%, by%, bw%, bh%)
+DECLARE SUB Man3dSBox (bx%, by%, bw%, bh%)
+DECLARE SUB Man3dStep (x!, y!, ofs%, j%, k%, ovf%())
+DECLARE SUB Man3dStepShow ()
+DECLARE FUNCTION Man3dSubs% (sdur!)
+DECLARE FUNCTION Man3dWait! ()
+DECLARE SUB Man3dStepOff ()
 
 '----- walk-box floor pathfinding (ROOMx.BOX). See LoadBoxes below.
 DECLARE SUB LoadBoxes (rm$, bxa%())
@@ -47,13 +61,18 @@ DECLARE SUB WalkFloor (tx!, ty!, px!, py!, sfrq!, bxa%(), cwa%(), cmwa%(), cwb%(
 DIM SHARED wfb%
 
 SUB OvTop (px!, py!, ovf%())
+	CALL OvTopBox(CINT(px!), CINT(py!), 31, 31, ovf%())
+END SUB
+
+'----- OvTopBox: OvTop for any box (the 3D man's varies with his pose and depth)
+SUB OvTopBox (bx%, by%, bw%, bh%, ovf%())
 	IF ovf%(0) < 1 THEN EXIT SUB
 	FOR oi% = 1 TO ovf%(0)
 		om% = 1 + (oi% - 1) * 4
 		ox% = ovf%(om%): oy% = ovf%(om% + 1)
 		os% = ovf%(om% + 2)
 		ow% = ovf%(os%) \ 2: oh% = ovf%(os% + 1)
-		IF ox% < px! + 31 AND ox% + ow% > px! AND oy% < py! + 31 AND oy% + oh% > py! THEN
+		IF ox% < bx% + bw% AND ox% + ow% > bx% AND oy% < by% + bh% AND oy% + oh% > by% THEN
 			IF ovf%(om% + 3) > 0 THEN
 				PUT (ox%, oy%), ovf%(ovf%(om% + 3)), AND
 				PUT (ox%, oy%), ovf%(os%), OR
@@ -65,6 +84,11 @@ SUB OvTop (px!, py!, ovf%())
 END SUB
 
 SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%(), ovf%())
+	IF Man3dOn% THEN
+		CALL Man3dStand(d$, px!, py!, ovf%())
+		IF d$ <> "" THEN CALL Man3dBox(bx%, by%, bw%, bh%): CALL OvTopBox(bx%, by%, bw%, bh%, ovf%())
+		EXIT SUB
+	END IF
 	PUT (px!, py!), fbg%(0), PSET
 	IF nopl! = 1 THEN EXIT SUB
 	IF d$ = "4" THEN PUT (px!, py!), mfl%(0), AND: PUT (px!, py!), fl%(0), OR
@@ -79,6 +103,7 @@ SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mf
 END SUB
 
 SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
+	CALL Man3dStepOff
 	GET (x!, y!)-(x! + 30, y! + 30), wbg%(0)
 	IF fb% = 0 THEN
 		PUT (x!, y!), mwa%(ofs%), AND: PUT (x!, y!), wa%(ofs%), OR
@@ -89,6 +114,25 @@ SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%()
 	SOUND sfrq!, .1
 	FOR j% = 1 TO 2: SOUND 32676, sdur!: NEXT
 	PUT (x!, y!), wbg%(0), PSET
+END SUB
+
+'----- PStepP: the PLAYER's walk step (WalkSeg, walkTo): the 3D man's frame in his
+'----- rooms (the same pacing sounds), else PStep with the sprite. The door, climb
+'----- and killer walks keep calling PStep with their own art
+SUB PStepP (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
+	IF Man3dOn% = 0 THEN CALL PStep(x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%()): EXIT SUB
+	'----- (the 3D man: the step in as many frames as fit its length, his feet sliding
+	'----- along it, each drawn while the note before it plays (the click after the first);
+	'----- he stays drawn after it -- the next frame or the stand replaces him)
+	k% = Man3dSubs%(sdur!)
+	FOR j% = 1 TO k%
+		CALL Man3dStep(x!, y!, ofs%, j%, k%, ovf%())
+		CALL Man3dStepShow
+		CALL Man3dSBox(bx%, by%, bw%, bh%)
+		CALL OvTopBox(bx%, by%, bw%, bh%, ovf%())
+		IF j% = 1 THEN SOUND sfrq!, .1
+		SOUND 32676, Man3dWait!
+	NEXT
 END SUB
 
 SUB LoadWalks (cwa%(), cmwa%(), cwb%(), cmwb%())
@@ -158,20 +202,20 @@ SUB walkTo (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(),
 		END IF
 		px! = px! + SGN(tx! - px!) * 3
 		py! = py! + SGN(ty! - py!) * 2
-		CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
+		CALL PStepP(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 		wfb% = 1 - wfb%
 	WEND
 	WHILE px! <> tx!
 		'----- 4px stride at down-walk cadence = same speed, step sound in rhythm
 		IF tx! > px! THEN d% = 2 ELSE d% = 3
 		IF ABS(tx! - px!) <= 3 THEN px! = tx! ELSE px! = px! + SGN(tx! - px!) * 4
-		CALL PStep(px!, py!, wfb%, sfrq!, 1.12, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
+		CALL PStepP(px!, py!, wfb%, sfrq!, 1.12, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 		wfb% = 1 - wfb%
 	WEND
 	WHILE py! <> ty!
 		IF ty! > py! THEN d% = 0: sd! = 1.2 ELSE d% = 1: sd! = 1.4
 		IF ABS(ty! - py!) <= 2 THEN py! = ty! ELSE py! = py! + SGN(ty! - py!) * 2
-		CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
+		CALL PStepP(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 		wfb% = 1 - wfb%
 	WEND
 END SUB
@@ -457,7 +501,7 @@ SUB WalkSeg (tx!, ty!, px!, py!, sfrq!, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%()
 	END IF
 	FOR s% = 1 TO ns%
 		px! = px! + dx! / ns%: py! = py! + dy! / ns%
-		CALL PStep(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
+		CALL PStepP(px!, py!, wfb%, sfrq!, sd!, d% * 151, cwa%(), cmwa%(), cwb%(), cmwb%(), wbg%(), ovf%())
 		wfb% = 1 - wfb%
 	NEXT
 	px! = tx!: py! = ty!

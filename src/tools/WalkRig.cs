@@ -51,7 +51,7 @@ public class WalkRig {
         Pivot[0] = new double[] { 0, YofH(96), zc };
         Pivot[1] = new double[] { 0, YofH(108), zc };
         Pivot[2] = new double[] { 0, YofH(157), zc };
-        bool[] got = new bool[13];
+        bool[] got = new bool[13]; double[] pivHi = new double[13];
         foreach (List<int> pc in Pieces()) {
             double lo = 1e9, hi = -1e9, xc = 0; foreach (int i in pc) { lo = Math.Min(lo, H(i)); hi = Math.Max(hi, H(i)); xc += X[i]; } xc /= pc.Count;
             bool side = Math.Abs(xc) > 1.5 * UPC; int s = xc < 0 ? 0 : 1;   // 0 = his left (x < 0), 1 = right
@@ -62,10 +62,16 @@ public class WalkRig {
             else if (side && Math.Abs(xc) > 7 * UPC && lo >= 110) { what = "upper arm"; bone = 9 + 2 * s; }
             else if (side && Math.Abs(xc) > 7 * UPC && hi <= 130) { what = "forearm"; bone = 10 + 2 * s; }
             else if (lo >= 100) { what = "torso"; bone = 1; }
+            else if (!side && hi >= 130) { what = "torso + pelvis"; bone = 0; }   // one piece for both (James v2): split at the waist below
             else { what = "pelvis"; bone = 0; }
             sb.AppendLine("  piece " + pc.Count.ToString().PadLeft(3) + " verts, " + lo.ToString("0") + ".." + hi.ToString("0") + " cm, x " + (xc / UPC).ToString("0") + " cm -> " + what + (side ? (s == 0 ? " L" : " R") : ""));
             foreach (int i in pc) { B1[i] = bone; B2[i] = bone; W1[i] = 1; }
             got[bone] = true;
+            if (what == "torso + pelvis") {
+                // above 112 cm the chest's, below 100 the pelvis's, the waist between blended
+                foreach (int i in pc) { double h = H(i); if (h >= 112) { B1[i] = 1; B2[i] = 1; } else if (h > 100) { B1[i] = 1; B2[i] = 0; W1[i] = (float)((h - 100) / 12.0); } }
+                got[1] = true;
+            }
             if (what == "leg") {
                 // the knee: the ring nearest the leg's middle; the hip 8 cm below the leg's top, over its top ring
                 var rings = new SortedSet<int>(); foreach (int i in pc) rings.Add((int)Math.Round(H(i)));
@@ -80,7 +86,8 @@ public class WalkRig {
             }
             if (what == "boot") { double[] tc = Centroid(pc, i => H(i) > hi - 3); Pivot[5 + 3 * s] = new double[] { tc[0], YofH(10), tc[2] }; }
             if (what == "upper arm") { double[] tc = Centroid(pc, i => H(i) > hi - 4); Pivot[9 + 2 * s] = new double[] { tc[0], YofH(hi - 5), tc[2] }; }
-            if (what == "forearm") { double[] tc = Centroid(pc, i => H(i) > hi - 3); Pivot[10 + 2 * s] = new double[] { tc[0], YofH(hi - 1), tc[2] }; }
+            // (a separate hand is a forearm piece too: the elbow comes from the highest one)
+            if (what == "forearm" && hi > pivHi[10 + 2 * s]) { pivHi[10 + 2 * s] = hi; double[] tc = Centroid(pc, i => H(i) > hi - 3); Pivot[10 + 2 * s] = new double[] { tc[0], YofH(hi - 1), tc[2] }; }
         }
         for (int bn = 0; bn < 13; bn++) if (!got[bn] || Pivot[bn] == null) throw new Exception("the rig found no piece for bone " + bn + " (the pieces are listed above)\n" + sb.ToString());
         Report = sb.ToString();

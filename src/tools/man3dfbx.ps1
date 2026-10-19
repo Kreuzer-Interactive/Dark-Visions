@@ -41,7 +41,8 @@ param(
   [switch]$NoGround,
   [string]$Preview = "",
   [string]$KeysFrom = "",    # export: take the bones' keys from this animated FBX (the artist's edited walk) instead of the keyed walk
-  [switch]$Idle              # the idle clips (man_idle.fbx, MANIDLE.ANI) instead of the walk
+  [switch]$Idle,             # the idle clips (man_idle.fbx, MANIDLE.ANI) instead of the walk
+  [string]$OnlyClips = ''     # -Idle -Import: only these clips (names, comma-separated; the breathing loop must be one -- it goes first) for a character who should not play the rest
 )
 $ErrorActionPreference = 'Stop'
 if (-not ('WalkRig' -as [type])) { Add-Type -Path "$PSScriptRoot\WalkRig.cs" }
@@ -330,6 +331,14 @@ if ($Idle) {
   }
   if ($odd) { "note: $odd vertices have two bones not half and half: the engine blends them half and half" }
   $clips = @(Get-Content $clipf | Where-Object { $_ -match '^\s*[A-Za-z]' } | ForEach-Object { $w = $_.Trim() -split '\s+'; [pscustomobject]@{ Name = $w[0]; First = [int]$w[1]; Last = [int]$w[2]; Kind = [int]$w[3]; Loop = ([int]$w[3] -ne 0) } })
+  if ($OnlyClips) {
+    # only the clips this character may play (MANWALK takes clip 0 as the breathing loop)
+    $want = @($OnlyClips -split '[,\s]+' | Where-Object { $_ })
+    foreach ($n in $want) { if (-not ($clips | Where-Object Name -eq $n)) { throw "no clip $n in $([IO.Path]::GetFileName($clipf)) (it has: $(($clips | ForEach-Object Name) -join ', '))" } }
+    $clips = @($clips | Where-Object { $want -contains $_.Name })
+    if ($clips.Count -eq 0 -or $clips[0].Kind -ne 1) { throw "-OnlyClips: the breathing loop (kind 1) must be among them, first in the clips file" }
+    "clips kept: $(($clips | ForEach-Object Name) -join ', ')"
+  }
   $cn = New-Object 'System.Collections.Generic.List[string]'; $cloop = New-Object 'System.Collections.Generic.List[int]'
   $cdur = New-Object 'System.Collections.Generic.List[System.Collections.Generic.List[int]]'; $cfr = New-Object 'System.Collections.Generic.List[System.Collections.Generic.List[double[][]]]'
   $worstFbx = 0.0; $worstQ = 0.0; $tot = 0

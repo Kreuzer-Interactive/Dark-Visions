@@ -24,7 +24,11 @@ param(
   [string]$Front = "",     # with -Backdrop: a 320x200 PNG inside $Src, any non-black pixel = backdrop in FRONT of the car (bit 7 of the index; GAME7's blit restores those pixels over the car)
   [string]$Hill = "",      # a second painted 320x200 backdrop (the intro's hill drive) -> HILLROAD.BMP, sharing palette slots 0..15 with the first (16 colours between them)
   [string]$HillFront = "", # its front mask, like -Front
-  [switch]$KeepHidden # keep faces whose UV area is entirely transparent (they are dropped by default)
+  [switch]$KeepHidden, # keep faces whose UV area is entirely transparent (they are dropped by default)
+  [int]$Pad = 2,          # texture padding: texels no face touches, within this many of one that a face does, take that
+                         # island's edge colour (a sample a little outside an island -- rounding, a small face's one
+                         # texel, a downscale -- then keeps the island's colour, not a neighbour's or a see-through hole)
+  [string]$PadOut = ""    # also save the padded texture (PNG) here
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
@@ -33,18 +37,6 @@ Add-Type -AssemblyName System.Drawing
 $img = [System.Drawing.Bitmap]::FromFile("$Src\$Texture")
 $TW = $img.Width
 if($img.Height -ne $TW -or ($TW -ne 64 -and $TW -ne 128)){ throw "texture must be 64x64 or 128x128 (got $($img.Width)x$($img.Height))" }
-$bands = if($Unlit){1}else{8}
-$cpb = if($Front){ [Math]::Floor(112 / $bands) } else { [Math]::Floor(238 / $bands) }   # colours per band: palette 16..253 shared by the bands (254 = the ink mark); 16..127 with a front layer (128..143 mirror the backdrop)
-$cols = @{}; $list = New-Object System.Collections.ArrayList
-[void]$list.Add(@(0,0,0)); $cols["0,0,0"]=0        # colour 0 = black (also transparent)
-$idx = New-Object byte[] ($TW*$TW)
-for($y=0;$y -lt $TW;$y++){ for($x=0;$x -lt $TW;$x++){
-  $c=$img.GetPixel($x,$y); $k="$($c.R),$($c.G),$($c.B)"
-  if($c.A -lt 128){ $ci=255 }        # transparent texel: palette index 255 = the renderer's colour key
-  elseif($cols.ContainsKey($k)){ $ci=$cols[$k] }
-  else { if($list.Count -ge $cpb){ throw "more than $cpb texture colours" }; $ci=$list.Count; [void]$list.Add(@($c.R,$c.G,$c.B)); $cols[$k]=$ci }
-  $idx[$y*$TW+$x]=$ci } }
-"texture colours: $($list.Count)"
 
 # ---------- 3DS ----------
 if(-not $Model){ $Model = (Get-ChildItem "$Src\*.3ds" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).Name }
@@ -101,6 +93,50 @@ $flip = $inward -gt $nf/2
 if($flip){ for($i=0;$i -lt $nf;$i++){ $t=$fb[$i]; $fb[$i]=$fc[$i]; $fc[$i]=$t } }
 $nx = New-Object single[] $nf; $ny = New-Object single[] $nf; $nz = New-Object single[] $nf
 for($i=0;$i -lt $nf;$i++){ $n=Norm $i; $l=[Math]::Sqrt($n[0]*$n[0]+$n[1]*$n[1]+$n[2]*$n[2]); if($l -eq 0){$l=1}; $nx[$i]=$n[0]/$l; $ny[$i]=$n[1]/$l; $nz[$i]=$n[2]/$l }
+# ---------- texture padding (after the model: the faces' UVs say which texels are used) ----------
+if($Pad -gt 0){
+  # covered = a face's UV triangle overlaps the texel's square (the box against the triangle's edges)
+  $cov = New-Object byte[] ($TW*$TW)
+  for($i=0;$i -lt $nf;$i++){
+    $P = @(@(($tu[$fa[$i]]*$TW),($tv[$fa[$i]]*$TW)), @(($tu[$fb[$i]]*$TW),($tv[$fb[$i]]*$TW)), @(($tu[$fc[$i]]*$TW),($tv[$fc[$i]]*$TW)))
+    $ar = ($P[1][0]-$P[0][0])*($P[2][1]-$P[0][1]) - ($P[2][0]-$P[0][0])*($P[1][1]-$P[0][1]); $sg = if($ar -lt 0){-1}else{1}
+    $x0=[Math]::Max(0,[int][Math]::Floor(($P|%{$_[0]}|Measure -Min).Minimum)); $x1=[Math]::Min($TW-1,[int][Math]::Floor(($P|%{$_[0]}|Measure -Max).Maximum))
+    $y0=[Math]::Max(0,[int][Math]::Floor(($P|%{$_[1]}|Measure -Min).Minimum)); $y1=[Math]::Min($TW-1,[int][Math]::Floor(($P|%{$_[1]}|Measure -Max).Maximum))
+    for($y=$y0;$y -le $y1;$y++){ for($x=$x0;$x -le $x1;$x++){
+      $in=$true
+      for($e=0;$e -lt 3 -and $in;$e++){ $a=$P[$e]; $q=$P[($e+1)%3]; $ex=$q[0]-$a[0]; $ey=$q[1]-$a[1]
+        # the box corner furthest inside this edge: inside if any part of the box is on the inner side
+        $d = $sg*($ex*(($y+0.5)-$a[1]) - $ey*(($x+0.5)-$a[0])) + 0.5*([Math]::Abs($ex)+[Math]::Abs($ey))
+        if($d -lt 0){ $in=$false } }
+      if($in){ $cov[$y*$TW+$x]=1 } } } }
+  # rings: an uncovered texel next to the padded area takes the commonest colour among those neighbours
+  $col = New-Object int[] ($TW*$TW); for($k=0;$k -lt $TW*$TW;$k++){ $col[$k] = $img.GetPixel($k % $TW, [Math]::Floor($k / $TW)).ToArgb() }
+  $done = [byte[]]$cov.Clone(); $npad=0
+  for($r=1;$r -le $Pad;$r++){
+    $new=@()
+    for($y=0;$y -lt $TW;$y++){ for($x=0;$x -lt $TW;$x++){ if($done[$y*$TW+$x]){ continue }
+      $h=@{}; foreach($d in @(@(-1,0),@(1,0),@(0,-1),@(0,1),@(-1,-1),@(1,-1),@(-1,1),@(1,1))){ $nx2=$x+$d[0]; $ny2=$y+$d[1]
+        if($nx2 -ge 0 -and $nx2 -lt $TW -and $ny2 -ge 0 -and $ny2 -lt $TW -and $done[$ny2*$TW+$nx2]){ $c=$col[$ny2*$TW+$nx2]; if((($c -shr 24) -band 255) -ge 128){ $h[$c]=1+$h[$c] } } }
+      if($h.Count){ $new += ,@(($y*$TW+$x), ($h.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 1).Key) } } }
+    foreach($n in $new){ if($col[$n[0]] -ne $n[1]){ $npad++ }; $col[$n[0]]=$n[1]; $done[$n[0]]=1 }
+  }
+  for($k=0;$k -lt $TW*$TW;$k++){ $img.SetPixel($k % $TW, [Math]::Floor($k / $TW), [System.Drawing.Color]::FromArgb($col[$k])) }
+  "texture padding: $(($cov | Measure -Sum).Sum) texels used by faces, $npad changed in the $Pad rings round them"
+  if($PadOut){ $img.Save($PadOut) }
+}
+$bands = if($Unlit){1}else{8}
+$cpb = if($Front){ [Math]::Floor(112 / $bands) } else { [Math]::Floor(238 / $bands) }   # colours per band: palette 16..253 shared by the bands (254 = the ink mark); 16..127 with a front layer (128..143 mirror the backdrop)
+$cols = @{}; $list = New-Object System.Collections.ArrayList
+[void]$list.Add(@(0,0,0)); $cols["0,0,0"]=0        # colour 0 = black (also transparent)
+$idx = New-Object byte[] ($TW*$TW)
+for($y=0;$y -lt $TW;$y++){ for($x=0;$x -lt $TW;$x++){
+  $c=$img.GetPixel($x,$y); $k="$($c.R),$($c.G),$($c.B)"
+  if($c.A -lt 128){ $ci=255 }        # transparent texel: palette index 255 = the renderer's colour key
+  elseif($cols.ContainsKey($k)){ $ci=$cols[$k] }
+  else { if($list.Count -ge $cpb){ throw "more than $cpb texture colours" }; $ci=$list.Count; [void]$list.Add(@($c.R,$c.G,$c.B)); $cols[$k]=$ci }
+  $idx[$y*$TW+$x]=$ci } }
+"texture colours: $($list.Count)"
+
 # per-face colour: the texture sampled over the face's UV triangle (a 6x6 barycentric
 # grid), transparent texels ignored, the most frequent colour wins; a face that only
 # covers transparent texels gets the model's most common colour

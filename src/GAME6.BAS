@@ -64,7 +64,8 @@
 '-----   VgaPalSet, VgaArt (a SCREEN 1 PUT array with an attr -> index map),
 '-----   VgaText / VgaTextW / VgaWrap (font.txt glyphs on a DC), VgaWarble.
 '-----   Returns 0 = not shown (no VGA, or the script / heads missing) so the
-'-----   CGA scene runs, 1 = done, 2 = skipped.
+'-----   CGA scene runs, 1 = done, 2 = skipped. With dark.ini man3d=1 the 3D man
+'-----   walks it instead of Joe's sprite (GAME8 Man3dHall / Man3dHallOp).
 DEFINT A-Z
 '$INCLUDE: 'UGL.BI'
 '$INCLUDE: 'DOS.BI'
@@ -152,6 +153,9 @@ DECLARE SUB VgaWarble (f3 AS SINGLE)
 DECLARE SUB VgaMark (v AS LONG, x AS INTEGER, y AS INTEGER, clr AS INTEGER)
 DECLARE FUNCTION IntroTalk% (fd() AS INTEGER, f3 AS SINGLE)
 DECLARE FUNCTION IntroWalkCga% (f3 AS SINGLE)
+'----- GAME8: the 3D man walking the hall instead of Joe's sprite (dark.ini man3d=1)
+DECLARE FUNCTION Man3dHall% (cga%())
+DECLARE SUB Man3dHallOp (op%, v&, cga%(), lut%(), row%(), cm%(), tc%)
 
 '----- module state for the page-flip viewer (mPal / vbuf in the far heap via REDIM)
 REM $DYNAMIC
@@ -1188,7 +1192,7 @@ END SUB
 '----- 2 = 's' pressed, the intro's skip.
 FUNCTION IntroTalk% (fd() AS INTEGER, f3 AS SINGLE)
 	DIM v AS LONG, xr AS INTEGER, yr AS INTEGER, np AS INTEGER, fh AS INTEGER
-	DIM i AS INTEGER, j AS INTEGER, n AS INTEGER, tc AS INTEGER, fr AS INTEGER, res AS INTEGER
+	DIM i AS INTEGER, j AS INTEGER, n AS INTEGER, tc AS INTEGER, fr AS INTEGER, res AS INTEGER, m3 AS INTEGER
 	DIM ln AS STRING, k AS STRING
 	DIM bx1 AS INTEGER, by1 AS INTEGER, bx2 AS INTEGER, by2 AS INTEGER
 	DIM hx AS INTEGER, tx AS INTEGER, tw AS INTEGER, nw AS INTEGER, mk AS INTEGER
@@ -1270,6 +1274,7 @@ FUNCTION IntroTalk% (fd() AS INTEGER, f3 AS SINGLE)
 	uglSetWrkPage 0
 	uglSetVisPage 0
 	CALL VgaPalBlack
+	m3 = Man3dHall%(cga())
 	'----- palette: 0-3 = the hall (COLOR 0 / PALETTE 8,1,6), 4 = light gray.
 	'----- Art maps: room art as is; UI art (DLGCOR, the save/load palette
 	'----- 1=dkgray 2=ltgray 3=brown); heads 1=ltgray 2=blue 3=brown
@@ -1288,22 +1293,27 @@ FUNCTION IntroTalk% (fd() AS INTEGER, f3 AS SINGLE)
 	bx1 = 8: by1 = 4: bx2 = 311: by2 = 95
 	res = 1
 	tc = 150: fr = 1
+	'----- (the 3D man walks in and turns to James himself, then the talk, and the scene ends)
+	IF m3 THEN tc = 130: CALL Man3dHallOp(0, v, cga(), lut(), row(), cmRoom(), tc)
 	DO
-		IF fr = 1 THEN
+		IF m3 THEN
+		ELSEIF fr = 1 THEN
 			CALL VgaArt(v, 143, tc, r1(), 0, mr1(), 0, 1, cmRoom())
 		ELSE
 			CALL VgaArt(v, 143, tc, r2(), 0, mr2(), 0, 1, cmRoom())
 		END IF
 		IF INKEY$ = "s" THEN res = 2: EXIT DO
-		CALL VgaWarble(f3)
+		IF m3 = 0 THEN CALL VgaWarble(f3)
 		FOR i = 1 TO 2
 			SOUND 32676, .3
 		NEXT
 		IF fr = 1 AND tc = 130 THEN
 			'----- Joe turns to face James (standing, right) for the talk; the
 			'----- erase after the conversation puts the walk frame back
-			CALL CgaRows(v, cga(), lut(), row(), tc, tc + 30, 143, 173)
-			CALL VgaArt(v, 143, tc, jr(), 0, mjr(), 0, 1, cmRoom())
+			IF m3 = 0 THEN
+				CALL CgaRows(v, cga(), lut(), row(), tc, tc + 30, 143, 173)
+				CALL VgaArt(v, 143, tc, jr(), 0, mjr(), 0, 1, cmRoom())
+			END IF
 			FOR i = 0 TO n - 1
 				'----- the box: DrawYNBox's border (dk / black / dk / light,
 				'----- black fill) with the DLGCOR corner ornaments
@@ -1349,6 +1359,7 @@ FUNCTION IntroTalk% (fd() AS INTEGER, f3 AS SINGLE)
 						rt = TIMER: mk = 1 - mk
 						CALL VgaMark(v, bx2 - 14, by2 - 14, mk * 3)
 					END IF
+					IF m3 THEN CALL Man3dHallOp(4, v, cga(), lut(), row(), cmRoom(), tc)
 					k = INKEY$
 				LOOP
 				IF k = "s" THEN res = 2: EXIT FOR
@@ -1356,11 +1367,13 @@ FUNCTION IntroTalk% (fd() AS INTEGER, f3 AS SINGLE)
 			'----- the box away (ENTER.PIC is black above the hall)
 			uglRectF v, bx1, by1, bx2, by2, 0
 			IF res = 2 THEN EXIT DO
+			IF m3 THEN EXIT DO
 		END IF
-		CALL CgaRows(v, cga(), lut(), row(), tc, tc + 30, 143, 173)
+		IF m3 = 0 THEN CALL CgaRows(v, cga(), lut(), row(), tc, tc + 30, 143, 173)
 		tc = tc - 2
 		IF fr = 1 THEN fr = 2 ELSE fr = 1
 	LOOP WHILE tc >= 116
+	IF m3 THEN CALL Man3dHallOp(5, v, cga(), lut(), row(), cmRoom(), tc)
 	'----- back to CGA: mode 4, VRAM and attrs black; the title screen (or the
 	'----- skip exit) sets its own palette and BLOADs
 	CALL VgaClose
