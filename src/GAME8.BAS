@@ -542,6 +542,10 @@ SUB Man3dStand (d$, px!, py!, ovf%())
 	END IF
 	ty = M3DigYaw!(d$)
 	IF (m3drawn OR m3stp) AND ABS(fx - m3fx) + ABS(fy - m3fy) < 3 AND ABS(M3Dif!(m3yaw, ty)) >= .35 THEN
+		'----- (after Man3dPre: the turn here and now, blocking, then the standing pose below -- a
+		'----- scene may follow at once, as a killer does after a room entry, and its sprite steps
+		'----- take a walk frame off the screen, not a standing draw)
+		IF m3pre THEN GOTO m3turnnow
 		'----- a turn on the spot: from the main loop (Man3dIdle), a frame a tick, so the mouse
 		'----- keeps polling and the cursor stays -- the pose at the end drawn by its last step
 		trY0 = m3yaw: trY1 = ty: trN = M3TurnN%(M3Dif!(m3yaw, ty)): trJ = 0: trT = TIMER - 1
@@ -549,8 +553,10 @@ SUB Man3dStand (d$, px!, py!, ovf%())
 		IF inc > 0 THEN IF M3Dif!(m3yaw, ty) > 0 THEN trC = tcf0 ELSE trC = tcf1
 		tr = 1: m3fx = fx: m3fy = fy: lyaw = ty: m3er = 0
 		EXIT SUB
+		m3turnnow:
+		CALL M3Turn(fx, fy, m3yaw, ty, ovf%())
 	END IF
-	tr = 0: m3er = 0: itl = TIMER
+	m3pre = 0: tr = 0: m3er = 0: itl = TIMER
 	IF inc > 0 THEN m3pose = M3IdlePose%(0) ELSE m3pose = -1
 	IF m3pose >= 0 THEN CALL M3Render(fx, fy, ty, 1000 + m3pose) ELSE CALL M3Render(fx, fy, ty, -1)
 	CALL M3StandShow(ovf%())

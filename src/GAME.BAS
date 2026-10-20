@@ -653,8 +653,9 @@ walkin:
 	GOSUB litup
 	a$ = "": CALL Man3dPre: GOSUB face
 	CALL WalkFloor(wtx, wty, pjx, pjy, f3, wbox(), cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
-	'----- (then the default pose, facing the camera, whatever the data's entry facing)
-	a$ = "2"
+	'----- (then the default pose, facing the camera, whatever the data's entry facing: the turn
+	'----- blocking (Man3dPre), since a killer scene can follow before the main loop runs)
+	a$ = "2": CALL Man3dPre
 	GOSUB face
 	RETURN
 
