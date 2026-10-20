@@ -216,6 +216,8 @@ DIM SHARED lfx AS SINGLE, lfy AS SINGLE, lyaw AS SINGLE, lt AS SINGLE, talo AS I
 '----- M3DUMP (environment): 1 = the screen after his first stand -> M3SHOT1.PIC, 2 = also a
 '----- walk to the right through the step path, a frame mid-walk -> M3SHOT2.PIC (checking from the PC)
 DIM SHARED m3dump AS INTEGER, dumpn AS INTEGER
+'----- the walk's speed over the sprite's (dark.ini man3dspeed, 1.5): each step's time divided by it
+DIM SHARED wsp AS SINGLE
 '----- freed for a full-screen page (inventory, map, manual, menu): reload at the next room
 DIM SHARED m3was AS INTEGER
 '----- a walk step in frames: its start and end feet, the last frame's feet, its heading;
@@ -410,7 +412,7 @@ END SUB
 '----- M3Ini: dark.ini's man3d (1 = the 3D man)
 FUNCTION M3Ini%
 	DIM fh AS INTEGER, l AS STRING
-	M3Ini% = 0: m3vs = 1: ftOn = 0
+	M3Ini% = 0: m3vs = 1: ftOn = 0: wsp = 1.5
 	IF M3Size&("DARK.INI") = 0 THEN EXIT FUNCTION
 	fh = FREEFILE
 	OPEN "DARK.INI" FOR INPUT AS #fh
@@ -421,8 +423,10 @@ FUNCTION M3Ini%
 		IF LEFT$(l, 9) = "man3dfps=" THEN m3fps = VAL(MID$(l, 10))
 		IF LEFT$(l, 11) = "man3dvsync=" THEN m3vs = VAL(MID$(l, 12))
 		IF LEFT$(l, 11) = "man3dsteps=" THEN ftOn = VAL(MID$(l, 12))
+		IF LEFT$(l, 11) = "man3dspeed=" THEN wsp = VAL(MID$(l, 12))
 	LOOP
 	CLOSE #fh
+	IF wsp <= 0 THEN wsp = 1
 END FUNCTION
 
 '----- M3Size: a file's length, 0 when it is not there (and not left behind empty)
@@ -1742,6 +1746,8 @@ END SUB
 '----- tempo at its floor do two blocks over 8% running take a frame off (one over 25% at once),
 '----- for good; under 5% with the tempo still right: one more (up to 4, 2 with man3dfps=15).
 '----- A new k starts at tempo 1 (a block is read in whole ticks, 28 or 29 of 28.1 sprite steps).
+'----- man3dspeed (wsp, 1.5) divides a step's time: the walk that many times the sprite's speed, the
+'----- cycle (driven by the floor distance) as fast, and k settles at what still renders in it.
 '----- What the recorded footsteps' stretched notes still owe at the block's end (over its start)
 '----- is time the block had to take: it counts as expected, not as late (a shorter tempo
 '----- cannot shrink those notes, a dropped frame only makes him shuffle)
@@ -1781,9 +1787,9 @@ FUNCTION Man3dSubs% (sdur!)
 		bCont = 0
 	END IF
 	tS = tn
-	sdT = (.1 + 2 * sdur!) / 18.2
+	sdT = (.1 + 2 * sdur!) / 18.2 / wsp
 	sk = kk
-	IF ftOn THEN wq = (2 * sdur! + .1) / sk * wcor ELSE wq = 2 * sdur! / sk * wcor
+	IF ftOn THEN wq = (2 * sdur! + .1) / sk * wcor / wsp ELSE wq = 2 * sdur! / sk * wcor / wsp
 	Man3dSubs% = sk
 END FUNCTION
 
