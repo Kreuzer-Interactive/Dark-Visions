@@ -122,13 +122,9 @@ DECLARE SUB Man3dFbg (tx%, ty%, rw%, rb%)
 DECLARE SUB PGrab3 (a%(), m%(), bx%, by%, bw%, bh%)
 DECLARE SUB ShadFbg (fbg%(), tx AS INTEGER, ty AS INTEGER, rw AS INTEGER, rb AS INTEGER)
 DECLARE SUB M3WalkTest (px!, py!, d$, ovf%())
-DECLARE SUB M3Bench (px!, py!, d$, ovf%())
-DECLARE SUB M3BStat (ovf%())
-DECLARE SUB M3T (k%)
 DECLARE SUB M3CShow (k%, ovf%())
 DECLARE SUB M3Cop (op%, d%(), s%(), m%(), col%, row%)
 DECLARE SUB M3FloorI (fx!, fy!, wx&, wz&, kq%)
-DECLARE FUNCTION M3Pit& ()
 DECLARE SUB PShiftB (sh AS INTEGER)
 
 '----- the house rooms' camera (tools\manwalk.ps1 solves it from the template the
@@ -231,10 +227,6 @@ DIM SHARED sx0 AS SINGLE, sy0 AS SINGLE, pfx AS SINGLE, pfy AS SINGLE, syaw AS S
 DIM SHARED bN AS INTEGER, bCont AS INTEGER, bAcc AS SINGLE, bExp AS SINGLE, bDb0 AS SINGLE
 '----- (M3DUMP=5: standing draws counted, logged every 10 s)
 DIM SHARED cntS AS LONG, cntE AS LONG, cntT AS SINGLE
-'----- (M3DUMP=12, the benchmark: PIT-timed stages -- bmAcc/bmCnt per stage key, m3tim on
-'----- while timing, bmLast the last timing point; the main loop's passes, redraws and their
-'----- time over 5 s spans; where he stood)
-DIM SHARED bmAcc(0 TO 15) AS LONG, bmCnt(0 TO 15) AS LONG, m3tim AS INTEGER, bmLast AS LONG
 '----- how he goes up on the screen, flicker-free: each new picture of him (standing, a walk frame,
 '----- a 2D animation's frame over him) composed in RAM -- the old save-unders pasted back, the new
 '----- one taken, him, the furniture in front of him (C3DCOMP) -- and put up with one PUT; m3vs
@@ -259,10 +251,8 @@ DIM SHARED ftOn AS INTEGER, ftHit AS INTEGER, ftQ AS LONG, ftDebt AS SINGLE, ftN
 DIM SHARED mu AS INTEGER, ju AS INTEGER
 '----- (the 2D animations' frames composed too -- C3DCOMP and anb(), a 31x31 scratch picture,
 '----- loaded at the first frame in any room, aok = 1)
-DIM SHARED aok AS INTEGER, anU AS INTEGER, anS AS INTEGER, anX AS INTEGER
+DIM SHARED aok AS INTEGER
 '----- (sint(): a sine table x256 over 256 steps, the render's turn without floats)
-DIM SHARED bmFaces AS LONG
-DIM SHARED bmPass AS LONG, bmRed AS LONG, bmRedT AS LONG, bmRedX AS LONG, bmT0 AS SINGLE, bmLog AS INTEGER, bmPx AS SINGLE, bmPy AS SINGLE, bmD AS STRING
 '----- the EGA colours the room palette numbers name (COLOR / PALETTE 0..15)
 '----- the footsteps (Man3dFoot): the variants, then each: its notes, frequency (32676 = silent)
 '----- and length in 1/32 ticks (1.7 ms each) -- from the recording's steps 33, 18, 40, 11: a
@@ -571,7 +561,6 @@ SUB Man3dStand (d$, px!, py!, ovf%())
 		IF m3dump = 2 THEN END
 		'----- (3: him standing in room 8's right doorway, where its watcher paces)
 		IF m3dump = 3 THEN CALL Man3dStand("4", 200, 126, ovf%())
-		IF m3dump = 12 THEN CALL M3Bench(px!, py!, d$, ovf%())
 	END IF
 END SUB
 
@@ -579,7 +568,6 @@ END SUB
 '----- frame or the last standing draw taken away (their save-unders) only now, so he
 '----- never blinks out while rendering; GAME2's watchers get his new pair
 SUB M3StandShow (ovf%())
-	IF m3tim THEN CALL M3T(-1)
 	CALL M3CShow(0, ovf%())
 END SUB
 
@@ -588,8 +576,7 @@ END SUB
 '----- cursor (ms = 1) taken off round the draw, the foreground overlays put back over
 '----- him. Nothing else when the frame is the same (a TIMER read and a compare)
 SUB Man3dIdle (ovf%(), ms!)
-	DIM tn AS SINGLE, d AS SINGLE, g AS INTEGER, tb AS LONG, cu AS INTEGER, wf AS INTEGER, q AS SINGLE
-	IF m3dump = 12 THEN CALL M3BStat(ovf%())
+	DIM tn AS SINGLE, d AS SINGLE, g AS INTEGER, cu AS INTEGER, wf AS INTEGER, q AS SINGLE
 	IF tr THEN
 		'----- a turn on the spot under way (Man3dStand): the next frame when the tick has
 		'----- moved on (23 degrees a frame, ~420 degrees a second), in the turning step clip
@@ -629,12 +616,10 @@ SUB Man3dIdle (ovf%(), ms!)
 	g = M3IdlePose%(d * 30)
 	IF g = m3pose THEN EXIT SUB
 	m3pose = g
-	IF m3dump = 12 THEN tb = M3Pit&
 	CALL M3Render(m3fx, m3fy, m3yaw, 1000 + g)
 	cu = 0: IF ms! = 1 THEN cu = M3CurLift%
 	CALL M3StandShow(ovf%())
 	IF cu THEN CALL drawcur
-	IF m3dump = 12 THEN tb = M3Pit& - tb: bmRed = bmRed + 1: bmRedT = bmRedT + tb: IF tb > bmRedX THEN bmRedX = tb
 	'----- (M3DUMP=10, testing: a shot of each fidget 40% in -> M3SHOT11..14.PIC)
 	IF m3dump = 10 AND iclp > 0 THEN
 		IF itm > ilen(iclp) * .4 AND (dumpn AND 2 ^ iclp) = 0 THEN dumpn = dumpn OR 2 ^ iclp: CALL M3Shot(10 + iclp)
@@ -721,7 +706,7 @@ FUNCTION M3Dif! (y0!, y1!)
 END FUNCTION
 
 '----- M3IdleLoad: MAN3DI.ANI into the far heap (when it is there, made for this model,
-'----- and there is room for it with ~12 KB to spare) -> inc clips; else inc = 0. For the
+'----- and there is room for it with ~9 KB to spare) -> inc clips; else inc = 0. For the
 '----- intro hall (m3hall) only the breathing loop and the turning step to his left: he walks
 '----- in, turns left to James and talks, and the other clips' frames (~11 KB) make his room
 SUB M3IdleLoad
@@ -753,7 +738,7 @@ SUB M3IdleLoad
 			IF ck(c) THEN tot = tot + (cn(c) + dm - 1) \ dm
 		NEXT
 		nw = CLNG(tot) * 98
-		IF FRE(-1) >= nw * 2 + 12000 THEN EXIT DO
+		IF FRE(-1) >= nw * 2 + 9000 THEN EXIT DO
 		IF dm = 3 THEN
 			CALL C3dMark("man3d: no room for the idle clips (" + STR$(nw * 2) + " of" + STR$(FRE(-1)) + ")")
 			CLOSE #fh: EXIT SUB
@@ -1394,15 +1379,12 @@ SUB M3CShow (k%, ovf%())
 	END IF
 	CALL M3Cop(2, buf(), art(), msk(), (rbx - x0) \ 4, rby - y0)
 	CALL M3OvAll(ovf%(), x0, y0, rbx, rby, rbw, rbh)
-	IF m3tim THEN CALL M3T(8)
 	IF m3vs AND k% = 0 THEN WAIT &H3DA, 8, 8: WAIT &H3DA, 8
 	PUT (x0, y0), buf(0), PSET
-	IF m3tim THEN CALL M3T(9)
 	pcm(8) = n: CALL M3Cop(3, buf(), buf(), buf(), 0, 0)
 	IF k% = 0 THEN
 		m3stp = 0: m3bx = rbx: m3by = rby: m3bw = rbw: m3bh = rbh: m3drawn = 1
 		CALL PGrab3(art(), msk(), m3bx, m3by, m3bw, m3bh)
-		IF m3tim THEN CALL M3T(10)
 	ELSE
 		m3drawn = 0: m3sx = rbx: m3sy = rby: m3sw = rbw: m3sh = rbh: m3stp = 1
 	END IF
@@ -1486,7 +1468,7 @@ FUNCTION Man3dAnim% (x%, y%, sav%(), so%, fra%(), frm%(), mk%, ovf%(), ms!)
 
 				IF cu THEN CALL drawcur
 				pcm(8) = n: CALL M3Cop(3, buf(), buf(), buf(), 0, 0)
-				Man3dAnim% = 1: anU = anU + 1
+				Man3dAnim% = 1
 				EXIT FUNCTION
 			END IF
 		END IF
@@ -1496,8 +1478,7 @@ FUNCTION Man3dAnim% (x%, y%, sav%(), so%, fra%(), frm%(), mk%, ovf%(), ms!)
 	CALL M3Op(4, VARSEG(anb(0)), VARPTR(anb(0)), VARSEG(sav%(so%)), VARPTR(sav%(so%)), 0, 0, 0, n)
 	CALL M3Op(6, VARSEG(anb(0)), VARPTR(anb(0)), VARSEG(fra%(0)), VARPTR(fra%(0)), ms2, mo2, 0, 0)
 	PUT (x%, y%), anb(0), PSET
-	Man3dAnim% = 1: anS = anS + 1
-	IF m3drawn AND x% < m3bx + m3bw AND x% + w > m3bx AND y% < m3by + m3bh AND y% + h > m3by THEN anX = anX + 1
+	Man3dAnim% = 1
 END FUNCTION
 
 '----- M3AnimInit: C3DCOMP and the scratch pair for Man3dAnim (loaded again after Man3dFree)
@@ -1589,128 +1570,6 @@ SUB M3FloorI (fx!, fy!, wx&, wz&, kq%)
 	IF t > 256 THEN t = 256
 	g = (641& * (256 - (t * 35) \ 100)) \ 512
 	kq% = (g * wz&) \ 12616
-END SUB
-
-'----- M3Pit: the time in PIT counts (1.193 MHz) from the BIOS tick and channel 0's count --
-'----- channel 0 in mode 2 (M3Bench sets it) so the count runs once down per tick
-FUNCTION M3Pit&
-	DIM lo AS INTEGER, hi AS INTEGER, t1 AS LONG, t2 AS LONG
-	DEF SEG = &H40
-	DO
-		t1 = PEEK(&H6C) + 256& * PEEK(&H6D)
-		OUT &H43, 0: lo = INP(&H40): hi = INP(&H40)
-		t2 = PEEK(&H6C) + 256& * PEEK(&H6D)
-	LOOP WHILE t1 <> t2
-	DEF SEG
-	M3Pit& = (t1 AND &H7FFF&) * 65536 + 65535 - (hi * 256& + lo)
-END FUNCTION
-
-'----- M3T: a timing point -- the time since the last one added to stage k (-1: just start)
-SUB M3T (k%)
-	DIM t AS LONG
-	t = M3Pit&
-	IF k% >= 0 THEN bmAcc(k%) = bmAcc(k%) + t - bmLast: bmCnt(k%) = bmCnt(k%) + 1
-	bmLast = M3Pit&
-END SUB
-
-'----- M3Bench: (M3DUMP=12) each step of drawing him timed by the PIT (channel 0 put in mode
-'----- 2), n times each, in microseconds -> C3D.LOG; M3BX/M3BY (environment): stand him at
-'----- that sprite position first (over a 2D animation, say). Then the game goes on: the
-'----- main loop's rate and the idle redraws over 5 s spans (M3BStat), four of them, then
-'----- the walk test, then the end
-SUB M3Bench (px!, py!, d$, ovf%())
-	DIM i AS INTEGER, n AS INTEGER, t0 AS LONG, g AS INTEGER, k AS INTEGER, bx AS SINGLE, by AS SINGLE, bx2 AS INTEGER, by2 AS INTEGER
-	DIM wx AS SINGLE, wz AS SINGLE, kk2 AS SINGLE, c AS SINGLE, s AS STRING, u AS SINGLE
-	OUT &H43, &H34: OUT &H40, 0: OUT &H40, 0
-	bx = VAL(ENVIRON$("M3BX")): by = VAL(ENVIRON$("M3BY"))
-	IF bx > 0 THEN CALL Man3dStand(d$, bx, by, ovf%()): px! = bx: py! = by
-	CALL M3Shot(3)
-	bmPx = px!: bmPy = py!: bmD = d$
-	n = 30: u = 1.193182 * n
-	CALL C3dMark("bench: at" + STR$(INT(m3fx)) + STR$(INT(m3fy)) + ", box" + STR$(m3bx) + STR$(m3by) + STR$(m3bw) + " x" + STR$(m3bh) + ", far heap" + STR$(FRE(-1)) + ", strings" + STR$(FRE("")))
-	t0 = M3Pit&
-	FOR i = 1 TO n: CALL M3Render(m3fx, m3fy, m3yaw, -1): NEXT
-	s = "render (us): rest pose" + STR$(INT((M3Pit& - t0) / u))
-	IF inc > 0 THEN
-		t0 = M3Pit&
-		FOR i = 1 TO n: CALL M3Render(m3fx, m3fy, m3yaw, 1000 + icst(0) + (i MOD icnt(0))): NEXT
-		s = s + ", idle frame" + STR$(INT((M3Pit& - t0) / u))
-	END IF
-	t0 = M3Pit&
-	FOR i = 1 TO n: CALL M3Render(m3fx, m3fy, m3yaw, i MOD wnf): NEXT
-	s = s + ", walk frame" + STR$(INT((M3Pit& - t0) / u))
-	CALL C3dMark(s)
-	'----- the stages of an idle-frame render, and of the show
-	FOR k = 0 TO 15: bmAcc(k) = 0: bmCnt(k) = 0: NEXT
-	m3tim = 1
-	FOR i = 1 TO n
-		IF inc > 0 THEN CALL M3Render(m3fx, m3fy, m3yaw, 1000 + icst(0) + (i MOD icnt(0))) ELSE CALL M3Render(m3fx, m3fy, m3yaw, i MOD wnf)
-	NEXT
-	FOR i = 1 TO n: CALL M3StandShow(ovf%()): NEXT
-	m3tim = 0
-	s = "stages (us):"
-	FOR k = 0 TO 10
-		IF bmCnt(k) > 0 THEN s = s + STR$(k) + "=" + LTRIM$(STR$(INT(bmAcc(k) / 1.193182 / bmCnt(k))))
-	NEXT
-	CALL C3dMark(s + "  (0 floor 1 idleMx 2 fuse 3 sort 5 tri 6 cga 8 compose 9 PUT 10 PGrab3); faces drawn" + STR$(bmFaces \ n) + " of" + STR$(nf))
-	t0 = M3Pit&
-	FOR i = 1 TO n: CALL OvTopBox(m3bx, m3by, m3bw, m3bh, ovf%()): NEXT
-	s = "overlays" + STR$(INT((M3Pit& - t0) / u))
-	IF inc > 0 THEN
-		t0 = M3Pit&
-		FOR i = 1 TO n: CALL M3IdleMx(icst(0) + (i MOD icnt(0))): NEXT
-		s = s + ", idleMx" + STR$(INT((M3Pit& - t0) / u))
-	END IF
-	t0 = M3Pit&
-	FOR i = 1 TO n: CALL M3Floor(m3fx, m3fy, wx, wz): kk2 = M3K!(wz): c = COS(m3yaw) + SIN(m3yaw): NEXT
-	s = s + ", floats" + STR$(INT((M3Pit& - t0) / u))
-	t0 = M3Pit&
-	FOR i = 1 TO n: g = M3Pit&: NEXT
-	s = s + ", a PIT read" + STR$(INT((M3Pit& - t0) / u))
-	'----- a whole idle redraw as Man3dIdle does it (without the cursor)
-	t0 = M3Pit&
-	FOR i = 1 TO n
-		IF inc > 0 THEN CALL M3Render(m3fx, m3fy, m3yaw, 1000 + icst(0) + (i MOD icnt(0))) ELSE CALL M3Render(m3fx, m3fy, m3yaw, -1)
-		CALL M3StandShow(ovf%())
-	NEXT
-	s = s + ", whole idle redraw" + STR$(INT((M3Pit& - t0) / u))
-	'----- a walk frame as GAME5 PStepP draws it (no notes): the step's maths, the render,
-	'----- the show, the overlays -- 3 frames a step, 4 steps
-	wx = m3fx: wz = m3fy: c = m3yaw
-	t0 = M3Pit&
-	FOR i = 0 TO 11
-		CALL Man3dStep(m3fx - 15 + (i \ 3) * 3, m3fy - 30, 302, (i MOD 3) + 1, 3, ovf%())
-		CALL Man3dStepShow(ovf%())
-	NEXT
-	s = s + ", walk frame drawn" + STR$(INT((M3Pit& - t0) / 1.193182 / 12))
-	CALL Man3dStepOff
-	m3fx = wx: m3fy = wz: m3yaw = c: m3er = 0: itl = TIMER
-	CALL M3Render(m3fx, m3fy, m3yaw, -1): CALL M3StandShow(ovf%()): CALL M3IdleReset
-	k = 4 + m3bh * ((m3bw * 2 + 7) \ 8)
-	CALL C3dMark(s + " us; his pair" + STR$(k) + " B, video bytes a show ~" + STR$(7 * k))
-	bmT0 = TIMER: bmPass = 0: bmRed = 0: bmRedT = 0: bmRedX = 0: bmLog = 0
-END SUB
-
-'----- M3BStat: (M3DUMP=12, every main loop pass) passes, idle redraws and their time over
-'----- 5 s -> C3D.LOG; after four spans the walk test, then the end
-SUB M3BStat (ovf%())
-	DIM d AS SINGLE, s AS STRING
-	bmPass = bmPass + 1
-	d = TIMER - bmT0
-	IF d < 0 THEN bmT0 = TIMER: EXIT SUB
-	IF d < 5 THEN EXIT SUB
-	IF bmRed > 0 THEN
-		s = "loop:" + STR$(INT(bmPass / d)) + " passes/s, idle redraws" + STR$(INT(bmRed / d * 10) / 10) + "/s, avg" + STR$(INT(bmRedT / bmRed / 1.193182))
-		CALL C3dMark(s + " us, worst" + STR$(INT(bmRedX / 1.193182)) + " us, busy" + STR$(INT(bmRedT / 1.193182 / d / 10000)) + "%, anims under him" + STR$(anU) + ", alone" + STR$(anS) + " (over him" + STR$(anX) + ")")
-	ELSE
-		CALL C3dMark("loop:" + STR$(INT(bmPass / d)) + " passes/s, no idle redraws")
-	END IF
-	bmT0 = TIMER: bmPass = 0: bmRed = 0: bmRedT = 0: bmRedX = 0: bmLog = bmLog + 1
-	IF bmLog >= 4 THEN
-		CALL M3WalkTest(bmPx, bmPy, bmD, ovf%())
-		OUT &H43, &H36: OUT &H40, 0: OUT &H40, 0
-		END
-	END IF
 END SUB
 
 '----- M3WalkTest: (M3DUMP=2) 96 steps (24 to the right, again -- env M3WD=v: 12 up the room
@@ -1917,13 +1776,11 @@ SUB M3Render (fx!, fy!, yaw!, wf%)
 	DIM bx AS INTEGER, by AS INTEGER, ex AS INTEGER, ey AS INTEGER, w AS INTEGER, h AS INTEGER
 	DIM p AS LONG, tm AS INTEGER, mo AS INTEGER
 	DIM wx16 AS LONG, wz16 AS LONG, kq AS INTEGER, yi AS INTEGER, ycs AS INTEGER, ysn AS INTEGER, ys AS INTEGER
-	IF m3tim THEN CALL M3T(-1)
 	'----- his feet on the floor, his depth scale, the heading's cos and sin: no floats
 	CALL M3FloorI(fx!, fy!, wx16, wz16, kq)
 	yi = CINT(yaw! * 40.74367) AND 255
 	IF ydir > 0 THEN ys = 256 \ ydir: yi = ((yi + ys \ 2) \ ys) * ys AND 255
 	ycs = sint((yi + 64) AND 255): ysn = sint(yi)
-	IF m3tim THEN CALL M3T(0)
 	'----- the pose, the turn and the projection in one pass (C3DFUSE): each bone's matrix turned
 	'----- and scaled, then each vertex straight to the screen with its depth (the seams' twins
 	'----- copied); the bones of the walk frame wf, the idle frame wf - 1000, or the unit ones
@@ -1940,7 +1797,6 @@ SUB M3Render (fx!, fy!, yaw!, wf%)
 	pfu(8) = VARSEG(rz(0)): pfu(9) = VARPTR(rz(0))
 	IF wf% >= 1000 THEN
 		CALL M3IdleMx(wf% - 1000)
-		IF m3tim THEN CALL M3T(1)
 		pfu(13) = VARSEG(imx(0)): pfu(14) = VARPTR(imx(0))
 	ELSEIF wf% < 0 THEN
 		pfu(13) = VARSEG(idm(0)): pfu(14) = VARPTR(idm(0))
@@ -1957,7 +1813,6 @@ SUB M3Render (fx!, fy!, yaw!, wf%)
 	DEF SEG = VARSEG(oFus(0))
 	CALL ABSOLUTE(BYVAL VARSEG(pfu(0)), BYVAL VARPTR(pfu(0)), VARPTR(oFus(0)))
 	DEF SEG
-	IF m3tim THEN CALL M3T(2)
 	'----- the faces sorted far to near by those depths (C3DROT with no vertices to turn)
 	prr(10) = VARSEG(rz(0)): prr(11) = VARPTR(rz(0)): prr(12) = 0
 	prr(15) = VARSEG(fa(0)): prr(16) = VARPTR(fa(0)): prr(17) = VARSEG(ord(0)): prr(18) = VARPTR(ord(0)): prr(19) = nf
@@ -1967,7 +1822,6 @@ SUB M3Render (fx!, fy!, yaw!, wf%)
 	DEF SEG = VARSEG(oRot(0))
 	CALL ABSOLUTE(BYVAL VARSEG(prr(0)), BYVAL VARPTR(prr(0)), VARPTR(oRot(0)))
 	DEF SEG
-	IF m3tim THEN CALL M3T(3)
 	'----- his box (3 px round for the outline, 1 without) at whole bytes, on the screen, at most
 	'----- the byte box (32 wide in the hall: James's, and the man's smaller box and pair there)
 	IF M3OUTL THEN
@@ -1996,7 +1850,6 @@ SUB M3Render (fx!, fy!, yaw!, wf%)
 	DEF SEG = VARSEG(oTri(0))
 	CALL ABSOLUTE(BYVAL VARSEG(prm(0)), BYVAL VARPTR(prm(0)), VARPTR(oTri(0)))
 	DEF SEG
-	IF m3tim THEN CALL M3T(5): bmFaces = bmFaces + prm(22)
 	'----- (James: his black's edge on the black round him in the outline colour, C3DEDGI)
 	IF m3who AND oEdi(0) <> 0 THEN
 		tm = 16 + 15 * 256: mo = M3JamDark%
@@ -2020,7 +1873,6 @@ SUB M3Render (fx!, fy!, yaw!, wf%)
 	END IF
 	DEF SEG
 	rbx = bx: rby = by: rbw = w: rbh = h
-	IF m3tim THEN CALL M3T(6)
 END SUB
 
 '----- M3TexSeg: the texture's segment for the band table -- the far heap may have
