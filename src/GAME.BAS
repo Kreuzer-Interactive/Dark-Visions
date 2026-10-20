@@ -64,6 +64,7 @@ DECLARE SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
 DECLARE SUB MapView (hasmap AS INTEGER, curRoom AS INTEGER, vis AS LONG, mvint AS INTEGER, msen AS SINGLE)
 DECLARE SUB Man3dInit ()
 DECLARE SUB Man3dPre ()
+DECLARE FUNCTION Man3dOn% ()
 DECLARE SUB Man3dFree ()
 DECLARE SUB Man3dIdle (ovf%(), ms!)
 DECLARE FUNCTION Man3dHold% (x%, y%, w%, h%, px!, py!)
@@ -576,6 +577,9 @@ action:
 	NEXT
 	'----- rope climb out of the pit: the long ClimbSeq IS the transition --
 	'----- the leave-room whoosh right before it reads as a stray door sound
+	'----- (the 3D man leaves with the room: both go black together, the whoosh over the cut;
+	'----- the pit climb plays in the lit room first)
+	IF Man3dOn% AND LEFT$(df$(i), 4) = "room" AND q$ <> "room12" THEN PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
 	IF q$ <> "room12" OR df$(i) <> "room10" THEN CALL Snd2
 	IF df$(i) = "dial" THEN GOSUB dial: RETURN
 	IF df$(i) = "end" THEN GOTO endgame
@@ -615,16 +619,14 @@ gotoroom:
 	'----- 14, or the poker 2 for the peg) AND a pulley path (held 62, grate
 	'----- open 63, apple key 22, or the knife 18 to cut one) -- else softlock
 	ELSEIF q$ = "room9" AND ob(66) = 0 AND ob(68) = 0 AND (ob(14) >= 1 OR ob(2) >= 1) AND (ob(62) >= 1 OR ob(63) = 1 OR ob(22) >= 1 OR ob(18) >= 1) THEN
-		GOSUB face
-		GOSUB litup
+		GOSUB walkin
 		GOSUB gateseq
 	ELSEIF q$ = "room12" AND oq$ = "room10" THEN
 		GOSUB climbdn
 	ELSEIF q$ = "room10" AND oq$ = "room12" THEN
 		GOSUB upgrate
 	ELSE
-		GOSUB face
-		GOSUB litup
+		GOSUB walkin
 	END IF
 	RETURN
 
@@ -635,6 +637,23 @@ litup:
 	rvfd = 0
 	CALL ShadTick(q$, cl, h9, t1, t2, t3, CINT(ob(43)), pjx, pjy, b, a, sdwDat(), sdwB1$, sdwB2$, fbg())
 	GOSUB rmpal
+	RETURN
+
+'----- walkin: the 3D man comes into the room on foot (the sprite appears at the entry spot): lit a
+'----- few steps short of it, back along the way he left the last room by (a$ 1=s 2=n 3=e 4=w), he
+'----- walks to it and turns on the spot to the entry facing (Man3dStand's turn, in the main loop)
+walkin:
+	IF Man3dOn% = 0 OR a$ > "4" THEN GOSUB face: GOSUB litup: RETURN
+	sf$ = a$: wi% = VAL(a$): wtx = pjx: wty = pjy
+	'----- (16 px up or down, 24 px left or right: inside every room's walk boxes from the centre entry)
+	IF wi% < 3 THEN pjy = pjy + 16 * (2 * wi% - 3) ELSE pjx = pjx + 24 * (2 * wi% - 7)
+	a$ = MID$("2846", wi%, 1)
+	GOSUB face
+	GOSUB litup
+	a$ = "": CALL Man3dPre: GOSUB face
+	CALL WalkFloor(wtx, wty, pjx, pjy, f3, wbox(), cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
+	a$ = sf$
+	GOSUB face
 	RETURN
 
 '----- aclend: a full-screen page short of far heap (the inventory alone takes ~73 KB): the
