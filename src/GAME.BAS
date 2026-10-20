@@ -647,7 +647,8 @@ walkin:
 	sf$ = a$: wi% = VAL(a$): wtx = pjx: wty = pjy
 	'----- (16 px up or down, 24 px left or right: inside every room's walk boxes from the centre entry)
 	IF wi% < 3 THEN pjy = pjy + 16 * (2 * wi% - 3) ELSE pjx = pjx + 24 * (2 * wi% - 7)
-	a$ = MID$("2846", wi%, 1)
+	'----- (the way in: s = down, n = up, e = right, w = left)
+	a$ = MID$("2864", wi%, 1)
 	GOSUB face
 	GOSUB litup
 	a$ = "": CALL Man3dPre: GOSUB face
