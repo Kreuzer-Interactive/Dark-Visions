@@ -66,6 +66,7 @@ DECLARE SUB M3IdleReset ()
 DECLARE SUB M3StandShow (ovf%())
 DECLARE SUB M3Turn (fx!, fy!, y0!, y1!, ovf%())
 DECLARE FUNCTION M3Dif! (y0!, y1!)
+DECLARE FUNCTION M3TurnN% (dy!)
 DECLARE SUB M3Lut (co%, p1%, p2%, p3%)
 DECLARE FUNCTION Man3dHall% (cga%())
 DECLARE SUB Man3dHallOp (op%, v&, cga%(), lut%(), row%(), cm%(), tc%)
@@ -218,6 +219,9 @@ DIM SHARED lfx AS SINGLE, lfy AS SINGLE, lyaw AS SINGLE, lt AS SINGLE, talo AS I
 DIM SHARED m3dump AS INTEGER, dumpn AS INTEGER
 '----- the walk's speed over the sprite's (dark.ini man3dspeed, 1.5): each step's time divided by it
 DIM SHARED wsp AS SINGLE
+'----- the headings he is drawn at (dark.ini man3ddirs, 16: the sprite's compass and the half-way
+'----- ones; 0 = any angle)
+DIM SHARED ydir AS INTEGER
 '----- freed for a full-screen page (inventory, map, manual, menu): reload at the next room
 DIM SHARED m3was AS INTEGER
 '----- a walk step in frames: its start and end feet, the last frame's feet, its heading;
@@ -412,7 +416,7 @@ END SUB
 '----- M3Ini: dark.ini's man3d (1 = the 3D man)
 FUNCTION M3Ini%
 	DIM fh AS INTEGER, l AS STRING
-	M3Ini% = 0: m3vs = 1: ftOn = 0: wsp = 1.5
+	M3Ini% = 0: m3vs = 1: ftOn = 0: wsp = 1.5: ydir = 16
 	IF M3Size&("DARK.INI") = 0 THEN EXIT FUNCTION
 	fh = FREEFILE
 	OPEN "DARK.INI" FOR INPUT AS #fh
@@ -424,9 +428,11 @@ FUNCTION M3Ini%
 		IF LEFT$(l, 11) = "man3dvsync=" THEN m3vs = VAL(MID$(l, 12))
 		IF LEFT$(l, 11) = "man3dsteps=" THEN ftOn = VAL(MID$(l, 12))
 		IF LEFT$(l, 11) = "man3dspeed=" THEN wsp = VAL(MID$(l, 12))
+		IF LEFT$(l, 10) = "man3ddirs=" THEN ydir = VAL(MID$(l, 11))
 	LOOP
 	CLOSE #fh
 	IF wsp <= 0 THEN wsp = 1
+	IF ydir < 0 OR ydir > 128 THEN ydir = 16
 END FUNCTION
 
 '----- M3Size: a file's length, 0 when it is not there (and not left behind empty)
@@ -548,7 +554,7 @@ SUB Man3dStand (d$, px!, py!, ovf%())
 	IF (m3drawn OR m3stp) AND ABS(fx - m3fx) + ABS(fy - m3fy) < 3 AND ABS(M3Dif!(m3yaw, ty)) >= .35 THEN
 		'----- a turn on the spot: from the main loop (Man3dIdle), a frame a tick, so the mouse
 		'----- keeps polling and the cursor stays -- the pose at the end drawn by its last step
-		trY0 = m3yaw: trY1 = ty: trN = INT(ABS(M3Dif!(m3yaw, ty)) / .4) + 1: trJ = 0: trT = TIMER - 1
+		trY0 = m3yaw: trY1 = ty: trN = M3TurnN%(M3Dif!(m3yaw, ty)): trJ = 0: trT = TIMER - 1
 		trC = -1
 		IF inc > 0 THEN IF M3Dif!(m3yaw, ty) > 0 THEN trC = tcf0 ELSE trC = tcf1
 		tr = 1: m3fx = fx: m3fy = fy: lyaw = ty: m3er = 0
@@ -668,7 +674,7 @@ SUB M3Turn (fx!, fy!, y0!, y1!, ovf%())
 	DIM dy AS SINGLE, n AS INTEGER, j AS INTEGER, c AS INTEGER, g AS INTEGER, q AS SINGLE, wf AS INTEGER
 	dy = M3Dif!(y0!, y1!)
 	IF ABS(dy) < .35 THEN EXIT SUB
-	n = INT(ABS(dy) / .4) + 1
+	n = M3TurnN%(dy)
 	c = -1
 	IF inc > 0 THEN
 		IF dy > 0 THEN c = tcf0 ELSE c = tcf1
@@ -698,6 +704,14 @@ SUB M3Turn (fx!, fy!, y0!, y1!, ovf%())
 END SUB
 
 '----- M3Dif: heading y1 less y0, the short way round (-pi..pi)
+'----- M3TurnN: the frames of a turn by dy: one a notch of the compass (man3ddirs), or 23 degrees
+FUNCTION M3TurnN% (dy!)
+	DIM n AS INTEGER
+	IF ydir > 0 THEN n = INT(ABS(dy!) * ydir / 6.2832 + .5) ELSE n = INT(ABS(dy!) / .4) + 1
+	IF n < 1 THEN n = 1
+	M3TurnN% = n
+END FUNCTION
+
 FUNCTION M3Dif! (y0!, y1!)
 	DIM d AS SINGLE
 	d = y1! - y0!
@@ -1902,11 +1916,13 @@ END SUB
 SUB M3Render (fx!, fy!, yaw!, wf%)
 	DIM bx AS INTEGER, by AS INTEGER, ex AS INTEGER, ey AS INTEGER, w AS INTEGER, h AS INTEGER
 	DIM p AS LONG, tm AS INTEGER, mo AS INTEGER
-	DIM wx16 AS LONG, wz16 AS LONG, kq AS INTEGER, yi AS INTEGER, ycs AS INTEGER, ysn AS INTEGER
+	DIM wx16 AS LONG, wz16 AS LONG, kq AS INTEGER, yi AS INTEGER, ycs AS INTEGER, ysn AS INTEGER, ys AS INTEGER
 	IF m3tim THEN CALL M3T(-1)
 	'----- his feet on the floor, his depth scale, the heading's cos and sin: no floats
 	CALL M3FloorI(fx!, fy!, wx16, wz16, kq)
-	yi = CINT(yaw! * 40.74367) AND 255: ycs = sint((yi + 64) AND 255): ysn = sint(yi)
+	yi = CINT(yaw! * 40.74367) AND 255
+	IF ydir > 0 THEN ys = 256 \ ydir: yi = ((yi + ys \ 2) \ ys) * ys AND 255
+	ycs = sint((yi + 64) AND 255): ysn = sint(yi)
 	IF m3tim THEN CALL M3T(0)
 	'----- the pose, the turn and the projection in one pass (C3DFUSE): each bone's matrix turned
 	'----- and scaled, then each vertex straight to the screen with its depth (the seams' twins
