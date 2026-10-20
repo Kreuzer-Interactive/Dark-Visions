@@ -641,10 +641,10 @@ litup:
 
 '----- walkin: the 3D man comes into the room on foot (the sprite appears at the entry spot): lit a
 '----- few steps short of it, back along the way he left the last room by (a$ 1=s 2=n 3=e 4=w), he
-'----- walks to it and turns on the spot to the entry facing (Man3dStand's turn, in the main loop)
+'----- walks to it and turns on the spot to face the camera (Man3dStand's turn, in the main loop)
 walkin:
 	IF Man3dOn% = 0 OR a$ > "4" THEN GOSUB face: GOSUB litup: RETURN
-	sf$ = a$: wi% = VAL(a$): wtx = pjx: wty = pjy
+	wi% = VAL(a$): wtx = pjx: wty = pjy
 	'----- (16 px up or down, 24 px left or right: inside every room's walk boxes from the centre entry)
 	IF wi% < 3 THEN pjy = pjy + 16 * (2 * wi% - 3) ELSE pjx = pjx + 24 * (2 * wi% - 7)
 	'----- (the way in: s = down, n = up, e = right, w = left)
@@ -653,7 +653,8 @@ walkin:
 	GOSUB litup
 	a$ = "": CALL Man3dPre: GOSUB face
 	CALL WalkFloor(wtx, wty, pjx, pjy, f3, wbox(), cwa(), cmwa(), cwb(), cmwb(), wbg(), ovf())
-	a$ = sf$
+	'----- (then the default pose, facing the camera, whatever the data's entry facing)
+	a$ = "2"
 	GOSUB face
 	RETURN
 
