@@ -29,3 +29,13 @@ src/JOED.BIN
 # debug output: the hill-drive frame dumps (C3DDUMP=2) and tool build logs
 src/C3DHILL*.BMP
 src/tools/*_B.LOG
+
+# the 3D man's test shots (M3DUMP: M3SHOT*, M3HALL*, M3SHAD*) and the PC-speaker / vector probes' outputs
+src/M3SHOT*.PIC
+src/M3HALL*.PIC
+src/M3SHAD*.PIC
+src/tools/SNDPROBE.LOG
+src/tools/SPKPROBE.LOG
+src/tools/VECPROBE.LOG
+src/tools/VECPROBE.EXE
+src/tools/VECPROBE.LNK
