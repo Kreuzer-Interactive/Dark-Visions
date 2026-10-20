@@ -2477,8 +2477,13 @@ SUB Intro
 	PALETTE 3, 0
 	KEY OFF
 	DEF SEG = &HB800: BLOAD "enter.pic", 0: DEF SEG
+	'----- (the shadow / anim caches are still empty: their heap lent to the hall's 3D man
+	'----- and James, as the car borrows it -- James needs ~22 KB after the man)
+	ERASE sdwDat, acPct, acMsk
 	vr = IntroTalk%(font3Data(), f3)
 	IF vr = 0 THEN vr = IntroWalkCga%(f3)
+	REDIM sdwDat(27000) AS INTEGER
+	REDIM acPct(6, 1600) AS INTEGER, acMsk(6, 1600) AS INTEGER
 	IF vr = 2 THEN GOTO 18640
 	IF it0 >= 0 THEN itt = itt + (TIMER - it0): it0 = -1
 	GOTO 17780
