@@ -16,6 +16,8 @@ src/**/*BLD.LOG
 !src/ugl/stubs/*.obj
 
 # game-run outputs and the shadow cache the game writes itself
+# (*.TMP: far-heap pools and page art parked on disk while a full-screen page is up)
+src/*.TMP
 src/C3D.LOG
 src/C3DTEST.LOG
 src/tools/C3DTES_B.LOG

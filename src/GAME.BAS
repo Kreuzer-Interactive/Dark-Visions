@@ -63,8 +63,12 @@ DECLARE SUB introFadeCredit ()
 DECLARE SUB showBook (sel AS SINGLE, fontData() AS INTEGER)
 DECLARE SUB MapView (hasmap AS INTEGER, curRoom AS INTEGER, vis AS LONG, mvint AS INTEGER, msen AS SINGLE)
 DECLARE SUB Man3dInit ()
+DECLARE SUB Man3dPre ()
 DECLARE SUB Man3dFree ()
 DECLARE SUB Man3dIdle (ovf%(), ms!)
+DECLARE FUNCTION Man3dHold% (x%, y%, w%, h%, px!, py!)
+DECLARE FUNCTION Man3dAnim% (x%, y%, sav%(), so%, fra%(), frm%(), mk%, ovf%(), ms!)
+DECLARE FUNCTION CurHit% (x%, y%, w%, h%)
 DECLARE SUB Man3dRoom (q$, co!, p1!, p2!, p3!, nopl!)
 DECLARE SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%(), ovf%())
 DECLARE SUB PStep (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
@@ -208,7 +212,7 @@ DIM SHARED afrm(460) AS INTEGER, amfrm(460) AS INTEGER, fsq(30) AS INTEGER
 '----- anim source cache: each .pct/.msk pair parsed from disk ONCE, then reused (6 slots,
 '----- round-robin evict). REDIM = dynamic arrays in the far heap, so DGROUP is untouched.
 REDIM SHARED acPct(6, 1600) AS INTEGER, acMsk(6, 1600) AS INTEGER
-DIM SHARED acSrc$(6), acN(6) AS INTEGER, acM(6) AS INTEGER
+DIM SHARED acSrc$(6), acN(6) AS INTEGER, acM(6) AS INTEGER, acLent AS INTEGER
 '----- foreground overlays ("fg" mode): furniture the player walks BEHIND. ovf(0)=count,
 '----- then 4 ints per overlay (x, y, pct start, msk start), frame data packed after 17;
 '----- PStand/PStep re-PUT any overlay that intersects the player box (GAME5 OvTop)
@@ -616,12 +620,32 @@ gotoroom:
 	END IF
 	RETURN
 
+'----- aclend: a full-screen page short of far heap (the inventory alone takes ~73 KB): the
+'----- shadow pool and the anim cache (99 KB) are lent to it -- saved to disk, erased -- and
+'----- acback reads them back at the room reload, so the 3D man can stay loaded
+aclend:
+	IF FRE(-1) >= 80000 OR acLent THEN RETURN
+	DEF SEG = VARSEG(sdwDat(0)): BSAVE "SDWDAT.TMP", VARPTR(sdwDat(0)), 54002
+	DEF SEG = VARSEG(acPct(0, 0)): BSAVE "ACPCT.TMP", VARPTR(acPct(0, 0)), 22414
+	DEF SEG = VARSEG(acMsk(0, 0)): BSAVE "ACMSK.TMP", VARPTR(acMsk(0, 0)), 22414
+	DEF SEG
+	ERASE sdwDat, acPct, acMsk: acLent = 1
+	RETURN
+acback:
+	REDIM sdwDat(27000) AS INTEGER, acPct(6, 1600) AS INTEGER, acMsk(6, 1600) AS INTEGER: acLent = 0
+	DEF SEG = VARSEG(sdwDat(0)): BLOAD "SDWDAT.TMP", VARPTR(sdwDat(0))
+	DEF SEG = VARSEG(acPct(0, 0)): BLOAD "ACPCT.TMP", VARPTR(acPct(0, 0))
+	DEF SEG = VARSEG(acMsk(0, 0)): BLOAD "ACMSK.TMP", VARPTR(acMsk(0, 0))
+	DEF SEG
+	RETURN
+
 '----- invhi: ESC inventory -- graphical SCREEN 1 (320x200, 4-color) tile grid.
 '      Loads INVTIL1/2.PIC, GETs the 36 45x54 tiles into tilarr, then PUTs the
 '      carried items into a 7-col grid with a movable selection ring.
 doinv:
-	'----- (the 3D man's heap back for the full-screen pages; loadroom reloads him)
-	CALL Man3dFree
+	'----- (far heap for the full-screen pages: aclend lends the shadow pool and anim cache, the
+	'----- 3D man is given back only if that is not enough; loadroom restores / reloads them)
+	GOSUB aclend: IF FRE(-1) < 80000 THEN CALL Man3dFree
 	CALL invhi
 	GOTO invret
 
@@ -629,7 +653,7 @@ doinv:
 '----- shares invret so the room is reloaded after the mode switch
 domanual:
 	IF msen = 1 THEN CALL erasecur
-	CALL Man3dFree
+	GOSUB aclend: IF FRE(-1) < 80000 THEN CALL Man3dFree
 	CALL ManualShow(msen)
 	GOTO invret
 
@@ -638,7 +662,7 @@ domanual:
 '----- return path (reload the room, player stays where he stood via lrq$)
 domap:
 	IF msen = 1 THEN CALL erasecur
-	CALL Man3dFree
+	GOSUB aclend: IF FRE(-1) < 80000 THEN CALL Man3dFree
 	CALL MapView(CINT(ob(16)), CINT(mrn), CLNG(ob(64)), mvint, msen)
 invret:
 	GOSUB loadroom
@@ -654,7 +678,7 @@ invret:
 '----- reload the room -- also repaints after a Load or a plain resume)
 domenu:
 	IF msen = 1 THEN CALL erasecur
-	CALL Man3dFree
+	GOSUB aclend: IF FRE(-1) < 80000 THEN CALL Man3dFree
 	CALL MainMenu(fontData(), mvint, msen, slvAct, 0)
 	IF slvAct = 2 THEN RUN
 	'----- a manual load invalidates any armed/pending revive snapshot, and
@@ -883,6 +907,7 @@ shadload:
 '----- cached: the .pct/.msk files are parsed ONCE into a slot (animload), then every frame draw
 '----- is array-copy + PUT -- was 2 full ASCII file re-parses PER FRAME (the slow door swing)
 animframe:
+	anok = 0
 	acs = 0
 	FOR aci = 1 TO 6
 		IF acSrc$(aci) = SRC$ THEN acs = aci
@@ -899,11 +924,15 @@ animframe:
 	IF afn < 1 THEN afn = 1
 	IF afn > ank THEN afn = ank
 	FOR aj = 0 TO anpf - 1: afrm(aj) = acPct(acs, afn + aj * ank): NEXT
+	anok = 1: anmk = 0
 	IF acM(acs) >= anf THEN
 		FOR aj = 0 TO anpf - 1: amfrm(aj) = acMsk(acs, afn + aj * ank): NEXT
+		anmk = 1
+		IF annop THEN RETURN
 		PUT (PX, PY), amfrm, AND
 		PUT (PX, PY), afrm, OR
 	ELSE
+		IF annop THEN RETURN
 		PUT (PX, PY), afrm, PSET
 	END IF
 	RETURN
@@ -1140,9 +1169,10 @@ animtick:
 			IF liCond(li) < 0 THEN IF ob(-liCond(li)) >= 1 THEN GOTO atnext
 			'----- hold the tick while the player's 31x31 box overlaps this instance --
 			'----- no z-order exists, advancing would stamp background over him; the
-			'----- anim freezes and resumes as soon as he moves away (skip in nopl views)
+			'----- anim freezes and resumes as soon as he moves away (skip in nopl views).
+			'----- The 3D man (GAME8 Man3dHold) can have it tick on behind him instead
 			IF nopl = 0 THEN
-				IF liX(li) < pjx + 31 AND liX(li) + liW(li) > pjx AND liY(li) < pjy + 31 AND liY(li) + liH(li) > pjy THEN GOTO atnext
+				IF Man3dHold%(liX(li), liY(li), liW(li), liH(li), pjx, pjy) THEN GOTO atnext
 			END IF
 			'----- cursor parked on/near this anim: hold the tick too -- redrawing
 			'----- under the pointer causes a draw-over war (resumes when it moves)
@@ -1160,14 +1190,21 @@ animtick:
 			aidx = liAnim(li)
 			GOSUB animparse
 			IF nfr >= 1 THEN
-				PUT (liX(li), liY(li)), liSaveAll((li - 1) * 210), PSET
 				liCur(li) = liCur(li) + 1
 				IF liCur(li) > nfr THEN liCur(li) = 1
 				SRC$ = anSrc$(aidx)
 				PX = liX(li)
 				PY = liY(li)
 				afn = fsq(liCur(li)) + 1
-				GOSUB animframe
+				'----- the frame made first (annop: not drawn), then its box's clean background
+				'----- and the frame put up back to back -- or composed and put at once (GAME8)
+				annop = 1: GOSUB animframe: annop = 0
+				IF anok = 0 THEN
+					PUT (liX(li), liY(li)), liSaveAll((li - 1) * 210), PSET
+				ELSEIF Man3dAnim%(liX(li), liY(li), liSaveAll(), CINT((li - 1) * 210), afrm(), amfrm(), CINT(anmk), ovf(), msen) = 0 THEN
+					PUT (liX(li), liY(li)), liSaveAll((li - 1) * 210), PSET
+					IF anmk THEN PUT (PX, PY), amfrm, AND: PUT (PX, PY), afrm, OR ELSE PUT (PX, PY), afrm, PSET
+				END IF
 				IF liMax(li) > 0 THEN
 					liWait(li) = liMin(li) + RND * (liMax(li) - liMin(li))
 				ELSE
@@ -1551,6 +1588,7 @@ gateopen:
 	RETURN
 
 loadroom:
+	IF acLent THEN GOSUB acback
 	txr = 0: cdrawn = 0
 	CLOSE
 	OPEN q$ + ".pac" FOR INPUT AS #1
@@ -1681,6 +1719,7 @@ walkout:
 	'----- cached all 4 direction sets at startup)
 	8265 sf$ = a$
 	a$ = ""
+	CALL Man3dPre
 	GOSUB face
 	a$ = sf$
 	wtx = pjx: wty = pjy
@@ -1752,6 +1791,7 @@ wlkitem:
 	IF wsx = pjx AND wsy = pjy THEN GOTO wlkface
 	sf$ = a$
 	a$ = ""
+	CALL Man3dPre
 	GOSUB face
 	a$ = sf$
 	'----- walk-box floor: route through the boxes (stays on the floor across seams);
@@ -2246,14 +2286,19 @@ death:
 	IF tt$ <> "y" THEN a$ = lf$: lf$ = "": GOSUB face
 	rvfd = 0
 	CALL LoadFade(co, pa1, pa2, pa3)
+	'----- (its art and save-under need ~7 KB: the shadow pool and anim cache lent meanwhile)
+	GOSUB aclend
 	CALL ReviveShow(mvint, msen, co, pa1, pa2, pa3)
+	IF acLent THEN GOSUB acback
 	GOSUB rmpal
 	t0 = TIMER
 	GOTO 14570
 
 	'----- death: the LOAD screen first; Back opens the main menu (Save locked,
 	'----- no resume) so New Game / Quit stay reachable
-	14710 CALL SlotScreen(fontData(), mvint, msen, 2, 1, slvAct)
+	'----- (the far heap for those pages, as at doinv; loadroom gives it back)
+	14710 GOSUB aclend: IF FRE(-1) < 80000 THEN CALL Man3dFree
+	CALL SlotScreen(fontData(), mvint, msen, 2, 1, slvAct)
 	IF slvAct <> 1 THEN CALL MainMenu(fontData(), mvint, msen, slvAct, 1)
 	IF slvAct = 2 THEN RUN
 	IF slvAct <> 1 THEN GOTO 14710
@@ -2533,6 +2578,13 @@ SUB drawcur
 	NEXT
 	cox = mx: coy = my: cdrawn = 1
 END SUB
+
+'----- CurHit: the drawn mouse cursor (16 x 10) overlaps the box? (GAME8: the 3D man's draws
+'----- lift it only then)
+FUNCTION CurHit% (x%, y%, w%, h%)
+	CurHit% = 0
+	IF cdrawn = 1 THEN IF cox < x% + w% AND cox + 16 > x% AND coy < y% + h% AND coy + 10 > y% THEN CurHit% = 1
+END FUNCTION
 
 SUB erasecur
 	IF cdrawn = 1 THEN PUT (cox, coy), curbuf, PSET

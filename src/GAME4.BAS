@@ -474,6 +474,14 @@ SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE, co AS SINGLE, p1 AS SINGLE, p2
 	DIM cbuf(40) AS INTEGER
 	DIM cmx AS INTEGER, cmy AS INTEGER, nmx AS INTEGER, nmy AS INTEGER, cdrn AS INTEGER
 	REDIM rvu(1200) AS INTEGER
+	'----- (between revives the art waits on disk, as the menu's: rvrel)
+	IF rvOk = 2 THEN
+		REDIM rvArt(1200) AS INTEGER
+		REDIM rvMsk(1200) AS INTEGER
+		DEF SEG = VARSEG(rvArt(0)): BLOAD "RVART.TMP", VARPTR(rvArt(0))
+		DEF SEG = VARSEG(rvMsk(0)): BLOAD "RVMSK.TMP", VARPTR(rvMsk(0))
+		DEF SEG: rvOk = 1
+	END IF
 	IF rvOk <> 1 THEN
 		REDIM rvArt(1200) AS INTEGER
 		REDIM rvMsk(1200) AS INTEGER
@@ -489,7 +497,7 @@ SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE, co AS SINGLE, p1 AS SINGLE, p2
 		rvOk = 1
 	END IF
 	'----- VGA: mode 13h overlay, room palette kept; 0 = no VGA, do it in CGA
-	IF ReviveVga%(rvArt(), rvMsk(), CINT(co), CINT(p1), CINT(p2), CINT(p3), mvint, msen) THEN EXIT SUB
+	IF ReviveVga%(rvArt(), rvMsk(), CINT(co), CINT(p1), CINT(p2), CINT(p3), mvint, msen) THEN GOSUB rvrel: EXIT SUB
 	cx = (320 - rvArt(0) \ 2) \ 2
 	cy = (200 - rvArt(1)) \ 2
 	'----- art palette: LIGHT gray box (attr 1 -> 7; the editor maps the PNG's
@@ -536,7 +544,16 @@ SUB ReviveShow (mvint AS INTEGER, msen AS SINGLE, co AS SINGLE, p1 AS SINGLE, p2
 	LOOP
 	IF msen = 1 THEN GOSUB rvcerase
 	PUT (cx, cy), rvu, PSET
+	GOSUB rvrel
 	EXIT SUB
+
+	'----- the art to disk and its far heap given back till the next revive
+	rvrel:
+	DEF SEG = VARSEG(rvArt(0)): BSAVE "RVART.TMP", VARPTR(rvArt(0)), 2402
+	DEF SEG = VARSEG(rvMsk(0)): BSAVE "RVMSK.TMP", VARPTR(rvMsk(0)), 2402
+	DEF SEG
+	REDIM rvArt(1) AS INTEGER, rvMsk(1) AS INTEGER: rvOk = 2
+	RETURN
 
 	'----- poll the mouse and move the software cursor if it changed
 	rvctrack:
@@ -612,6 +629,15 @@ SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS IN
 	act = 0: done = 0: sel = 1: mlb = 1: cdrn = 0
 	mny(1) = 34: mny(2) = 48: mny(3) = 62: mny(4) = 76
 
+	'----- (between opens it waits on disk, the far heap is short with the 3D man: read back
+	'----- in one go -- the text parse below is slow on a 486SX)
+	IF mnOk = 2 THEN
+		REDIM mnArt(1536) AS INTEGER
+		REDIM mnLbl(419) AS INTEGER
+		DEF SEG = VARSEG(mnArt(0)): BLOAD "MNART.TMP", VARPTR(mnArt(0))
+		DEF SEG = VARSEG(mnLbl(0)): BLOAD "MNLBL.TMP", VARPTR(mnLbl(0))
+		DEF SEG: mnOk = 1
+	END IF
 	'----- parse the menu art once per session (interleaved 6-wide like other .PCTs);
 	'----- the REDIMs do the real far-heap allocation (see module-level note)
 	IF mnOk <> 1 THEN
@@ -692,6 +718,11 @@ SUB MainMenu (fontData() AS INTEGER, mvint AS INTEGER, msen AS SINGLE, act AS IN
 	IF k$ = CHR$(0) + CHR$(80) THEN dir = 1: GOSUB mmstep
 	IF done = 0 THEN GOTO mmwait
 	IF msen = 1 THEN GOSUB mmerasecur
+	'----- the art to disk and its far heap given back till the next open
+	DEF SEG = VARSEG(mnArt(0)): BSAVE "MNART.TMP", VARPTR(mnArt(0)), 3074
+	DEF SEG = VARSEG(mnLbl(0)): BSAVE "MNLBL.TMP", VARPTR(mnLbl(0)), 840
+	DEF SEG
+	REDIM mnArt(1) AS INTEGER, mnLbl(1) AS INTEGER: mnOk = 2
 	EXIT SUB
 
 	'----- draw the menu box + the not-selected/disabled label states over it.

@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 $tools = $PSScriptRoot
 $src = (Resolve-Path "$tools\..").Path
 $net = "$tools\net486.ps1"
-$files = @('GAME.EXE', 'MAN3D.MDL', 'MAN3D.BMP', 'MAN3DW.ANI', 'MAN3DI.ANI', 'JAMES3D.MDL', 'JAMES3D.BMP', 'JAMES3DI.ANI', 'C3DEDGI.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'C3DROT.OVL', 'C3DSKIN.OVL', 'C3DEDGO.OVL', 'C3DCGA.OVL')
+$files = @('GAME.EXE', 'MAN3D.MDL', 'MAN3D.BMP', 'MAN3DW.ANI', 'MAN3DI.ANI', 'JAMES3D.MDL', 'JAMES3D.BMP', 'JAMES3DI.ANI', 'C3DEDGI.OVL', 'C3DTRI.OVL', 'C3DPRJ.OVL', 'C3DROT.OVL', 'C3DSKIN.OVL', 'C3DEDGO.OVL', 'C3DCGA.OVL', 'C3DCOMP.OVL', 'C3DFUSE.OVL')
 foreach ($f in $files) {
     $p = Join-Path $src $f
     if (Test-Path $p) { & $net push -Source $p -All | Select-Object -Last 1 } else { "missing: $p" }

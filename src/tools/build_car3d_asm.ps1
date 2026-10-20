@@ -338,9 +338,11 @@ Lbl 'edges'
 # rows: a row cy is covered when its centre (cy*16+8) lies in [y0, y2); first row = (y0+7)>>4
 MovRM 'ax' $Y0; E @(0x05, 0x07, 0x00); E @(0xC1, 0xF8, 0x04); MovMR $CY 'ax'       # cy0
 MovRM 'ax' $Y1; E @(0x05, 0x07, 0x00); E @(0xC1, 0xF8, 0x04); MovMR $YEND 'ax'     # cy1
+CmpMI8w $FLATF 0; Jr 0x75 'tuyskip'                                              # (a flat face has no texture rows)
 MovRM 'cx' $CY; E @(0xC1, 0xE1, 0x04); E @(0x83, 0xC1, 0x08); SubRM 'cx' $Y0; E @(0x66, 0x0F, 0xBF, 0xC9)   # ecx = cy0*16+8-y0
 Movsx32RM 'ax' $DUDY; E @(0x66, 0x0F, 0xAF, 0xC1); Mov32MRw $TUY 'ax'
 Movsx32RM 'ax' $DVDY; E @(0x66, 0x0F, 0xAF, 0xC1); Mov32MRw $TVY 'ax'
+Lbl 'tuyskip'
 # long edge DDA: slope (16.16 px per row) = (dx2<<16)/dy2; start x = x0 + slope*(centre of row cy0 - y0)/16
 Movsx32RM 'ax' $DX2; E @(0x66, 0xC1, 0xE0, 0x10); E @(0x66, 0x99); Movsx32RM 'cx' $DY2; E @(0x66, 0xF7, 0xF9); Mov32MR $XSTEPL 'ax'
 MovRM 'cx' $CY; E @(0xC1, 0xE1, 0x04); E @(0x83, 0xC1, 0x08); SubRM 'cx' $Y0; E @(0x66, 0x0F, 0xBF, 0xC9)   # ecx = sub-row offset 0..15
@@ -588,6 +590,137 @@ return $script:a.Resolve()
 }
 $edgk = Build-Edgk $false
 $edgi = Build-Edgk $true
+# =============================================================================
+# C3DCOMP: CALL ABSOLUTE(BYVAL seg, BYVAL off, SADD(comp$)) RETF 4 -- a block of 9 words:
+#   0 op  1/2 dest seg/off  3/4 src seg/off  5/6 mask seg/off  7 dest byte column  8 dest row
+#   The dest and src are QB SCREEN 1 GET arrays (word 0 width in bits, word 1 rows, then rows of
+#   bytes), the src at 4-pixel boundaries in the dest (so whole bytes; widths in whole bytes):
+#   op 0 PASTE    src's rows into dest at (col, row)
+#   op 1 EXTRACT  dest's bytes at (col, row) into src (its header already sized)
+#   op 2 COMPOSE  dest = (dest AND mask) OR src  (mask: the src's same-sized mask array)
+#   op 3 CLEAR    word 8 = a count of bytes zeroed at dest seg:off (no header)
+#   op 4 COPY     word 8 = a count of bytes copied from src seg:off to dest seg:off (raw)
+#   op 5 MERGE    dest's pixels in the rectangle columns 5..6, rows 7..8 (pixels and rows from its
+#                 top left, inside it) taken from src, a GET array of the same size (words 5..8 are
+#                 c0 c1 r0 r1, no mask): an animation's new frame into his save-under, pixel-exact
+#   op 6 OVERLAY  a sprite pair at any pixel offset composed into dest, clipped: dest = (dest AND
+#                 mask) OR src pixel by pixel as PUT AND then PUT OR would leave it; word 7 = the
+#                 src's left less dest's in pixels, word 8 its top less dest's in rows (either may
+#                 be negative); mask seg 0 = no mask (PUT PSET). The furniture in front of him
+#                 composed into the frame before its one PUT, not put over it afterwards#   Composing a frame in RAM, then one PUT PSET of it, puts the new picture up with no
+#   erased or half-drawn state ever on the screen (GAME8's flicker-free show).
+# =============================================================================
+$script:a = [Asm]::new()
+E @(0x55); E @(0x8B, 0xEC); E @(0x1E, 0x56, 0x57, 0x53, 0x06); E @(0x0F, 0xA0); E @(0xFC)   # push bp ds si di bx es fs; cld
+E @(0x8E, 0x5E, 0x08); E @(0x8B, 0x76, 0x06)                              # ds:si = the block
+E @(0x8E, 0x44, 0x02); E @(0x8B, 0x7C, 0x04)                              # es:di = dest
+E @(0x8B, 0x04); E @(0x83, 0xF8, 0x05); Jn @(0x0F, 0x83) 'cop56'          # ops 5, 6
+E @(0x83, 0xF8, 0x04); Jn @(0x0F, 0x85) 'cnotcpy'                         # op 4: copy
+E @(0x8B, 0x4C, 0x10); E @(0x8B, 0x44, 0x06); E @(0x8B, 0x74, 0x08); E @(0x8E, 0xD8); E @(0xF3, 0xA4); JmpN 'cdone'   # cx = count; ds:si = src; rep movsb
+Lbl 'cnotcpy'
+E @(0x83, 0xF8, 0x03); Jn @(0x0F, 0x85) 'cnotclr'                         # op 3: clear
+E @(0x8B, 0x4C, 0x10); E @(0x32, 0xC0); E @(0xF3, 0xAA); JmpN 'cdone'     # cx = count; al = 0; rep stosb
+Lbl 'cnotclr'
+E @(0x8B, 0x44, 0x0A); E @(0x8E, 0xE0); E @(0x8B, 0x5C, 0x0C)            # fs:bx = mask
+E @(0x26, 0x8B, 0x05); E @(0x83, 0xC0, 0x07); E @(0xC1, 0xE8, 0x03); E @(0x8B, 0xD0)   # dx = dest bytes a row
+E @(0x8B, 0x44, 0x10); E @(0x0F, 0xAF, 0xC2); E @(0x03, 0xF8); E @(0x03, 0x7C, 0x0E); E @(0x83, 0xC7, 0x04)   # di += row*dx + col + 4
+E @(0x83, 0xC3, 0x04)                                                     # bx past the mask's header
+E @(0x8B, 0x04); E @(0x50)                                                # push op
+E @(0x8B, 0x44, 0x06); E @(0x8B, 0x74, 0x08); E @(0x8E, 0xD8)            # ds:si = src
+E @(0x8B, 0x04); E @(0x83, 0xC0, 0x07); E @(0xC1, 0xE8, 0x03); E @(0x8B, 0xE8)   # bp = src bytes a row
+E @(0x8B, 0x44, 0x02); E @(0x83, 0xC6, 0x04)                              # ax = rows; si past the header
+E @(0x2B, 0xD5); E @(0x59); E @(0x8A, 0xE0)                               # dx = dest skip; cx = op; ah = rows
+E @(0x0A, 0xE4); Jn @(0x0F, 0x84) 'cdone'                                 # no rows
+E @(0x83, 0xF9, 0x01); Jn @(0x0F, 0x84) 'cext'; Jn @(0x0F, 0x87) 'ccomp'
+Lbl 'cpaste'
+E @(0x8B, 0xCD); E @(0xF3, 0xA4); E @(0x03, 0xFA); E @(0xFE, 0xCC); Jn @(0x0F, 0x85) 'cpaste'
+JmpN 'cdone'
+Lbl 'cext'
+E @(0x1E, 0x06, 0x1F, 0x07); E @(0x87, 0xF7)                              # swap: ds:si = dest place, es:di = src array
+Lbl 'cextr'
+E @(0x8B, 0xCD); E @(0xF3, 0xA4); E @(0x03, 0xF2); E @(0xFE, 0xCC); Jn @(0x0F, 0x85) 'cextr'
+JmpN 'cdone'
+Lbl 'ccomp'
+E @(0x8B, 0xCD)
+Lbl 'ccpx'
+E @(0x26, 0x8A, 0x05); E @(0x64, 0x22, 0x07); E @(0x0A, 0x04); E @(0xAA); E @(0x46); E @(0x43)   # al = (dest AND mask) OR src
+E @(0x49); Jn @(0x0F, 0x85) 'ccpx'
+E @(0x03, 0xFA); E @(0xFE, 0xCC); Jn @(0x0F, 0x85) 'ccomp'
+JmpN 'cdone'
+# ---- ops 5, 6: 40 bytes of locals below the pushes (sp = bp-12): the block copied to bp-52..-36
+#      (word k at bp-52+2k), then nb -34 (dest bytes a row), drows -32, snb -30, pad -28,
+#      srows -26, bo -24, sh -22, r -20, j -18, soff -16, doff -14; op 5: lm -28, rm -26 (bytes),
+#      b0 -24, b1 -22, r -20
+Lbl 'cop56'
+E @(0x83, 0xEC, 0x28)                                                     # sub sp,40
+E @(0x16, 0x07); E @(0x8D, 0x7E, 0xCC); E @(0xB9, 0x09, 0x00); E @(0xF3, 0xA5)   # es = ss; the block -> [bp-52]
+E @(0x8B, 0x46, 0xCC); E @(0x83, 0xF8, 0x06); Jn @(0x0F, 0x84) 'cop6'
+# op 5 MERGE: es:di = dest, ds:si = src
+E @(0x8E, 0x46, 0xCE); E @(0x8B, 0x7E, 0xD0); E @(0x8E, 0x5E, 0xD2); E @(0x8B, 0x76, 0xD4)
+E @(0x26, 0x8B, 0x05); E @(0x83, 0xC0, 0x07); E @(0xC1, 0xE8, 0x03); E @(0x89, 0x46, 0xDE)   # nb
+E @(0x8B, 0x4E, 0xD6); E @(0x83, 0xE1, 0x03); E @(0xD1, 0xE1); E @(0xB0, 0xFF); E @(0xD2, 0xE8); E @(0x88, 0x46, 0xE4)   # lm = FF >> 2(c0 & 3)
+E @(0x8B, 0x4E, 0xD8); E @(0x83, 0xE1, 0x03); E @(0xF7, 0xD9); E @(0x83, 0xC1, 0x03); E @(0xD1, 0xE1); E @(0xB0, 0xFF); E @(0xD2, 0xE0); E @(0x88, 0x46, 0xE6)   # rm = FF << 2(3 - c1 & 3)
+E @(0x8B, 0x46, 0xD6); E @(0xC1, 0xF8, 0x02); E @(0x89, 0x46, 0xE8)       # b0 = c0 >> 2
+E @(0x8B, 0x46, 0xD8); E @(0xC1, 0xF8, 0x02); E @(0x89, 0x46, 0xEA)       # b1 = c1 >> 2
+E @(0x8B, 0x46, 0xDA); E @(0x89, 0x46, 0xEC)                              # r = r0
+Lbl 'c5row'
+E @(0x8B, 0x46, 0xEC); E @(0x3B, 0x46, 0xDC); Jn @(0x0F, 0x8F) 'c56end'  # r > r1: done
+E @(0x0F, 0xAF, 0x46, 0xDE); E @(0x03, 0x46, 0xE8); E @(0x83, 0xC0, 0x04); E @(0x8B, 0xD8)   # bx = 4 + r*nb + b0
+E @(0x8B, 0x4E, 0xEA); E @(0x2B, 0x4E, 0xE8); E @(0x41)                   # cx = b1 - b0 + 1
+E @(0x8A, 0x56, 0xE4)                                                     # dl = lm
+Lbl 'c5byte'
+E @(0x83, 0xF9, 0x01); Jr 0x75 'c5nr'; E @(0x22, 0x56, 0xE6); Lbl 'c5nr'   # the last byte: and rm
+E @(0x8A, 0x00); E @(0x22, 0xC2); E @(0x8A, 0xE2); E @(0xF6, 0xD4); E @(0x26, 0x22, 0x21); E @(0x0A, 0xC4); E @(0x26, 0x88, 0x01)   # d = (d AND NOT m) OR (s AND m)
+E @(0x43); E @(0xB2, 0xFF); E @(0x49); Jr 0x75 'c5byte'
+E @(0xFF, 0x46, 0xEC); JmpN 'c5row'
+# op 6 OVERLAY: es:di = dest; per src byte: ds:si -> art (bl), mask (bh, inverted: the cover)
+Lbl 'cop6'
+E @(0x8E, 0x46, 0xCE); E @(0x8B, 0x7E, 0xD0)
+E @(0x26, 0x8B, 0x05); E @(0x83, 0xC0, 0x07); E @(0xC1, 0xE8, 0x03); E @(0x89, 0x46, 0xDE)   # nb
+E @(0x26, 0x8B, 0x45, 0x02); E @(0x89, 0x46, 0xE0)                        # drows
+E @(0x8E, 0x5E, 0xD2); E @(0x8B, 0x76, 0xD4)
+E @(0x8B, 0x04); E @(0x8B, 0xD0); E @(0x83, 0xC0, 0x07); E @(0xC1, 0xE8, 0x03); E @(0x89, 0x46, 0xE2)   # snb (dx = src bits)
+E @(0x8B, 0xC8); E @(0x49); E @(0xC1, 0xE1, 0x03); E @(0xF7, 0xD9); E @(0x03, 0xCA)        # cx = the last byte's bits
+E @(0xB0, 0xFF); E @(0xD2, 0xE8); E @(0x88, 0x46, 0xE4)                   # pad = FF >> them (its unused low bits)
+E @(0x8B, 0x44, 0x02); E @(0x89, 0x46, 0xE6)                              # srows
+E @(0x8B, 0x46, 0xDA); E @(0x8B, 0xC8); E @(0xC1, 0xF8, 0x02); E @(0x89, 0x46, 0xE8)   # bo = dx >> 2 (floor)
+E @(0x83, 0xE1, 0x03); E @(0xD1, 0xE1); E @(0x89, 0x4E, 0xEA)             # sh = 2(dx & 3)
+E @(0xC7, 0x46, 0xEC, 0x00, 0x00)                                         # r = 0
+Lbl 'c6row'
+E @(0x8B, 0x46, 0xEC); E @(0x3B, 0x46, 0xE6); Jn @(0x0F, 0x8D) 'c56end'
+E @(0x03, 0x46, 0xDC); Jn @(0x0F, 0x88) 'c6nrow'; E @(0x3B, 0x46, 0xE0); Jn @(0x0F, 0x8D) 'c6nrow'   # dest row dy + r inside?
+E @(0x0F, 0xAF, 0x46, 0xDE); E @(0x83, 0xC0, 0x04); E @(0x89, 0x46, 0xF2)   # doff = 4 + row*nb
+E @(0x8B, 0x46, 0xEC); E @(0x0F, 0xAF, 0x46, 0xE2); E @(0x83, 0xC0, 0x04); E @(0x89, 0x46, 0xF0)   # soff = 4 + r*snb
+E @(0xC7, 0x46, 0xEE, 0x00, 0x00)                                         # j = 0
+Lbl 'c6byte'
+E @(0x8B, 0x46, 0xEE); E @(0x3B, 0x46, 0xE2); Jn @(0x0F, 0x8D) 'c6nrow'
+E @(0x8E, 0x5E, 0xD2); E @(0x8B, 0x76, 0xD4); E @(0x03, 0x76, 0xF0); E @(0x03, 0xF0); E @(0x8A, 0x1C)   # bl = art
+E @(0xB7, 0xFF)                                                           # bh = cover (no mask: all)
+E @(0x83, 0x7E, 0xD6, 0x00); Jr 0x74 'c6op'
+E @(0x8E, 0x5E, 0xD6); E @(0x8B, 0x76, 0xD8); E @(0x03, 0x76, 0xF0); E @(0x03, 0xF0); E @(0x8A, 0x3C); E @(0xF6, 0xD7)   # bh = NOT mask
+Lbl 'c6op'
+E @(0x8B, 0x4E, 0xE2); E @(0x49); E @(0x3B, 0xC1); Jr 0x75 'c6np'        # the row's last byte:
+E @(0x8A, 0x4E, 0xE4); E @(0xF6, 0xD1); E @(0x22, 0xD9); E @(0x22, 0xF9)   #   its padding neither covers nor draws
+Lbl 'c6np'
+E @(0x8B, 0x4E, 0xEA)                                                     # cl = sh
+E @(0x33, 0xD2); E @(0x8A, 0xF7); E @(0xD3, 0xEA)                         # dx = cover << 8 >> sh
+E @(0x8A, 0xFB); E @(0x32, 0xDB); E @(0xD3, 0xEB)                         # bx = art << 8 >> sh
+E @(0x03, 0x46, 0xE8)                                                     # ax = dest byte column bo + j
+E @(0x8E, 0x46, 0xCE); E @(0x8B, 0x7E, 0xD0); E @(0x03, 0x7E, 0xF2)       # es:di = the dest row
+E @(0x0B, 0xC0); Jr 0x78 'c6b2'; E @(0x3B, 0x46, 0xDE); Jr 0x7D 'c6b2'
+E @(0x57); E @(0x03, 0xF8); E @(0x8A, 0xCE); E @(0xF6, 0xD1); E @(0x26, 0x20, 0x0D); E @(0x26, 0x08, 0x3D); E @(0x5F)   # [col] = ([col] AND NOT dh) OR bh
+Lbl 'c6b2'
+E @(0x40); E @(0x0B, 0xC0); Jr 0x78 'c6nx'; E @(0x3B, 0x46, 0xDE); Jr 0x7D 'c6nx'
+E @(0x03, 0xF8); E @(0x8A, 0xCA); E @(0xF6, 0xD1); E @(0x26, 0x20, 0x0D); E @(0x26, 0x08, 0x1D)   # [col + 1] with dl, bl
+Lbl 'c6nx'
+E @(0xFF, 0x46, 0xEE); JmpN 'c6byte'
+Lbl 'c6nrow'
+E @(0xFF, 0x46, 0xEC); JmpN 'c6row'
+Lbl 'c56end'
+E @(0x8D, 0x66, 0xF4); JmpN 'cdone'                                       # lea sp,[bp-12]
+Lbl 'cdone'
+E @(0x0F, 0xA1); E @(0x07, 0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x04, 0x00)
+$comp = $script:a.Resolve()
 
 # =============================================================================
 # C3DSKIN: CALL ABSOLUTE(BYVAL pseg, BYVAL poff, SADD(skin$)) RETF 4  -- block of 17 words:
@@ -788,6 +921,7 @@ $srcDir = "$PSScriptRoot\.."
 [System.IO.File]::WriteAllBytes("$srcDir\C3DEDGO.OVL", $edgo)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DEDGK.OVL", $edgk)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DEDGI.OVL", $edgi)
+[System.IO.File]::WriteAllBytes("$srcDir\C3DCOMP.OVL", $comp)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DSKIN.OVL", $skin)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DMSE.OVL", $mse)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DMCPY.OVL", $mcpy)
@@ -917,3 +1051,336 @@ $bltf = $script:a.Resolve()
 [System.IO.File]::WriteAllBytes("$srcDir\C3DROT.OVL", $rot)
 [System.IO.File]::WriteAllBytes("$srcDir\C3DBLTF.OVL", $bltf)
 Write-Host "C3DROT.OVL $($rot.Length) bytes; C3DBLTF.OVL $($bltf.Length) bytes"
+
+# =============================================================================
+# C3DFUSE: CALL ABSOLUTE(BYVAL seg, BYVAL off, SADD(fuse$)) RETF 4 -- C3DSKIN, C3DROT's turn
+#   and C3DPRJ in one pass (GAME8 M3OPT 256). Block of 34 words:
+#    0/1 mx seg/off  2/3 my  4/5 mz       the rest pose (x16 units)
+#    6/7 vt seg/off   the interleaved vertex array: x, y written (1/16 px) at +0, +2 of 8 bytes a vertex
+#    8/9 rz seg/off   out: the depth (camera z less the feet's, x16 units) for C3DROT's face sort
+#   10 nv   11/12 bones seg/off (C3DSKIN's word a vertex: low byte bone 1, high byte bone 2)
+#   13/14 matrices seg/off (C3DSKIN's 12 words a bone)   15/16 scratch seg/off (15 words a bone)
+#   17 the bone count   18 vA = k cos, 19 vB = k sin, 20 vY = k (x4096: k the depth scale x256 / 256)
+#   21/22 px  23/24 py  25/26 pz (LONGs, x16 units: the feet's camera position)
+#   27 the horizontal focal length x16   28/29 the picture centre (1/16 px)
+#   30..33 out: min x, max x, min y, max y (1/16 px)
+#   34/35 twins seg/off, 36 all the vertices: (GAME8 M3OPT 512) 10 is then the count to transform,
+#   vertex 10 + k a copy of vertex twins[k]'s place and depth (the texture's seams), 36 = 0 none
+#   First each bone's matrix is turned and scaled into the scratch (x8192, the translation a
+#   dword with the feet added): CX = (vA R0 + vB R2) >> 13, CY = vY R1 >> 13, CZ = (vA R2 - vB R0)
+#   >> 13; the translations >> 12. Then a vertex is X = (CX . v + 4096) >> 13 + tX (Y, Z alike; two bones averaged),
+#   sx = cx + X F / max(Z, 16), sy = cy - (Y << 12) / max(Z, 16), rz = Z - pz.
+#   Locals: the block at bp-128 (word k at -128+2k); i -60, i*2 -58; X1 Y1 Z1 -56 -52 -48;
+#   X Y Z -44 -40 -36; v -32 -28 -24; vA vB vY F (dwords) -20 -16 -12 -8
+# =============================================================================
+function K($k) { return -128 + 2 * $k }
+function Imul32RM($reg, $d8) { E (@(0x66, 0x0F, 0xAF) + (MB $R[$reg] $d8)) }   # imul r32,[bp+d]
+function Sub32RM($reg, $d8) { E (@(0x66, 0x2B) + (MB $R[$reg] $d8)) }          # sub r32,[bp+d]
+$script:a = [Asm]::new()
+E @(0x55); E @(0x8B, 0xEC); E @(0x81, 0xEC, 0x80, 0x00); E @(0x1E, 0x56, 0x57, 0x06, 0x53)   # push bp; mov bp,sp; sub sp,128; push ds si di es bx
+MovDsM 8; MovRM 'si' 6; E @(0x16, 0x07); LeaDI (K 0); E @(0xB9, 0x22, 0x00); E @(0xFC); E @(0xF3, 0xA5)   # the block (34 words) -> [bp-128]
+MovMI (K 30) 32767; MovMI (K 31) -32768; MovMI (K 32) 32767; MovMI (K 33) -32768
+Movsx32RM 'ax' (K 18); Mov32MR -20 'ax'; Movsx32RM 'ax' (K 19); Mov32MR -16 'ax'
+Movsx32RM 'ax' (K 20); Mov32MR -12 'ax'; Movsx32RM 'ax' (K 27); Mov32MR -8 'ax'
+# ---- the bones: ds:si = a matrix (12 words), es:di = its turned copy (15 words) ----
+MovDsM (K 13); MovRM 'si' (K 14); MovEsM (K 15); MovRM 'di' (K 16); MovRM 'cx' (K 17)
+E @(0x85, 0xC9); Jn @(0x0F, 0x84) 'bdone'                                   # test cx,cx; jz
+Lbl 'bloop'
+foreach ($j in 0, 1, 2) {
+  $o0 = 2 * $j; $o1 = 8 + 2 * $j; $o2 = 16 + 2 * $j
+  E @(0x66, 0x0F, 0xBF, 0x44, $o0); Imul32RM 'ax' -20                       # eax = R0j vA
+  E @(0x66, 0x0F, 0xBF, 0x54, $o2); Imul32RM 'dx' -16                       # edx = R2j vB
+  E @(0x66, 0x03, 0xC2); E @(0x66, 0xC1, 0xF8, 0x0D); E @(0x26, 0x89, 0x45, $o0)          # CXj = (..) >> 13 (x8192)
+  E @(0x66, 0x0F, 0xBF, 0x44, $o1); Imul32RM 'ax' -12                       # eax = R1j vY
+  E @(0x66, 0xC1, 0xF8, 0x0D); E @(0x26, 0x89, 0x45, (10 + 2 * $j))         # CYj
+  E @(0x66, 0x0F, 0xBF, 0x44, $o2); Imul32RM 'ax' -20                       # eax = R2j vA
+  E @(0x66, 0x0F, 0xBF, 0x54, $o0); Imul32RM 'dx' -16                       # edx = R0j vB
+  E @(0x66, 0x2B, 0xC2); E @(0x66, 0xC1, 0xF8, 0x0D); E @(0x26, 0x89, 0x45, (20 + 2 * $j)) # CZj
+}
+E @(0x66, 0x0F, 0xBF, 0x44, 0x06); Imul32RM 'ax' -20; E @(0x66, 0x0F, 0xBF, 0x54, 0x16); Imul32RM 'dx' -16
+E @(0x66, 0x03, 0xC2); E @(0x66, 0xC1, 0xF8, 0x0C); Add32RM 'ax' (K 21); E @(0x26, 0x66, 0x89, 0x45, 0x06)   # tX = (t0 vA + t2 vB) >> 12 + px
+E @(0x66, 0x0F, 0xBF, 0x44, 0x0E); Imul32RM 'ax' -12
+E @(0x66, 0xC1, 0xF8, 0x0C); Add32RM 'ax' (K 23); E @(0x26, 0x66, 0x89, 0x45, 0x10)                          # tY = t1 vY >> 12 + py
+E @(0x66, 0x0F, 0xBF, 0x44, 0x16); Imul32RM 'ax' -20; E @(0x66, 0x0F, 0xBF, 0x54, 0x06); Imul32RM 'dx' -16
+E @(0x66, 0x2B, 0xC2); E @(0x66, 0xC1, 0xF8, 0x0C); Add32RM 'ax' (K 25); E @(0x26, 0x66, 0x89, 0x45, 0x1A)   # tZ = (t2 vA - t0 vB) >> 12 + pz
+E @(0x83, 0xC6, 0x18); E @(0x83, 0xC7, 0x1E); E @(0x49); Jn @(0x0F, 0x85) 'bloop'   # si += 24; di += 30; loop
+Lbl 'bdone'
+# ---- the vertices ----
+MovEsM (K 15)                                                               # es = the turned matrices
+MovMI -60 0
+Lbl 'vloop'
+MovRM 'ax' -60; CmpRM 'ax' (K 10); Jn @(0x0F, 0x8D) 'vdone'
+E @(0xD1, 0xE0); MovMR -58 'ax'                                             # i*2
+MovDsM (K 0); MovRM 'si' (K 1); AddRM 'si' -58; E @(0x66, 0x0F, 0xBF, 0x04); Mov32MR -32 'ax'   # v
+MovDsM (K 2); MovRM 'si' (K 3); AddRM 'si' -58; E @(0x66, 0x0F, 0xBF, 0x04); Mov32MR -28 'ax'
+MovDsM (K 4); MovRM 'si' (K 5); AddRM 'si' -58; E @(0x66, 0x0F, 0xBF, 0x04); Mov32MR -24 'ax'
+MovDsM (K 11); MovRM 'si' (K 12); AddRM 'si' -58; E @(0x8B, 0x14)          # dl, dh = the bones
+E @(0x52); E @(0x8A, 0xC2); CallN 'xf'; E @(0x5A)                           # bone 1 -> X1 Y1 Z1
+Mov32RM 'ax' -56; Mov32MR -44 'ax'; Mov32RM 'ax' -52; Mov32MR -40 'ax'; Mov32RM 'ax' -48; Mov32MR -36 'ax'
+E @(0x3A, 0xD6); Jr 0x74 'vone'                                             # cmp dl,dh; je
+E @(0x8A, 0xC6); CallN 'xf'                                                 # bone 2: the average
+foreach ($p in @(@(-44, -56), @(-40, -52), @(-36, -48))) { Mov32RM 'ax' $p[0]; Add32RM 'ax' $p[1]; E @(0x66, 0xD1, 0xF8); Mov32MR $p[0] 'ax' }
+Lbl 'vone'
+Mov32RM 'ax' -36; Sub32RM 'ax' (K 25)                                       # rz = Z - pz
+MovDsM (K 8); MovRM 'si' (K 9); AddRM 'si' -58; E @(0x89, 0x04)
+Mov32RM 'cx' -36; E @(0x66, 0x83, 0xF9, 0x10); Jr 0x7D 'zok'; E @(0x66, 0xB9, 0x10, 0x00, 0x00, 0x00); Lbl 'zok'   # ecx = max(Z, 16)
+Mov32RM 'ax' -44; Imul32RM 'ax' -8; E @(0x66, 0x99); E @(0x66, 0xF7, 0xF9); AddRM 'ax' (K 28); E @(0x8B, 0xD8)   # bx = sx
+Mov32RM 'ax' -40; E @(0x66, 0xC1, 0xE0, 0x0C); E @(0x66, 0x99); E @(0x66, 0xF7, 0xF9)
+MovRM 'dx' (K 29); E @(0x2B, 0xD0)                                          # dx = sy
+MovDsM (K 6); MovRM 'si' -58; E @(0xC1, 0xE6, 0x02); AddRM 'si' (K 7); E @(0x89, 0x1C); E @(0x89, 0x54, 0x02)   # vt[i].x, .y
+CmpRM 'bx' (K 30); Jr 0x7D 'm1'; MovMR (K 30) 'bx'; Lbl 'm1'
+CmpRM 'bx' (K 31); Jr 0x7E 'm2'; MovMR (K 31) 'bx'; Lbl 'm2'
+CmpRM 'dx' (K 32); Jr 0x7D 'm3'; MovMR (K 32) 'dx'; Lbl 'm3'
+CmpRM 'dx' (K 33); Jr 0x7E 'm4'; MovMR (K 33) 'dx'; Lbl 'm4'
+IncM -60; JmpN 'vloop'
+Lbl 'vdone'
+# ---- the twins: vertices U..all-1 copy their twin's place and depth (vA vB vY's slots reused)
+MovDsM 8; MovRM 'si' 6
+E @(0x8B, 0x44, 0x44); MovMR -20 'ax'; E @(0x8B, 0x44, 0x46); MovMR -16 'ax'; E @(0x8B, 0x44, 0x48); MovMR -12 'ax'   # words 34, 35, 36
+MovRM 'ax' (K 10); MovMR -60 'ax'
+Lbl 'gloop'
+MovRM 'ax' -60; CmpRM 'ax' -12; Jn @(0x0F, 0x8D) 'gdone'
+SubRM 'ax' (K 10); E @(0xD1, 0xE0)
+MovDsM -20; MovRM 'si' -16; E @(0x03, 0xF0); E @(0x8B, 0x1C); E @(0xD1, 0xE3)      # bx = twin*2
+MovRM 'cx' -60; E @(0xD1, 0xE1)                                                     # cx = i*2
+MovDsM (K 8); MovRM 'si' (K 9); MovRM 'di' (K 9)
+E @(0x03, 0xF3); E @(0x03, 0xF9); E @(0x8B, 0x04); E @(0x89, 0x05)                  # rz[i] = rz[twin]
+E @(0xC1, 0xE3, 0x02); E @(0xC1, 0xE1, 0x02)
+MovDsM (K 6); MovRM 'si' (K 7); MovRM 'di' (K 7)
+E @(0x03, 0xF3); E @(0x03, 0xF9); E @(0x8B, 0x04); E @(0x89, 0x05); E @(0x8B, 0x44, 0x02); E @(0x89, 0x45, 0x02)   # vt[i].x, .y
+IncM -60; JmpN 'gloop'
+Lbl 'gdone'
+MovEsM 8; MovRM 'di' 6; E @(0x83, 0xC7, 0x3C); E @(0x16, 0x1F); LeaSI (K 30); E @(0xB9, 0x04, 0x00); E @(0xF3, 0xA5)   # min/max -> block words 30..33
+E @(0x5B, 0x07, 0x5F, 0x5E, 0x1F); E @(0x8B, 0xE5); E @(0x5D); E @(0xCA, 0x04, 0x00)
+# xf: bone al's turned matrix (es:bx) on v -> X1 Y1 Z1
+Lbl 'xf'
+E @(0x32, 0xE4); E @(0x6B, 0xC0, 0x1E); AddRM 'ax' (K 16); E @(0x8B, 0xD8)   # bx = scratch + bone*30
+foreach ($row in @(@(0, -56), @(10, -52), @(20, -48))) {
+  $o = $row[0]
+  E @(0x26, 0x66, 0x0F, 0xBF, 0x47, $o); Imul32RM 'ax' -32
+  E @(0x26, 0x66, 0x0F, 0xBF, 0x4F, ($o + 2)); Imul32RM 'cx' -28; E @(0x66, 0x03, 0xC1)
+  E @(0x26, 0x66, 0x0F, 0xBF, 0x4F, ($o + 4)); Imul32RM 'cx' -24; E @(0x66, 0x03, 0xC1)
+  E @(0x66, 0x05, 0x00, 0x10, 0x00, 0x00); E @(0x66, 0xC1, 0xF8, 0x0D); E @(0x26, 0x66, 0x03, 0x47, ($o + 6))
+  Mov32MR $row[1] 'ax'
+}
+E @(0xC3)
+$fuse = $script:a.Resolve()
+[System.IO.File]::WriteAllBytes("$srcDir\C3DFUSE.OVL", $fuse)
+Write-Host "C3DFUSE.OVL $($fuse.Length) bytes"
+
+# =============================================================================
+# C3DPCM: CALL ABSOLUTE(BYVAL seg, BYVAL off, VARPTR(oPcm(0))) RETF 4 -- the 3D man's walk clock and his
+#   recorded footsteps (FOOTSTEP.DAT) on the PC speaker by pulse width, both from the timer interrupt (INT 8
+#   taken over, the old vector kept and chained to at its own 65536-clock rate, so TIMER keeps its time; see
+#   op 5 for QB's music engine). Block of 14 words: 0 op, 1/2 samples
+#   seg/off, 3 the sample count (op 0) or BIOS ticks to time (op 1), 4 the delay loop count D (op 1), 5
+#   ticks a sample, (op 0) 6/7 the ramp-in / ramp-out entries, 8 their segment, 9/10 their offsets, 11 the
+#   half-period delay, 12 ticks to wait first, 13 ticks to count on after the sound (a stream outside the
+#   clock); (op 1) 6/7 out: the periods counted (dword).
+#   A TICK = 128 clocks (9.3 kHz); the tick count (a dword, offsets 49/51) is the clock GAME8 paces the
+#   walk frames by (512 ticks to a BIOS tick).
+#   op 5 CLOCK ON: INT 8 taken over at channel 0 set to 2048 (every 32nd interrupt on to the old handler,
+#      which runs at the BIOS 65536: QB's music engine must be IDLE then -- it hooks the vector while a
+#      note is queued and puts back the vector it found when its queue empties, over anyone who hooked
+#      after it; notes played while we are in stack on top of us and unstack), the count up by 16 an
+#      interrupt (phase 7). GAME8 turns it on for a walk and off after.
+#   op 0 PLAY a footstep (in the clock, or alone: the vector taken then): channel 0 to 128 clocks, every
+#      512th tick chained, the count up by 1 a tick; one element a tick: the wait
+#      (word 12 ticks, no output), the RAMP-IN (every other entry of the file's 64-clock ramp: channel 2
+#      in mode 0 then mode 4, low byte only, with the entry as the count, the half-period delay -- 64
+#      clocks -- between: the output low, then high, a 9.3 kHz square -- half on a real speaker -- while
+#      86Box, which takes mode 0 and 4 as a level 40 count - 5120 (its snd_speaker.c) and QB's note as
+#      2560, goes smoothly from the note's level (count 192) to the samples' (32)), the SAMPLES (channel
+#      2 in mode 0, the sample 1..63 written to port 42h after the mode word: a fresh pulse, the output low
+#      that many clocks of the 128 -- a real speaker hears half the swing it did at 64-clock periods, and
+#      a 9.3 kHz carrier; 86Box the same level as before), the RAMP-OUT, then channel 2 as QB left it
+#      (mode 3, count 36: the speaker stays on). In the clock: back to 2048 and phase 7. Alone: the count
+#      goes on for word 13 ticks (phase 5), then (6) the vector and channel 0 are put back at a chain tick.
+#      ~25% of a 486SX-25 while the samples play (its interrupts cost ~25 us each), ~70% for the 2 x 8 ms
+#      of ramps.
+#   op 2 STOP: whatever runs ended now: channel 0 and the vector back (before the arrays are given back)
+#   op 1 CALIBRATE: a silent 64-clock period (mode word, a count, D turns of LOOP, a tick read) with the
+#      speaker's data bit off, interrupts on, counted from one BIOS tick edge for word 3 ticks: GAME8
+#      solves period = a + b D from two D values -> the ramps' half-period delay
+#   The state lives in the overlay itself (offsets 10..60, addressed off BX = the overlay's own offset in
+#   its segment, found by call/pop -- the array need not sit at offset 0; GAME8 PEEKs the phase at 15 and
+#   the tick count at 49), the handler at offset 61. The overlay's array must not move while the handler
+#   is hooked (no REDIM then): GAME8 stops it at a walk's end and before a page.
+# =============================================================================
+$script:a = [Asm]::new()
+$Q = @{ farj = 10; ooff = 11; oseg = 13; phase = 15; count = 17; poff = 19; pseg = 21; sub = 23; chain = 25; chr = 27; ns = 29; soff = 31; sseg = 33; per = 35; rin = 37; rino = 39; rout = 41; routo = 43; rseg = 45; half = 47; tlo = 49; thi = 51; clk = 53; fchr = 55; schr = 57; tail = 59 }
+$ISR = 61
+function BxAx($k) { E (@(0x2E, 0x8B, 0x47, $Q[$k])) }                     # mov ax,[cs:bx+k]
+function AxBx($k) { E (@(0x2E, 0x89, 0x47, $Q[$k])) }                     # mov [cs:bx+k],ax
+function BxR($reg, $k) { E (@(0x2E, 0x8B, (0x47 -bor ($R[$reg] -shl 3)), $Q[$k])) }   # mov r16,[cs:bx+k]
+function RBx($k, $reg) { E (@(0x2E, 0x89, (0x47 -bor ($R[$reg] -shl 3)), $Q[$k])) }   # mov [cs:bx+k],r16
+function DecBx($k) { E (@(0x2E, 0xFF, 0x4F, $Q[$k])) }                    # dec word [cs:bx+k]
+function IncBx($k) { E (@(0x2E, 0xFF, 0x47, $Q[$k])) }                    # inc word [cs:bx+k]
+function AddBx8($k, $i) { E (@(0x2E, 0x83, 0x47, $Q[$k], (D8 $i))) }      # add word [cs:bx+k],imm8
+function AdcBx8($k, $i) { E (@(0x2E, 0x83, 0x57, $Q[$k], (D8 $i))) }      # adc word [cs:bx+k],imm8
+function CmpBx8($k, $i) { E (@(0x2E, 0x83, 0x7F, $Q[$k], (D8 $i))) }      # cmp word [cs:bx+k],imm8
+function BxI($k, $i) { E (@(0x2E, 0xC7, 0x47, $Q[$k]) + (W16 $i)) }      # mov word [cs:bx+k],imm16
+function LdsSi($k) { E (@(0x2E, 0xC5, 0x77, $Q[$k])) }                    # lds si,[cs:bx+k]
+function Ch2($mode) { E @(0xB0, $mode, 0xE6, 0x43, 0x8A, 0xC4, 0xE6, 0x42) }   # out 43h,mode; out 42h,ah
+function Ch0($lo, $hi) { E @(0xB0, 0x36, 0xE6, 0x43, 0xB0, $lo, 0xE6, 0x40, 0xB0, $hi, 0xE6, 0x40) }   # channel 0 mode 3, the reload
+function Ch2Qb() { E @(0xB0, 0xB6, 0xE6, 0x43, 0xB0, 0x24, 0xE6, 0x42, 0x32, 0xC0, 0xE6, 0x42) }   # channel 2 as QB left it: mode 3, count 36
+# ---- offset 0: the entry stub -- bx = the overlay's own offset, then the entry
+E @(0xE8, 0x00, 0x00); E @(0x5B); E @(0x83, 0xEB, 0x03); JmpN 'pentry'     # call +0; pop bx; sub bx,3; jmp pentry
+# ---- offsets 10..60: the state (10: jmp far to the old handler, filled in when hooked)
+Lbl 'farj'; E @(0xEA, 0, 0, 0, 0)
+E (New-Object byte[] 46)
+# ---- the interrupt handler (offset 61): bx = the overlay's offset (call/pop), dx = the phase
+Lbl 'pisr'
+E @(0x50, 0x53, 0x51, 0x52, 0x56, 0x1E)                                   # push ax bx cx dx si ds
+E @(0xE8, 0x00, 0x00); E @(0x5B); E @(0x83, 0xEB, ($ISR + 9))             # call +0; pop bx; sub bx,(the pop's offset)
+BxR 'dx' 'phase'
+E @(0x83, 0xFA, 0x07); Jr 0x74 'i7'                                       # 7 the clock idling: 16 ticks an interrupt
+E @(0x83, 0xFA, 0x08); Jr 0x75 'inot7'                                   # 8 a click sounding (in the clock): its ticks counted down
+E @(0x2E, 0x83, 0x6F, $Q['count'], 0x10); Jr 0x7F 'i7'
+Ch2Qb; BxI 'phase' 7                                                      # over: channel 2 as QB left it
+Lbl 'i7'; AddBx8 'tlo' 16; AdcBx8 'thi' 0; JmpN 'ichain'
+Lbl 'inot7'
+AddBx8 'tlo' 1; AdcBx8 'thi' 0
+E @(0x83, 0xFA, 0x01); Jr 0x75 'inot1'                                   # 1 the wait
+DecBx 'count'; Jn @(0x0F, 0x85) 'ichain'
+CallN 'pnext'; JmpN 'ichain'
+Lbl 'inot1'
+E @(0x83, 0xFA, 0x03); Jr 0x74 'isamp'
+E @(0x83, 0xFA, 0x02); Jr 0x74 'iramp'
+E @(0x83, 0xFA, 0x04); Jr 0x74 'iramp'
+E @(0x83, 0xFA, 0x05); Jn @(0x0F, 0x85) 'ichain'                                   # 5 counting on alone: for word 13 ticks
+DecBx 'count'; Jn @(0x0F, 0x85) 'ichain'; BxI 'phase' 6
+JmpN 'ichain'                                                          # 0 off, 6 finishing: nothing
+Lbl 'isamp'
+
+LdsSi 'poff'                                                              # ds:si = the sample
+E @(0x8A, 0x24)                                                           # ah = the sample
+Ch2 0x90                                                                  # mode 0, the count: a fresh pulse
+DecBx 'sub'; Jr 0x75 'ichain'
+BxAx 'per'; AxBx 'sub'
+IncBx 'poff'
+DecBx 'count'; Jr 0x75 'ichain'
+CallN 'pnext'; Jr 0xEB 'ichain'
+Lbl 'iramp'
+LdsSi 'poff'
+E @(0xAC, 0x8A, 0xE0, 0x46)                                               # lodsb; ah = the entry; the next one skipped
+RBx 'poff' 'si'
+Ch2 0x90                                                                  # mode 0: the output low
+BxR 'cx' 'half'; Lbl 'ihd'; Jr 0xE2 'ihd'                                 # the half-period delay
+Ch2 0x98                                                                  # mode 4: the output high
+DecBx 'count'; Jr 0x75 'ichain'
+CallN 'pnext'
+Lbl 'ichain'                                                             # the old handler's tick every 512 fast ticks (a slow interrupt = 16)
+CmpBx8 'phase' 7; Jr 0x7C 'ic1'; E @(0x2E, 0x83, 0x6F, $Q['chain'], 0x10); Jr 0xEB 'ic2'
+Lbl 'ic1'; DecBx 'chain'
+Lbl 'ic2'; CmpBx8 'chain' 0; Jr 0x7F 'inoch'
+E @(0x2E, 0x81, 0x47, $Q['chain'], 0x00, 0x02)                                 # chain += 512 (a deficit carried)
+CmpBx8 'phase' 6; Jr 0x75 'idoch'
+CallN 'prestore'                                                          # a lone stream over: QB's clock and vector back
+Lbl 'idoch'
+E @(0x1F, 0x5E, 0x5A, 0x59, 0x5B, 0x58)                                   # pop ds si dx cx bx ax
+JmpN 'farj'                                                               # on to the old handler (it does the EOI)
+Lbl 'inoch'
+E @(0xB0, 0x20, 0xE6, 0x20)                                               # EOI
+E @(0x1F, 0x5E, 0x5A, 0x59, 0x5B, 0x58); E @(0xCF)                        # iret
+# ---- pnext: the next phase of the stream (an empty one skipped)
+Lbl 'pnext'
+IncBx 'phase'; BxR 'dx' 'phase'
+E @(0x83, 0xFA, 0x02); Jr 0x75 'pn3'
+BxAx 'rino'; AxBx 'poff'; BxAx 'rseg'; AxBx 'pseg'; BxAx 'rin'; E @(0xD1, 0xE8); Jr 0xEB 'pnset'   # (two entries a tick)
+Lbl 'pn3'; E @(0x83, 0xFA, 0x03); Jr 0x75 'pn4'
+BxAx 'soff'; AxBx 'poff'; BxAx 'sseg'; AxBx 'pseg'; BxAx 'per'; AxBx 'sub'; BxAx 'ns'; Jr 0xEB 'pnset'
+Lbl 'pn4'; E @(0x83, 0xFA, 0x04); Jr 0x75 'pn5'
+BxAx 'routo'; AxBx 'poff'; BxAx 'rseg'; AxBx 'pseg'; BxAx 'rout'; E @(0xD1, 0xE8); Jr 0xEB 'pnset'
+Lbl 'pn5'                                                                 # the sound over: channel 2 as QB left it
+Ch2Qb
+CmpBx8 'clk' 0; Jr 0x74 'pn5t'
+BxI 'phase' 7; Ch0 0x00 0x08; E @(0xC3)   # in the clock: idling again at 2048
+Lbl 'pn5t'; BxAx 'tail'; AxBx 'count'; E @(0xC3)                          # alone: counting on for word 13 ticks
+Lbl 'pnset'; AxBx 'count'; E @(0x0B, 0xC0); Jn @(0x0F, 0x84) 'pnext'; E @(0xC3)
+# ---- prestore: (interrupts off) channel 0 and the vector back, channel 2 as QB left it, phase 0
+Lbl 'prestore'
+CmpBx8 'phase' 0; Jr 0x74 'prdone'
+E @(0xB0, 0x36, 0xE6, 0x43, 0x32, 0xC0, 0xE6, 0x40)                       # channel 0 mode 3, low byte 0
+E @(0xE6, 0x40)                                                          # high byte 0: 65536 again
+E @(0x06, 0x33, 0xC0, 0x8E, 0xC0)                                         # push es; es = 0
+BxAx 'ooff'; E @(0x26, 0xA3, 0x20, 0x00); BxAx 'oseg'; E @(0x26, 0xA3, 0x22, 0x00)
+E @(0x07)                                                                 # pop es
+Ch2Qb
+BxI 'phase' 0; BxI 'clk' 0
+Lbl 'prdone'; E @(0xC3)
+# ---- phook: (interrupts off) the old vector kept, the chain rates from its segment, ours in, the count 0
+Lbl 'phook'
+E @(0x33, 0xC0, 0x8E, 0xC0)                                               # es = 0
+E @(0x26, 0xA1, 0x20, 0x00); AxBx 'ooff'; E @(0x26, 0xA1, 0x22, 0x00); AxBx 'oseg'
+BxI 'chain' 512                                                          # the vector found runs at the BIOS 65536: its tick every 512 fast ticks
+E @(0xB8, $ISR, 0x00); E @(0x03, 0xC3); E @(0x26, 0xA3, 0x20, 0x00)       # our handler: the overlay's offset + 61
+E @(0x8C, 0xC8); E @(0x26, 0xA3, 0x22, 0x00)
+BxI 'tlo' 0; BxI 'thi' 0
+E @(0xC3)
+# ---- the entry (CALL ABSOLUTE; bx = the overlay's offset from the stub)
+Lbl 'pentry'
+E @(0x55); E @(0x8B, 0xEC); E @(0x1E, 0x56, 0x57, 0x53, 0x06); E @(0x83, 0xEC, 0x14)   # push bp ds si di bx es; sub sp,20 (locals bp-12..bp-30)
+E @(0x8E, 0x5E, 0x08); E @(0x8B, 0x76, 0x06)                              # ds:si = the block
+E @(0x8B, 0x04); E @(0x3D, 0x01, 0x00); Jn @(0x0F, 0x84) 'pcal'           # op 1: calibrate
+E @(0x3D, 0x02, 0x00); Jn @(0x0F, 0x84) 'pstop'                           # op 2: stop
+E @(0x3D, 0x05, 0x00); Jn @(0x0F, 0x84) 'pclock'                          # op 5: the clock on
+E @(0x3D, 0x06, 0x00); Jn @(0x0F, 0x84) 'ptone'                           # op 6: a click
+# ---- op 0: a footstep
+E @(0x9C, 0xFA)                                                           # pushf; cli
+E @(0x8B, 0x44, 0x02); AxBx 'sseg'; E @(0x8B, 0x44, 0x04); AxBx 'soff'; E @(0x8B, 0x44, 0x06); AxBx 'ns'
+E @(0x8B, 0x44, 0x0A); AxBx 'per'; E @(0x8B, 0x44, 0x0C); AxBx 'rin'; E @(0x8B, 0x44, 0x0E); AxBx 'rout'
+E @(0x8B, 0x44, 0x10); AxBx 'rseg'; E @(0x8B, 0x44, 0x12); AxBx 'rino'; E @(0x8B, 0x44, 0x14); AxBx 'routo'
+E @(0x8B, 0x44, 0x16); AxBx 'half'; E @(0x8B, 0x44, 0x1A); AxBx 'tail'
+E @(0x8B, 0x44, 0x18); E @(0x0B, 0xC0, 0x75, 0x01, 0x40); AxBx 'count'     # the wait (at least a tick)
+CmpBx8 'phase' 0; Jr 0x75 'ps1'; CallN 'phook'; BxI 'clk' 0               # alone: hooked now
+Lbl 'ps1'
+E @(0xE4, 0x61, 0x0C, 0x03, 0xE6, 0x61)                                   # the speaker on (QB's engine left it on)
+Ch0 0x80 0x00                                                             # channel 0: 128 clocks a tick
+BxI 'phase' 1
+E @(0x9D); JmpN 'pend'                                                    # popf
+# ---- op 5: the clock on (nothing if the handler is already in)
+Lbl 'pclock'
+E @(0x9C, 0xFA)
+CmpBx8 'phase' 0; Jr 0x75 'pc1'
+CallN 'phook'; BxI 'clk' 1
+Ch0 0x00 0x08                                                             # channel 0 at 2048
+BxI 'phase' 7
+Lbl 'pc1'; E @(0x9D); JmpN 'pend'
+# ---- op 2: stop
+# ---- op 6: a click in the clock (QB's SOUND would hook the timer over the clock): channel 2 in mode 3 at
+# word 4's count for word 3 ticks (phase 8), then as QB left it
+Lbl 'ptone'
+CmpBx8 'phase' 7; Jn @(0x0F, 0x85) 'pend'
+E @(0x8B, 0x4C, 0x08)                                                     # cx = the count
+E @(0xB0, 0xB6, 0xE6, 0x43, 0x8A, 0xC1, 0xE6, 0x42, 0x8A, 0xC5, 0xE6, 0x42)   # channel 2 mode 3, the count
+E @(0xE4, 0x61, 0x0C, 0x03, 0xE6, 0x61)                                   # the speaker on
+E @(0x8B, 0x44, 0x06); AxBx 'count'; BxI 'phase' 8
+JmpN 'pend'
+Lbl 'pstop'
+E @(0x9C, 0xFA); CallN 'prestore'; E @(0x9D); JmpN 'pend'
+# ---- op 1: calibrate
+Lbl 'pcal'
+E @(0x8B, 0x54, 0x08); E @(0x8B, 0x44, 0x06); E @(0x89, 0x46, 0xF2)       # dx = D, [bp-14] = ticks
+E @(0xB0, 0x90); E @(0xE6, 0x43)
+E @(0xE4, 0x61); E @(0x50); E @(0x24, 0xFC); E @(0x0C, 0x01); E @(0xE6, 0x61)   # the gate on, the speaker's data off
+E @(0xFB); E @(0xB8, 0x40, 0x00); E @(0x8E, 0xC0)                         # sti; es = 0040h
+E @(0x26, 0x8B, 0x0E, 0x6C, 0x00)
+Lbl 'pw'; E @(0x26, 0x3B, 0x0E, 0x6C, 0x00); Jr 0x74 'pw'                 # wait for a tick edge
+E @(0x26, 0x8B, 0x3E, 0x6C, 0x00)                                         # di = the start tick
+E @(0x33, 0xDB); E @(0x89, 0x5E, 0xF4)                                    # count = 0 (bx low, [bp-12] high)
+Lbl 'pc'
+E @(0xB0, 0x90); E @(0xE6, 0x43); E @(0xB0, 0x20); E @(0xE6, 0x42)
+E @(0x8B, 0xCA); Lbl 'pd2'; Jr 0xE2 'pd2'
+E @(0x26, 0x8B, 0x0E, 0x6C, 0x00); E @(0x2B, 0xCF); E @(0x3B, 0x4E, 0xF2); Jr 0x73 'pcd'   # ticks gone >= the wanted: done
+E @(0x43); Jr 0x75 'pc'; E @(0xFF, 0x46, 0xF4); Jr 0xEB 'pc'
+Lbl 'pcd'
+E @(0x89, 0x5C, 0x0C); E @(0x8B, 0x46, 0xF4); E @(0x89, 0x44, 0x0E)       # words 6/7 = the count
+E @(0xB0, 0xB6); E @(0xE6, 0x43); E @(0x58); E @(0x24, 0xFC); E @(0xE6, 0x61)
+Lbl 'pend'
+E @(0x83, 0xC4, 0x14); E @(0x07, 0x5B, 0x5F, 0x5E, 0x1F); E @(0x5D); E @(0xCA, 0x04, 0x00)
+$pcm = $script:a.Resolve()
+if ($script:a.labels['pisr'] -ne $ISR) { throw "C3DPCM: the handler is at offset $($script:a.labels['pisr']), not $ISR" }
+if ($script:a.labels['farj'] -ne 10) { throw "C3DPCM: the far jump is at offset $($script:a.labels['farj']), not 10" }
+[System.IO.File]::WriteAllBytes("$srcDir\C3DPCM.OVL", $pcm)
+Write-Host "C3DPCM.OVL $($pcm.Length) bytes"

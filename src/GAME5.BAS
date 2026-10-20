@@ -36,9 +36,10 @@ DECLARE SUB Man3dStand (d$, px!, py!, ovf%())
 DECLARE SUB Man3dBox (bx%, by%, bw%, bh%)
 DECLARE SUB Man3dSBox (bx%, by%, bw%, bh%)
 DECLARE SUB Man3dStep (x!, y!, ofs%, j%, k%, ovf%())
-DECLARE SUB Man3dStepShow ()
+DECLARE SUB Man3dStepShow (ovf%())
 DECLARE FUNCTION Man3dSubs% (sdur!)
 DECLARE FUNCTION Man3dWait! ()
+DECLARE SUB Man3dFoot (j%, sfrq!)
 DECLARE SUB Man3dStepOff ()
 
 '----- walk-box floor pathfinding (ROOMx.BOX). See LoadBoxes below.
@@ -86,7 +87,6 @@ END SUB
 SUB PStand (d$, px!, py!, nopl!, fbg%(), fd%(), mfd%(), fu%(), mfu%(), fr%(), mfr%(), fl%(), mfl%(), fdl%(), mfdl%(), fdr%(), mfdr%(), ful%(), mful%(), fur%(), mfur%(), ovf%())
 	IF Man3dOn% THEN
 		CALL Man3dStand(d$, px!, py!, ovf%())
-		IF d$ <> "" THEN CALL Man3dBox(bx%, by%, bw%, bh%): CALL OvTopBox(bx%, by%, bw%, bh%, ovf%())
 		EXIT SUB
 	END IF
 	PUT (px!, py!), fbg%(0), PSET
@@ -122,16 +122,15 @@ END SUB
 SUB PStepP (x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%())
 	IF Man3dOn% = 0 THEN CALL PStep(x!, y!, fb%, sfrq!, sdur!, ofs%, wa%(), mwa%(), wb%(), mwb%(), wbg%(), ovf%()): EXIT SUB
 	'----- (the 3D man: the step in as many frames as fit its length, his feet sliding
-	'----- along it, each drawn while the note before it plays (the click after the first);
+	'----- along it, each drawn while the note before it plays (a footstep when a foot lands,
+	'----- GAME8 Man3dFoot -- or the old click after the first);
 	'----- he stays drawn after it -- the next frame or the stand replaces him)
 	k% = Man3dSubs%(sdur!)
 	FOR j% = 1 TO k%
 		CALL Man3dStep(x!, y!, ofs%, j%, k%, ovf%())
-		CALL Man3dStepShow
-		CALL Man3dSBox(bx%, by%, bw%, bh%)
-		CALL OvTopBox(bx%, by%, bw%, bh%, ovf%())
-		IF j% = 1 THEN SOUND sfrq!, .1
-		SOUND 32676, Man3dWait!
+		CALL Man3dStepShow(ovf%())
+		CALL Man3dFoot(j%, sfrq!)
+		w! = Man3dWait!: IF w! > 0 THEN SOUND 32676, w!
 	NEXT
 END SUB
 
