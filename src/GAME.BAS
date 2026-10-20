@@ -591,8 +591,12 @@ gotoroom:
 	'----- the safe snapshot with the kill-room state.
 	IF rvon = 1 AND q$ <> "" AND df$(i) <> "death" AND df$(i) <> "dindead" AND df$(i) <> "lightn" THEN CALL SaveGame(11): rvSnap = 1
 	q$ = df$(i)
+	'----- the room loads under a black palette; the picture, the player and the door
+	'----- shadows go up together when it is lit (litup, after face)
+	rvfd = 2
 	GOSUB loadroom
-	IF q$ = "lightn" OR q$ = "dindead" OR q$ = "death" THEN GOTO death
+	'----- (the death screens have no player: lit here, before the dirge)
+	IF q$ = "lightn" OR q$ = "dindead" OR q$ = "death" THEN rvfd = 0: GOSUB rmpal: GOTO death
 	dop$ = ""
 	IF tt$ = "y" AND sl$ = "z" THEN a$ = lf$: lf$ = "": GOSUB face: tt$ = "n"
 	sl$ = "z"
@@ -603,6 +607,8 @@ gotoroom:
 		a$ = lf$
 		IF LEN(a$) <> 1 OR INSTR("12346789", a$) = 0 THEN a$ = "2"
 	END IF
+	'----- (the scripted entries draw their own scenes: lit before them)
+	IF rvfd = 2 THEN IF (q$ = "room3" AND ob(50) = 1 AND ob(42) = 0) OR (q$ = "room12" AND oq$ = "room10") OR (q$ = "room10" AND oq$ = "room12") THEN rvfd = 0: GOSUB rmpal
 	IF q$ = "room3" AND ob(50) = 1 AND ob(42) = 0 THEN
 		GOSUB dooseq
 	'----- the trap only arms when escape is POSSIBLE: a rope source (held/hung
@@ -610,6 +616,7 @@ gotoroom:
 	'----- open 63, apple key 22, or the knife 18 to cut one) -- else softlock
 	ELSEIF q$ = "room9" AND ob(66) = 0 AND ob(68) = 0 AND (ob(14) >= 1 OR ob(2) >= 1) AND (ob(62) >= 1 OR ob(63) = 1 OR ob(22) >= 1 OR ob(18) >= 1) THEN
 		GOSUB face
+		GOSUB litup
 		GOSUB gateseq
 	ELSEIF q$ = "room12" AND oq$ = "room10" THEN
 		GOSUB climbdn
@@ -617,7 +624,17 @@ gotoroom:
 		GOSUB upgrate
 	ELSE
 		GOSUB face
+		GOSUB litup
 	END IF
+	RETURN
+
+'----- litup: a room loaded dark for the 3D man (rvfd 2): the door shadows drawn once, then
+'----- the palette -- everything appears at once
+litup:
+	IF rvfd <> 2 THEN RETURN
+	rvfd = 0
+	CALL ShadTick(q$, cl, h9, t1, t2, t3, CINT(ob(43)), pjx, pjy, b, a, sdwDat(), sdwB1$, sdwB2$, fbg())
+	GOSUB rmpal
 	RETURN
 
 '----- aclend: a full-screen page short of far heap (the inventory alone takes ~73 KB): the
@@ -1002,7 +1019,7 @@ animdims:
 '----- rmpal: set the current room's palette (body in GAME2 -- 64K ceiling).
 '----- While a load fade is pending (rvfd), stay black -- LoadFade lights it up.
 rmpal:
-	IF rvfd = 1 THEN RETURN
+	IF rvfd >= 1 THEN RETURN
 	CALL RmPal(co, pa1, pa2, pa3)
 	RETURN
 
@@ -1667,7 +1684,7 @@ loadroom:
 	'----- rooms with overlays load behind a black palette so the base .pic (e.g. the
 	'----- closed door) never flashes before animdraw composites the state frames on it;
 	'----- rmpal (below / inside animdraw before any full play) then lights the room up
-	IF nPlace > 0 THEN
+	IF nPlace > 0 OR rvfd = 2 THEN
 		COLOR 0
 		PALETTE 1, 0: PALETTE 2, 0: PALETTE 3, 0
 	ELSE
