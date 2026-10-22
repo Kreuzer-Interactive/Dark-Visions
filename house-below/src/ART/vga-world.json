@@ -7,9 +7,9 @@
         "name": "Coachman",
         "rect": [
           125,
-          85,
+          72,
           170,
-          168
+          141
         ],
         "kind": 4,
         "value": 8,
@@ -20,9 +20,9 @@
         "name": "Motorcar",
         "rect": [
           0,
-          85,
+          71,
           138,
-          165
+          138
         ],
         "kind": 3,
         "value": 120,
@@ -33,9 +33,9 @@
         "name": "Ravenhurst plaque",
         "rect": [
           278,
-          82,
+          69,
           299,
-          126
+          105
         ],
         "kind": 3,
         "value": 120,
@@ -46,9 +46,9 @@
         "name": "Iron gates",
         "rect": [
           245,
-          74,
+          62,
           273,
-          160
+          134
         ],
         "kind": 3,
         "value": 120,
@@ -59,9 +59,9 @@
         "name": "House windows",
         "rect": [
           108,
-          14,
+          12,
           222,
-          83
+          69
         ],
         "kind": 3,
         "value": 120,
@@ -72,9 +72,9 @@
         "name": "FRONT DOOR > Knock / enter",
         "rect": [
           2,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 2,
@@ -85,9 +85,9 @@
         "name": "Front door",
         "rect": [
           169,
-          86,
+          72,
           190,
-          116
+          97
         ],
         "kind": 1,
         "value": 2,
@@ -96,9 +96,9 @@
       }
     ],
     "staging": {
-      "height": 84,
+      "height": 70,
       "spawn_x": 212,
-      "floor_y": 168,
+      "floor_y": 141,
       "left": 169,
       "right": 230
     }
@@ -111,9 +111,9 @@
         "name": "Family portrait",
         "rect": [
           49,
-          22,
+          18,
           80,
-          75
+          63
         ],
         "kind": 3,
         "value": 120,
@@ -124,9 +124,9 @@
         "name": "James",
         "rect": [
           245,
-          89,
+          75,
           284,
-          162
+          136
         ],
         "kind": 4,
         "value": 1,
@@ -137,9 +137,9 @@
         "name": "Go outside",
         "rect": [
           2,
-          171,
+          143,
           80,
-          182
+          152
         ],
         "kind": 1,
         "value": 1,
@@ -150,9 +150,9 @@
         "name": "Guest room",
         "rect": [
           81,
-          171,
+          143,
           159,
-          182
+          152
         ],
         "kind": 1,
         "value": 3,
@@ -163,9 +163,9 @@
         "name": "Library",
         "rect": [
           160,
-          171,
+          143,
           238,
-          182
+          152
         ],
         "kind": 1,
         "value": 4,
@@ -176,9 +176,9 @@
         "name": "Dining room",
         "rect": [
           239,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 5,
@@ -187,9 +187,9 @@
       }
     ],
     "staging": {
-      "height": 80,
+      "height": 67,
       "spawn_x": 148,
-      "floor_y": 168,
+      "floor_y": 141,
       "left": 32,
       "right": 289
     }
@@ -202,9 +202,9 @@
         "name": "Grandfather clock",
         "rect": [
           163,
-          33,
+          28,
           194,
-          146
+          122
         ],
         "kind": 3,
         "value": 102,
@@ -215,9 +215,9 @@
         "name": "Bedside letter",
         "rect": [
           195,
-          100,
+          84,
           228,
-          131
+          110
         ],
         "kind": 3,
         "value": 120,
@@ -228,9 +228,9 @@
         "name": "Hall",
         "rect": [
           2,
-          171,
+          143,
           159,
-          182
+          152
         ],
         "kind": 1,
         "value": 2,
@@ -241,9 +241,9 @@
         "name": "Hidden stairs",
         "rect": [
           160,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 9,
@@ -252,9 +252,9 @@
       }
     ],
     "staging": {
-      "height": 84,
+      "height": 70,
       "spawn_x": 90,
-      "floor_y": 168,
+      "floor_y": 141,
       "left": 25,
       "right": 145
     }
@@ -267,9 +267,9 @@
         "name": "Elias Hart",
         "rect": [
           103,
-          85,
+          72,
           144,
-          162
+          136
         ],
         "kind": 4,
         "value": 2,
@@ -280,9 +280,9 @@
         "name": "Brass clock hand",
         "rect": [
           190,
-          118,
+          99,
           220,
-          142
+          119
         ],
         "kind": 2,
         "value": 3,
@@ -293,9 +293,9 @@
         "name": "Annotated volume",
         "rect": [
           35,
-          80,
+          67,
           75,
-          126
+          105
         ],
         "kind": 3,
         "value": 120,
@@ -306,9 +306,9 @@
         "name": "Hall",
         "rect": [
           2,
-          171,
+          143,
           106,
-          182
+          152
         ],
         "kind": 1,
         "value": 2,
@@ -319,9 +319,9 @@
         "name": "Study",
         "rect": [
           107,
-          171,
+          143,
           211,
-          182
+          152
         ],
         "kind": 1,
         "value": 7,
@@ -332,9 +332,9 @@
         "name": "Chapel",
         "rect": [
           212,
-          171,
+          143,
           316,
-          182
+          152
         ],
         "kind": 1,
         "value": 13,
@@ -343,9 +343,9 @@
       }
     ],
     "staging": {
-      "height": 84,
+      "height": 70,
       "spawn_x": 238,
-      "floor_y": 168,
+      "floor_y": 141,
       "left": 88,
       "right": 284
     }
@@ -358,9 +358,9 @@
         "name": "Bent hairpin",
         "rect": [
           106,
-          109,
+          91,
           144,
-          134
+          112
         ],
         "kind": 2,
         "value": 2,
@@ -371,9 +371,9 @@
         "name": "Place cards",
         "rect": [
           168,
-          107,
+          90,
           217,
-          136
+          114
         ],
         "kind": 3,
         "value": 120,
@@ -384,9 +384,9 @@
         "name": "Hall",
         "rect": [
           2,
-          171,
+          143,
           159,
-          182
+          152
         ],
         "kind": 1,
         "value": 2,
@@ -397,9 +397,9 @@
         "name": "Conservatory",
         "rect": [
           160,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 6,
@@ -408,9 +408,9 @@
       }
     ],
     "staging": {
-      "height": 88,
+      "height": 74,
       "spawn_x": 254,
-      "floor_y": 169,
+      "floor_y": 141,
       "left": 25,
       "right": 292
     }
@@ -423,9 +423,9 @@
         "name": "Ada Finch",
         "rect": [
           56,
-          85,
+          72,
           99,
-          164
+          137
         ],
         "kind": 4,
         "value": 3,
@@ -436,9 +436,9 @@
         "name": "Oil can",
         "rect": [
           219,
-          116,
+          97,
           254,
-          143
+          120
         ],
         "kind": 2,
         "value": 5,
@@ -449,9 +449,9 @@
         "name": "Stone basin",
         "rect": [
           149,
-          90,
+          75,
           201,
-          139
+          116
         ],
         "kind": 3,
         "value": 120,
@@ -462,9 +462,9 @@
         "name": "Dining",
         "rect": [
           2,
-          171,
+          143,
           159,
-          182
+          152
         ],
         "kind": 1,
         "value": 5,
@@ -475,9 +475,9 @@
         "name": "Boathouse",
         "rect": [
           160,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 14,
@@ -486,9 +486,9 @@
       }
     ],
     "staging": {
-      "height": 84,
+      "height": 70,
       "spawn_x": 137,
-      "floor_y": 168,
+      "floor_y": 141,
       "left": 45,
       "right": 288
     }
@@ -501,9 +501,9 @@
         "name": "Locked desk",
         "rect": [
           70,
-          112,
+          94,
           217,
-          151
+          126
         ],
         "kind": 3,
         "value": 103,
@@ -514,9 +514,9 @@
         "name": "Three-symbol safe",
         "rect": [
           260,
-          50,
+          42,
           300,
-          113
+          95
         ],
         "kind": 3,
         "value": 104,
@@ -527,9 +527,9 @@
         "name": "Prescription notes",
         "rect": [
           112,
-          92,
+          77,
           180,
-          112
+          94
         ],
         "kind": 3,
         "value": 120,
@@ -540,9 +540,9 @@
         "name": "Library",
         "rect": [
           2,
-          171,
+          143,
           159,
-          182
+          152
         ],
         "kind": 1,
         "value": 4,
@@ -553,9 +553,9 @@
         "name": "Attic lab",
         "rect": [
           160,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 8,
@@ -564,9 +564,9 @@
       }
     ],
     "staging": {
-      "height": 84,
+      "height": 70,
       "spawn_x": 244,
-      "floor_y": 169,
+      "floor_y": 141,
       "left": 30,
       "right": 292
     }
@@ -579,9 +579,9 @@
         "name": "Mixing apparatus",
         "rect": [
           38,
-          62,
+          52,
           128,
-          145
+          121
         ],
         "kind": 3,
         "value": 110,
@@ -592,9 +592,9 @@
         "name": "Laboratory notebook",
         "rect": [
           152,
-          123,
+          103,
           210,
-          153
+          128
         ],
         "kind": 3,
         "value": 118,
@@ -605,9 +605,9 @@
         "name": "Frank's last letter",
         "rect": [
           241,
-          113,
+          95,
           289,
-          151
+          126
         ],
         "kind": 3,
         "value": 120,
@@ -618,9 +618,9 @@
         "name": "Study",
         "rect": [
           2,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 7,
@@ -629,9 +629,9 @@
       }
     ],
     "staging": {
-      "height": 80,
+      "height": 67,
       "spawn_x": 225,
-      "floor_y": 169,
+      "floor_y": 141,
       "left": 135,
       "right": 228
     }
@@ -644,9 +644,9 @@
         "name": "Pipe diagram",
         "rect": [
           43,
-          58,
+          49,
           78,
-          113
+          95
         ],
         "kind": 3,
         "value": 120,
@@ -657,9 +657,9 @@
         "name": "Guest room",
         "rect": [
           2,
-          171,
+          143,
           106,
-          182
+          152
         ],
         "kind": 1,
         "value": 3,
@@ -670,9 +670,9 @@
         "name": "Lower ward",
         "rect": [
           107,
-          171,
+          143,
           211,
-          182
+          152
         ],
         "kind": 1,
         "value": 10,
@@ -683,9 +683,9 @@
         "name": "Generator",
         "rect": [
           212,
-          171,
+          143,
           316,
-          182
+          152
         ],
         "kind": 1,
         "value": 15,
@@ -694,9 +694,9 @@
       }
     ],
     "staging": {
-      "height": 76,
+      "height": 64,
       "spawn_x": 98,
-      "floor_y": 168,
+      "floor_y": 141,
       "left": 30,
       "right": 179
     }
@@ -709,9 +709,9 @@
         "name": "Clara Vale",
         "rect": [
           54,
-          86,
+          72,
           97,
-          164
+          137
         ],
         "kind": 4,
         "value": 4,
@@ -722,9 +722,9 @@
         "name": "Thomas Reed",
         "rect": [
           238,
-          86,
+          72,
           281,
-          164
+          137
         ],
         "kind": 4,
         "value": 5,
@@ -735,9 +735,9 @@
         "name": "Vapor inlet",
         "rect": [
           28,
-          73,
+          61,
           51,
-          117
+          98
         ],
         "kind": 3,
         "value": 111,
@@ -748,9 +748,9 @@
         "name": "Ward gate",
         "rect": [
           176,
-          44,
+          37,
           218,
-          115
+          96
         ],
         "kind": 3,
         "value": 112,
@@ -761,9 +761,9 @@
         "name": "Stairs",
         "rect": [
           2,
-          171,
+          143,
           80,
-          182
+          152
         ],
         "kind": 1,
         "value": 9,
@@ -774,9 +774,9 @@
         "name": "Archive",
         "rect": [
           81,
-          171,
+          143,
           159,
-          182
+          152
         ],
         "kind": 1,
         "value": 11,
@@ -787,9 +787,9 @@
         "name": "Boiler",
         "rect": [
           160,
-          171,
+          143,
           238,
-          182
+          152
         ],
         "kind": 1,
         "value": 12,
@@ -800,9 +800,9 @@
         "name": "Reservoir",
         "rect": [
           239,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 16,
@@ -811,9 +811,9 @@
       }
     ],
     "staging": {
-      "height": 84,
+      "height": 70,
       "spawn_x": 152,
-      "floor_y": 169,
+      "floor_y": 141,
       "left": 58,
       "right": 287
     }
@@ -826,9 +826,9 @@
         "name": "Patient register",
         "rect": [
           129,
-          111,
+          93,
           228,
-          151
+          126
         ],
         "kind": 3,
         "value": 106,
@@ -839,9 +839,9 @@
         "name": "Brass nameplates",
         "rect": [
           36,
-          61,
+          51,
           72,
-          119
+          100
         ],
         "kind": 3,
         "value": 117,
@@ -852,9 +852,9 @@
         "name": "Miriam Bell",
         "rect": [
           247,
-          86,
+          72,
           290,
-          166
+          139
         ],
         "kind": 4,
         "value": 6,
@@ -865,9 +865,9 @@
         "name": "Ward",
         "rect": [
           2,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 10,
@@ -876,9 +876,9 @@
       }
     ],
     "staging": {
-      "height": 84,
+      "height": 70,
       "spawn_x": 103,
-      "floor_y": 169,
+      "floor_y": 141,
       "left": 85,
       "right": 288
     }
@@ -891,9 +891,9 @@
         "name": "Pressure controls",
         "rect": [
           119,
-          78,
+          65,
           274,
-          145
+          121
         ],
         "kind": 3,
         "value": 107,
@@ -904,9 +904,9 @@
         "name": "Pressure gauge",
         "rect": [
           177,
-          48,
+          40,
           204,
-          78
+          65
         ],
         "kind": 3,
         "value": 120,
@@ -917,9 +917,9 @@
         "name": "Ward",
         "rect": [
           2,
-          171,
+          143,
           159,
-          182
+          152
         ],
         "kind": 1,
         "value": 10,
@@ -930,9 +930,9 @@
         "name": "Generator",
         "rect": [
           160,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 15,
@@ -941,9 +941,9 @@
       }
     ],
     "staging": {
-      "height": 84,
+      "height": 70,
       "spawn_x": 61,
-      "floor_y": 169,
+      "floor_y": 141,
       "left": 30,
       "right": 107
     }
@@ -956,9 +956,9 @@
         "name": "Stained glass",
         "rect": [
           37,
-          23,
+          19,
           137,
-          100
+          84
         ],
         "kind": 3,
         "value": 114,
@@ -969,9 +969,9 @@
         "name": "Organ keyboard",
         "rect": [
           238,
-          107,
+          90,
           292,
-          145
+          121
         ],
         "kind": 3,
         "value": 108,
@@ -982,9 +982,9 @@
         "name": "Library",
         "rect": [
           2,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 4,
@@ -993,9 +993,9 @@
       }
     ],
     "staging": {
-      "height": 80,
+      "height": 67,
       "spawn_x": 157,
-      "floor_y": 169,
+      "floor_y": 141,
       "left": 95,
       "right": 221
     }
@@ -1008,9 +1008,9 @@
         "name": "Coil of rope",
         "rect": [
           35,
-          115,
+          96,
           84,
-          149
+          125
         ],
         "kind": 2,
         "value": 7,
@@ -1021,9 +1021,9 @@
         "name": "Rowboat",
         "rect": [
           94,
-          111,
+          93,
           199,
-          159
+          133
         ],
         "kind": 3,
         "value": 113,
@@ -1034,9 +1034,9 @@
         "name": "Conservatory",
         "rect": [
           2,
-          171,
+          143,
           159,
-          182
+          152
         ],
         "kind": 1,
         "value": 6,
@@ -1047,9 +1047,9 @@
         "name": "Reservoir",
         "rect": [
           160,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 16,
@@ -1058,9 +1058,9 @@
       }
     ],
     "staging": {
-      "height": 76,
+      "height": 64,
       "spawn_x": 153,
-      "floor_y": 169,
+      "floor_y": 141,
       "left": 30,
       "right": 292
     }
@@ -1073,9 +1073,9 @@
         "name": "Fuse cabinet",
         "rect": [
           250,
-          70,
+          59,
           287,
-          117
+          98
         ],
         "kind": 3,
         "value": 105,
@@ -1086,9 +1086,9 @@
         "name": "Dry motor bearings",
         "rect": [
           124,
-          106,
+          89,
           206,
-          151
+          126
         ],
         "kind": 3,
         "value": 115,
@@ -1099,9 +1099,9 @@
         "name": "Stairs",
         "rect": [
           2,
-          171,
+          143,
           159,
-          182
+          152
         ],
         "kind": 1,
         "value": 9,
@@ -1112,9 +1112,9 @@
         "name": "Boiler",
         "rect": [
           160,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 12,
@@ -1123,9 +1123,9 @@
       }
     ],
     "staging": {
-      "height": 84,
+      "height": 70,
       "spawn_x": 232,
-      "floor_y": 169,
+      "floor_y": 141,
       "left": 214,
       "right": 291
     }
@@ -1138,9 +1138,9 @@
         "name": "Resonant sluice latch",
         "rect": [
           258,
-          70,
+          59,
           289,
-          119
+          100
         ],
         "kind": 3,
         "value": 109,
@@ -1151,9 +1151,9 @@
         "name": "Bridge anchor",
         "rect": [
           117,
-          95,
+          80,
           159,
-          133
+          111
         ],
         "kind": 3,
         "value": 116,
@@ -1164,9 +1164,9 @@
         "name": "Ward",
         "rect": [
           2,
-          171,
+          143,
           159,
-          182
+          152
         ],
         "kind": 1,
         "value": 10,
@@ -1177,9 +1177,9 @@
         "name": "Boathouse",
         "rect": [
           160,
-          171,
+          143,
           317,
-          182
+          152
         ],
         "kind": 1,
         "value": 14,
@@ -1188,9 +1188,9 @@
       }
     ],
     "staging": {
-      "height": 76,
+      "height": 64,
       "spawn_x": 55,
-      "floor_y": 167,
+      "floor_y": 140,
       "left": 27,
       "right": 73
     }

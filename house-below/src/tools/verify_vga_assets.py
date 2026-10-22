@@ -21,36 +21,28 @@ im=Image.open(root/'VGA/CAR.BMP')
 assert im.mode=='P' and im.size==(320,154) and im.getpalette()==pal
 for n in range(9):
     im=Image.open(root/f'VGA/CHAR{n:02}.BMP')
-    assert im.mode=='P' and im.size==(48,88) and im.getpalette()==pal
+    assert im.mode=='P' and im.size==(48,73) and im.getpalette()==pal
     assert 227 in im.tobytes(), 'Sprite transparency absent'
     opaque=Image.frombytes('L',im.size,bytes(0 if i==227 else 255 for i in im.tobytes())).getbbox()
-    assert opaque and opaque[3]-opaque[1]>=82, 'Character does not fill its height'
+    assert opaque and opaque[3]-opaque[1]>=68, 'Character does not fill its height'
 for r in rooms:
-    s=r['staging']; half=round(s['height']*24/88)
-    assert 72<=s['height']<=88 and s['floor_y']<171
+    s=r['staging']; half=round(s["height"]*29/88)
+    assert 60<=s["height"]<=74 and s["floor_y"]<143
     assert half<=s['left']<=s['spawn_x']<=s['right']<320-half
     for h in r['hotspots']:
         if h['kind']==4:
             x,y,xx,yy=h['rect']
             assert yy-y+1==s['height']+yy-s['floor_y']
-faces=set()
-for n in range(7):
-    im=Image.open(root/f'VGA/FACE{n:02}.BMP')
-    assert im.mode=='P' and im.size==(80,96) and im.getpalette()==pal
-    faces.add(hashlib.sha256(im.tobytes()).hexdigest())
-assert len(faces)==7, 'Portraits must be distinct'
-im=Image.open(root/'VGA/YOU.BMP')
-assert im.mode=='P' and im.size==(48,64) and im.getpalette()==pal
 expressions=set()
 for person in [0,1,2,3,4,5,6,8]:
     for mood in range(4):
         levels=[]
-        for state,size in [('A',(96,104)),('L',(72,80))]:
+        for state,size in [('A',(96,75)),('L',(72,55))]:
             im=Image.open(root/f'VGA/P{person}{mood}{state}.BMP')
             assert im.mode=='P' and im.size==size and im.getpalette()==pal
             pixels=im.tobytes()
             assert pixels.count(227)>len(pixels)//5, 'Portrait must overlay scenery'
-            assert all(im.getpixel(p)==227 for p in [(0,0),(size[0]-1,0),(0,size[1]-1),(size[0]-1,size[1]-1)])
+            assert all(im.getpixel(p)==227 for p in [(0,0),(size[0]-1,0)])  # bottom rows are cropped, so only the top corners
             colors=[sum(pal[i*3:i*3+3])/3 for i in pixels if i!=227]
             levels.append(sum(colors)/len(colors))
             if state=='A': expressions.add(hashlib.sha256(pixels).hexdigest())

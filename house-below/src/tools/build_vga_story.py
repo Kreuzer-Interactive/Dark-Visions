@@ -3,9 +3,14 @@ from pathlib import Path
 import csv, json
 ROOT=Path(__file__).resolve().parents[1]
 rooms=[]
+# The authoring coordinates below are in the original 320x184 scene space. Mode 13h scenes are
+# 320x154: widths are unchanged, heights scale by 154/184 (a 4:3 screen stretches 200 lines).
+YS=154/184
+def ys(y): return round(y*YS)
 def room(title,desc):
     rooms.append(dict(title=title,description=desc,hotspots=[])); return len(rooms)
 def hot(name,rect,kind,value,text,need=0):
+    rect=[rect[0],ys(rect[1]),rect[2],ys(rect[3])]
     rooms[-1]['hotspots'].append(dict(name=name,rect=rect,kind=kind,value=value,need=need,text=text))
 def exit(name,dest,need=0,text=None):
     hot(name,[0,0,0,0],1,dest,text or 'The passage leads to '+name+'.',need)
@@ -116,17 +121,18 @@ staging = [
     (84,232,169,214,291), (76,55,167,27,73),
 ]
 # Exit buttons are explicitly visible along the bottom of each scene.
+staging=[(ys(h),x,ys(y),l,r) for h,x,y,l,r in staging]
 for r,stage in zip(rooms,staging):
     r['staging']=dict(zip(('height','spawn_x','floor_y','left','right'),stage))
     for h in r['hotspots']:
         if h['kind']==4:
             x=(h['rect'][0]+h['rect'][2])//2; y=h['rect'][3]
             height=stage[0]+y-stage[2]
-            width=2*((height*24+44)//88)
+            width=min(48,2*((height*29+44)//88))
             h['rect']=[x-width//2,y-height+1,x+width//2-1,y]
     exits=[h for h in r['hotspots'] if h['kind']==1 and h['rect']==[0,0,0,0]]
     for i,h in enumerate(exits):
-        w=316//len(exits); h['rect']=[2+i*w,171,1+(i+1)*w,182]
+        w=316//len(exits); h['rect']=[2+i*w,ys(171),1+(i+1)*w,ys(182)]
     assert len(r['hotspots'])<=12
 out=ROOT/'VGA';out.mkdir(exist_ok=True)
 with (out/'STAGE.DAT').open('w',newline='') as f:

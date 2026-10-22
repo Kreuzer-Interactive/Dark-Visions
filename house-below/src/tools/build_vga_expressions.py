@@ -1,6 +1,7 @@
 """Slice transparent generated sheets into small DOS-ready expression assets."""
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageEnhance
+from vga_common import PORTRAIT_CROP, placed, squash, to_indexed
 
 ROOT = Path(__file__).resolve().parents[1]
 ART = ROOT / 'ART' / 'portraits'
@@ -9,10 +10,6 @@ MOODS = ['Attentive', 'Troubled', 'Determined', 'Warm']
 
 
 def export_expressions(palette):
-    swatch = Image.new('P', (1, 1)); swatch.putpalette(palette)
-    target = palette[227*3:227*3+3]
-    replacement = min((i for i in range(256) if i != 227),
-                      key=lambda i: sum((palette[i*3+j]-target[j])**2 for j in range(3)))
     sheet = Image.new('RGB', (7*200, 4*236), (13, 19, 23))
     draw = ImageDraw.Draw(sheet)
     for person, name in enumerate(NAMES):
@@ -31,20 +28,18 @@ def export_expressions(palette):
                 bust = cell.crop(bounds)
                 bust.thumbnail((size[0]-4, size[1]-2), Image.Resampling.LANCZOS)
                 rgb = ImageEnhance.Brightness(bust.convert('RGB')).enhance(brightness)
-                indexed = rgb.quantize(palette=swatch, dither=Image.Dither.NONE)
-                indexed = indexed.point([replacement if i == 227 else i for i in range(256)])
-                mask = bust.getchannel('A').point(lambda a: 255 if a >= 128 else 0)
-                canvas = Image.new('P', size, 227); canvas.putpalette(palette)
-                canvas.paste(indexed, ((size[0]-bust.width)//2, size[1]-bust.height), mask)
+                full = placed(rgb, bust.getchannel('A'), size, ((size[0]-bust.width)//2, size[1]-bust.height))
+                # 5/6 vertical squash for mode 13h, then drop the bottom rows (speech-tail zone).
+                canvas = to_indexed(squash(full, PORTRAIT_CROP), palette)
                 canvas.save(ROOT / 'VGA' / f'P{person}{mood}{state}.BMP')
                 if state == 'A':
                     shown = canvas.convert('RGBA')
                     shown.putalpha(Image.frombytes('L', canvas.size, bytes(0 if i == 227 else 255 for i in canvas.tobytes())))
-                    shown = shown.resize((192, 208), Image.Resampling.NEAREST)
+                    shown = shown.resize((canvas.width*2, canvas.height*2), Image.Resampling.NEAREST)
                     sheet.paste(shown, (person*200+4, mood*236+4), shown)
                     draw.text((person*200+5, mood*236+216), f'{name} / {MOODS[mood]}', fill=(215, 191, 145))
     sheet.save(ART / 'expression-contact-sheet.png')
-    print('Exported 28 expressions, each with bright 96x104 and dim 72x80 variants (56 masked BMPs).')
+    print('Exported 28 expressions, each with bright 96x75 and dim 72x55 variants (56 masked BMPs).')
 
 
 if __name__ == '__main__':

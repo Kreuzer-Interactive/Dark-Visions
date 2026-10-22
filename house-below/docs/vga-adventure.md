@@ -14,7 +14,7 @@ The framebuffer is genuinely 320×200 indexed color (mode 13h; see the mode 13h 
 a pixel filter. Sixteen room backgrounds and a 320×154 back-seat car backdrop share the same 256-entry palette.
 The top ten pixels hold the room title; the scene includes visible exit plates; the bottom
 46 pixels hold verbs, inventory and contextual text. Sixteen palette entries are reserved for
-readable UI and accents. Nine 48×88 indexed character masters provide the protagonist, seven NPCs
+readable UI and accents. Nine 48×73 indexed character masters provide the protagonist, seven NPCs
 and a walking pose. They are exported from the original art with the visible silhouette cropped
 before resizing, so transparent margins do not shrink people or lift their feet off the floor.
 uGL mask index 227 is reserved in sprites and conversation portraits. All scene art is newly generated.
@@ -109,7 +109,7 @@ murder weapon and climax are not adopted as established canon.
 
 Conversations cover the verbs and inventory. Transparent busts overlay the room scenery
 without portrait boxes: the protagonist faces right on the left, and the NPC faces left on
-the right. The speaker uses a bright 96×104 canvas; the listener uses a dimmer 72×80 canvas.
+the right. The speaker uses a bright 96×75 canvas; the listener uses a dimmer 72×55 canvas.
 The player takes visual focus while choosing a reply. Each of the eight people, including the player, has four
 expressions: attentive, troubled, determined and warm. Dialogue authors select the mood
 explicitly through `Reply`, including emotional reactions from the listening protagonist.
@@ -153,9 +153,9 @@ at y 85-96, speech panel from y 97, topic and reply buttons at y 138 + 16 per ro
 button). Puzzle/modal panels start at y 12. Hotspot and floor y values were scaled by 154/184
 (exit plates are 10 lines tall at y 143).
 
-`src/tools/vga200.ps1` is the converter that produced this set from the 320x240 assets (no
-Python needed): `-In <old VGA dir> -Out <new dir>`. The Python exporters still write the old
-320x240 masters; run vga200.ps1 on their output to get the shipping set.
+The Python exporters write the shipping 13h set directly (shared constants and the 5/6 squash +
+portrait crop live in `tools/vga_common.py`). Run `build_vga_assets.py`, then
+`build_vga_opening.py`, then `build_vga_story.py` (needs Pillow). `verify_vga_assets.py` checks the result.
 
 486 note: QuickBASIC's `^` operator is a software floating-point routine, about 1 ms per call
 on an FPU-less 486SX. `Txt` used it per glyph row and a frame took 1.4 s on the emulated SX;
@@ -185,9 +185,10 @@ integer `Pow2%` brought it to about 55 ms. Avoid `^`, `ATN` and other float math
 | `VGAKTEST.BAS` | Discovery gating, cross-character clues, paging, stable history and save migration checks |
 | `tools/build_vga_story.py` | Editable room graph, rectangles, descriptions; exports WORLD.DAT |
 | `tools/build_vga_assets.py` | Shared palette, native-size backgrounds, sprites, original font export |
-| `tools/build_vga_characters.py` | Re-export 48×88 sprites from the original master without touching backgrounds |
-| `tools/build_vga_portraits.py` | Export seven portrait masters and the player inset to the shared palette |
-| `tools/build_vga_expressions.py` | Export 28 expressions in bright/small dim variants (56 masked BMPs) |
+| `tools/build_vga_characters.py` | Re-export 48×73 sprites from the original master without touching backgrounds |
+| `tools/vga_common.py` | Mode 13h constants and helpers: scene size, 5/6 vertical squash, portrait crop, mask-aware palette quantize |
+| `tools/build_vga_portraits.py` | Hands the portrait masters to the expression exporter (the old boxed FACE/YOU bitmaps are gone) |
+| `tools/build_vga_expressions.py` | Export 28 expressions in bright 96x75 / dim 72x55 variants (56 masked BMPs) |
 | `tools/build_vga.ps1` | BC/LINK build and isolated DOSBox-X test execution |
 
 Python asset exporters require Pillow. Neither compilation nor playing needs an API key or
@@ -228,7 +229,7 @@ are `expressions-00.png` through `expressions-06.png`; full prompts are in
 `expression-prompts.json`, and the indexed results appear in `expression-contact-sheet.png`.
 The exporter preserves generated alpha as the DOS mask and maps colors to the shared palette.
 Runtime assets are `VGA/P00A.BMP` through `P63L.BMP` (person, expression, active/listening).
-The package excludes the superseded boxed FACE/YOU bitmaps but keeps the master art in source.
+The superseded boxed FACE/YOU bitmaps were removed; the master art stays in source.
 
 `build_vga.ps1 -Test` builds all nineteen modules and runs `VISIONS.EXE /TEST` in `tmp/vga-qa`.
 It loads and renders all sixteen rooms, checks prerequisite gates, runs the complete puzzle
