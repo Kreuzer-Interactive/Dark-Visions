@@ -74,11 +74,11 @@ SUB CheckSpeech
  utterance$ = "THIS OLD QUESTION SHOULD NOT APPEAR"
  CALL Reply(1, "JAMES", "I should have opened more than the front door.")
  modal = -1: CALL DrawScene: CALL DumpFrame(30)
- CALL Check(uglPGet(back, 276, 139) = 254 AND uglPGet(back, 44, 139) <> 254, "cream tail connects their reply to the right-hand portrait")
+ CALL Check(uglPGet(back, 276, 136) = 254 AND uglPGet(back, 276, 142) = 240, "white-outlined tail connects their reply to the right-hand portrait")
  valid = -1
  FOR y = 178 TO 192
   FOR x = 18 TO 290
-   IF uglPGet(back, x, y) <> 254 THEN valid = 0
+   IF uglPGet(back, x, y) <> 240 THEN valid = 0
   NEXT
  NEXT
  CALL Check(valid, "answer shows no repeated You said question")
@@ -88,7 +88,7 @@ SUB CheckSpeech
  testing = -1
  q = TalkPick%(1, "JAMES", "Greeting", "Who is downstairs?", "My invitation", "The clock")
  talkmenu = 1: CALL SetChoices: CALL PrepareFaces: CALL DrawScene: CALL DumpFrame(32)
- CALL Check(body$ = "" AND uglPGet(back, 44, 139) = 253 AND uglPGet(back, 276, 139) <> 253 AND uglPGet(back, 150, 153) = 253, "your turn is a blue panel with its tail on the left portrait")
+ CALL Check(body$ = "" AND uglPGet(back, 44, 136) = 254 AND uglPGet(back, 44, 142) = 240 AND uglPGet(back, 150, 153) = 240, "your turn has its tail on the left portrait")
  CALL EndTalk: modal = 0: flags(20) = mask: testpick = oldpick
  CALL Check(Speaking% = 0 AND speechcount = 0, "leaving a conversation clears reveal state")
 END SUB

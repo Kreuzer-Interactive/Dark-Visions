@@ -15,8 +15,8 @@ DOSBox-X or the copy in `../QA/DOSBox-X`. The mouse works without capture. **Ctr
 - Keyboard alternatives: TAB selects hotspots, ENTER activates, 1–8 select inventory slots,
   I changes inventory page, arrows move the cursor. J journal, M map, H clues, S sound,
   F5 save, F9 load, ESC pause/cancel. Dialogue questions accept 1–3.
-- Conversations: you stand on the left, the other person on the right facing you, with a paper
-  panel below (blue = you, cream = them). One click, Enter or Space advances everything. You pick
+- Conversations: you stand on the left, the other person on the right facing you, with a black
+  speech bubble below (white outline, a tail pointing at the speaker and a gold name header). One click, Enter or Space advances everything. You pick
   a question from up to three gold tickets (click, 1-3, or Tab / Up / Down + Enter), you say it,
   they answer. Asked questions disappear and new ones appear as you learn things. Leave with
   **Leave [Esc]**, ESC or right-click.

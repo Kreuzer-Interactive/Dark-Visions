@@ -79,10 +79,11 @@ The look and flow were designed in `docs/mockups/` (direction B4, name placement
 **Layout.** One fixed panel (x 5-314, y 145-196) is used for menus and speech, so nothing moves
 between frames. Under the room picture is a warm leather band. You always stand on the left, the
 other person on the right and mirrored so they face you; both busts are the full 96x75 art, their
-lower rows tucked behind the panel. Colour says who: pale blue paper is you (speaking or choosing),
-cream paper is them. A small tail rises from the panel to the speaker. The speaker's name is a
-brick-red header with a thin rule inside the panel, on their side ("YOU" left, the other person
-right). Text is navy on paper in the game's 7 px font, at most three 272 px lines per page.
+lower rows tucked behind the panel. The bubble is black with a white double outline for everyone (a pale-blue-for-you variant was
+mocked up and rejected: the tail and the name are enough). A small tail rises from the panel to the
+speaker. The speaker's name is a gold header with a thin grey rule inside the panel, on their side
+("YOU" left, the other person right). Text is white in the game's 7 px font, at most three 272 px
+lines per page. Tickets are dark grey with a gold number; the hovered ticket is white with a red stub.
 
 **Flow.** One click, Enter or Space anywhere does everything: the first finishes the typewriter,
 the next goes to the following page of a long reply (replies are split into three-line pages
@@ -109,7 +110,7 @@ introduction and the observed racing silks.
 single pixels (`RRect`, `DrawPanel`, `DrawTail`, `DrawTickets` in `VGASAY.BAS`); nothing is drawn
 per frame beyond what the screen redraw already does. Only the two full-size portraits are loaded
 and they reload only when an expression changes. Palette slots 242 and 248 (leather shadow and
-band), 253 (pale blue) and 254 (paper cream) were added to the reserved UI colours.
+band), 253 (pale blue, now unused) and 254 (paper white, the outline and text colour) were added to the reserved UI colours.
 `testforce` is a test-only hook that asks any currently allowed topic regardless of where it sits
 in the menu.
 

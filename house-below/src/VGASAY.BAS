@@ -124,38 +124,29 @@ SUB RRect (x0, y0, x1, y1, c)
  uglRectF back, x0, y0 + 2, x1, y1 - 2, CLNG(c)
 END SUB
 
-' The conversation panel: soft shadow, navy outline, paper fill, hairline with corner studs.
-SUB DrawPanel (fill, hair)
- DIM x0, y0, x1, y1
+' The conversation panel: soft shadow, white double outline, black fill.
+SUB DrawPanel (edge)
  CALL RRect(pnX0 + 1, pnY0 + 2, pnX1 + 1, pnY1 + 2, 242)
- CALL RRect(pnX0, pnY0, pnX1, pnY1, 240)
- CALL RRect(pnX0 + 1, pnY0 + 1, pnX1 - 1, pnY1 - 1, fill)
- x0 = pnX0 + 3: y0 = pnY0 + 3: x1 = pnX1 - 3: y1 = pnY1 - 3
- uglLine back, x0 + 3, y0, x1 - 3, y0, CLNG(hair)
- uglLine back, x0 + 3, y1, x1 - 3, y1, CLNG(hair)
- uglLine back, x0, y0 + 3, x0, y1 - 3, CLNG(hair)
- uglLine back, x1, y0 + 3, x1, y1 - 3, CLNG(hair)
- uglPSet back, x0 + 1, y0 + 2, CLNG(hair): uglPSet back, x0 + 2, y0 + 1, CLNG(hair): uglPSet back, x0 + 1, y0 + 1, CLNG(hair)
- uglPSet back, x1 - 1, y0 + 2, CLNG(hair): uglPSet back, x1 - 2, y0 + 1, CLNG(hair): uglPSet back, x1 - 1, y0 + 1, CLNG(hair)
- uglPSet back, x0 + 1, y1 - 2, CLNG(hair): uglPSet back, x0 + 2, y1 - 1, CLNG(hair): uglPSet back, x0 + 1, y1 - 1, CLNG(hair)
- uglPSet back, x1 - 1, y1 - 2, CLNG(hair): uglPSet back, x1 - 2, y1 - 1, CLNG(hair): uglPSet back, x1 - 1, y1 - 1, CLNG(hair)
+ CALL RRect(pnX0, pnY0, pnX1, pnY1, CLNG(edge))
+ CALL RRect(pnX0 + 2, pnY0 + 2, pnX1 - 2, pnY1 - 2, 240)
 END SUB
 
 ' Speech tail rising from the panel's top edge at tipx, pointing at the speaker's chin.
-SUB DrawTail (tipx, fill)
+SUB DrawTail (tipx, edge)
  DIM k, half, y
  FOR k = 0 TO 9
   half = k * 3 \ 4 + 1: y = pnY0 - 9 + k
-  uglLine back, tipx - half, y, tipx + half, y, CLNG(fill)
+  uglLine back, tipx - half, y, tipx + half, y, 240
   IF k = 0 THEN
-   uglLine back, tipx - half, y, tipx + half, y, 240
+   uglLine back, tipx - half, y, tipx + half, y, CLNG(edge)
   ELSE
-   uglLine back, tipx - half, y, tipx - half + 1, y, 240
-   uglLine back, tipx + half - 1, y, tipx + half, y, 240
+   uglLine back, tipx - half, y, tipx - half + 1, y, CLNG(edge)
+   uglLine back, tipx + half - 1, y, tipx + half, y, CLNG(edge)
   END IF
  NEXT
- uglLine back, tipx - 7, pnY0, tipx + 7, pnY0, CLNG(fill)
- uglLine back, tipx - 7, pnY0 + 1, tipx + 7, pnY0 + 1, CLNG(fill)
+ ' Open the panel outline under the tail so it flows into the panel.
+ uglLine back, tipx - 6, pnY0, tipx + 6, pnY0 + 2, 240
+ uglRectF back, tipx - 6, pnY0, tipx + 6, pnY0 + 2, 240
 END SUB
 
 FUNCTION MenuMode%
@@ -179,53 +170,52 @@ SUB DrawTickets
    hv = (ChoiceAt%(mx, my) = i)
    nm$ = LTRIM$(STR$(i))
    IF hv THEN
-    uglRectF back, x0, y, x1, y + 9, 240
+    uglRectF back, x0, y, x1, y + 9, 254
     uglRectF back, x0 + 1, y + 1, x1 - 1, y + 8, 254
     uglRectF back, x0 + 1, y + 1, x0 + 15, y + 8, 249
     uglLine back, x1 - 8, y + 2, x1 - 8, y + 6, 249
     uglLine back, x1 - 7, y + 3, x1 - 7, y + 5, 249
     uglPSet back, x1 - 6, y + 4, 249
     CALL Txt(x0 + 6, y + 2, nm$, 254)
+    CALL Txt(x0 + 21, y + 2, choices$(i), 240)
    ELSE
-    uglRectF back, x0, y, x1, y + 9, 240
-    uglRectF back, x0 + 1, y + 1, x1 - 1, y + 8, 246
-    uglRectF back, x0 + 1, y + 1, x0 + 15, y + 8, 245
-    CALL Txt(x0 + 6, y + 2, nm$, 240)
+    uglRectF back, x0, y, x1, y + 9, 244
+    uglRectF back, x0 + 1, y + 1, x1 - 1, y + 8, 243
+    uglRectF back, x0 + 1, y + 1, x0 + 15, y + 8, 242
+    CALL Txt(x0 + 6, y + 2, nm$, 246)
+    CALL Txt(x0 + 21, y + 2, choices$(i), 254)
    END IF
    uglPSet back, x0 + 16, y + 1, 240: uglPSet back, x0 + 16, y + 3, 240: uglPSet back, x0 + 16, y + 5, 240: uglPSet back, x0 + 16, y + 7, 240
-   CALL Txt(x0 + 21, y + 2, choices$(i), 240)
   END IF
  NEXT
- IF none AND talkmenu THEN CALL Txt(pnX0 + 11, choicetop + 3, "Nothing more to ask right now.", 250)
+ IF none AND talkmenu THEN CALL Txt(pnX0 + 11, choicetop + 3, "Nothing more to ask right now.", 244)
 END SUB
 
 SUB DrawSpeech
- DIM youtalk, fill, hair, nm$, nx, ps, pe, shown, lv
- ' Blue paper = you (choosing or speaking), cream paper = them. The tail points at the speaker.
+ DIM youtalk, nm$, nx, ps, pe, shown, lv
+ ' Black bubble, white outline. Only the tail and the gold name header say who is speaking.
  youtalk = (talkmenu <> 0 OR playerline <> 0 OR MenuMode%)
- fill = 254: hair = 245
- IF youtalk THEN fill = 253: hair = 252
- CALL DrawPanel(fill, hair)
- IF youtalk THEN CALL DrawTail(44, fill) ELSE CALL DrawTail(276, fill)
+ CALL DrawPanel(254)
+ IF youtalk THEN CALL DrawTail(44, 254) ELSE CALL DrawTail(276, 254)
  nm$ = FaceName$(convperson): IF youtalk THEN nm$ = "YOU"
  IF youtalk THEN nx = pnX0 + 11 ELSE nx = pnX1 - 11 - Tw%(nm$)
- CALL Txt(nx, pnY0 + 6, nm$, 249)
- uglLine back, nx, pnY0 + 15, nx + Tw%(nm$) - 1, pnY0 + 15, CLNG(hair)
+ CALL Txt(nx, pnY0 + 6, nm$, 246)
+ uglLine back, nx, pnY0 + 15, nx + Tw%(nm$) - 1, pnY0 + 15, 244
  IF talkmenu THEN
   lv = LeaveAt%(mx, my)
   nx = pnX1 - 11 - Tw%("Leave [Esc]")
-  IF lv THEN CALL Txt(nx, pnY0 + 6, "Leave [Esc]", 249) ELSE CALL Txt(nx, pnY0 + 6, "Leave [Esc]", 250)
+  IF lv THEN CALL Txt(nx, pnY0 + 6, "Leave [Esc]", 254) ELSE CALL Txt(nx, pnY0 + 6, "Leave [Esc]", 244)
  END IF
  IF MenuMode% THEN
   CALL DrawTickets
  ELSE
   ps = PageStart%: pe = PageEnd%
   shown = speechcount - ps + 1: IF shown < 0 THEN shown = 0
-  CALL RevealWrapInk(pnX0 + 11, pnY0 + 20, MID$(body$, ps, pe - ps + 1), 272, shown, 240)
+  CALL RevealWrapInk(pnX0 + 11, pnY0 + 20, MID$(body$, ps, pe - ps + 1), 272, shown, 254)
   IF NOT Speaking% THEN
-   uglLine back, pnX1 - 14, pnY1 - 8, pnX1 - 9, pnY1 - 8, 249
-   uglLine back, pnX1 - 13, pnY1 - 7, pnX1 - 10, pnY1 - 7, 249
-   uglLine back, pnX1 - 12, pnY1 - 6, pnX1 - 11, pnY1 - 6, 249
+   uglLine back, pnX1 - 14, pnY1 - 8, pnX1 - 9, pnY1 - 8, 246
+   uglLine back, pnX1 - 13, pnY1 - 7, pnX1 - 10, pnY1 - 7, 246
+   uglLine back, pnX1 - 12, pnY1 - 6, pnX1 - 11, pnY1 - 6, 246
   END IF
  END IF
 END SUB

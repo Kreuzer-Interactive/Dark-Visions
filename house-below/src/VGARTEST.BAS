@@ -77,7 +77,7 @@ SUB CheckOpening
  CALL DrawScene: CALL DumpFrame(36)
  playerline = -1: CALL Say("YOU", "He is my uncle. His letter offered me an apprenticeship. He says my chemistry will be useful.")
  CALL DrawScene: CALL DumpFrame(37)
- CALL Check(uglPGet(back, 300, 170) = 253 AND uglPGet(back, 44, 139) = 253, "scripted player speech is the blue panel with the tail on you")
+ CALL Check(uglPGet(back, 300, 170) = 240 AND uglPGet(back, 44, 136) = 254, "scripted player speech has its tail on you")
  playerline = 0: carscene = 0: CALL EndTalk: modal = 0
  FOR i = 1 TO 32: flags(i) = sf(i): NEXT
  FOR i = 1 TO 14: learned(i) = sk(i): NEXT
