@@ -1,0 +1,33 @@
+{
+  "status": "Character design approved by user",
+  "tool": "built-in image_gen",
+  "use_case": "stylized-concept",
+  "master": "coachman-character-sheet.png",
+  "prompt": "Use case: stylized-concept.\nAsset type: a production character design sheet for the native DOS gothic point-and-click adventure Dark Visions, intended to read at 320x240 with a 256-color game palette.\nReference images: image 1 (existing full-body cast) is style/costume/scale reference only; image 2 (James expression sheet) is portrait rendering and expression-layout reference only; image 3 (comic opening pages) is mood and early motorcar-era setting reference only. Create a DISTINCT NEW character, not a variation of James.\nSubject: the coachman / hired motorcar driver who brought the young protagonist to Ravenhurst. A heavyset, barrel-chested, broad-shouldered man around fifty with a round weathered face, broad nose, thick dark eyebrows, short greying sideburns, clean-shaven chin, and tired but observant kind eyes. Solid human proportions, a conspicuous rounded belly, large capable hands. Not a comic caricature.\nCostume: a soft dark moss-brown tweed scally cap / flat cap with a short forward brim, a worn charcoal-brown raincoat worn OPEN, revealing unmistakable old-fashioned jockey racing silks: a faded deep burgundy racing shirt with a large muted ochre diamond on the chest and matching diamond details on the sleeves. Slight satin sheen but weathered, dull and period-appropriate. Cream riding breeches, tall dark leather riding boots, brown driving gloves. The coat and cap say practical driver; the racing silks and riding boots are a subtle visual story clue to a life or identity connected with the house's patients. Do not depict illness through grotesque expressions, asylum costumes or restraints.\nLayout: a single clean wide landscape sheet on TRUE TRANSPARENT ALPHA, arranged in two rows with FOUR equal columns and generous clear gutters. Upper row occupies about 60 percent of the height and shows FOUR complete full-body views of this exact same man at the same scale: front, three-quarter facing the viewer's RIGHT in a relaxed conversational idle pose, right-facing profile, back. Hat and boots fully visible in every view, same costume and build consistently. Coat open in front views to clearly reveal the diamond racing silks. Lower row occupies 40 percent and contains FOUR large chest-up conversation portraits, each at the same three-quarter angle looking to the viewer's RIGHT, same cap/clothing/light, in this left-to-right order: attentive neutral; worried and guarded; firm and determined; warmly reassured with a small genuine smile. The silks must be visible in the chest-up portraits as well.\nStyle: match the supplied cast's inked painterly gothic comic illustration and early 1990s VGA adventure art, textured cloth, controlled chunky brushwork and crisp silhouettes, readable folds and face planes. Amber face highlights and cool blue-teal shadows, charcoal, muted brown, burgundy, faded cream and ochre. Strong simple shapes that survive reduction to a small DOS sprite; restrained detail, no glossy modern game render.\nConstraints: exactly ONE consistent new character repeated eight times; all four full bodies and four portraits fully separated; true transparent background everywhere outside the figures; no checkerboard, no backdrop, no scenery, no car on this CHARACTER sheet, no text, labels, frames, logos, watermarks or crop marks. Do not make him thin. Preserve his heavyset belly in every standing view.",
+  "references": [
+    "C:\\Code\\Dark-Visions\\src\\ART\\visions-characters.png",
+    "C:\\Code\\Dark-Visions\\src\\ART\\portraits\\expressions-01.png",
+    "C:\\Code\\Dark-Visions\\tmp\\comic\\c1-sheet1.jpg"
+  ],
+  "user_direction": {
+    "role": "The coachman / driver who brought the protagonist to Ravenhurst",
+    "build": "Heavyset",
+    "headwear": "Scally cap",
+    "costume": "Faded jockey racing silks beneath an open weathered raincoat, riding breeches and boots",
+    "story_hint": "Possible connection to the house's patients; reveal through later clues and dialogue",
+    "scene": "Car on the left of the exterior, coachman beside it; James greets the player inside"
+  },
+  "views": [
+    "front",
+    "three-quarter right",
+    "right profile",
+    "back"
+  ],
+  "expressions": [
+    "attentive",
+    "worried",
+    "determined",
+    "warm"
+  ],
+  "production_status": "Approved concept master. In-game sprite, transparent portrait exports, exterior car background and dialogue integration remain separate production work."
+}

@@ -1,0 +1,36 @@
+{
+  "tool": "Built-in image_gen",
+  "assets": [
+    {
+      "key": "coachman_cutouts",
+      "args": {
+        "prompt": "Use case: background-extraction. Edit target: supplied approved coachman character sheet. Remove ALL brown background and all glow/shadows outside the characters. Deliver the identical four full-body turnarounds across the top and four bust expressions across the bottom, same exact 1536x1024 composition and identity, with TRUE transparent alpha outside each silhouette. Keep every face, pose, costume and placement unchanged. Separate cutout sprites ready for compositing. No checkerboard drawn into image, no background color, no halo, no labels.",
+        "referenced_image_paths": [
+          "C:/Code/Dark-Visions/src/ART/coachman/coachman-character-sheet.png"
+        ],
+        "transparent_background": true
+      }
+    },
+    {
+      "key": "car_interior",
+      "args": {
+        "prompt": "Use case: illustration-story. Create a wide cinematic gothic adventure game background, 16:9 landscape. Reference 1 is the approved coachman identity and costume; reference 2 is Ravenhurst house/style. POV sitting in the BACK SEAT of an early 1920s enclosed motorcar at night, looking forward past the driver to a rain-streaked windscreen, wet woodland road and distant amber lights of Ravenhurst. The heavyset coachman drives on the LEFT: broad shoulders, brown tweed scally cap, grey sideburns, weathered brown open coat, burgundy and gold diamond racing silk sleeve visible by steering wheel. Seen chiefly from behind, slight cheek profile, attention on road. Driver and steering wheel in left half, empty front passenger seat bottom right, dark wood dashboard, leather seatbacks, warm small instrument light. Rain and headlights create cold blue / amber contrast. Keep large readable forms designed to downsample to 320x184 256-color DOS art; painterly hand-inked gothic comic style matching references, strong silhouette. House small/distant through center-right window. No other people, no text, no UI, no borders. Preserve coherent car geometry. Entire frame opaque.",
+        "referenced_image_paths": [
+          "C:/Code/Dark-Visions/src/ART/coachman/coachman-character-sheet.png",
+          "C:/Code/Dark-Visions/src/VGA/RM01.BMP"
+        ],
+        "transparent_background": false
+      }
+    },
+    {
+      "key": "exterior_car",
+      "args": {
+        "prompt": "Use case: precise-object-edit. Edit the supplied wide gothic manor adventure game background. Retain SAME house silhouette, door position at 56% width 55% height, upper windows, dramatic stormy night, rain, amber lamps, painterly pixel-art feel. Add a large parked early 1920s dark motorcar occupying the LOWER LEFT, left edge partly clipped, facing toward right; black body, pale warm headlights, tall spoked wheels, enclosed rear cabin, running board. Car roughly left 0%-34% width and 47%-91% height. Shift/clear the left gate into open position so the car is visibly in the drive. Keep a clear foreground patch of wet driveway at 35%-70% width for two separately composited human sprites. Right gates and manor remain. This is an empty game background: NO people anywhere, NO driver in car. The car should be large enough for a roughly half-scene-height standing man nearby; foreground perspective. Preserve exact broad landscape aspect ratio, suitable for export 320x184. No text or interface.",
+        "referenced_image_paths": [
+          "C:/Code/Dark-Visions/src/VGA/RM01.BMP"
+        ],
+        "transparent_background": false
+      }
+    }
+  ]
+}

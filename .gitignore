@@ -39,3 +39,18 @@ src/tools/SPKPROBE.LOG
 src/tools/VECPROBE.LOG
 src/tools/VECPROBE.EXE
 src/tools/VECPROBE.LNK
+
+# House Below (VGA edition) build/run artifacts
+house-below/src/VGA/*.SAV
+house-below/src/VGA/*.RAW
+house-below/src/VGA/TEST.LOG
+house-below/src/VGA.LNK
+house-below/src/vga_build.conf
+house-below/src/VGABUILD.LOG
+house-below/src/*.OBJ
+house-below/src/*.LST
+house-below/src/VISIONS.MAP
+tmp/vga-qa/
+tmp/vga-*.conf
+tmp/vga-*.log
+house-below/src/vga-play.conf

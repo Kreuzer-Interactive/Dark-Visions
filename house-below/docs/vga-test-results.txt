@@ -1,0 +1,271 @@
+PASS native 320x240 indexed display
+PASS standard DOS mouse initialized
+PASS custom cursor visible
+PASS cursor leaves back buffer clean
+PASS cursor moves and restores background without Present
+PASS cursor tip matches absolute input coordinates
+PASS LOOK cursor replaces ACT without residue
+PASS cursor reaches top left screen edge
+PASS screen corners restore cleanly
+PASS small upward moves remain small
+PASS small downward moves remain small
+PASS stationary polling never accumulates movement
+PASS moving the pointer does not invent clicks
+PASS room background  1
+PASS human scale and planted feet in room  1
+PASS enlarged head is clickable: Coachman
+PASS room background  2
+PASS human scale and planted feet in room  2
+PASS enlarged head is clickable: James
+PASS room background  3
+PASS human scale and planted feet in room  3
+PASS room background  4
+PASS human scale and planted feet in room  4
+PASS enlarged head is clickable: Elias Hart
+PASS room background  5
+PASS human scale and planted feet in room  5
+PASS room background  6
+PASS human scale and planted feet in room  6
+PASS enlarged head is clickable: Ada Finch
+PASS room background  7
+PASS human scale and planted feet in room  7
+PASS room background  8
+PASS human scale and planted feet in room  8
+PASS room background  9
+PASS human scale and planted feet in room  9
+PASS room background  10
+PASS human scale and planted feet in room  10
+PASS enlarged head is clickable: Clara Vale
+PASS enlarged head is clickable: Thomas Reed
+PASS room background  11
+PASS human scale and planted feet in room  11
+PASS enlarged head is clickable: Miriam Bell
+PASS room background  12
+PASS human scale and planted feet in room  12
+PASS room background  13
+PASS human scale and planted feet in room  13
+PASS room background  14
+PASS human scale and planted feet in room  14
+PASS room background  15
+PASS human scale and planted feet in room  15
+PASS room background  16
+PASS human scale and planted feet in room  16
+PASS only selected question marked: COACHMAN
+PASS coachman history is separate from James and legacy outdoor history
+PASS asked question remains repeatable: COACHMAN
+PASS repeat questions then Goodbye: COACHMAN
+PASS only selected question marked: JAMES / BUTLER
+PASS asked question remains repeatable: JAMES / BUTLER
+PASS repeat questions then Goodbye: JAMES / BUTLER
+PASS only selected question marked: ELIAS HART
+PASS asked question remains repeatable: ELIAS HART
+PASS repeat questions then Goodbye: ELIAS HART
+PASS only selected question marked: ADA FINCH / GARDENER
+PASS asked question remains repeatable: ADA FINCH / GARDENER
+PASS repeat questions then Goodbye: ADA FINCH / GARDENER
+PASS only selected question marked: CLARA VALE
+PASS asked question remains repeatable: CLARA VALE
+PASS repeat questions then Goodbye: CLARA VALE
+PASS only selected question marked: THOMAS REED
+PASS asked question remains repeatable: THOMAS REED
+PASS repeat questions then Goodbye: THOMAS REED
+PASS only selected question marked: MIRIAM BELL
+PASS asked question remains repeatable: MIRIAM BELL
+PASS repeat questions then Goodbye: MIRIAM BELL
+PASS repeated topics preserve gate and ward key progress
+PASS asked questions survive save and load
+PASS invalid question history preserves current journey
+PASS save with unasked topics restores unmarked history
+PASS speaker faces inward; listener small/dim; alpha overlays room: JAMES 0
+PASS player takes focus and NPC keeps expression: JAMES 0
+PASS speaker faces inward; listener small/dim; alpha overlays room: JAMES 1
+PASS player takes focus and NPC keeps expression: JAMES 1
+PASS speaker faces inward; listener small/dim; alpha overlays room: JAMES 2
+PASS player takes focus and NPC keeps expression: JAMES 2
+PASS speaker faces inward; listener small/dim; alpha overlays room: JAMES 3
+PASS player takes focus and NPC keeps expression: JAMES 3
+PASS full-width conversation hit regions: JAMES
+PASS unchanged dialogue reuses loaded portraits: JAMES
+PASS speaker faces inward; listener small/dim; alpha overlays room: ELIAS HART 0
+PASS player takes focus and NPC keeps expression: ELIAS HART 0
+PASS speaker faces inward; listener small/dim; alpha overlays room: ELIAS HART 1
+PASS player takes focus and NPC keeps expression: ELIAS HART 1
+PASS speaker faces inward; listener small/dim; alpha overlays room: ELIAS HART 2
+PASS player takes focus and NPC keeps expression: ELIAS HART 2
+PASS speaker faces inward; listener small/dim; alpha overlays room: ELIAS HART 3
+PASS player takes focus and NPC keeps expression: ELIAS HART 3
+PASS full-width conversation hit regions: ELIAS HART
+PASS unchanged dialogue reuses loaded portraits: ELIAS HART
+PASS speaker faces inward; listener small/dim; alpha overlays room: ADA FINCH 0
+PASS player takes focus and NPC keeps expression: ADA FINCH 0
+PASS speaker faces inward; listener small/dim; alpha overlays room: ADA FINCH 1
+PASS player takes focus and NPC keeps expression: ADA FINCH 1
+PASS speaker faces inward; listener small/dim; alpha overlays room: ADA FINCH 2
+PASS player takes focus and NPC keeps expression: ADA FINCH 2
+PASS speaker faces inward; listener small/dim; alpha overlays room: ADA FINCH 3
+PASS player takes focus and NPC keeps expression: ADA FINCH 3
+PASS full-width conversation hit regions: ADA FINCH
+PASS unchanged dialogue reuses loaded portraits: ADA FINCH
+PASS speaker faces inward; listener small/dim; alpha overlays room: CLARA VALE 0
+PASS player takes focus and NPC keeps expression: CLARA VALE 0
+PASS speaker faces inward; listener small/dim; alpha overlays room: CLARA VALE 1
+PASS player takes focus and NPC keeps expression: CLARA VALE 1
+PASS speaker faces inward; listener small/dim; alpha overlays room: CLARA VALE 2
+PASS player takes focus and NPC keeps expression: CLARA VALE 2
+PASS speaker faces inward; listener small/dim; alpha overlays room: CLARA VALE 3
+PASS player takes focus and NPC keeps expression: CLARA VALE 3
+PASS full-width conversation hit regions: CLARA VALE
+PASS unchanged dialogue reuses loaded portraits: CLARA VALE
+PASS speaker faces inward; listener small/dim; alpha overlays room: THOMAS REED 0
+PASS player takes focus and NPC keeps expression: THOMAS REED 0
+PASS speaker faces inward; listener small/dim; alpha overlays room: THOMAS REED 1
+PASS player takes focus and NPC keeps expression: THOMAS REED 1
+PASS speaker faces inward; listener small/dim; alpha overlays room: THOMAS REED 2
+PASS player takes focus and NPC keeps expression: THOMAS REED 2
+PASS speaker faces inward; listener small/dim; alpha overlays room: THOMAS REED 3
+PASS player takes focus and NPC keeps expression: THOMAS REED 3
+PASS full-width conversation hit regions: THOMAS REED
+PASS unchanged dialogue reuses loaded portraits: THOMAS REED
+PASS speaker faces inward; listener small/dim; alpha overlays room: MIRIAM BELL 0
+PASS player takes focus and NPC keeps expression: MIRIAM BELL 0
+PASS speaker faces inward; listener small/dim; alpha overlays room: MIRIAM BELL 1
+PASS player takes focus and NPC keeps expression: MIRIAM BELL 1
+PASS speaker faces inward; listener small/dim; alpha overlays room: MIRIAM BELL 2
+PASS player takes focus and NPC keeps expression: MIRIAM BELL 2
+PASS speaker faces inward; listener small/dim; alpha overlays room: MIRIAM BELL 3
+PASS player takes focus and NPC keeps expression: MIRIAM BELL 3
+PASS full-width conversation hit regions: MIRIAM BELL
+PASS unchanged dialogue reuses loaded portraits: MIRIAM BELL
+PASS speaker faces inward; listener small/dim; alpha overlays room: COACHMAN 0
+PASS player takes focus and NPC keeps expression: COACHMAN 0
+PASS speaker faces inward; listener small/dim; alpha overlays room: COACHMAN 1
+PASS player takes focus and NPC keeps expression: COACHMAN 1
+PASS speaker faces inward; listener small/dim; alpha overlays room: COACHMAN 2
+PASS player takes focus and NPC keeps expression: COACHMAN 2
+PASS speaker faces inward; listener small/dim; alpha overlays room: COACHMAN 3
+PASS player takes focus and NPC keeps expression: COACHMAN 3
+PASS full-width conversation hit regions: COACHMAN
+PASS unchanged dialogue reuses loaded portraits: COACHMAN
+PASS selected topic is retained internally for conversation flow
+PASS troubled line changes speaker expression and listener reaction
+PASS returning topics keep the expression without repeating speech
+PASS welcome changes both faces to warmth
+PASS firm line returns listener to attention
+PASS reply button does not click through to covered toolbar
+PASS hidden verbs and inventory have no conversation hit regions
+PASS topic gaps and portrait areas do not select questions
+PASS Goodbye frees portraits, expressions and conversation state
+PASS speech starts unrevealed
+PASS speech reveals progressively without waiting or blocking input
+PASS repeated drawing without elapsed time adds no letters
+PASS comma adds a natural pause
+PASS letters resume after punctuation
+PASS first activation reveals the whole line and is consumed
+PASS second activation is available to continue
+PASS speech timing survives midnight
+PASS a stalled frame does not skip an entire speech
+PASS question menus remain immediate
+PASS ordinary puzzle and save dialogs remain immediate
+PASS letters keep their final wrapped positions during reveal
+PASS complete revealed text matches the normal font wrapper
+PASS speech tail connects the named reply to the right-hand portrait
+PASS answer shows no repeated You said question
+PASS native preview captures a partially spoken line
+PASS player turn shows only choices connected to the left portrait
+PASS leaving a conversation clears reveal state
+PASS fresh arrival cannot ask about an unseen upstairs shadow
+PASS TALK to an object does not read its clue
+PASS LOOK at windows unlocks the shadow question with its source
+PASS clue source is attached to the matching visible question
+PASS short final page ignores blank rows and keeps Goodbye
+PASS keyboard topic paging wraps to the first page
+PASS page arrow changes topics without selecting one
+PASS James does not assume knowledge of patients or the clock
+PASS James's household introduction does not reveal patients or the ward
+PASS second-page question records its stable identity
+PASS examining the clock unlocks a question about the observed clock
+PASS dining names do not identify people as patients
+PASS prescription notes and a study lead do not establish patients
+PASS outside testimony unlocks James's patient topic with its actual source
+PASS general knowledge gets a calm deflection, not a ward or ledger reaction
+PASS recovered ledger gets a present-tense deflection without disclosing the ward
+PASS carried ledger also supports the evidence reply
+PASS visiting the ward supports a worried response to the player's observation
+PASS ward and records strain James's composure without a confession
+PASS seeing the ward permits an observation without inventing medical knowledge
+PASS evidence topic is repeatable and never grants unread records
+PASS Elias starts with no ledger, preparation or ward-key assumptions
+PASS initial request for help establishes the study lead without giving a key
+PASS Elias's own explanation immediately unlocks a follow-up
+PASS new question does not inherit the color of its old row
+PASS introductory questions remain repeatable after new questions appear
+PASS learning about the key does not claim an unread ledger
+PASS contextual ward-key question still requires reading the evidence
+PASS reporting the discovered ledger earns the ward key
+PASS ACT reads prescription notes without falsely reading the locked ledger
+PASS Ada begins without unexplored lake or machinery questions
+PASS Ada's general answers open lake and machinery follow-ups
+PASS Clara cannot be told the escape is safe before preparations
+PASS Clara's plan unlocks relevant questions for Thomas
+PASS partial rescue preparations do not claim a safe route
+PASS completed preparations unlock Clara's ready-to-leave statement
+PASS Thomas offers general questions before technical discoveries
+PASS engine explanation unlocks pressure and fan without inventing a bridge clue
+PASS Thomas explains the crossing before its follow-up is offered
+PASS Miriam does not assume a rescue plan before discussing it
+PASS Miriam's request establishes a shared plan to leave
+PASS visiting every room does not read any hidden evidence
+PASS save restores original clue source and extended asked history
+PASS invalid discovery source cannot replace the current journey
+PASS legacy DVGA1 recovers heard dialogue without inventing unread evidence
+PASS truncated discovery save preserves knowledge
+PASS all 42 contextual and introductory topics remain repeatable and tracked
+PASS skip car opening arrives outside without bypassing invitation
+PASS skipping does not invent coachman knowledge
+PASS journal retains essential opening context after skipping
+PASS complete car conversation transitions cleanly to exterior
+PASS car questions and noticed silks carry into arrival
+PASS coachman encourages shelter after getting out
+PASS outdoor questions remain repeatable with shared car history
+PASS coachman redirects invitation to James
+PASS coachman replaces outdoor James beside the car
+PASS coachman stands left of player beside parked car
+PASS examining coachman notices his racing silks
+PASS coachman remains separate from four rescued ward patients
+PASS lit front door is an interactive route
+PASS LOOK explains knocking without starting entry
+PASS declining invitation conversation leaves player outside
+PASS unrelated selected item cannot bypass James
+PASS showing invitation at door enters hall
+PASS James introduces house only after crossing threshold
+PASS hall exit returns to coachman exterior in TALK mode
+PASS door exit plate enters in LOOK mode after admission
+PASS knocking with no selected item offers invitation and enters
+PASS DVGA3 restores coachman knowledge and all six topic bits without replay
+PASS invalid coachman history preserves journey
+PASS DVGA2 outdoor James history never becomes coachman history
+PASS scripted player speech takes speaker focus
+PASS boathouse cannot bypass clock and bridge
+PASS clock requires its hand
+PASS clock opens hidden stairs
+PASS study evidence recovered
+PASS leave Elias conversation without taking ward key
+PASS Elias gives key after evidence
+PASS wrong safe answer gives no fuse
+PASS generator needs both supplies
+PASS generator powers ventilation
+PASS patient names restored
+PASS unsafe valve order rejected
+PASS isolate return release accepted
+PASS reversal mixture prepared
+PASS ward vapor cleared
+PASS unsafe bridge prevents rescue
+PASS rope and resonant latch secure route
+PASS all four patients rescued
+PASS save load roundtrip
+PASS corrupt save preserves current progress
+PASS missing save preserves current progress
+PASS all ten items fit paged inventory
+PASS witness ending reachable
+PASS survivor agency ending reachable
+FAILURES 0 

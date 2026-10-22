@@ -1,0 +1,1198 @@
+[
+  {
+    "title": "RAVENHURST / OUTSIDE",
+    "description": "The motorcar has stopped beside the open gates. Your coachman waits on the left, by the car. Across the wet drive, the lit front door promises shelter.",
+    "hotspots": [
+      {
+        "name": "Coachman",
+        "rect": [
+          125,
+          85,
+          170,
+          168
+        ],
+        "kind": 4,
+        "value": 8,
+        "need": 0,
+        "text": "A heavyset man in a rain-dark coat and scally cap. Beneath the coat: burgundy racing silks with gold diamonds, cream breeches and riding boots. Unusual clothes for a motorcar driver."
+      },
+      {
+        "name": "Motorcar",
+        "rect": [
+          0,
+          85,
+          138,
+          165
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "The motorcar that brought you from the village. Rain ticks on its roof; the engine coughs as it cools. Your uncle is waiting inside, according to his letter."
+      },
+      {
+        "name": "Ravenhurst plaque",
+        "rect": [
+          278,
+          82,
+          299,
+          126
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "Dr. Frank Mahler. Private practice. Below the name, someone scratched: THEY ASKED HIM TO STOP."
+      },
+      {
+        "name": "Iron gates",
+        "rect": [
+          245,
+          74,
+          273,
+          160
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "The gates stand open. A path of reflected lamplight leads from the car to the front door. You have not crossed the threshold yet."
+      },
+      {
+        "name": "House windows",
+        "rect": [
+          108,
+          14,
+          222,
+          83
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "Lamplight burns behind the rain-streaked windows. A shadow crosses an upstairs curtain, then disappears."
+      },
+      {
+        "name": "FRONT DOOR > Knock / enter",
+        "rect": [
+          2,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 2,
+        "need": 1,
+        "text": "Follow the drive to the front door. James will answer your knock and check your invitation."
+      },
+      {
+        "name": "Front door",
+        "rect": [
+          169,
+          86,
+          190,
+          116
+        ],
+        "kind": 1,
+        "value": 2,
+        "need": 1,
+        "text": "The lit front door stands beyond the rain-soaked drive. ACT on it to knock. James will meet you there."
+      }
+    ],
+    "staging": {
+      "height": 84,
+      "spawn_x": 212,
+      "floor_y": 168,
+      "left": 169,
+      "right": 230
+    }
+  },
+  {
+    "title": "THE ENTRANCE HALL",
+    "description": "Warm light, cold stone. Somewhere beneath the staircase, machinery keeps time.",
+    "hotspots": [
+      {
+        "name": "Family portrait",
+        "rect": [
+          49,
+          22,
+          80,
+          75
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "Frank beside his late wife. His expression is almost hopeful. The paint around her eyes is worn away."
+      },
+      {
+        "name": "James",
+        "rect": [
+          245,
+          89,
+          284,
+          162
+        ],
+        "kind": 4,
+        "value": 1,
+        "need": 0,
+        "text": "James's dark coat is carefully brushed. His hands are folded. When he catches your eye, he straightens his cuffs."
+      },
+      {
+        "name": "Go outside",
+        "rect": [
+          2,
+          171,
+          80,
+          182
+        ],
+        "kind": 1,
+        "value": 1,
+        "need": 0,
+        "text": "The front doors lead back down the drive to the iron gates and the rain."
+      },
+      {
+        "name": "Guest room",
+        "rect": [
+          81,
+          171,
+          159,
+          182
+        ],
+        "kind": 1,
+        "value": 3,
+        "need": 0,
+        "text": "The passage leads to Guest room."
+      },
+      {
+        "name": "Library",
+        "rect": [
+          160,
+          171,
+          238,
+          182
+        ],
+        "kind": 1,
+        "value": 4,
+        "need": 0,
+        "text": "The passage leads to Library."
+      },
+      {
+        "name": "Dining room",
+        "rect": [
+          239,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 5,
+        "need": 0,
+        "text": "The passage leads to Dining room."
+      }
+    ],
+    "staging": {
+      "height": 80,
+      "spawn_x": 148,
+      "floor_y": 168,
+      "left": 32,
+      "right": 289
+    }
+  },
+  {
+    "title": "THE GUEST ROOM",
+    "description": "Your uncle prepared a room. He did not prepare an explanation. The clock has stopped.",
+    "hotspots": [
+      {
+        "name": "Grandfather clock",
+        "rect": [
+          163,
+          33,
+          194,
+          146
+        ],
+        "kind": 3,
+        "value": 102,
+        "need": 0,
+        "text": "A hand is missing. Scratched below the dial: VIII / IV. Eight hours, four five-minute marks."
+      },
+      {
+        "name": "Bedside letter",
+        "rect": [
+          195,
+          100,
+          228,
+          131
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "A half-written apology: If the clock opens the way, do not let the house decide who leaves."
+      },
+      {
+        "name": "Hall",
+        "rect": [
+          2,
+          171,
+          159,
+          182
+        ],
+        "kind": 1,
+        "value": 2,
+        "need": 0,
+        "text": "The passage leads to Hall."
+      },
+      {
+        "name": "Hidden stairs",
+        "rect": [
+          160,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 9,
+        "need": 2,
+        "text": "The passage leads to Hidden stairs."
+      }
+    ],
+    "staging": {
+      "height": 84,
+      "spawn_x": 90,
+      "floor_y": 168,
+      "left": 25,
+      "right": 145
+    }
+  },
+  {
+    "title": "THE LIBRARY",
+    "description": "Books climb into shadow. A patient is reading the same sentence over and over.",
+    "hotspots": [
+      {
+        "name": "Elias Hart",
+        "rect": [
+          103,
+          85,
+          144,
+          162
+        ],
+        "kind": 4,
+        "value": 2,
+        "need": 0,
+        "text": "Elias keeps a brass key in his closed hand. He needs to know you have read the records."
+      },
+      {
+        "name": "Brass clock hand",
+        "rect": [
+          190,
+          118,
+          220,
+          142
+        ],
+        "kind": 2,
+        "value": 3,
+        "need": 0,
+        "text": "A clock hand has been used as a bookmark. Someone wanted the clock to remain silent."
+      },
+      {
+        "name": "Annotated volume",
+        "rect": [
+          35,
+          80,
+          75,
+          126
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "The margin reads: It let me read again. Then another voice began reading with me. Signed E.H."
+      },
+      {
+        "name": "Hall",
+        "rect": [
+          2,
+          171,
+          106,
+          182
+        ],
+        "kind": 1,
+        "value": 2,
+        "need": 0,
+        "text": "The passage leads to Hall."
+      },
+      {
+        "name": "Study",
+        "rect": [
+          107,
+          171,
+          211,
+          182
+        ],
+        "kind": 1,
+        "value": 7,
+        "need": 0,
+        "text": "The passage leads to Study."
+      },
+      {
+        "name": "Chapel",
+        "rect": [
+          212,
+          171,
+          316,
+          182
+        ],
+        "kind": 1,
+        "value": 13,
+        "need": 0,
+        "text": "The passage leads to Chapel."
+      }
+    ],
+    "staging": {
+      "height": 84,
+      "spawn_x": 238,
+      "floor_y": 168,
+      "left": 88,
+      "right": 284
+    }
+  },
+  {
+    "title": "THE DINING ROOM",
+    "description": "Six places are laid. No one has eaten. The silver reflects a room that feels too crowded.",
+    "hotspots": [
+      {
+        "name": "Bent hairpin",
+        "rect": [
+          106,
+          109,
+          144,
+          134
+        ],
+        "kind": 2,
+        "value": 2,
+        "need": 0,
+        "text": "A bent hairpin beside an untouched plate. Thin enough to lift a simple drawer catch."
+      },
+      {
+        "name": "Place cards",
+        "rect": [
+          168,
+          107,
+          217,
+          136
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "Elias. Clara. Thomas. Miriam. Four names in careful handwriting. Two other chairs have no names."
+      },
+      {
+        "name": "Hall",
+        "rect": [
+          2,
+          171,
+          159,
+          182
+        ],
+        "kind": 1,
+        "value": 2,
+        "need": 0,
+        "text": "The passage leads to Hall."
+      },
+      {
+        "name": "Conservatory",
+        "rect": [
+          160,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 6,
+        "need": 0,
+        "text": "The passage leads to Conservatory."
+      }
+    ],
+    "staging": {
+      "height": 88,
+      "spawn_x": 254,
+      "floor_y": 169,
+      "left": 25,
+      "right": 292
+    }
+  },
+  {
+    "title": "THE CONSERVATORY",
+    "description": "Moonlight filters through wet glass. Someone has kept the plants alive despite everything.",
+    "hotspots": [
+      {
+        "name": "Ada Finch",
+        "rect": [
+          56,
+          85,
+          99,
+          164
+        ],
+        "kind": 4,
+        "value": 3,
+        "need": 0,
+        "text": "The gardener smells of soil and lamp oil. She has seen lights beneath the lake."
+      },
+      {
+        "name": "Oil can",
+        "rect": [
+          219,
+          116,
+          254,
+          143
+        ],
+        "kind": 2,
+        "value": 5,
+        "need": 0,
+        "text": "A small can of machine oil. Its label warns that the generator bearings must never run dry."
+      },
+      {
+        "name": "Stone basin",
+        "rect": [
+          149,
+          90,
+          201,
+          139
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "The overflow runs toward the lake. Beneath it, pipes pulse with a sickly sweet vapor."
+      },
+      {
+        "name": "Dining",
+        "rect": [
+          2,
+          171,
+          159,
+          182
+        ],
+        "kind": 1,
+        "value": 5,
+        "need": 0,
+        "text": "The passage leads to Dining."
+      },
+      {
+        "name": "Boathouse",
+        "rect": [
+          160,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 14,
+        "need": 0,
+        "text": "The passage leads to Boathouse."
+      }
+    ],
+    "staging": {
+      "height": 84,
+      "spawn_x": 137,
+      "floor_y": 168,
+      "left": 45,
+      "right": 288
+    }
+  },
+  {
+    "title": "MAHLER'S STUDY",
+    "description": "Private letters. Altered charts. A locked drawer. This was never merely an invitation to observe.",
+    "hotspots": [
+      {
+        "name": "Locked desk",
+        "rect": [
+          70,
+          112,
+          217,
+          151
+        ],
+        "kind": 3,
+        "value": 103,
+        "need": 0,
+        "text": "The drawer is caught on a spring latch. A thin piece of wire could lift it."
+      },
+      {
+        "name": "Three-symbol safe",
+        "rect": [
+          260,
+          50,
+          300,
+          113
+        ],
+        "kind": 3,
+        "value": 104,
+        "need": 0,
+        "text": "Three symbols guard the safe. An inscription reads: Follow the chapel glass from night into dawn."
+      },
+      {
+        "name": "Prescription notes",
+        "rect": [
+          112,
+          92,
+          180,
+          112
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "Preparation R. Early improvement. Later auditory phenomena. The later pages no longer mention permission."
+      },
+      {
+        "name": "Library",
+        "rect": [
+          2,
+          171,
+          159,
+          182
+        ],
+        "kind": 1,
+        "value": 4,
+        "need": 0,
+        "text": "The passage leads to Library."
+      },
+      {
+        "name": "Attic lab",
+        "rect": [
+          160,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 8,
+        "need": 0,
+        "text": "The passage leads to Attic lab."
+      }
+    ],
+    "staging": {
+      "height": 84,
+      "spawn_x": 244,
+      "floor_y": 169,
+      "left": 30,
+      "right": 292
+    }
+  },
+  {
+    "title": "THE ATTIC LABORATORY",
+    "description": "Your uncle is gone. The apparatus still breathes. His final work is not an answer; it is a choice.",
+    "hotspots": [
+      {
+        "name": "Mixing apparatus",
+        "rect": [
+          38,
+          62,
+          128,
+          145
+        ],
+        "kind": 3,
+        "value": 110,
+        "need": 0,
+        "text": "Three fictional reagents remain: azure, amber, clear. Read the notebook before mixing."
+      },
+      {
+        "name": "Laboratory notebook",
+        "rect": [
+          152,
+          123,
+          210,
+          153
+        ],
+        "kind": 3,
+        "value": 118,
+        "need": 0,
+        "text": "A reversal sequence: AZURE, then AMBER, then CLEAR. It binds the vapor in the pipes. Do not give Preparation R to anyone."
+      },
+      {
+        "name": "Frank's last letter",
+        "rect": [
+          241,
+          113,
+          289,
+          151
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "I thought I could hear her. They asked me to stop. I wrote that down, and continued. Do not mistake my grief for an excuse."
+      },
+      {
+        "name": "Study",
+        "rect": [
+          2,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 7,
+        "need": 0,
+        "text": "The passage leads to Study."
+      }
+    ],
+    "staging": {
+      "height": 80,
+      "spawn_x": 225,
+      "floor_y": 169,
+      "left": 135,
+      "right": 228
+    }
+  },
+  {
+    "title": "THE HIDDEN STAIR",
+    "description": "The clock slides aside. The air below is warmer than it should be, and carries a faint voice.",
+    "hotspots": [
+      {
+        "name": "Pipe diagram",
+        "rect": [
+          43,
+          58,
+          78,
+          113
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "Power feeds ventilation. Ventilation feeds the ward. The reservoir carries the outflow. Shut the source before opening the gate."
+      },
+      {
+        "name": "Guest room",
+        "rect": [
+          2,
+          171,
+          106,
+          182
+        ],
+        "kind": 1,
+        "value": 3,
+        "need": 0,
+        "text": "The passage leads to Guest room."
+      },
+      {
+        "name": "Lower ward",
+        "rect": [
+          107,
+          171,
+          211,
+          182
+        ],
+        "kind": 1,
+        "value": 10,
+        "need": 0,
+        "text": "The passage leads to Lower ward."
+      },
+      {
+        "name": "Generator",
+        "rect": [
+          212,
+          171,
+          316,
+          182
+        ],
+        "kind": 1,
+        "value": 15,
+        "need": 0,
+        "text": "The passage leads to Generator."
+      }
+    ],
+    "staging": {
+      "height": 76,
+      "spawn_x": 98,
+      "floor_y": 168,
+      "left": 30,
+      "right": 179
+    }
+  },
+  {
+    "title": "THE LOWER WARD",
+    "description": "Beds stand behind ironwork. These people are waiting for someone to believe them.",
+    "hotspots": [
+      {
+        "name": "Clara Vale",
+        "rect": [
+          54,
+          86,
+          97,
+          164
+        ],
+        "kind": 4,
+        "value": 4,
+        "need": 0,
+        "text": "Clara speaks steadily. She wants the names preserved, the vapor stopped, and a safe route out."
+      },
+      {
+        "name": "Thomas Reed",
+        "rect": [
+          238,
+          86,
+          281,
+          164
+        ],
+        "kind": 4,
+        "value": 5,
+        "need": 0,
+        "text": "Thomas has watched the pressure gauge through sleepless nights."
+      },
+      {
+        "name": "Vapor inlet",
+        "rect": [
+          28,
+          73,
+          51,
+          117
+        ],
+        "kind": 3,
+        "value": 111,
+        "need": 0,
+        "text": "A dosing inlet. The laboratory reversal mixture could bind the remaining vapor."
+      },
+      {
+        "name": "Ward gate",
+        "rect": [
+          176,
+          44,
+          218,
+          115
+        ],
+        "kind": 3,
+        "value": 112,
+        "need": 0,
+        "text": "The gate is locked. Clara will not lead anyone out until the records, air and escape route are safe."
+      },
+      {
+        "name": "Stairs",
+        "rect": [
+          2,
+          171,
+          80,
+          182
+        ],
+        "kind": 1,
+        "value": 9,
+        "need": 0,
+        "text": "The passage leads to Stairs."
+      },
+      {
+        "name": "Archive",
+        "rect": [
+          81,
+          171,
+          159,
+          182
+        ],
+        "kind": 1,
+        "value": 11,
+        "need": 0,
+        "text": "The passage leads to Archive."
+      },
+      {
+        "name": "Boiler",
+        "rect": [
+          160,
+          171,
+          238,
+          182
+        ],
+        "kind": 1,
+        "value": 12,
+        "need": 0,
+        "text": "The passage leads to Boiler."
+      },
+      {
+        "name": "Reservoir",
+        "rect": [
+          239,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 16,
+        "need": 0,
+        "text": "The passage leads to Reservoir."
+      }
+    ],
+    "staging": {
+      "height": 84,
+      "spawn_x": 152,
+      "floor_y": 169,
+      "left": 58,
+      "right": 287
+    }
+  },
+  {
+    "title": "THE RECORD ARCHIVE",
+    "description": "Names have been replaced by numbers. You can put them back before this house is emptied.",
+    "hotspots": [
+      {
+        "name": "Patient register",
+        "rect": [
+          129,
+          111,
+          228,
+          151
+        ],
+        "kind": 3,
+        "value": 106,
+        "need": 0,
+        "text": "Four folders, four missing names. Match them in admission order using Miriam and the brass nameplates."
+      },
+      {
+        "name": "Brass nameplates",
+        "rect": [
+          36,
+          61,
+          72,
+          119
+        ],
+        "kind": 3,
+        "value": 117,
+        "need": 0,
+        "text": "Admissions: E.H. on Monday; C.V. on Tuesday; T.R. on Wednesday; M.B. on Thursday."
+      },
+      {
+        "name": "Miriam Bell",
+        "rect": [
+          247,
+          86,
+          290,
+          166
+        ],
+        "kind": 4,
+        "value": 6,
+        "need": 0,
+        "text": "Miriam remembers every name. She refuses to leave as Patient Four."
+      },
+      {
+        "name": "Ward",
+        "rect": [
+          2,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 10,
+        "need": 0,
+        "text": "The passage leads to Ward."
+      }
+    ],
+    "staging": {
+      "height": 84,
+      "spawn_x": 103,
+      "floor_y": 169,
+      "left": 85,
+      "right": 288
+    }
+  },
+  {
+    "title": "THE BOILER ROOM",
+    "description": "A low mechanical heartbeat. Three controls separate the patients from the source of the vapor.",
+    "hotspots": [
+      {
+        "name": "Pressure controls",
+        "rect": [
+          119,
+          78,
+          274,
+          145
+        ],
+        "kind": 3,
+        "value": 107,
+        "need": 0,
+        "text": "Three valves: ISOLATE, RETURN, RELEASE. Thomas knows the safe sequence. The powered fan must run first."
+      },
+      {
+        "name": "Pressure gauge",
+        "rect": [
+          177,
+          48,
+          204,
+          78
+        ],
+        "kind": 3,
+        "value": 120,
+        "need": 0,
+        "text": "The needle must return to zero before the ward can open. Forcing the release now would spread the vapor."
+      },
+      {
+        "name": "Ward",
+        "rect": [
+          2,
+          171,
+          159,
+          182
+        ],
+        "kind": 1,
+        "value": 10,
+        "need": 0,
+        "text": "The passage leads to Ward."
+      },
+      {
+        "name": "Generator",
+        "rect": [
+          160,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 15,
+        "need": 0,
+        "text": "The passage leads to Generator."
+      }
+    ],
+    "staging": {
+      "height": 84,
+      "spawn_x": 61,
+      "floor_y": 169,
+      "left": 30,
+      "right": 107
+    }
+  },
+  {
+    "title": "THE ABANDONED CHAPEL",
+    "description": "A private chapel built for forgiveness. The organ has not been played in years.",
+    "hotspots": [
+      {
+        "name": "Stained glass",
+        "rect": [
+          37,
+          23,
+          137,
+          100
+        ],
+        "kind": 3,
+        "value": 114,
+        "need": 0,
+        "text": "Three emblems rise toward the light: MOON, STAR, SUN. The same shapes are cut into the study safe."
+      },
+      {
+        "name": "Organ keyboard",
+        "rect": [
+          238,
+          107,
+          292,
+          145
+        ],
+        "kind": 3,
+        "value": 108,
+        "need": 0,
+        "text": "The score is marked C - E - G. A brass tuning fork rests behind a resonant latch."
+      },
+      {
+        "name": "Library",
+        "rect": [
+          2,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 4,
+        "need": 0,
+        "text": "The passage leads to Library."
+      }
+    ],
+    "staging": {
+      "height": 80,
+      "spawn_x": 157,
+      "floor_y": 169,
+      "left": 95,
+      "right": 221
+    }
+  },
+  {
+    "title": "THE BOATHOUSE",
+    "description": "Across the lake lies a road, a village, and people who might listen. The boat is large enough for everyone.",
+    "hotspots": [
+      {
+        "name": "Coil of rope",
+        "rect": [
+          35,
+          115,
+          84,
+          149
+        ],
+        "kind": 2,
+        "value": 7,
+        "need": 0,
+        "text": "A strong mooring rope. Enough to secure the reservoir crossing."
+      },
+      {
+        "name": "Rowboat",
+        "rect": [
+          94,
+          111,
+          199,
+          159
+        ],
+        "kind": 3,
+        "value": 113,
+        "need": 0,
+        "text": "The oars are ready. You will not abandon the people beneath the house."
+      },
+      {
+        "name": "Conservatory",
+        "rect": [
+          2,
+          171,
+          159,
+          182
+        ],
+        "kind": 1,
+        "value": 6,
+        "need": 0,
+        "text": "The passage leads to Conservatory."
+      },
+      {
+        "name": "Reservoir",
+        "rect": [
+          160,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 16,
+        "need": 9,
+        "text": "The passage leads to Reservoir."
+      }
+    ],
+    "staging": {
+      "height": 76,
+      "spawn_x": 153,
+      "floor_y": 169,
+      "left": 30,
+      "right": 292
+    }
+  },
+  {
+    "title": "THE GENERATOR",
+    "description": "Copper coils wait in silence. The motor needs a fuse and oil before it can drive the ventilation fan.",
+    "hotspots": [
+      {
+        "name": "Fuse cabinet",
+        "rect": [
+          250,
+          70,
+          287,
+          117
+        ],
+        "kind": 3,
+        "value": 105,
+        "need": 0,
+        "text": "The cabinet has an empty fuse socket. The safe in the study held the maintenance supplies."
+      },
+      {
+        "name": "Dry motor bearings",
+        "rect": [
+          124,
+          106,
+          206,
+          151
+        ],
+        "kind": 3,
+        "value": 115,
+        "need": 0,
+        "text": "The bearings are dry. Add machine oil before starting this generator."
+      },
+      {
+        "name": "Stairs",
+        "rect": [
+          2,
+          171,
+          159,
+          182
+        ],
+        "kind": 1,
+        "value": 9,
+        "need": 0,
+        "text": "The passage leads to Stairs."
+      },
+      {
+        "name": "Boiler",
+        "rect": [
+          160,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 12,
+        "need": 0,
+        "text": "The passage leads to Boiler."
+      }
+    ],
+    "staging": {
+      "height": 84,
+      "spawn_x": 232,
+      "floor_y": 169,
+      "left": 214,
+      "right": 291
+    }
+  },
+  {
+    "title": "THE RESERVOIR",
+    "description": "The bridge is damaged and the sluice is locked by a humming metal latch. The lake waits beyond.",
+    "hotspots": [
+      {
+        "name": "Resonant sluice latch",
+        "rect": [
+          258,
+          70,
+          289,
+          119
+        ],
+        "kind": 3,
+        "value": 109,
+        "need": 0,
+        "text": "A resonant latch, and a broken safety cable. A tuning fork can release it once a rope secures the crossing."
+      },
+      {
+        "name": "Bridge anchor",
+        "rect": [
+          117,
+          95,
+          159,
+          133
+        ],
+        "kind": 3,
+        "value": 116,
+        "need": 0,
+        "text": "The bridge needs a new safety line before anyone can cross."
+      },
+      {
+        "name": "Ward",
+        "rect": [
+          2,
+          171,
+          159,
+          182
+        ],
+        "kind": 1,
+        "value": 10,
+        "need": 0,
+        "text": "The passage leads to Ward."
+      },
+      {
+        "name": "Boathouse",
+        "rect": [
+          160,
+          171,
+          317,
+          182
+        ],
+        "kind": 1,
+        "value": 14,
+        "need": 9,
+        "text": "The passage leads to Boathouse."
+      }
+    ],
+    "staging": {
+      "height": 76,
+      "spawn_x": 55,
+      "floor_y": 167,
+      "left": 27,
+      "right": 73
+    }
+  }
+]
