@@ -65,9 +65,9 @@ SUB CheckSpeech
  utterance$ = "THIS OLD QUESTION SHOULD NOT APPEAR"
  CALL Reply(1, "JAMES", "I should have opened more than the front door.")
  modal = -1: CALL DrawScene: CALL DumpFrame(30)
- CALL Check(uglPGet(back, 272, 120) = 245 AND uglPGet(back, 48, 120) = 240, "speech tail connects the named reply to the right-hand portrait")
+ CALL Check(uglPGet(back, 272, 85) = 245 AND uglPGet(back, 48, 85) = 240, "speech tail connects the named reply to the right-hand portrait")
  valid = -1
- FOR y = 174 TO 205
+ FOR y = 138 TO 169
   FOR x = 18 TO 301
    IF uglPGet(back, x, y) <> 241 THEN valid = 0
   NEXT
@@ -79,7 +79,7 @@ SUB CheckSpeech
  testing = -1
  q = TalkPick%(1, "JAMES", "Greeting", "Who is downstairs?", "My invitation", "The clock")
  talkmenu = 1: CALL SetChoices: CALL PrepareFaces: CALL DrawScene: CALL DumpFrame(32)
- CALL Check(body$ = "" AND uglPGet(back, 48, 120) = 245 AND uglPGet(back, 272, 120) = 240, "player turn shows only choices connected to the left portrait")
+ CALL Check(body$ = "" AND uglPGet(back, 48, 85) = 245 AND uglPGet(back, 272, 85) = 240, "player turn shows only choices connected to the left portrait")
  CALL EndTalk: modal = 0: flags(20) = mask: testpick = oldpick
  CALL Check(Speaking% = 0 AND speechcount = 0, "leaving a conversation clears reveal state")
 END SUB

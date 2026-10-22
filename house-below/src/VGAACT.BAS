@@ -11,7 +11,7 @@ END SUB
 SUB Act (h)
  hover = h
  ' Navigation plates remain usable while LOOK or TALK is selected.
- IF hk(h) = 1 AND hy(h) >= 171 THEN CALL Travel(h): EXIT SUB
+ IF hk(h) = 1 AND hy(h) >= 143 THEN CALL Travel(h): EXIT SUB
  IF verb = 2 THEN CALL Observe(h): CALL Say(names$(h), descs$(h)): EXIT SUB
  IF verb = 3 AND hk(h) <> 4 THEN CALL Say("NO ANSWER", "Try speaking to someone who can hear you."): EXIT SUB
  SELECT CASE hk(h)

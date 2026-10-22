@@ -3,15 +3,15 @@ DEFINT A-Z
 '$INCLUDE: 'VGA.BI'
 
 SUB SetChoices
- choicex = 21: choicew = 278: choicetop = 116: choicestep = 15: choiceh = 14
+ choicex = 21: choicew = 278: choicetop = 100: choicestep = 15: choiceh = 14
  IF convperson THEN
   choicex = 12: choicew = 296: choicestep = 16: choiceh = 14
-  choicetop = 222
-  IF talkmenu THEN choicetop = 174
+  choicetop = 186
+  IF talkmenu THEN choicetop = 138
  ELSEIF talkmenu THEN
-  choicetop = 101
+  choicetop = 85
  END IF
- IF carscene AND convperson = 0 THEN choicex = 12: choicew = 296: choicetop = 204: choicestep = 16
+ IF carscene AND convperson = 0 THEN choicex = 12: choicew = 296: choicetop = 186: choicestep = 16
 END SUB
 
 FUNCTION ChoiceAt% (x, y)
@@ -46,29 +46,29 @@ SUB DrawDialog
   ' Transparent busts overlap the scene and the unframed dialogue strip.
   uglClear back, 240
   uglPut back, 0, 0, art
-  CALL Box(0, 0, 320, 12, 240)
+  CALL Box(0, 0, 320, 10, 240)
   IF carscene THEN
    CALL Txt(5, 2, "THE ROAD TO RAVENHURST", 245)
    CALL Txt(246, 2, "ESC: arrive", 252)
-   CALL Box(0, 120, 320, 120, 240)
+   CALL Box(0, 100, 320, 100, 240)
   ELSE
    CALL Txt(5, 2, rt$(room), 245)
-   CALL Box(0, 108, 320, 132, 240)
+   CALL Box(0, 78, 320, 122, 240)
    CALL DrawFaces
   END IF
   CALL DrawSpeech
  ELSEIF carscene THEN
   uglClear back, 240: uglPut back, 0, 0, art
-  CALL Box(0, 0, 320, 12, 240)
+  CALL Box(0, 0, 320, 10, 240)
   CALL Txt(5, 2, "DARK VISIONS / THE HOUSE BELOW", 246)
-  CALL Txt(12, 190, "Burgundy and gold at the wheel. Rain on the roof.", 245)
+  CALL Txt(12, 160, "Burgundy and gold at the wheel. Rain on the roof.", 245)
  ELSE
-  CALL Box(12, 28, 296, 139, 240)
-  uglRect back, 12, 28, 307, 166, 245
-  CALL Txt(21, 37, heading$, 246)
-  uglLine back, 21, 49, 298, 49, 243
-  CALL Wrap(21, 57, body$, 247, 276)
-  IF talkmenu THEN CALL Txt(21, 90, "Blue = already asked. Ask again any time.", 252)
+  CALL Box(12, 12, 296, 139, 240)
+  uglRect back, 12, 12, 307, 150, 245
+  CALL Txt(21, 21, heading$, 246)
+  uglLine back, 21, 33, 298, 33, 243
+  CALL Wrap(21, 41, body$, 247, 276)
+  IF talkmenu THEN CALL Txt(21, 74, "Blue = already asked. Ask again any time.", 252)
  END IF
  FOR i = 1 TO nchoices
   IF choices$(i) <> "" THEN
@@ -81,10 +81,10 @@ SUB DrawDialog
   col = 246
   IF talkmenu AND i <= 3 THEN
    IF topiccount THEN
-    IF flags(19 + talkmenu) AND CINT(2 ^ (rowid(i) - 1)) THEN col = 252
+    IF flags(19 + talkmenu) AND Pow2%(rowid(i) - 1) THEN col = 252
     IF rowsource$(i) <> "" THEN s$ = LTRIM$(STR$(i)) + ". * " + choices$(i)
    ELSE
-    IF flags(19 + talkmenu) AND CINT(2 ^ (i - 1)) THEN col = 252
+    IF flags(19 + talkmenu) AND Pow2%(i - 1) THEN col = 252
    END IF
   END IF
   CALL Txt(choicex + 4, y + (choiceh - 7) \ 2, s$, col)
@@ -182,7 +182,7 @@ FUNCTION TalkPick% (person, title$, text$, a$, b$, c$)
  IF q >= 1 AND q <= 3 THEN
   id = q: IF topiccount THEN id = rowid(q)
   IF choices$(q) = "" THEN id = 0
-  IF id THEN flags(19 + person) = flags(19 + person) OR CINT(2 ^ (id - 1))
+  IF id THEN flags(19 + person) = flags(19 + person) OR Pow2%(id - 1)
   utterance$ = choices$(q): q = id
  END IF
  talkmenu = 0

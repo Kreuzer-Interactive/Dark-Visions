@@ -53,13 +53,13 @@ items$(4) = "Fuse": items$(5) = "Oil can": items$(6) = "Ward key"
 items$(7) = "Rope": items$(8) = "Tuning fork": items$(9) = "Reversal vial"
 items$(10) = "Evidence ledger"
 IF NOT uglInit THEN PRINT "uGL initialization failed.": END
-video = uglSetVideoDC(UGL.8BIT, 320, 240, 1)
+video = uglSetVideoDC(UGL.8BIT, 320, 200, 1)
 IF video = 0 THEN
  uglEnd
- PRINT "320x240x256 VESA mode is required. Use the supplied DOSBox-X configuration."
+ PRINT "Standard VGA mode 13h (320x200x256) could not be set."
  END
 END IF
-back = uglNew(UGL.MEM, UGL.8BIT, 320, 240)
+back = uglNew(UGL.MEM, UGL.8BIT, 320, 200)
 IF back = 0 THEN uglRestore: uglEnd: PRINT "Not enough conventional memory.": END
 DIM ps AS STRING * 1024
 OPEN "VGA\RM01.BMP" FOR BINARY AS #1
@@ -108,21 +108,21 @@ DO WHILE running
   END IF
  END IF
  IF click THEN
-  IF my >= 184 AND my <= 199 THEN
+  IF my >= 154 AND my <= 166 THEN
    IF mx < 43 THEN verb = 1: selected = 0
    IF mx >= 43 AND mx < 88 THEN verb = 2: selected = 0
    IF mx >= 88 AND mx < 132 THEN verb = 3: selected = 0
    IF mx >= 132 AND mx < 198 THEN CALL Journal
    IF mx >= 198 AND mx < 245 THEN CALL MapPage
    IF mx >= 245 THEN hints = NOT hints
-  ELSEIF my >= 201 AND my <= 227 THEN
+  ELSEIF my >= 167 AND my <= 190 THEN
    IF mx >= 288 THEN
     invpage = 1 - invpage
    ELSE
     j = mx \ 36 + 1 + invpage * 8
     IF j <= countinv THEN selected = invlist(j): verb = 1
    END IF
-  ELSEIF my < 184 THEN
+  ELSEIF my < 154 THEN
    h = Hit%(mx, my)
    IF h THEN
     CALL Act(h)

@@ -33,15 +33,17 @@ SUB PrepareActors (n)
  FOR i = 0 TO 8
   feet = py
   IF i > 0 AND i <> 7 THEN
-   feet = 160
-   IF n = 14 THEN feet = 168
+   feet = 134
+   IF n = 14 THEN feet = 141
    FOR j = 1 TO hn(n)
     h = (n - 1) * 12 + j
     IF hk(h) = 4 AND hv(h) = i THEN feet = hb(h)
    NEXT
   END IF
   actorH(i) = stageH(n) + feet - py
-  actorW(i) = 2 * ((actorH(i) * 24 + 44) \ 88)
+  ' Pixels are 1.2x taller than wide in mode 13h: width keeps 48:88 at the 4:3 screen shape.
+  actorW(i) = 2 * ((actorH(i) * 29 + 44) \ 88)
+  IF actorW(i) > 48 THEN actorW(i) = 48
   path$ = "VGA\CHAR" + RIGHT$("0" + LTRIM$(STR$(i)), 2) + ".BMP"
   sourceDC = uglNewBMPEx(UGL.MEM, UGL.8BIT, path$, BMPOPT.NO332)
   IF sourceDC = 0 THEN CALL Finish: PRINT "Missing character art: "; path$: END
@@ -54,7 +56,7 @@ SUB PrepareActors (n)
   ' the 48-wide source. This is outside the frame loop, including all divides.
   inset = (48 - actorW(i)) \ 2
   FOR y = 0 TO actorH(i) - 1
-   sy = y * 88 \ actorH(i)
+   sy = y * 73 \ actorH(i)
    FOR x = 0 TO actorW(i) - 1
     sx = x * 48 \ actorW(i)
     col = uglPGet(sourceDC, sx, sy)
@@ -102,8 +104,8 @@ SUB CheckActors
  DIM x, y, col, topy, bottomy, i, h, centerx
  ' Inspect actual rendered pixels, including the scaled sprite's feet.
  uglClear back, 227: CALL Actor(px, py, 0, 0)
- topy = 240: bottomy = 0
- FOR y = 12 TO 183
+ topy = 200: bottomy = 0
+ FOR y = 10 TO 153
   FOR x = 0 TO 319
    col = uglPGet(back, x, y)
    IF col <> 227 AND col <> 240 THEN
@@ -112,7 +114,7 @@ SUB CheckActors
    END IF
   NEXT
  NEXT
- CALL Check(bottomy - topy >= 70 AND ABS(bottomy - py) <= 2, "human scale and planted feet in room " + STR$(room))
+ CALL Check(bottomy - topy >= 59 AND ABS(bottomy - py) <= 2, "human scale and planted feet in room " + STR$(room))
  FOR i = 1 TO hn(room)
   h = (room - 1) * 12 + i
   IF hk(h) = 4 THEN

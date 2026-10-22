@@ -104,7 +104,7 @@ FUNCTION PageInput%
  IF topiccount <= 3 THEN EXIT FUNCTION
  IF keys$ = "[" OR keys$ = CHR$(0) + CHR$(73) THEN delta = -1
  IF keys$ = "]" OR keys$ = CHR$(0) + CHR$(81) THEN delta = 1
- IF click AND my >= 148 AND my < 160 THEN
+ IF click AND my >= 112 AND my < 124 THEN
   IF mx >= 224 AND mx < 244 THEN delta = -1
   IF mx >= 284 AND mx < 304 THEN delta = 1
  END IF
@@ -113,21 +113,21 @@ END FUNCTION
 
 SUB TopicHeader
  DIM i, s$, col
- CALL Txt(18, 152, "* Clue   Blue = asked", 252)
+ CALL Txt(18, 116, "* Clue   Blue = asked", 252)
  s$ = "Point at a question to see its source."
  i = ChoiceAt%(mx, my)
  IF i >= 1 AND i <= 3 THEN
   s$ = "A general question."
   IF rowsource$(i) <> "" THEN s$ = "From: " + rowsource$(i)
  END IF
- CALL Txt(18, 163, s$, 245)
+ CALL Txt(18, 127, s$, 245)
  IF topiccount > 3 THEN
-  CALL Txt(251, 140, "PgUp/Dn", 252)
-  col = 243: IF mx >= 224 AND mx < 244 AND my >= 148 AND my < 160 THEN col = 250
-  CALL Box(224, 148, 20, 12, col): CALL Txt(232, 151, "<", 246)
-  col = 243: IF mx >= 284 AND mx < 304 AND my >= 148 AND my < 160 THEN col = 250
-  CALL Box(284, 148, 20, 12, col): CALL Txt(292, 151, ">", 246)
+  CALL Txt(251, 104, "PgUp/Dn", 252)
+  col = 243: IF mx >= 224 AND mx < 244 AND my >= 112 AND my < 124 THEN col = 250
+  CALL Box(224, 112, 20, 12, col): CALL Txt(232, 115, "<", 246)
+  col = 243: IF mx >= 284 AND mx < 304 AND my >= 112 AND my < 124 THEN col = 250
+  CALL Box(284, 112, 20, 12, col): CALL Txt(292, 115, ">", 246)
   s$ = LTRIM$(STR$(topicpage + 1)) + "/" + LTRIM$(STR$((topiccount + 2) \ 3))
-  CALL Txt(254, 151, s$, 246)
+  CALL Txt(254, 115, s$, 246)
  END IF
 END SUB

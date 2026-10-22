@@ -2,7 +2,7 @@
 
 A standalone native DOS / QuickBASIC adventure inspired by the **Dark Visions** comic.
 It is a separate game from the original CGA Dark Visions in `../src`, which is untouched.
-It renders at **320×240 with one shared 256-color palette**. Every room background is new.
+It renders in standard VGA **mode 13h (320×200, one shared 256-color palette)**. Every room background is new.
 
 **Play on Windows:** double-click `Play-Dark-Visions.cmd` in this folder. It uses the installed
 DOSBox-X or the copy in `../QA/DOSBox-X`. The mouse works without capture. **Ctrl+F10** releases it if manually captured.
@@ -20,10 +20,9 @@ DOSBox-X or the copy in `../QA/DOSBox-X`. The mouse works without capture. **Ctr
   Asked questions turn blue and stay repeatable; starred questions are based on clues you found.
   Click **Goodbye [Esc]**, press 4 or ESC, or right-click to leave a topic menu.
 
-Requires a DOS environment with a **320×240×8 VESA mode** (tested in DOSBox-X's S3 mode),
-conventional memory for the game, and a DOS mouse driver for mouse input. This is not a
-plain mode-13h 320×200 fallback. Physical 486 hardware has not been tested.
-VGA saves are separate from original-game saves.
+Requires any VGA card and a DOS mouse driver; there is no VESA or FPU requirement. Tested in
+DOSBox-X and on an emulated 486SX/25 in 86Box (about 14-18 frames per second in rooms and
+dialogue). Physical 486 hardware has not been tested. VGA saves are separate from original-game saves.
 
 Build with `powershell -File src/tools/build_vga.ps1 -Test` using a licensed QuickBASIC 4.5
 installation at the path configured in that script. It links the uGL library from `../src/UGL`.

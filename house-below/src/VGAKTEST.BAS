@@ -60,13 +60,13 @@ SUB CheckContext
  CALL BeginTalk(8): testpick = 0
  q = ContextPick%(8, "COACHMAN", "Best get inside.")
  modal = -1: talkmenu = 8: CALL SetChoices: CALL PrepareFaces
- mx = 30: my = 213: CALL DrawScene: CALL DumpFrame(33)
+ mx = 30: my = 177: CALL DrawScene: CALL DumpFrame(33)
  CALL FillTopics(1): CALL DrawScene: CALL DumpFrame(34)
  CALL Check(rowsource$(1) = "House windows", "clue source is attached to the matching visible question")
- CALL Check(ChoiceAt%(30, 196) = 0 AND ChoiceAt%(30, 229) = 4, "short final page ignores blank rows and keeps Goodbye")
+ CALL Check(ChoiceAt%(30, 160) = 0 AND ChoiceAt%(30, 193) = 4, "short final page ignores blank rows and keeps Goodbye")
  keys$ = "]": click = 0: q = PageInput%
  CALL Check(q AND topicpage = 0, "keyboard topic paging wraps to the first page")
- mx = 294: my = 153: click = -1: keys$ = "": q = PageInput%
+ mx = 294: my = 118: click = -1: keys$ = "": q = PageInput%
  CALL Check(q AND topicpage = 1 AND rowid(1) = 6, "page arrow changes topics without selecting one")
  CALL EndTalk: modal = 0
 

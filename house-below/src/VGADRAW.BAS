@@ -2,6 +2,14 @@ REM $DYNAMIC
 DEFINT A-Z
 '$INCLUDE: 'VGA.BI'
 
+' Integer 2^n. QB's ^ is a software float routine, ~1 ms per call on an FPU-less 486SX.
+FUNCTION Pow2% (n)
+ DIM p, k
+ p = 1
+ FOR k = 1 TO n: p = p + p: NEXT
+ Pow2% = p
+END FUNCTION
+
 SUB Box (x, y, w, h, c)
  uglRectF back, x, y, x + w - 1, y + h - 1, CLNG(c)
 END SUB
@@ -13,7 +21,7 @@ SUB Txt (x, y, s$, c)
   a = ASC(MID$(s$, i, 1))
   IF a < 32 OR a > 126 THEN a = 63
   FOR rown = 0 TO 6
-   mask = 2 ^ (fw(a) - 1)
+   mask = Pow2%(fw(a) - 1)
    FOR coln = 0 TO fw(a) - 1
     IF bits(a, rown) AND mask THEN uglPSet back, xx + coln, y + rown, CLNG(c)
     mask = mask \ 2
@@ -109,9 +117,9 @@ SUB DrawScene
   IF hk(h) = 4 THEN
    IF flags(12) = 0 OR hv(h) = 1 OR hv(h) = 3 OR hv(h) = 8 THEN CALL Actor((hx(h) + hr(h) + 1) \ 2, hb(h), hv(h), 0)
   END IF
-  IF hk(h) = 1 AND hy(h) >= 171 THEN
+  IF hk(h) = 1 AND hy(h) >= 143 THEN
    col = 241: IF hover = h THEN col = 250
-   CALL Box(hx(h), hy(h), hr(h) - hx(h) + 1, 12, col)
+   CALL Box(hx(h), hy(h), hr(h) - hx(h) + 1, hb(h) - hy(h) + 1, col)
    label$ = names$(h)
    IF need(h) THEN IF flags(need(h)) = 0 THEN label$ = "* " + label$
    CALL Txt(hx(h) + 3, hy(h) + 2, label$, 246)
@@ -122,48 +130,48 @@ SUB DrawScene
   END IF
  NEXT
  IF room = 14 AND flags(12) THEN
-  CALL Actor(40, 168, 2, 0): CALL Actor(92, 168, 4, 0)
-  CALL Actor(228, 168, 5, 0): CALL Actor(280, 168, 6, 0)
+  CALL Actor(40, 141, 2, 0): CALL Actor(92, 141, 4, 0)
+  CALL Actor(228, 141, 5, 0): CALL Actor(280, 141, 6, 0)
  END IF
  CALL Actor(px, py, 0, (px <> tx))
- CALL Box(0, 0, 320, 12, 240)
+ CALL Box(0, 0, 320, 10, 240)
  CALL Txt(5, 2, rt$(room), 246)
  CALL Txt(269, 2, "J  M  H", 244)
- CALL Box(0, 184, 320, 56, 240)
- uglLine back, 0, 184, 319, 184, 245
+ CALL Box(0, 154, 320, 46, 240)
+ uglLine back, 0, 154, 319, 154, 245
  FOR i = 1 TO 3
   x = (i - 1) * 44: col = 241
   IF verb = i AND selected = 0 THEN col = 250
-  CALL Box(x + 1, 186, 42, 13, col)
+  CALL Box(x + 1, 156, 42, 11, col)
  NEXT
- CALL Txt(8, 189, "ACT", 247): CALL Txt(50, 189, "LOOK", 247): CALL Txt(94, 189, "TALK", 247)
- CALL Txt(138, 189, "JOURNAL", 246): CALL Txt(202, 189, "MAP", 246): CALL Txt(250, 189, "CLUES", 246)
+ CALL Txt(8, 158, "ACT", 247): CALL Txt(50, 158, "LOOK", 247): CALL Txt(94, 158, "TALK", 247)
+ CALL Txt(138, 158, "JOURNAL", 246): CALL Txt(202, 158, "MAP", 246): CALL Txt(250, 158, "CLUES", 246)
  countinv = 0
  FOR i = 1 TO 10
   IF inv(i) THEN countinv = countinv + 1: invlist(countinv) = i
  NEXT
  FOR i = 1 TO 8
   x = (i - 1) * 36: idx = i + invpage * 8
-  CALL Box(x + 1, 202, 34, 25, 241)
+  CALL Box(x + 1, 168, 34, 22, 241)
   IF idx <= countinv THEN
-   IF selected = invlist(idx) THEN uglRect back, x + 1, 202, x + 34, 226, 246
-   CALL Icon(x + 9, 206, invlist(idx))
+   IF selected = invlist(idx) THEN uglRect back, x + 1, 168, x + 34, 189, 246
+   CALL Icon(x + 9, 171, invlist(idx))
   END IF
  NEXT
- CALL Txt(295, 209, ">", 246)
+ CALL Txt(295, 175, ">", 246)
  s$ = "Explore Ravenhurst.  F5 save / F9 load"
  IF room = 1 AND flags(1) = 0 THEN s$ = "Knock at the lit front door."
  IF room = 1 AND flags(1) THEN s$ = "The front door is open."
- IF hover AND my < 184 THEN s$ = names$(hover)
+ IF hover AND my < 154 THEN s$ = names$(hover)
  IF selected THEN
   s$ = "Use " + items$(selected)
-  IF hover AND my < 184 THEN s$ = s$ + " on " + names$(hover)
+  IF hover AND my < 154 THEN s$ = s$ + " on " + names$(hover)
  END IF
- IF my >= 202 AND my <= 227 AND mx < 288 THEN
+ IF my >= 168 AND my <= 189 AND mx < 288 THEN
   idx = mx \ 36 + 1 + invpage * 8
   IF idx <= countinv THEN s$ = items$(invlist(idx))
  END IF
- CALL Txt(4, 231, s$, 246)
+ CALL Txt(4, 192, s$, 246)
  IF modal THEN CALL DrawDialog
 END SUB
 

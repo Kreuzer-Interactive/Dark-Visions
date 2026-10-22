@@ -65,24 +65,24 @@ SUB DrawSpeech
  ' A speech-tail and adjacent name attach the text to the correct portrait.
  tip = 272: IF talkmenu OR playerline THEN tip = 48
  IF carscene THEN tip = 320 - tip
- FOR y = 120 TO 132
-  span = (y - 120) \ 2
+ FOR y = 85 TO 96
+  span = (y - 85) \ 2
   uglLine back, tip - span, y, tip + span, y, 241
  NEXT
- uglLine back, tip - 6, 132, tip, 120, 245
- uglLine back, tip, 120, tip + 6, 132, 245
- span = 81: IF talkmenu THEN span = 107
- CALL Box(8, 133, 304, span, 241)
- uglLine back, 8, 132, tip - 6, 132, 245
- uglLine back, tip + 6, 132, 311, 132, 245
+ uglLine back, tip - 6, 96, tip, 85, 245
+ uglLine back, tip, 85, tip + 6, 96, 245
+ span = 81: IF talkmenu THEN span = 103
+ CALL Box(8, 97, 304, span, 241)
+ uglLine back, 8, 96, tip - 6, 96, 245
+ uglLine back, tip + 6, 96, 311, 96, 245
  s$ = FaceName$(convperson): IF talkmenu OR playerline THEN s$ = "YOU"
  IF carscene AND talkmenu = 0 THEN
   IF playerline THEN s$ = "YOU / BACK SEAT" ELSE s$ = s$ + " / AT THE WHEEL"
  END IF
- CALL Txt(18, 140, s$, 246)
+ CALL Txt(18, 104, s$, 246)
  IF talkmenu THEN
-  IF topiccount THEN CALL TopicHeader ELSE CALL Txt(18, 155, "Choose a reply. Blue = already asked.", 252)
+  IF topiccount THEN CALL TopicHeader ELSE CALL Txt(18, 119, "Choose a reply. Blue = already asked.", 252)
  ELSE
-  CALL RevealWrap(18, 153, body$, 284, speechcount)
+  CALL RevealWrap(18, 117, body$, 284, speechcount)
  END IF
 END SUB

@@ -1,10 +1,11 @@
 REM $DYNAMIC
 ' Dark Visions: The House Below. QuickBASIC 4.5 / uGL / DOS.
-' 320x240 indexed VGA, 16 illustrated rooms, persistent inventory.
+' 320x200 indexed VGA (mode 13h), 16 illustrated rooms, persistent inventory.
 DEFINT A-Z
 '$INCLUDE: 'UGL.BI'
 DECLARE SUB Txt (x, y, s$, c)
 DECLARE FUNCTION Tw% (s$)
+DECLARE FUNCTION Pow2% (n)
 DECLARE SUB Wrap (x, y, s$, c, wide)
 DECLARE SUB Box (x, y, w, h, c)
 DECLARE SUB DrawScene ()

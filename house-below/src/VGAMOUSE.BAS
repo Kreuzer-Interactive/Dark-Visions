@@ -37,7 +37,7 @@ SUB InitPointer
   r.ax = 2: CALL INTERRUPT(mi, r, o)
   ' Low-resolution DOS mouse coordinates use twice the screen width.
   r.ax = 7: r.cx = 0: r.dx = 639: CALL INTERRUPT(mi, r, o)
-  r.ax = 8: r.cx = 0: r.dx = 239: CALL INTERRUPT(mi, r, o)
+  r.ax = 8: r.cx = 0: r.dx = 199: CALL INTERRUPT(mi, r, o)
   CALL PositionPointer(mx, my)
  END IF
  pointerDC = uglNew(UGL.MEM, UGL.8BIT, 16, 16)
@@ -59,7 +59,7 @@ SUB ReadPointer (x, y, buttons)
  IF x < 0 THEN x = 0
  IF x > 319 THEN x = 319
  IF y < 0 THEN y = 0
- IF y > 239 THEN y = 239
+ IF y > 199 THEN y = 199
 END SUB
 
 SUB PositionPointer (x, y)
@@ -174,7 +174,7 @@ SUB Poll
  IF mx < 0 THEN mx = 0
  IF mx > 319 THEN mx = 319
  IF my < 0 THEN my = 0
- IF my > 239 THEN my = 239
+ IF my > 199 THEN my = 199
  ' Only navigation keys warp the driver. Ordinary keys never reset its position.
  IF warped THEN CALL PositionPointer(mx, my)
  CALL RefreshPointer

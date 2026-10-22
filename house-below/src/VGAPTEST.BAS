@@ -11,7 +11,7 @@ FUNCTION FacePixels% (dc AS LONG, w, h, x, y, flipped)
    expected = uglPGet(dc, sx, yy)
    IF expected = 227 THEN
     expected = 240
-    IF y + yy < 108 THEN expected = uglPGet(art, x + xx, y + yy)
+    IF y + yy < 78 THEN expected = uglPGet(art, x + xx, y + yy)
    END IF
    IF uglPGet(back, x + xx, y + yy) <> expected THEN FacePixels% = 0: EXIT FUNCTION
   NEXT
@@ -31,13 +31,13 @@ SUB CheckPortraits
    faceMood = mood: youMood = mood
    talkmenu = 0: nchoices = 1: CALL SetChoices: CALL PrepareFaces
    CALL DrawScene
-   valid = FacePixels%(faceDC, 96, 104, 224, 12, -1)
-   valid = valid AND FacePixels%(youDC, 72, 80, 8, 36, 0)
+   valid = FacePixels%(faceDC, 96, 75, 224, 10, -1)
+   valid = valid AND FacePixels%(youDC, 72, 55, 8, 30, 0)
    CALL Check(valid, "speaker faces inward; listener small/dim; alpha overlays room: " + FaceName$(n) + STR$(mood))
    talkmenu = n: nchoices = 4: CALL SetChoices: CALL PrepareFaces
    CALL DrawScene
-   valid = FacePixels%(faceDC, 72, 80, 240, 36, -1)
-   valid = valid AND FacePixels%(youDC, 96, 104, 0, 12, 0)
+   valid = FacePixels%(faceDC, 72, 55, 240, 30, -1)
+   valid = valid AND FacePixels%(youDC, 96, 75, 0, 10, 0)
    CALL Check(valid, "player takes focus and NPC keeps expression: " + FaceName$(n) + STR$(mood))
   NEXT
   faceMood = 0
@@ -46,7 +46,7 @@ SUB CheckPortraits
   CALL PrepareFaces: CALL DrawScene: CALL DumpFrame(19 + n)
   valid = -1
   FOR q = 1 TO 4
-   IF ChoiceAt%(20, 180 + (q - 1) * 16) <> q THEN valid = 0
+   IF ChoiceAt%(20, 144 + (q - 1) * 16) <> q THEN valid = 0
   NEXT
   CALL Check(valid, "full-width conversation hit regions: " + FaceName$(n))
   savedFace = faceDC: savedYou = youDC
@@ -73,10 +73,10 @@ SUB CheckPortraits
  CALL Reply(2, "JAMES", "Please show me your invitation before we go inside.")
  CALL Check(faceMood = 2 AND youMood = 0, "firm line returns listener to attention")
  CALL DrawScene: CALL DumpFrame(29)
- CALL Check(ChoiceAt%(80, 228) = 1 AND ChoiceAt%(80, 190) = 0, "reply button does not click through to covered toolbar")
- CALL Check(ChoiceAt%(8, 190) = 0 AND ChoiceAt%(50, 210) = 0, "hidden verbs and inventory have no conversation hit regions")
+ CALL Check(ChoiceAt%(80, 192) = 1 AND ChoiceAt%(80, 170) = 0, "reply button does not click through to covered toolbar")
+ CALL Check(ChoiceAt%(8, 160) = 0 AND ChoiceAt%(50, 175) = 0, "hidden verbs and inventory have no conversation hit regions")
  talkmenu = 1: nchoices = 4: CALL SetChoices
- CALL Check(ChoiceAt%(80, 188) = 0 AND ChoiceAt%(11, 180) = 0 AND ChoiceAt%(80, 100) = 0, "topic gaps and portrait areas do not select questions")
+ CALL Check(ChoiceAt%(80, 152) = 0 AND ChoiceAt%(11, 145) = 0 AND ChoiceAt%(80, 60) = 0, "topic gaps and portrait areas do not select questions")
  CALL EndTalk: modal = 0
  CALL Check(faceDC = 0 AND youDC = 0 AND convperson = 0 AND faceMood = 0 AND utterance$ = "", "Goodbye frees portraits, expressions and conversation state")
  flags(20) = mask

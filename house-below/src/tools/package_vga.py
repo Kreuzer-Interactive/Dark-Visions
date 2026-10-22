@@ -12,9 +12,9 @@ with ZipFile(out/'Dark-Visions-VGA.zip','w',ZIP_DEFLATED) as z:
         if path.suffix.upper() in {'.BMP','.DAT'}: z.write(path,'VGA/'+path.name)
     z.write(ROOT/'docs'/'vga-walkthrough.md','WALKTHRU.TXT')
     z.writestr('README.TXT', '''DARK VISIONS: THE HOUSE BELOW\r\n
-Native DOS / QuickBASIC adventure, 320x240, 256 colors.\r\n
+Native DOS / QuickBASIC adventure, 320x200 (mode 13h), 256 colors.\r\n
 Extract the entire archive. In DOS, change to that folder and run PLAYVGA.\r\n
-Requires a 320x240x256 VESA video mode and a DOS mouse driver.\r\n
+Requires a VGA card (mode 13h) and a DOS mouse driver.\r\n
 Recommended: DOSBox-X, machine=svga_s3, cycles=fixed 50000.\r\n
 Use autolock=false and mouse_emulation=never. Mouse capture is not needed.\r\n
 Set [dos] int33 hide host cursor when polling=true for a single custom cursor.\r\n

@@ -31,7 +31,7 @@ SUB CheckOpening
  CALL Check(Hit%((hx(h) + hr(h)) \ 2, hy(h) + 8) = h, "coachman remains separate from four rescued ward patients")
  flags(12) = 0
  FOR i = 1 TO hn(1)
-  IF hk(i) = 1 AND hy(i) < 171 THEN door = i
+  IF hk(i) = 1 AND hy(i) < 143 THEN door = i
  NEXT
  CALL Check(door > 0, "lit front door is an interactive route")
  IF door THEN

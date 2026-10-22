@@ -66,11 +66,11 @@ END SUB
 
 SUB DrawFaces
  IF talkmenu OR playerline THEN
-  uglPutMsk back, 0, 12, youDC
-  uglPutMskFlip back, 240, 36, UGL.HFLIP, faceDC
+  uglPutMsk back, 0, 10, youDC
+  uglPutMskFlip back, 240, 30, UGL.HFLIP, faceDC
  ELSE
-  uglPutMsk back, 8, 36, youDC
-  uglPutMskFlip back, 224, 12, UGL.HFLIP, faceDC
+  uglPutMsk back, 8, 30, youDC
+  uglPutMskFlip back, 224, 10, UGL.HFLIP, faceDC
  END IF
 END SUB
 

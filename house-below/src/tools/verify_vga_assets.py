@@ -7,18 +7,18 @@ rooms=json.loads((root/'ART/vga-world.json').read_text())
 pal=None; hashes=set()
 for n,r in enumerate(rooms,1):
     im=Image.open(root/f'VGA/RM{n:02}.BMP')
-    assert im.mode=='P' and im.size==(320,184), n
+    assert im.mode=='P' and im.size==(320,154), n
     if pal is None: pal=im.getpalette()
     assert im.getpalette()==pal, f'Palette drift: room {n}'
     hashes.add(hashlib.sha256(im.tobytes()).hexdigest())
     assert len(r['hotspots'])<=12
     for h in r['hotspots']:
         x,y,xx,yy=h['rect']
-        assert 0<=x<xx<320 and 0<=y<yy<184,(n,h['name'])
+        assert 0<=x<xx<320 and 0<=y<yy<154,(n,h['name'])
         if h['kind']==1: assert 1<=h['value']<=16
 assert len(hashes)==16, 'Every background must be distinct'
 im=Image.open(root/'VGA/CAR.BMP')
-assert im.mode=='P' and im.size==(320,184) and im.getpalette()==pal
+assert im.mode=='P' and im.size==(320,154) and im.getpalette()==pal
 for n in range(9):
     im=Image.open(root/f'VGA/CHAR{n:02}.BMP')
     assert im.mode=='P' and im.size==(48,88) and im.getpalette()==pal

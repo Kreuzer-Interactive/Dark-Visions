@@ -10,10 +10,10 @@ the patient rescue puzzle chain expand that premise.
 
 ## Presentation
 
-The framebuffer is genuinely 320×240 indexed color, not a large true-color window with
-a pixel filter. Sixteen room backgrounds and a 320×184 back-seat car backdrop share the same 256-entry palette.
-The top twelve pixels hold the room title; the scene includes visible exit plates; the bottom
-56 pixels hold verbs, inventory and contextual text. Sixteen palette entries are reserved for
+The framebuffer is genuinely 320×200 indexed color (mode 13h; see the mode 13h section below), not a large true-color window with
+a pixel filter. Sixteen room backgrounds and a 320×154 back-seat car backdrop share the same 256-entry palette.
+The top ten pixels hold the room title; the scene includes visible exit plates; the bottom
+46 pixels hold verbs, inventory and contextual text. Sixteen palette entries are reserved for
 readable UI and accents. Nine 48×88 indexed character masters provide the protagonist, seven NPCs
 and a walking pose. They are exported from the original art with the visible silhouette cropped
 before resizing, so transparent margins do not shrink people or lift their feet off the floor.
@@ -122,7 +122,7 @@ remain blue and repeatable. TAB focuses options; Enter activates the focused opt
 number shortcuts, Goodbye, Escape and right-click still work. Inventory and map actions
 resume after leaving. James's invitation exchanges and Clara's ward warnings use the same system.
 
-Only the two displayed portraits are loaded (15,744 bytes of pixel data), then freed on exit.
+Only the two displayed portraits are loaded (about 10,000 bytes of pixel data), then freed on exit.
 The exporter supplies native sizes and brightness variants, with uGL mask index 227 reserved
 for transparent pixels and widths divisible by eight. Faces reload only at dialogue transitions
 when the expression or focus changes; normal frames perform masked blits, with horizontal
@@ -137,6 +137,29 @@ and right-click can leave immediately, even mid-sentence. The button changes fro
 line to Continue/Back to questions when ready. Full-text wrapping fixes each word's position
 before revealing letters. Midnight rollover and long frame stalls are handled. Menus,
 save prompts, journal entries and puzzle instructions stay immediate.
+
+
+## Mode 13h (320x200) edition
+
+The game first ran at 320x240 (a VESA-only mode that DOSBox-X's S3 emulation offers but real
+cards and the emulated Cirrus 486 do not). It now uses standard VGA mode 13h, 320x200. A 4:3
+monitor stretches 200 lines to full height, so art keeps its width and its height is scaled:
+rooms and the car view are 320x154 (was 184), the title bar is 10 lines, and the bottom panel
+(verbs at y 156, inventory at y 168, status text at y 192) is 46 lines (was 56). Character sprite
+masters are 48x73 (drawn about 64-74 lines tall; their width formula is `2 * ((height * 29 + 44) \ 88)`).
+Portraits are 96x75 (speaker) and 72x55 (listener): they are scaled by 5/6 and lose their bottom
+12 rows, where the speech-panel tail now sits. Conversation layout: portraits at y 10 / 30, tail
+at y 85-96, speech panel from y 97, topic and reply buttons at y 138 + 16 per row (186 for a single
+button). Puzzle/modal panels start at y 12. Hotspot and floor y values were scaled by 154/184
+(exit plates are 10 lines tall at y 143).
+
+`src/tools/vga200.ps1` is the converter that produced this set from the 320x240 assets (no
+Python needed): `-In <old VGA dir> -Out <new dir>`. The Python exporters still write the old
+320x240 masters; run vga200.ps1 on their output to get the shipping set.
+
+486 note: QuickBASIC's `^` operator is a software floating-point routine, about 1 ms per call
+on an FPU-less 486SX. `Txt` used it per glyph row and a frame took 1.4 s on the emulated SX;
+integer `Pow2%` brought it to about 55 ms. Avoid `^`, `ATN` and other float math in per-frame code.
 
 ## Source map
 
@@ -227,7 +250,7 @@ flipping, transparent scenery between silhouette edges, large/small focus, cache
 expression transitions, remembered replies, input rectangles and cleanup. Dialogue length
 and topic width are checked during every scripted conversation.
 The native portrait menu and reply dumps were visually reviewed. The dialogue fits within
-320×240 with room scenery above the text and the toolbar temporarily covered.
+320×200 with room scenery above the text and the toolbar temporarily covered.
 All **270 DOS checks passed**; results are recorded in `vga-test-results.txt`. The linker reserves
 an 8 KB stack for the nested conversation calls and native test fixtures. James checks cover
 the absence of early patient revelations, names-only place cards, external clue sources,
@@ -268,7 +291,7 @@ extended scan codes are preserved rather than lowercased with text input.
 All sixteen native DOS room dumps were visually reviewed after the character scale adjustment.
 The launcher leaves the mouse uncaptured; Ctrl+F10
 can release it if the player manually captures it. Physical DOS
-hardware and non-S3 VESA implementations remain unverified.
+hardware is unverified (an emulated 486SX in 86Box runs it).
 
 There are three explicit save slots. The ending writes completed progress to slot 3.
 The map is a text connection guide, not a fast-travel system. New saves use the DVGA3 header:

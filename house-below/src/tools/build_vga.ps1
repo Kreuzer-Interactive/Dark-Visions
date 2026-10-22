@@ -10,8 +10,8 @@ if (!(Test-Path $dosbox)) { $dosbox = Join-Path $repo 'QA\DOSBox-X\dosbox-x.exe'
 if (!(Test-Path $qb)) { throw 'Set $qb in build_vga.ps1 to your licensed QuickBASIC 4.5 directory.' }
 # BC requires DOS line endings, including the final newline.
 $modules = @('VISIONS', 'VGADRAW', 'VGADIAL', 'VGAFACE', 'VGASAY', 'VGAMOUSE', 'VGAACT', 'VGATALK', 'VGATRIP', 'VGARIDE', 'VGAPEOP', 'VGASAVE', 'VGAKNOW', 'VGATOPIC', 'VGATEST', 'VGAPTEST', 'VGASTEST', 'VGAKTEST', 'VGARTEST')
-foreach ($module in $modules) {
-    $bas = Join-Path $src "$module.BAS"
+foreach ($module in $modules + 'VGA') {
+    $bas = Join-Path $src $(if ($module -eq 'VGA') { 'VGA.BI' } else { "$module.BAS" })
     $code = [IO.File]::ReadAllText($bas) -replace "`r?`n", "`r`n"
     [IO.File]::WriteAllText($bas, $code, [Text.Encoding]::ASCII)
 }

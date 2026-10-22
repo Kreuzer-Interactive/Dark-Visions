@@ -11,7 +11,7 @@ END SUB
 SUB TestGame
  DIM i, h, door, rx, ry, rb, stable
  OPEN "VGA\TEST.LOG" FOR OUTPUT AS #7
- CALL Check(video <> 0, "native 320x240 indexed display")
+ CALL Check(video <> 0, "native 320x200 indexed display")
  CALL Check(mouseok <> 0, "standard DOS mouse initialized")
  IF mouseok THEN
   ' Exercise the DOS driver's actual position API and the small cursor blit.
@@ -29,9 +29,9 @@ SUB TestGame
   verb = 1: CALL PositionPointer(0, 0): CALL Present
   CALL ReadPointer(rx, ry, rb)
   CALL Check(rx = 0 AND ry = 0 AND uglPGet(video, 0, 0) = 247, "cursor reaches top left screen edge")
-  CALL PositionPointer(319, 239): CALL RefreshPointer
+  CALL PositionPointer(319, 199): CALL RefreshPointer
   CALL ReadPointer(rx, ry, rb)
-  CALL Check(rx = 319 AND ry = 239 AND uglPGet(video, 0, 0) = 240, "screen corners restore cleanly")
+  CALL Check(rx = 319 AND ry = 199 AND uglPGet(video, 0, 0) = 240, "screen corners restore cleanly")
   stable = -1
   FOR i = 0 TO 12
    CALL PositionPointer(160 + i, 120 - i): CALL ReadPointer(rx, ry, rb)
@@ -131,7 +131,7 @@ SUB DumpFrame (n)
  DIM f, x, y, rowdata AS STRING * 320, path$
  path$ = "VGA\SHOT" + RIGHT$("0" + LTRIM$(STR$(n)), 2) + ".RAW"
  f = FREEFILE: OPEN path$ FOR BINARY AS #f
- FOR y = 0 TO 239
+ FOR y = 0 TO 199
   FOR x = 0 TO 319: MID$(rowdata, x + 1, 1) = CHR$(uglPGet(back, x, y)): NEXT
   PUT #f, , rowdata
  NEXT
