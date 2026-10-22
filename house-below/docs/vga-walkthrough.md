@@ -3,16 +3,16 @@
 Spoilers follow. J gives a shorter contextual lead in game. H outlines interactive objects.
 Exit buttons travel in any verb mode; right-click cancels an inventory selection.
 Conversations begin with general questions. Examine clues and listen to answers to unlock
-specific follow-ups. Starred questions show their source when pointed at or focused with TAB.
-Use the small arrows or PgUp/PgDn for more topics; blue questions can still be asked again.
+specific follow-ups. Each menu shows three questions; an asked question disappears and the next
+one takes its place, and new questions appear as you learn things.
 
 1. Begin in the **back seat of the motorcar**, talking to the coachman. Optional questions
-   introduce Arthur Pike; Goodbye ends the ride, and Escape skips to arrival. Outside,
+   introduce Arthur Pike; Leave ends the ride, and Escape skips to arrival. Outside,
    he waits beside the car on the left and encourages you to get out of the rain.
    Click **FRONT DOOR > Knock / enter**, or ACT on the lit door. James greets you there.
    Choose **Show Uncle Frank's invitation**, or select the inventory letter before knocking.
    The scene fades into the entrance hall. **Go outside** returns to the car and coachman;
-   questions already asked in the car remain blue and can be repeated.
+   questions already asked in the car do not come back.
 2. Visit the library and take the brass clock hand from the book. In the guest room, use it
    on the tall grandfather clock. Set **8:20**. The hidden stair exit becomes available.
 3. Take the hairpin from the dining table. In the study, use it on the locked desk. Keep the

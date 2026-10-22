@@ -162,11 +162,11 @@ END SUB
 SUB Journal
  DIM s$
  s$ = "Three weeks after graduation, Uncle Frank offered an apprenticeship at Ravenhurst. He says your chemistry will be useful. Knock at the lit front door and show James the invitation. The coachman waits by the car."
- IF flags(1) THEN s$ = "James has shown you into the house. Explore your guest room, the library and the dining room. Examine objects and talk to people; discoveries open new questions marked with a star."
+ IF flags(1) THEN s$ = "James has shown you into the house. Explore your guest room, the library and the dining room. Examine objects and talk to people; discoveries open new questions."
  IF flags(1) AND learned(kClock) THEN s$ = "Something is wrong with the guest-room clock. Examine its dial and the bedside letter, then look for the missing hand."
  IF flags(1) AND visited(2) = 0 THEN s$ = "James has checked your invitation. Click FRONT DOOR below the scene, or ACT on the lit door, to enter the house."
  IF flags(2) THEN s$ = "The clock has opened a stair beneath the house. Explore below and listen to the people you find there."
- IF learned(kRescue) THEN s$ = "The patients want to leave together. Ask Clara what needs to be made safe. Follow-up questions appear as you learn more; point at a starred question to see its source."
+ IF learned(kRescue) THEN s$ = "The patients want to leave together. Ask Clara what needs to be made safe. New questions appear as you learn more."
  IF flags(3) AND inv(6) = 0 THEN s$ = "Elias needs to hear that you read the study ledger. Speak to him in the library about the records; he has the ward key."
  IF inv(6) AND flags(6) = 0 THEN s$ = "Elias trusted you with the ward key. Speak to Clara about getting everyone out."
  IF learned(kNames) AND flags(6) = 0 THEN s$ = "The patients' names belong in the archive register. Miriam remembers them. Examine the admission records and listen to her."

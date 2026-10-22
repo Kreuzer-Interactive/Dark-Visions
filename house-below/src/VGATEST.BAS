@@ -75,7 +75,7 @@ SUB TestGame
  CALL EnterRoom(7): selected = 2: CALL Special(103)
  CALL Check(flags(3) AND inv(10), "study evidence recovered")
  CALL EnterRoom(4): testpick = 4: CALL Talk(2)
- CALL Check(inv(6) = 0 AND talkmenu = 0 AND nchoices = 4, "leave Elias conversation without taking ward key")
+ CALL Check(inv(6) = 0 AND talkmenu = 0 AND nchoices = 3, "leave Elias conversation without taking ward key")
  testpick = 1: CALL Talk(2)
  CALL Check(inv(6) = 1, "Elias gives key after evidence")
  CALL EnterRoom(7): testpick = 1: CALL Special(104)

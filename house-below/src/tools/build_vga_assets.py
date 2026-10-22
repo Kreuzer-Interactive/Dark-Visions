@@ -10,9 +10,10 @@ OUT = ROOT / 'VGA'
 OUT.mkdir(exist_ok=True)
 atlas = Image.open(ROOT / 'ART' / 'visions-atlas.png').convert('RGB')
 # Reserve sixteen stable ink/UI/sprite colors; all rooms share the other 240.
-ui = [(8,10,17),(19,25,32),(42,48,53),(76,79,77),(119,119,104),
-      (161,149,119),(204,181,133),(242,222,175),(68,29,31),(125,49,42),
-      (42,70,85),(78,128,149),(118,174,180),(42,65,49),(87,114,65),(198,136,61)]
+# 240-255. 242/248 leather band + shadow, 253 pale-blue (you speak), 254 paper cream (they speak).
+ui = [(8,10,17),(19,25,32),(55,34,21),(76,79,77),(119,119,104),
+      (161,149,119),(204,181,133),(242,222,175),(81,56,39),(125,49,42),
+      (42,70,85),(78,128,149),(118,174,180),(173,192,204),(243,238,205),(198,136,61)]
 master = atlas.quantize(colors=240, method=Image.Quantize.MEDIANCUT)
 palette = master.getpalette()[:720] + [v for c in ui for v in c]
 pal = Image.new('P',(1,1)); pal.putpalette(palette)

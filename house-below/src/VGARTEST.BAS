@@ -14,12 +14,12 @@ SUB CheckOpening
  CALL Check(flags(28) = 0 AND flags(29) = 0, "skipping does not invent coachman knowledge")
  CALL Journal
  CALL Check(INSTR(body$, "apprenticeship") > 0 AND INSTR(body$, "front door") > 0, "journal retains essential opening context after skipping")
- testpick = 1: testtalk$ = "124": CALL Opening
+ testpick = 1: testtalk$ = "114": CALL Opening
  CALL Check(room = 1 AND carscene = 0 AND convperson = 0 AND playerline = 0, "complete car conversation transitions cleanly to exterior")
  CALL Check(flags(27) = 3 AND flags(28) = 1 AND flags(29) = 1, "car questions and noticed silks carry into arrival")
  CALL Check(INSTR(body$, "Mind the step") > 0, "coachman encourages shelter after getting out")
- testtalk$ = "24": CALL Talk(8)
- CALL Check(flags(27) = 3 AND testtalk$ = "", "outdoor questions remain repeatable with shared car history")
+ testtalk$ = "14": CALL Talk(8)
+ CALL Check(flags(27) = 7 AND testtalk$ = "", "car questions do not return outside; the next question moves up")
  selected = 1: CALL Talk(8)
  CALL Check(flags(1) = 0 AND selected = 0 AND INSTR(body$, "James") > 0, "coachman redirects invitation to James")
  CALL Check(FindHot%(1, 4) = 0 AND FindHot%(8, 4) > 0, "coachman replaces outdoor James beside the car")
@@ -76,8 +76,8 @@ SUB CheckOpening
  CALL BeginTalk(8): CALL Reply(0, "COACHMAN", "Last bend before Ravenhurst, sir. You have business with Doctor Mahler?")
  CALL DrawScene: CALL DumpFrame(36)
  playerline = -1: CALL Say("YOU", "He is my uncle. His letter offered me an apprenticeship. He says my chemistry will be useful.")
- CALL Check(youKey MOD 2 = 0 AND faceKey MOD 2 = 1, "scripted player speech takes speaker focus")
  CALL DrawScene: CALL DumpFrame(37)
+ CALL Check(uglPGet(back, 300, 170) = 253 AND uglPGet(back, 44, 139) = 253, "scripted player speech is the blue panel with the tail on you")
  playerline = 0: carscene = 0: CALL EndTalk: modal = 0
  FOR i = 1 TO 32: flags(i) = sf(i): NEXT
  FOR i = 1 TO 14: learned(i) = sk(i): NEXT

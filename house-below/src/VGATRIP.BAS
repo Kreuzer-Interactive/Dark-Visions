@@ -55,14 +55,19 @@ SUB CheckTalk
   testtalk$ = "24": CALL Talk(npc)
   CALL Check(flags(history) = 2, "only selected question marked: " + heading$)
   IF i = 1 THEN CALL Check(flags(20) = 0 AND flags(26) = 0, "coachman history is separate from James and legacy outdoor history")
-  testtalk$ = "24": CALL Talk(npc)
-  CALL Check(flags(history) = 2 AND testtalk$ = "", "asked question remains repeatable: " + heading$)
-  ' Ask every topic, repeat a question, then explicitly choose Goodbye.
-  testtalk$ = "12314"
+  ' The asked question leaves the menu: row 1 is now question 1, not the one just asked.
+  testtalk$ = "14": CALL Talk(npc)
+  CALL Check(flags(history) = 3 AND testtalk$ = "", "next question moves up after one is asked: " + heading$)
+  ' Keep asking the top question, then explicitly choose Leave.
+  flags(history) = 0
+  testtalk$ = "1114"
   CALL Talk(npc)
-  CALL Check(testtalk$ = "" AND talkmenu = 0 AND nchoices = 4 AND flags(history) = 7, "repeat questions then Goodbye: " + heading$)
+  CALL Check(testtalk$ = "" AND talkmenu = 0 AND nchoices = 3 AND (flags(history) AND 1) <> 0, "ask three questions then Leave: " + heading$)
  NEXT
  CALL Check(flags(1) = 0 AND inv(6) = 1, "repeated topics preserve gate and ward key progress")
+ FOR i = 20 TO 27
+  IF i <> 26 THEN flags(i) = 7
+ NEXT
  CALL SaveGame(1)
  FOR i = 20 TO 27: flags(i) = 0: NEXT
  CALL LoadGame(1): valid = -1

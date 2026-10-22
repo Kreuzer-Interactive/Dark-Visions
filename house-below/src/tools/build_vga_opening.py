@@ -38,6 +38,6 @@ cells = [master.crop((i*width//4, height*61//100, (i+1)*width//4, height)) for i
 boxes = [cell.getchannel('A').point(lambda a: 255 if a >= 128 else 0).getbbox() for cell in cells]
 bounds = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
 for mood, cell in enumerate(cells):
-    for state, size, brightness in [('A', (96, 104), 1.08), ('L', (72, 80), .65)]:
+    for state, size, brightness in [('A', (96, 104), 1.08)]:
         cutout(cell, size, brightness, bounds, PORTRAIT_CROP).save(ROOT / 'VGA' / f'P8{mood}{state}.BMP')
 print('Exported CAR.BMP, revised RM01.BMP, CHAR08.BMP and eight coachman portraits.')

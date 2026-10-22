@@ -24,7 +24,7 @@ def export_expressions(palette):
         bounds = (min(b[0] for b in boxes), min(b[1] for b in boxes),
                   max(b[2] for b in boxes), max(b[3] for b in boxes))
         for mood, cell in enumerate(cells):
-            for state, size, brightness in [('A', (96, 104), 1.08), ('L', (72, 80), 0.65)]:
+            for state, size, brightness in [('A', (96, 104), 1.08)]:
                 bust = cell.crop(bounds)
                 bust.thumbnail((size[0]-4, size[1]-2), Image.Resampling.LANCZOS)
                 rgb = ImageEnhance.Brightness(bust.convert('RGB')).enhance(brightness)
@@ -39,7 +39,7 @@ def export_expressions(palette):
                     sheet.paste(shown, (person*200+4, mood*236+4), shown)
                     draw.text((person*200+5, mood*236+216), f'{name} / {MOODS[mood]}', fill=(215, 191, 145))
     sheet.save(ART / 'expression-contact-sheet.png')
-    print('Exported 28 expressions, each with bright 96x75 and dim 72x55 variants (56 masked BMPs).')
+    print('Exported 28 expressions at 96x75 (28 masked BMPs; both busts are full size in conversations).')
 
 
 if __name__ == '__main__':

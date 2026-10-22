@@ -162,8 +162,11 @@ SUB Poll
  IF keys$ = CHR$(13) OR keys$ = " " THEN click = -1
  IF keys$ = CHR$(0) + CHR$(75) THEN mx = mx - 5: warped = -1
  IF keys$ = CHR$(0) + CHR$(77) THEN mx = mx + 5: warped = -1
- IF keys$ = CHR$(0) + CHR$(72) THEN my = my - 5: warped = -1
- IF keys$ = CHR$(0) + CHR$(80) THEN my = my + 5: warped = -1
+ ' In a conversation Up/Down step the highlighted ticket instead (Pick handles them).
+ IF NOT (modal AND convperson) THEN
+  IF keys$ = CHR$(0) + CHR$(72) THEN my = my - 5: warped = -1
+  IF keys$ = CHR$(0) + CHR$(80) THEN my = my + 5: warped = -1
+ END IF
  IF keys$ = CHR$(9) AND modal = 0 THEN
   h = Hit%(mx, my): i = h - (room - 1) * 12 + 1
   IF i < 1 OR i > hn(room) THEN i = 1

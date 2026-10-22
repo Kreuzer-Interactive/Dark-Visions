@@ -38,6 +38,18 @@ DECLARE SUB AdvanceSpeech (stamp AS SINGLE)
 DECLARE FUNCTION Speaking% ()
 DECLARE FUNCTION RevealSpeech% (requested)
 DECLARE SUB RevealWrap (x, y, text$, wide, shown)
+DECLARE SUB RevealWrapInk (x, y, text$, wide, shown, ink)
+DECLARE SUB SpeechLayout ()
+DECLARE FUNCTION PageStart% ()
+DECLARE FUNCTION PageEnd% ()
+DECLARE FUNCTION NextPage% ()
+DECLARE FUNCTION OnLastPage% ()
+DECLARE FUNCTION MenuMode% ()
+DECLARE FUNCTION LeaveAt% (x, y)
+DECLARE SUB RRect (x0, y0, x1, y1, c)
+DECLARE SUB DrawPanel (fill, hair)
+DECLARE SUB DrawTail (tipx, fill)
+DECLARE SUB DrawTickets ()
 DECLARE SUB CheckSpeech ()
 DECLARE SUB CheckContext ()
 DECLARE SUB Learn (fact, origin)
@@ -49,10 +61,10 @@ DECLARE FUNCTION SourceName$ (origin)
 DECLARE SUB BuildTopics (person)
 DECLARE SUB AddTopic (id, text$, source$)
 DECLARE SUB FillTopics (page)
-DECLARE SUB TopicHeader ()
-DECLARE FUNCTION PageInput% ()
+DECLARE SUB AddTopicR (id, text$, source$)
 DECLARE FUNCTION ContextPick% (person, title$, greeting$)
 DECLARE SUB SetChoices ()
+DECLARE SUB StepChoice (delta)
 DECLARE FUNCTION ChoiceAt% (x, y)
 DECLARE FUNCTION TextLines% (text$, wide)
 DECLARE FUNCTION FaceName$ (person)
@@ -96,7 +108,9 @@ CONST kWindow = 1, kClock = 2, kPatients = 3, kPreparation = 4
 CONST kWardKey = 5, kLake = 6, kMachine = 7, kRescue = 8
 CONST kPressure = 9, kFan = 10, kCrossing = 11, kNames = 12
 CONST kRecords = 13, kGrief = 14
-COMMON SHARED learned(), topicid(), topictext$(), topicsource$()
+' Conversation panel (mode 13h): bottom speech/menu panel and where the two busts stand.
+CONST pnX0 = 5, pnX1 = 314, pnY0 = 145, pnY1 = 196
+COMMON SHARED learned(), topicid(), topictext$(), topicsource$(), topicrep()
 COMMON SHARED rowid(), rowsource$(), topiccount, topicpage
 COMMON SHARED room, verb, selected, invpage, mx, my, click, rightclick, hover
 COMMON SHARED oldleft, oldright, mouseok, keys$, px, py, tx, frame, hints, soundon
@@ -107,8 +121,9 @@ COMMON SHARED convperson, convquit, utterance$, lastreply$
 COMMON SHARED carscene, playerline
 COMMON SHARED faceDC AS LONG, youDC AS LONG
 COMMON SHARED faceMood, youMood, faceKey, youKey
-COMMON SHARED speechcount
+COMMON SHARED speechcount, speechend
 COMMON SHARED speechclock AS SINGLE, speechcredit AS SINGLE, speechdelay AS SINGLE
-COMMON SHARED testtalk$
+COMMON SHARED testtalk$, testforce
+DECLARE FUNCTION RowHas% (person, id)
 COMMON SHARED ioerr, running, dirty, oldmx, oldmy, countinv, failcount, testrun
 COMMON SHARED sprites() AS LONG

@@ -55,36 +55,9 @@ encourages shelter; James is no longer standing at the gates. ACT on the physica
 door or click FRONT DOOR to knock. James greets the player and offers an invitation
 handover; selecting the inventory letter before knocking also works. Declining leaves
 the player outside. Acceptance fades into the distinct entrance hall and its first-arrival
-conversation. Returning outside retains Pike's questions, blue asked-topic colors and
+conversation. Returning outside retains Pike's answered questions and
 learned sources from the ride. Navigation plates work in every verb mode; LOOK on the
 physical door still examines it. The existing sixteen-room save graph is unchanged.
-
-Every conversation topic menu shows up to three questions and a visible **Goodbye [Esc]**
-button. Click it, press 4 or Escape, or right-click to return to the room without choosing a
-topic. After each answer, Back to questions returns to that character's questions; the conversation
-stays open until Goodbye, Escape, or right-click. Cancelling does not grant
-items or advance puzzles. Elias acknowledges the key once you have it, so repeated questions
-do not replay the handover. Save slots and puzzle choices keep their existing layout.
-Asked questions turn blue while new ones stay gold. Blue questions remain selectable with
-both mouse and number keys. History is tracked separately for each character and stays
-with the saved journey. Stable IDs use six-bit masks in flags 20–25 and 27; flag 26 retains
-legacy outdoor James history. Pike is NPC 8 (sprite 7 remains the player's walking pose).
-Flags 28 and 29 record his introduction and observed racing silks.
-
-The seven conversation menus contain 42 authored topics. General questions establish who
-people are and what they want. Specific follow-ups appear only after examining a relevant
-object, acquiring evidence, completing a relevant task, or hearing an explanation. Merely
-visiting a room does not count as reading its clues. For example, Pike's upstairs-shadow
-question requires examining the windows; Elias's ledger statement requires actually recovering
-the ledger; Thomas's technical questions follow examining equipment or hearing Clara's plan.
-Clara's safe-escape statement requires all three preparations to be complete.
-
-A star marks a question based on a discovery. Hovering or TAB focus shows **From: [source]**
-above the choices. The first source is retained when the same fact is learned again. New
-follow-ups appear on the first page; earlier topics remain on additional pages. Click the
-arrows or press PgUp/PgDn (also [ and ]) to page; Goodbye remains in the same position.
-Empty rows on a short page cannot be selected. The journal follows established leads instead
-of supplying undiscovered puzzle solutions.
 
 James's current dialogue follows the author's corrections in
 [James Background And Motivation](https://chatgpt.com/share/6ad96c58-53ac-83ea-b285-e8b151618f6c).
@@ -93,51 +66,52 @@ as the experiments became inhumane. Shortly before the game, Mahler's cruel reje
 that identity prompted James to kill him. James then adopted the identity of a long-serving
 butler and sincerely believes the doctor is alive. The other patients' staff roles and their
 silence about the lower ward protect a shared appearance of ordinary household life.
-This is author-facing continuity, not information James supplies at the door.
+This is author-facing continuity, not information James supplies at the door. His dialogue
+never confesses; questions about patients need outside evidence, and when the player says what
+they found he deflects into household routine. The murder investigation and the other
+characters' rescue dialogue are not yet revised.
 
-James welcomes the nephew, offers a room and a place to wait, and treats Mahler as occupied.
-His household introduction does not identify patients. Questions about patients require
-outside evidence; visiting the ward instead permits a question about the people seen there,
-without implying that hidden documents were read. Dining place cards establish names only.
-When the player explicitly mentions treatment records or the people downstairs, James
-deflects into household routine. His worried expression appears after the ward is raised;
-he does not confess or explain his history. The clock question no longer gives its solution.
-Topic 2 remains one repeatable topic family with its existing asked-history bit. This focused
-revision does not yet implement the murder investigation or revise the other characters'
-rescue dialogue. The shared chat's assistant-proposed surname, childhood, exact tenure,
-murder weapon and climax are not adopted as established canon.
+## Conversations (B4 design)
 
-Conversations cover the verbs and inventory. Transparent busts overlay the room scenery
-without portrait boxes: the protagonist faces right on the left, and the NPC faces left on
-the right. The speaker uses a bright 96×75 canvas; the listener uses a dimmer 72×55 canvas.
-The player takes visual focus while choosing a reply. Each of the eight people, including the player, has four
-expressions: attentive, troubled, determined and warm. Dialogue authors select the mood
-explicitly through `Reply`, including emotional reactions from the listening protagonist.
-Only one turn is shown at a time. The NPC's name sits immediately above the speech, in a
-panel whose small tail points to the NPC portrait. The greeting is a separate speaking
-turn. Continuing replaces the answer with the player's choices and moves the tail to
-the protagonist; the repeated "You said" section is gone. The NPC keeps its last expression
-while listening. Topic labels use spoken questions or statements, and asked topics
-remain blue and repeatable. TAB focuses options; Enter activates the focused option;
-number shortcuts, Goodbye, Escape and right-click still work. Inventory and map actions
-resume after leaving. James's invitation exchanges and Clara's ward warnings use the same system.
+The look and flow were designed in `docs/mockups/` (direction B4, name placement T1) and built in
+`VGADIAL.BAS`, `VGASAY.BAS`, `VGAFACE.BAS` and `VGATOPIC.BAS`.
 
-Only the two displayed portraits are loaded (about 10,000 bytes of pixel data), then freed on exit.
-The exporter supplies native sizes and brightness variants, with uGL mask index 227 reserved
-for transparent pixels and widths divisible by eight. Faces reload only at dialogue transitions
-when the expression or focus changes; normal frames perform masked blits, with horizontal
-flipping for the NPC. No per-frame scaling or disk reads occur. Mouse polling retains the
-uncaptured absolute-position behavior.
+**Layout.** One fixed panel (x 5-314, y 145-196) is used for menus and speech, so nothing moves
+between frames. Under the room picture is a warm leather band. You always stand on the left, the
+other person on the right and mirrored so they face you; both busts are the full 96x75 art, their
+lower rows tucked behind the panel. Colour says who: pale blue paper is you (speaking or choosing),
+cream paper is them. A small tail rises from the panel to the speaker. The speaker's name is a
+brick-red header with a thin rule inside the panel, on their side ("YOU" left, the other person
+right). Text is navy on paper in the game's 7 px font, at most three 272 px lines per page.
 
-Spoken dialogue reveals at roughly 36 characters per second, with longer comma/sentence
-pauses. It advances through elapsed-time polling, so input and pointer updates remain live.
-Click anywhere or press Enter/Space while revealing to show the full line; that activation
-is consumed. Use the Continue/Back to questions button or Enter again to advance. Escape
-and right-click can leave immediately, even mid-sentence. The button changes from Show full
-line to Continue/Back to questions when ready. Full-text wrapping fixes each word's position
-before revealing letters. Midnight rollover and long frame stalls are handled. Menus,
-save prompts, journal entries and puzzle instructions stay immediate.
+**Flow.** One click, Enter or Space anywhere does everything: the first finishes the typewriter,
+the next goes to the following page of a long reply (replies are split into three-line pages
+automatically), and the last one moves on. There is no Continue or Back button, only a small red
+"more" marker. Esc or right-click inside a spoken line skips the rest of that line (in the car it
+still jumps to arrival). The conversation starts with the person's greeting. Then the question
+menu shows up to three **tickets**: gold paper rows with a numbered stub; the hovered or
+keyboard-focused ticket turns cream with a red stub and arrow. Click, press 1-3, Tab or Down/Up
+and Enter. **Leave [Esc]** is a text button on the right of the header (right-click and Esc also
+leave). Choosing a question makes *you* say it out loud (your blue panel, which moves on by
+itself after a short beat; a click skips it) before they answer, then the menu returns.
 
+**Topics.** A question you have asked disappears and the next unasked one takes its place; new
+questions appear as you discover and learn things (clue questions are listed first in each
+person's order, so they surface as slots free up). Topics whose answer changes with the story
+(James on the patients, Elias on the ward key) stay in the menu after being asked. When nothing is
+left the panel says so and Leave remains. There is no paging, no colour legend and no clue stars
+in the menu; the journal (J) and the Learn/SourceName$ knowledge log still record where each fact
+came from. Asked history is still stored as six-bit masks in flags 20-25 and 27 (flag 26 is legacy
+outdoor James) and is saved and loaded as before. Pike is NPC 8; flags 28 and 29 record his
+introduction and the observed racing silks.
+
+**Engine notes.** Panel, tail and tickets are built from a few filled rectangles, 1 px lines and
+single pixels (`RRect`, `DrawPanel`, `DrawTail`, `DrawTickets` in `VGASAY.BAS`); nothing is drawn
+per frame beyond what the screen redraw already does. Only the two full-size portraits are loaded
+and they reload only when an expression changes. Palette slots 242 and 248 (leather shadow and
+band), 253 (pale blue) and 254 (paper cream) were added to the reserved UI colours.
+`testforce` is a test-only hook that asks any currently allowed topic regardless of where it sits
+in the menu.
 
 ## Mode 13h (320x200) edition
 
@@ -147,10 +121,8 @@ monitor stretches 200 lines to full height, so art keeps its width and its heigh
 rooms and the car view are 320x154 (was 184), the title bar is 10 lines, and the bottom panel
 (verbs at y 156, inventory at y 168, status text at y 192) is 46 lines (was 56). Character sprite
 masters are 48x73 (drawn about 64-74 lines tall; their width formula is `2 * ((height * 29 + 44) \ 88)`).
-Portraits are 96x75 (speaker) and 72x55 (listener): they are scaled by 5/6 and lose their bottom
-12 rows, where the speech-panel tail now sits. Conversation layout: portraits at y 10 / 30, tail
-at y 85-96, speech panel from y 97, topic and reply buttons at y 138 + 16 per row (186 for a single
-button). Puzzle/modal panels start at y 12. Hotspot and floor y values were scaled by 154/184
+Portraits are 96x75 (28 expressions plus the coachman's, one size for both people): scaled by 5/6, then the bottom
+12 rows are cropped (the panel covers them). Conversation layout: see the Conversations section (busts at y 75, panel y 145-196). Puzzle/modal panels start at y 12. Hotspot and floor y values were scaled by 154/184
 (exit plates are 10 lines tall at y 143).
 
 The Python exporters write the shipping 13h set directly (shared constants and the 5/6 squash +
@@ -178,17 +150,17 @@ integer `Pow2%` brought it to about 55 ms. Avoid `^`, `ATN` and other float math
 | `VGAPEOP.BAS` | Room-specific character sizes, feet, click regions and floor limits |
 | `VGASAVE.BAS` | Validated save loading and saves |
 | `VGAKNOW.BAS` | Discovery sources, observation hooks and old-save knowledge recovery |
-| `VGATOPIC.BAS` | Context-sensitive topic lists, paging and source indicators |
+| `VGATOPIC.BAS` | Context-sensitive topic lists; the menu shows the first three unasked questions |
 | `VGATEST.BAS` | Main DOS regression harness and native framebuffer dumps |
 | `VGAPTEST.BAS` | Portrait compositing, expression, focus and input regression checks |
 | `VGASTEST.BAS` | Speech pacing, reveal input, text layout and single-speaker regression checks |
-| `VGAKTEST.BAS` | Discovery gating, cross-character clues, paging, stable history and save migration checks |
+| `VGAKTEST.BAS` | Discovery gating, cross-character clues, vanishing/repeatable topics, stable history and save migration checks |
 | `tools/build_vga_story.py` | Editable room graph, rectangles, descriptions; exports WORLD.DAT |
 | `tools/build_vga_assets.py` | Shared palette, native-size backgrounds, sprites, original font export |
 | `tools/build_vga_characters.py` | Re-export 48×73 sprites from the original master without touching backgrounds |
 | `tools/vga_common.py` | Mode 13h constants and helpers: scene size, 5/6 vertical squash, portrait crop, mask-aware palette quantize |
 | `tools/build_vga_portraits.py` | Hands the portrait masters to the expression exporter (the old boxed FACE/YOU bitmaps are gone) |
-| `tools/build_vga_expressions.py` | Export 28 expressions in bright 96x75 / dim 72x55 variants (56 masked BMPs) |
+| `tools/build_vga_expressions.py` | Export 28 expressions at 96x75 (28 masked BMPs) |
 | `tools/build_vga.ps1` | BC/LINK build and isolated DOSBox-X test execution |
 
 Python asset exporters require Pillow. Neither compilation nor playing needs an API key or
@@ -220,6 +192,10 @@ the same protagonist walking. Grounded proportions, readable faces and silhouett
 amber light, cool shadows, crisp VGA pixel-art treatment, no scenery or text.
 
 ## Validation and limitations
+
+*Note: the paragraphs below record the testing of the first prototype's dialog (paging, blue asked colours, a Goodbye
+button, boxed portraits). The B4 redesign described under Conversations replaced those details; the harness was updated
+to match (276 DOS checks, 0 failures) and a live run on an emulated 486SX covered the new flow.*
 
 The original portrait masters in `src/ART/portraits/` were generated individually with the
 built-in imagegen tool using `visions-characters.png` for identity/costume reference. Their

@@ -32,15 +32,25 @@ FUNCTION NamedHot% (s$)
  NEXT
 END FUNCTION
 
+' Ask one topic the story currently allows (wherever it sits in the menu), then leave.
 SUB AskKnown (person, id)
  DIM i, npc
  CALL BuildTopics(person): i = HasTopic%(id)
  IF i = 0 THEN CALL Check(0, "test topic unexpectedly unavailable"): EXIT SUB
- testtalk$ = LTRIM$(STR$((i - 1) MOD 3 + 1)) + "4"
- IF i > 3 THEN testtalk$ = ">" + testtalk$
+ testforce = id: testtalk$ = "4"
  npc = person
  CALL Talk(npc)
 END SUB
+
+' Is this topic currently one of the three menu rows?
+FUNCTION RowHas% (person, id)
+ DIM i
+ RowHas% = 0
+ CALL BuildTopics(person): talkmenu = person: CALL FillTopics(0): talkmenu = 0
+ FOR i = 1 TO 3
+  IF rowid(i) = id THEN RowHas% = -1
+ NEXT
+END FUNCTION
 
 SUB CheckContext
  DIM sf(32), si(16), sv(16), sk(14), i, n, h, q, ok, oldroom, oldverb, oldpick
@@ -61,21 +71,26 @@ SUB CheckContext
  q = ContextPick%(8, "COACHMAN", "Best get inside.")
  modal = -1: talkmenu = 8: CALL SetChoices: CALL PrepareFaces
  mx = 30: my = 177: CALL DrawScene: CALL DumpFrame(33)
- CALL FillTopics(1): CALL DrawScene: CALL DumpFrame(34)
- CALL Check(rowsource$(1) = "House windows", "clue source is attached to the matching visible question")
- CALL Check(ChoiceAt%(30, 160) = 0 AND ChoiceAt%(30, 193) = 4, "short final page ignores blank rows and keeps Goodbye")
- keys$ = "]": click = 0: q = PageInput%
- CALL Check(q AND topicpage = 0, "keyboard topic paging wraps to the first page")
- mx = 294: my = 118: click = -1: keys$ = "": q = PageInput%
- CALL Check(q AND topicpage = 1 AND rowid(1) = 6, "page arrow changes topics without selecting one")
+ CALL Check(ChoiceAt%(30, 165) = 1 AND ChoiceAt%(30, 187) = 3 AND ChoiceAt%(30, 172) = 0, "three ticket rows with gaps between them")
+ CALL Check(LeaveAt%(pnX1 - 20, pnY0 + 8) AND rowid(1) = 1 AND rowid(3) = 3, "clue questions wait behind the general ones until a slot frees up")
  CALL EndTalk: modal = 0
+ ' Asked questions leave the menu and the next one moves up; evidence questions appear when learned.
+ CALL ClearContext: CALL EnterRoom(6)
+ CALL Check(RowHas%(3, 3) AND RowHas%(3, 4) AND RowHas%(3, 5) AND RowHas%(3, 6) = 0, "Ada's menu starts with three general questions")
+ testtalk$ = "14": CALL Talk(3)
+ CALL Check(RowHas%(3, 3) = 0 AND RowHas%(3, 4) AND RowHas%(3, 6) AND (flags(22) AND 4) <> 0, "an asked question vanishes and the next one takes its place")
+ CALL ClearContext: CALL EnterRoom(2): learned(kPatients) = 5
+ CALL Check(RowHas%(1, 1) AND RowHas%(1, 2), "James offers the patient topic once it is known")
+ testtalk$ = "24": CALL Talk(1)
+ CALL Check(RowHas%(1, 2) AND (flags(20) AND 2) <> 0, "evidence topics whose answer changes stay in the menu after being asked")
+ CALL ClearContext: CALL EnterRoom(2)
 
  CALL ClearContext: CALL EnterRoom(2): CALL BuildTopics(1)
  CALL Check(HasTopic%(2) = 0 AND HasTopic%(3) = 0, "James does not assume knowledge of patients or the clock")
  CALL AskKnown(1, 4): CALL BuildTopics(1)
  CALL Check(HasTopic%(2) = 0 AND HasTopic%(3) = 0 AND learned(kPatients) = 0, "James's household introduction does not reveal patients or the ward")
  CALL AskKnown(1, 6)
- CALL Check((flags(20) AND 32) <> 0, "second-page question records its stable identity")
+ CALL Check((flags(20) AND 32) <> 0, "a late question records its stable identity")
  CALL EnterRoom(3): h = NamedHot%("Grandfather clock"): verb = 2: CALL Act(h)
  CALL BuildTopics(1)
  CALL Check(HasTopic%(3) > 0 AND learned(kClock) = 2, "examining the clock unlocks a question about the observed clock")
@@ -105,7 +120,7 @@ SUB CheckContext
  q = HasTopic%(2)
  CALL Check(q > 0 AND learned(kPatients) = 0 AND topicsource$(q) = "Your visit downstairs", "seeing the ward permits an observation without inventing medical knowledge")
  CALL AskKnown(1, 2): CALL AskKnown(1, 2)
- CALL Check(flags(20) = 2 AND flags(3) = 0 AND inv(10) = 0, "evidence topic is repeatable and never grants unread records")
+ CALL Check(flags(20) = 2 AND flags(3) = 0 AND inv(10) = 0, "evidence topic never grants unread records")
 
  CALL ClearContext: CALL EnterRoom(4): CALL BuildTopics(2)
  CALL Check(topiccount = 3 AND HasTopic%(1) = 0 AND HasTopic%(2) = 0 AND HasTopic%(3) = 0, "Elias starts with no ledger, preparation or ward-key assumptions")
@@ -114,8 +129,7 @@ SUB CheckContext
  CALL AskKnown(2, 5): CALL BuildTopics(2)
  CALL Check(HasTopic%(2) > 0 AND flags(21) = 24 AND learned(kPreparation) = 5, "Elias's own explanation immediately unlocks a follow-up")
  CALL Check((flags(21) AND 2) = 0, "new question does not inherit the color of its old row")
- CALL AskKnown(2, 5)
- CALL Check(flags(21) = 24, "introductory questions remain repeatable after new questions appear")
+ CALL Check(flags(21) = 24 AND RowHas%(2, 5) = 0, "asked introductory questions leave the menu once new ones appear")
  CALL AskKnown(2, 6): CALL BuildTopics(2)
  CALL Check(HasTopic%(3) > 0 AND HasTopic%(1) = 0, "learning about the key does not claim an unread ledger")
  CALL AskKnown(2, 3)
@@ -188,7 +202,7 @@ SUB CheckContext
    IF flags(19 + n) <> 63 THEN ok = 0
   END IF
  NEXT
- CALL Check(ok, "all 42 contextual and introductory topics remain repeatable and tracked")
+ CALL Check(ok, "all 42 contextual and introductory topics are answerable and tracked")
  CALL EndTalk: modal = 0
  FOR i = 1 TO 32: flags(i) = sf(i): NEXT
  FOR i = 1 TO 16: inv(i) = si(i): visited(i) = sv(i): NEXT

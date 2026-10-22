@@ -23,7 +23,7 @@ DIM items$(16)
 DIM invlist(16)
 DIM choices$(4)
 DIM learned(14)
-DIM topicid(6), topictext$(6), topicsource$(6)
+DIM topicid(6), topictext$(6), topicsource$(6), topicrep(6)
 DIM rowid(3), rowsource$(3)
 DIM sprites(0 TO 8) AS LONG
 ON ERROR GOTO FileError

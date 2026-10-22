@@ -5,7 +5,13 @@ DEFINT A-Z
 SUB AddTopic (id, text$, source$)
  topiccount = topiccount + 1
  topicid(topiccount) = id: topictext$(topiccount) = text$
- topicsource$(topiccount) = source$
+ topicsource$(topiccount) = source$: topicrep(topiccount) = 0
+END SUB
+
+' A topic whose answer changes with the story stays in the menu after it is asked.
+SUB AddTopicR (id, text$, source$)
+ CALL AddTopic(id, text$, source$)
+ topicrep(topiccount) = -1
 END SUB
 
 SUB BuildTopics (person)
@@ -16,9 +22,9 @@ SUB BuildTopics (person)
  CASE 1
   CALL AddTopic(1, "Why did my uncle invite me?", "")
   IF learned(kPatients) THEN
-   CALL AddTopic(2, "About my uncle's patients...", SourceName$(learned(kPatients)))
+   CALL AddTopicR(2, "Tell me about the patients.", SourceName$(learned(kPatients)))
   ELSEIF visited(10) THEN
-   CALL AddTopic(2, "About the people downstairs...", "Your visit downstairs")
+   CALL AddTopicR(2, "Who are the people downstairs?", "Your visit downstairs")
   END IF
   IF learned(kClock) THEN CALL AddTopic(3, "What is wrong with the clock?", SourceName$(learned(kClock)))
   CALL AddTopic(4, "Does anyone else live here?", "")
@@ -29,9 +35,9 @@ SUB BuildTopics (person)
   IF learned(kPreparation) THEN CALL AddTopic(2, "What did the preparation do?", SourceName$(learned(kPreparation)))
   IF learned(kWardKey) THEN
    IF inv(6) THEN
-    CALL AddTopic(3, "About the ward key...", "Elias gave you the key")
+    CALL AddTopicR(3, "Tell me about the ward key.", "Elias gave you the key")
    ELSE
-    CALL AddTopic(3, "May I have the ward key?", "")
+    CALL AddTopicR(3, "May I have the ward key?", "")
     topicsource$(topiccount) = SourceName$(learned(kWardKey))
    END IF
   END IF
@@ -82,52 +88,21 @@ FUNCTION ContextPick% (person, title$, greeting$)
  ContextPick% = TalkPick%(person, title$, greeting$, "", "", "")
 END FUNCTION
 
+' The menu shows the first three questions you have not asked yet (clue questions come first
+' in each person's list). Asked questions vanish; new ones appear as you learn things.
 SUB FillTopics (page)
- DIM i, n, lastpage
- lastpage = (topiccount - 1) \ 3
- topicpage = page
- IF topicpage < 0 THEN topicpage = lastpage
- IF topicpage > lastpage THEN topicpage = 0
+ DIM i, n, k
+ topicpage = 0
  FOR i = 1 TO 3
-  n = topicpage * 3 + i
   choices$(i) = "": rowid(i) = 0: rowsource$(i) = ""
-  IF n <= topiccount THEN
-   choices$(i) = topictext$(n): rowid(i) = topicid(n)
-   rowsource$(i) = topicsource$(n)
+ NEXT
+ k = 0
+ FOR n = 1 TO topiccount
+  IF k < 3 THEN
+   IF topicrep(n) OR (flags(19 + talkmenu) AND Pow2%(topicid(n) - 1)) = 0 THEN
+    k = k + 1
+    choices$(k) = topictext$(n): rowid(k) = topicid(n): rowsource$(k) = topicsource$(n)
+   END IF
   END IF
  NEXT
-END SUB
-
-FUNCTION PageInput%
- DIM delta
- PageInput% = 0
- IF topiccount <= 3 THEN EXIT FUNCTION
- IF keys$ = "[" OR keys$ = CHR$(0) + CHR$(73) THEN delta = -1
- IF keys$ = "]" OR keys$ = CHR$(0) + CHR$(81) THEN delta = 1
- IF click AND my >= 112 AND my < 124 THEN
-  IF mx >= 224 AND mx < 244 THEN delta = -1
-  IF mx >= 284 AND mx < 304 THEN delta = 1
- END IF
- IF delta THEN CALL FillTopics(topicpage + delta): PageInput% = -1
-END FUNCTION
-
-SUB TopicHeader
- DIM i, s$, col
- CALL Txt(18, 116, "* Clue   Blue = asked", 252)
- s$ = "Point at a question to see its source."
- i = ChoiceAt%(mx, my)
- IF i >= 1 AND i <= 3 THEN
-  s$ = "A general question."
-  IF rowsource$(i) <> "" THEN s$ = "From: " + rowsource$(i)
- END IF
- CALL Txt(18, 127, s$, 245)
- IF topiccount > 3 THEN
-  CALL Txt(251, 104, "PgUp/Dn", 252)
-  col = 243: IF mx >= 224 AND mx < 244 AND my >= 112 AND my < 124 THEN col = 250
-  CALL Box(224, 112, 20, 12, col): CALL Txt(232, 115, "<", 246)
-  col = 243: IF mx >= 284 AND mx < 304 AND my >= 112 AND my < 124 THEN col = 250
-  CALL Box(284, 112, 20, 12, col): CALL Txt(292, 115, ">", 246)
-  s$ = LTRIM$(STR$(topicpage + 1)) + "/" + LTRIM$(STR$((topiccount + 2) \ 3))
-  CALL Txt(254, 115, s$, 246)
- END IF
 END SUB

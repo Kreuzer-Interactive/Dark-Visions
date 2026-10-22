@@ -43,8 +43,8 @@ END SUB
 SUB PrepareFaces
  DIM quiet, mood, cacheid, path$
  ' Only two pre-sized faces are resident. No disk reads in the frame loop.
- quiet = 0: IF talkmenu OR playerline THEN quiet = 1
- cacheid = convperson * 16 + faceMood * 2 + quiet
+ quiet = 0
+ cacheid = convperson * 16 + faceMood * 2
  IF faceKey <> cacheid THEN
   IF faceDC <> 0 THEN uglDel faceDC: faceDC = 0
   path$ = PortraitFile$(convperson, faceMood, quiet)
@@ -52,9 +52,8 @@ SUB PrepareFaces
   IF faceDC = 0 THEN CALL Finish: PRINT "Cannot load portrait: "; path$: END
   faceKey = cacheid
  END IF
- quiet = 1: mood = youMood
- IF talkmenu OR playerline THEN quiet = 0: mood = 0
- cacheid = mood * 2 + quiet
+ mood = youMood
+ cacheid = mood * 2
  IF youKey <> cacheid THEN
   IF youDC <> 0 THEN uglDel youDC: youDC = 0
   path$ = PortraitFile$(0, mood, quiet)
@@ -65,13 +64,10 @@ SUB PrepareFaces
 END SUB
 
 SUB DrawFaces
- IF talkmenu OR playerline THEN
-  uglPutMsk back, 0, 10, youDC
-  uglPutMskFlip back, 240, 30, UGL.HFLIP, faceDC
- ELSE
-  uglPutMsk back, 8, 30, youDC
-  uglPutMskFlip back, 224, 10, UGL.HFLIP, faceDC
- END IF
+ ' You always stand on the left, they stand on the right facing you. Their lower rows
+ ' tuck behind the conversation panel.
+ uglPutMsk back, 2, pnY0 - 70, youDC
+ uglPutMskFlip back, 222, pnY0 - 70, UGL.HFLIP, faceDC
 END SUB
 
 SUB Reply (mood, title$, text$)

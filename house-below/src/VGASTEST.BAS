@@ -28,6 +28,15 @@ SUB CheckSpeech
  CALL Check(speechcount > 0 AND speechcount < LEN(body$), "speech timing survives midnight")
  CALL StartSpeech(300!): CALL AdvanceSpeech(350!)
  CALL Check(speechcount < LEN(body$), "a stalled frame does not skip an entire speech")
+ ' Long replies split into three-line pages: contiguous, each page typed in turn, the last ends the text.
+ body$ = "At first I could read. Then I heard someone reading ahead of me. Improvement did not mean he had permission to keep dosing us. I asked him to stop and he said the notes would explain, but the notes never did."
+ convperson = 1: talkmenu = 0: CALL StartSpeech(900!)
+ before = PageEnd%
+ CALL Check(PageStart% = 1 AND before < LEN(body$) AND Speaking%, "a long reply starts on its first three-line page")
+ consumed = NextPage%
+ CALL Check(consumed AND PageStart% > before AND PageStart% <= before + 2 AND speechcount = PageStart% - 1, "the next page continues exactly where the last ended")
+ DO WHILE NextPage%: LOOP
+ CALL Check(PageEnd% = LEN(body$) AND OnLastPage% AND NextPage% = 0, "the last page ends the text and cannot advance further")
  talkmenu = 1: CALL StartSpeech(400!)
  CALL Check(Speaking% = 0, "question menus remain immediate")
  talkmenu = 0: convperson = 0: CALL StartSpeech(400!)
@@ -65,11 +74,11 @@ SUB CheckSpeech
  utterance$ = "THIS OLD QUESTION SHOULD NOT APPEAR"
  CALL Reply(1, "JAMES", "I should have opened more than the front door.")
  modal = -1: CALL DrawScene: CALL DumpFrame(30)
- CALL Check(uglPGet(back, 272, 85) = 245 AND uglPGet(back, 48, 85) = 240, "speech tail connects the named reply to the right-hand portrait")
+ CALL Check(uglPGet(back, 276, 139) = 254 AND uglPGet(back, 44, 139) <> 254, "cream tail connects their reply to the right-hand portrait")
  valid = -1
- FOR y = 138 TO 169
-  FOR x = 18 TO 301
-   IF uglPGet(back, x, y) <> 241 THEN valid = 0
+ FOR y = 178 TO 192
+  FOR x = 18 TO 290
+   IF uglPGet(back, x, y) <> 254 THEN valid = 0
   NEXT
  NEXT
  CALL Check(valid, "answer shows no repeated You said question")
@@ -79,7 +88,7 @@ SUB CheckSpeech
  testing = -1
  q = TalkPick%(1, "JAMES", "Greeting", "Who is downstairs?", "My invitation", "The clock")
  talkmenu = 1: CALL SetChoices: CALL PrepareFaces: CALL DrawScene: CALL DumpFrame(32)
- CALL Check(body$ = "" AND uglPGet(back, 48, 85) = 245 AND uglPGet(back, 272, 85) = 240, "player turn shows only choices connected to the left portrait")
+ CALL Check(body$ = "" AND uglPGet(back, 44, 139) = 253 AND uglPGet(back, 276, 139) <> 253 AND uglPGet(back, 150, 153) = 253, "your turn is a blue panel with its tail on the left portrait")
  CALL EndTalk: modal = 0: flags(20) = mask: testpick = oldpick
  CALL Check(Speaking% = 0 AND speechcount = 0, "leaving a conversation clears reveal state")
 END SUB

@@ -85,7 +85,7 @@ SUB Icon (x, y, item)
  CASE 4
   CALL Box(x + 5, y + 1, 6, 14, 251): CALL Box(x + 5, y + 1, 6, 3, 246): CALL Box(x + 5, y + 12, 6, 3, 246)
  CASE 5
-  CALL Box(x + 3, y + 6, 11, 9, 254): uglLine back, x + 13, y + 7, x + 17, y + 1, 245
+  CALL Box(x + 3, y + 6, 11, 9, 251): uglLine back, x + 13, y + 7, x + 17, y + 1, 245
  CASE 7
   uglRect back, x + 2, y + 2, x + 14, y + 13, 245
   uglRect back, x + 4, y + 4, x + 12, y + 11, 246

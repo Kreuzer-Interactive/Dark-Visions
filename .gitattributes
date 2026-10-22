@@ -1,4 +1,5 @@
 house-below/src/ART/**/*.png filter=lfs diff=lfs merge=lfs -text
-
 house-below/src/*.BAS text eol=crlf
 house-below/src/*.BI text eol=crlf
+house-below/docs/mockups/*.png filter=lfs diff=lfs merge=lfs -text
+house-below/docs/dialog-mockup.png filter=lfs diff=lfs merge=lfs -text
