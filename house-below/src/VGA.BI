@@ -74,6 +74,12 @@ DECLARE SUB Act (h)
 DECLARE SUB Travel (h)
 DECLARE SUB Opening ()
 DECLARE SUB CarBackdrop ()
+DECLARE SUB LetterBackdrop ()
+DECLARE FUNCTION ReadLetter% ()
+DECLARE SUB DrawOpening (dx, dy)
+DECLARE FUNCTION CarReveal% ()
+DECLARE FUNCTION IntroWait% (seconds AS SINGLE, advance)
+DECLARE SUB DoorShade (level)
 DECLARE SUB CoachmanTalk ()
 DECLARE SUB FrontDoor ()
 DECLARE SUB PlayerSays (text$)
@@ -118,7 +124,7 @@ COMMON SHARED modal, heading$, body$, choices$(), nchoices, answer, testing, tes
 COMMON SHARED talkmenu, choicetop
 COMMON SHARED choicex, choicew, choicestep, choiceh
 COMMON SHARED convperson, convquit, utterance$, lastreply$
-COMMON SHARED carscene, playerline
+COMMON SHARED carscene, playerline, introshot
 COMMON SHARED faceDC AS LONG, youDC AS LONG
 COMMON SHARED faceMood, youMood, faceKey, youKey
 COMMON SHARED speechcount, speechend

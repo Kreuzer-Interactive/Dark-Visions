@@ -6,8 +6,112 @@ SUB CarBackdrop
  IF art <> 0 THEN uglDel art
  art = uglNewBMPEx(UGL.MEM, UGL.8BIT, "VGA\CAR.BMP", BMPOPT.NO332)
  IF art = 0 THEN CALL Finish: PRINT "Missing car opening background.": END
- carscene = -1
+ carscene = -1: introshot = 0
 END SUB
+
+SUB LetterBackdrop
+ IF art <> 0 THEN uglDel art
+ art = uglNewBMPEx(UGL.MEM, UGL.8BIT, "VGA\LETTER.BMP", BMPOPT.NO332)
+ IF art = 0 THEN CALL Finish: PRINT "Missing letter opening background.": END
+ carscene = -1: introshot = 1
+END SUB
+
+SUB DrawOpening (dx, dy)
+ uglClear back, 240
+ IF introshot = 1 OR introshot = 2 OR introshot = 4 THEN
+  ' Four pixels of overscan keep the moving picture inside its viewport.
+  uglPut back, dx - 4, dy - 4, art
+ ELSE
+  uglPut back, 0, 0, art
+ END IF
+ ' The title and caption remain still while the view of the lap jolts.
+ CALL Box(0, 154, 320, 46, 240)
+ CALL Box(0, 0, 320, 10, 240)
+ CALL Txt(5, 2, "DARK VISIONS / THE HOUSE BELOW", 246)
+ CALL Txt(246, 2, "ESC: arrive", 252)
+ SELECT CASE introshot
+ CASE 1
+  CALL Txt(12, 160, "Rain drums on the roof.", 245)
+  CALL Txt(12, 170, "Your uncle's letter lies open on your lap.", 245)
+ CASE 2
+  CALL Txt(12, 160, "The car jolts, and you steady your uncle's letter on your knee.", 245)
+ CASE 4
+  ' The player's reading panel supplies the text over this same lap view.
+ CASE ELSE
+  CALL Txt(12, 160, "Rain streaks the window; Ravenhurst is just ahead.", 245)
+ END SELECT
+ IF introshot = 2 OR introshot = 3 THEN CALL Txt(12, 187, "Click or Enter to continue", 243)
+END SUB
+
+FUNCTION ReadLetter%
+ DIM q
+ ' A solo player portrait, with the same paged text reveal as conversations.
+ CALL BeginTalk(-1): introshot = 4: playerline = -1
+ q = Pick%("YOU / READING UNCLE FRANK'S LETTER", "My dear nephew, I would be glad to have you at Ravenhurst. There is work here for a chemist. Your uncle, Frank.", "Continue [Enter]", "", "")
+ IF q = 1 AND convquit = 0 THEN
+  q = Pick%("YOU", "I've never met Uncle Frank. I didn't even know he'd heard I was studying chemistry.", "Continue [Enter]", "", "")
+ END IF
+ ReadLetter% = (q = 1 AND convquit = 0)
+ CALL EndTalk: introshot = 1
+ click = 0: rightclick = 0: keys$ = ""
+END FUNCTION
+
+FUNCTION IntroWait% (seconds AS SINGLE, advance)
+ DIM started AS SINGLE, elapsed AS SINGLE
+ IntroWait% = 0
+ ' A pending cancellation also works in the isolated DOS harness.
+ IF keys$ = CHR$(27) OR rightclick THEN EXIT FUNCTION
+ IntroWait% = -1
+ IF testing THEN EXIT FUNCTION
+ started = TIMER
+ DO
+  CALL Poll
+  IF keys$ = CHR$(27) OR rightclick THEN IntroWait% = 0: EXIT FUNCTION
+  IF advance AND click THEN click = 0: keys$ = "": EXIT FUNCTION
+  CALL Present
+  elapsed = TIMER - started
+  IF elapsed < 0 THEN elapsed = elapsed + 86400!
+ LOOP WHILE elapsed < seconds
+END FUNCTION
+
+FUNCTION CarReveal%
+ DIM i, dx, dy, level, oldmodal
+ CarReveal% = 0: oldmodal = modal: modal = -1: hover = 0
+ introshot = 2
+ ' One brief bump, settling back to the original view; no palette flashing.
+ FOR i = 0 TO 9
+  SELECT CASE i
+  CASE 0: dx = 2: dy = -2
+  CASE 1: dx = -3: dy = 2
+  CASE 2: dx = 3: dy = -1
+  CASE 3: dx = -2: dy = 1
+  CASE 4: dx = 2: dy = 0
+  CASE 5: dx = -1: dy = -1
+  CASE 6: dx = 1: dy = 1
+  CASE 7: dx = -1: dy = 0
+  CASE 8: dx = 0: dy = 1
+  CASE 9: dx = 0: dy = 0
+  END SELECT
+  CALL DrawOpening(dx, dy)
+  IF IntroWait%(.055, 0) = 0 THEN GOTO RevealDone
+ NEXT
+ IF IntroWait%(1.8, -1) = 0 THEN GOTO RevealDone
+ FOR level = 7 TO 0 STEP -1
+  CALL DoorShade(level)
+  IF IntroWait%(.04, 0) = 0 THEN GOTO RevealDone
+ NEXT
+ CALL CarBackdrop: introshot = 3: CALL DrawOpening(0, 0)
+ FOR level = 0 TO 8
+  CALL DoorShade(level)
+  IF IntroWait%(.04, 0) = 0 THEN GOTO RevealDone
+ NEXT
+ IF IntroWait%(2!, -1) = 0 THEN GOTO RevealDone
+ CarReveal% = -1
+RevealDone:
+ ' Restore the palette even if Escape was pressed halfway through a fade.
+ CALL DoorShade(8)
+ introshot = 0: modal = oldmodal: click = 0: rightclick = 0: keys$ = ""
+END FUNCTION
 
 SUB PlayerSays (text$)
  playerline = -1
@@ -17,22 +121,28 @@ END SUB
 
 SUB Opening
  DIM q, skipped
- CALL CarBackdrop
- q = Pick%("THE ROAD TO RAVENHURST", "", "Begin journey [Enter]", "Skip to arrival [Esc]", "")
+ CALL LetterBackdrop
+ q = Pick%("THE ROAD TO RAVENHURST", "", "Begin journey [Enter]", "", "")
  skipped = (q <> 1)
  IF q = 1 THEN
+  skipped = (ReadLetter% = 0)
+ END IF
+ IF skipped = 0 THEN
+  skipped = (CarReveal% = 0)
+ END IF
+ IF skipped = 0 THEN
   ' The coat and racing sleeve are visible from the back seat.
   flags(29) = 1
   CALL BeginTalk(8)
   CALL Reply(0, "COACHMAN", "Last bend before Ravenhurst, sir. You have business with Doctor Mahler?")
-  IF convquit = 0 THEN CALL PlayerSays("He is my uncle. I graduated three weeks ago. His letter offered me an apprenticeship; he says my chemistry will be useful.")
+  IF convquit = 0 THEN CALL PlayerSays("Doctor Mahler is my uncle. I've just finished college. I'm to be his apprentice.")
   IF convquit = 0 THEN CALL Reply(3, "COACHMAN", "Fresh from college, then. I hope he has a warm room ready as well as work. Keep that letter handy; James will want it at the door.")
   IF convquit = 0 THEN CALL CoachmanTalk
   IF convquit = 0 THEN CALL Reply(0, "COACHMAN", "Ravenhurst. That's us. I'll pull up by the gate.")
   skipped = convquit
   CALL EndTalk
  END IF
- carscene = 0: CALL EnterRoom(1)
+ carscene = 0: introshot = 0: CALL EnterRoom(1)
  IF skipped = 0 THEN CALL Speak(8, "ARRIVAL", "Mind the step. There you are. Best get inside before that letter turns to pulp. James will answer the door.")
 END SUB
 

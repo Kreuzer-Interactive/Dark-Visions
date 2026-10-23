@@ -124,11 +124,11 @@ SUB RRect (x0, y0, x1, y1, c)
  uglRectF back, x0, y0 + 2, x1, y1 - 2, CLNG(c)
 END SUB
 
-' The conversation panel: soft shadow, white double outline, black fill.
+' The conversation panel: soft shadow, 1 px gold outline, black fill.
 SUB DrawPanel (edge)
  CALL RRect(pnX0 + 1, pnY0 + 2, pnX1 + 1, pnY1 + 2, 242)
  CALL RRect(pnX0, pnY0, pnX1, pnY1, CLNG(edge))
- CALL RRect(pnX0 + 2, pnY0 + 2, pnX1 - 2, pnY1 - 2, 240)
+ CALL RRect(pnX0 + 1, pnY0 + 1, pnX1 - 1, pnY1 - 1, 240)
 END SUB
 
 ' Speech tail rising from the panel's top edge at tipx, pointing at the speaker's chin.
@@ -140,13 +140,12 @@ SUB DrawTail (tipx, edge)
   IF k = 0 THEN
    uglLine back, tipx - half, y, tipx + half, y, CLNG(edge)
   ELSE
-   uglLine back, tipx - half, y, tipx - half + 1, y, CLNG(edge)
-   uglLine back, tipx + half - 1, y, tipx + half, y, CLNG(edge)
+   uglPSet back, tipx - half, y, CLNG(edge)
+   uglPSet back, tipx + half, y, CLNG(edge)
   END IF
  NEXT
  ' Open the panel outline under the tail so it flows into the panel.
- uglLine back, tipx - 6, pnY0, tipx + 6, pnY0 + 2, 240
- uglRectF back, tipx - 6, pnY0, tipx + 6, pnY0 + 2, 240
+ uglRectF back, tipx - 6, pnY0, tipx + 6, pnY0 + 1, 240
 END SUB
 
 FUNCTION MenuMode%
@@ -195,9 +194,10 @@ SUB DrawSpeech
  DIM youtalk, nm$, nx, ps, pe, shown, lv
  ' Black bubble, white outline. Only the tail and the gold name header say who is speaking.
  youtalk = (talkmenu <> 0 OR playerline <> 0 OR MenuMode%)
- CALL DrawPanel(254)
- IF youtalk THEN CALL DrawTail(44, 254) ELSE CALL DrawTail(276, 254)
+ CALL DrawPanel(246)
+ IF youtalk THEN CALL DrawTail(44, 246) ELSE CALL DrawTail(276, 246)
  nm$ = FaceName$(convperson): IF youtalk THEN nm$ = "YOU"
+ IF introshot = 4 THEN nm$ = heading$
  IF youtalk THEN nx = pnX0 + 11 ELSE nx = pnX1 - 11 - Tw%(nm$)
  CALL Txt(nx, pnY0 + 6, nm$, 246)
  uglLine back, nx, pnY0 + 15, nx + Tw%(nm$) - 1, pnY0 + 15, 244

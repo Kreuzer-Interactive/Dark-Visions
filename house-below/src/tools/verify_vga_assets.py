@@ -19,6 +19,8 @@ for n,r in enumerate(rooms,1):
 assert len(hashes)==16, 'Every background must be distinct'
 im=Image.open(root/'VGA/CAR.BMP')
 assert im.mode=='P' and im.size==(320,154) and im.getpalette()==pal
+im=Image.open(root/'VGA/LETTER.BMP')
+assert im.mode=='P' and im.size==(328,162) and im.getpalette()==pal
 for n in range(9):
     im=Image.open(root/f'VGA/CHAR{n:02}.BMP')
     assert im.mode=='P' and im.size==(48,73) and im.getpalette()==pal
@@ -57,4 +59,4 @@ def reachable(flags):
 assert reachable(set())=={1}, 'Invitation gate bypass'
 assert not ({9,10,11,12,15,16}&reachable({1})), 'Clock bypass through lake'
 assert len(reachable({1,2,9}))==16, 'Unreachable room'
-print(f'PASS: 16 indexed rooms and car opening, shared palette, 9 masked sprites, 32 expressions in 32 masked portraits, all {sum(len(r["hotspots"]) for r in rooms)} hotspots, gated room graph.')
+print(f'PASS: 16 indexed rooms, car and letter opening, shared palette, 9 masked sprites, 32 expressions in 32 masked portraits, all {sum(len(r["hotspots"]) for r in rooms)} hotspots, gated room graph.')

@@ -11,7 +11,7 @@ the patient rescue puzzle chain expand that premise.
 ## Presentation
 
 The framebuffer is genuinely 320×200 indexed color (mode 13h; see the mode 13h section below), not a large true-color window with
-a pixel filter. Sixteen room backgrounds and a 320×154 back-seat car backdrop share the same 256-entry palette.
+a pixel filter. Sixteen room backgrounds, the back-seat car view and a letter close-up share the same 256-entry palette.
 The top ten pixels hold the room title; the scene includes visible exit plates; the bottom
 46 pixels hold verbs, inventory and contextual text. Sixteen palette entries are reserved for
 readable UI and accents. Nine 48×73 indexed character masters provide the protagonist, seven NPCs
@@ -42,13 +42,25 @@ area; this edition does not provide the classic engine's detailed obstacle navig
 3D character renderer. PC speaker puzzle tones are optional with S. The new narrative has
 no timer deaths and failed puzzle attempts do not consume unique items.
 
-The opening begins in the back seat of a vintage motorcar approaching Ravenhurst in
-rain. The coachman drives on the left; the windscreen view remains visible during speech,
+The opening begins looking down at Uncle Frank's letter in the player's lap, in the
+back seat of a vintage motorcar. Begin Journey first shows the protagonist reading the
+invitation with his portrait and gradual speech text. He has never met Uncle Frank and
+is surprised his uncle has heard about his chemistry studies. Click or Enter reveals
+each line, then advances it; the reading waits for the player. Afterward a brief road jolt fades to
+the existing windscreen view as Ravenhurst approaches in the rain. The title and captions
+stay still during the jolt. Click or Enter advances the caption holds; Escape skips to
+arrival even during the fade. The coachman drives on the left; the windscreen view remains visible during speech,
 with a named panel and a tail indicating the driver or the player in the back seat.
 Their exchange establishes the invitation, recent graduation, chemistry training and
 apprenticeship. Optional questions introduce Arthur Pike and his past with horses; his
 racing silks suggest personal history without confirming a diagnosis. Escape skips to
 arrival, and the journal retains the essential premise.
+
+Author-supplied background: Frank is the protagonist's mother's brother, and the family
+has lost touch with him. While studying across the country, the protagonist heard that
+Frank's wife and daughter had died. The invitation is unexpected; he did not know Frank
+knew his field of study. The opening thought uses only the unfamiliar relationship and
+surprise at the letter. His graduation is left to the exchange with Arthur.
 
 Outside, the revised background parks the car on the left. Pike stands beside it and
 encourages shelter; James is no longer standing at the gates. ACT on the physical front
@@ -128,7 +140,7 @@ Portraits are 96x75 (28 expressions plus the coachman's, one size for both peopl
 
 The Python exporters write the shipping 13h set directly (shared constants and the 5/6 squash +
 portrait crop live in `tools/vga_common.py`). Run `build_vga_assets.py`, then
-`build_vga_opening.py`, then `build_vga_story.py` (needs Pillow). `verify_vga_assets.py` checks the result.
+`build_vga_opening.py`, `build_vga_letter.py`, then `build_vga_story.py` (needs Pillow). `verify_vga_assets.py` checks the result.
 
 486 note: QuickBASIC's `^` operator is a software floating-point routine, about 1 ms per call
 on an FPU-less 486SX. `Txt` used it per glyph row and a frame took 1.4 s on the emulated SX;
@@ -229,7 +241,7 @@ expression transitions, remembered replies, input rectangles and cleanup. Dialog
 and topic width are checked during every scripted conversation.
 The native portrait menu and reply dumps were visually reviewed. The dialogue fits within
 320×200 with room scenery above the text and the toolbar temporarily covered.
-All **270 DOS checks passed**; results are recorded in `vga-test-results.txt`. The linker reserves
+All **291 DOS checks passed**; results are recorded in `vga-test-results.txt`. The linker reserves
 an 8 KB stack for the nested conversation calls and native test fixtures. James checks cover
 the absence of early patient revelations, names-only place cards, external clue sources,
 ledger-only, ward-only and combined evidence replies, and repeatable observation questions.
@@ -290,4 +302,13 @@ The exact prompts and references are preserved in `ART/opening/generation.json`.
 `tools/build_vga_opening.py` crops, scales and quantizes these assets to the existing
 palette, exporting `CAR.BMP`, the revised `RM01.BMP`, `CHAR08.BMP`, and eight `P8*` portraits.
 `VGARIDE.BAS` owns the opening, Pike's answers and the front-door greeting.
+
+The lap cutaway is `ART/opening/letter-lap.png`, generated with the built-in image_gen
+tool using the car interior and protagonist portrait as references. Its exact prompt is
+in `ART/opening/letter-generation.json`. `tools/build_vga_letter.py` exports only
+`VGA/LETTER.BMP`, at 328×162 with four pixels of overscan on each edge. The native
+renderer crops it to the 320×154 scene and moves it by at most three pixels for the jolt.
+The transition uses the existing VGA palette fade and restores the palette on every exit.
+No intro state is added to saved games, and the image is loaded in place of the current
+backdrop so the cinematic does not keep two scene images in conventional memory.
 `VGARTEST.BAS` covers this sequence in the isolated native DOS harness.

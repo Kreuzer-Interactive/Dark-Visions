@@ -2,7 +2,6 @@ REM $DYNAMIC
 DEFINT A-Z
 '$INCLUDE: 'VGA.BI'
 DECLARE SUB CrossThreshold (dest)
-DECLARE SUB DoorShade (level)
 
 SUB Travel (h)
  DIM dest, first

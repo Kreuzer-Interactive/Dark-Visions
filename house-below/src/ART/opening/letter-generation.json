@@ -1,0 +1,12 @@
+{
+  "tool": "image_gen.imagegen",
+  "output": "letter-lap.png",
+  "args": {
+    "prompt": "Use case: illustration-story. Asset type: a new cinematic cutaway background for the DOS gothic point-and-click adventure Dark Visions. Use Image 1 ONLY as reference for the same 1920s enclosed motorcar interior, leather, inked painterly style, and cold rainy blue / dim amber lighting. Use Image 2 ONLY as reference for the young male protagonist's charcoal suit and ivory shirt cuffs. NEW CAMERA: first-person POV from his eyes looking steeply DOWN at his own lap while seated in the rear seat, not looking forward. His charcoal trousered thighs and knees form a dark V toward the top; an unfolded warm ivory letter rests across his lap, held lightly at its lower left and right edges by two anatomically natural young adult male hands, white shirt cuffs under dark suit sleeves entering from lower corners. His own body continues beyond the bottom edge; do not show his face or another person's body. Worn brown leather rear bench surrounds his hips; dark carpet and the base of the front seat beyond his knees, small sliver of rain-streaked side window at upper left. No driver or steering wheel visible in this downward viewpoint. Letter is the clear visual focus, large roughly central 55 percent width, lit by soft amber spill; handwritten ink and a fold across the sheet. The paper should contain exactly this brief text in a few broad handwritten lines: 'My dear nephew,\\nI would be glad to have you at Ravenhurst.\\nThere is work here for a chemist.\\nYour uncle,\\nFrank'. Do not add dates, addresses, seals, clues or ominous messages. Strong readable silhouettes and shapes suitable for reduction to 320 pixel wide indexed VGA art, hand-inked gothic comic painting matching image 1, deep charcoal, desaturated sepia paper, cool blue rain accents. Wide landscape composition approximately 16:9. Full frame illustration only, opaque. No UI, subtitles, speech bubbles, borders, logos, watermark, photorealism or modern items.",
+    "referenced_image_paths": [
+      "C:/Code/Dark-Visions/house-below/src/ART/opening/car-interior.png",
+      "C:/Code/Dark-Visions/house-below/src/ART/portraits/portrait-00.png"
+    ],
+    "transparent_background": false
+  }
+}

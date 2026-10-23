@@ -38,7 +38,9 @@ Click page arrows or press PgUp/PgDn ([ / ]) for more questions.\r\n
 Earlier topics remain available. Discovery sources are saved; older VGA saves still load.\r\n
 The ending saves completed progress to slot 3.\r\n
 16 rooms plus a back-seat motorcar opening, seven speaking characters, rescue puzzles.\r\n
-Begin with the coachman at the wheel. ESC skips to arrival.\r\n
+Read your uncle's invitation in your lap before a road jolt and fade reveal the coachman.\r\n
+Click/Enter reveals the reading, then advances; it waits until you are ready.\r\n
+Click/Enter advances the opening captions. ESC skips to arrival, including during fades.\r\n
 Outside, the coachman waits by the parked car on the left.\r\n
 Knock at FRONT DOOR; show James the invitation to enter the hall.\r\n
 Car and outdoor coachman questions share history. Earlier VGA saves still load.\r\n

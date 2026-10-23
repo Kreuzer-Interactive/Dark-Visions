@@ -4,7 +4,7 @@ DEFINT A-Z
 
 FUNCTION FaceName$ (person)
  SELECT CASE person
- CASE 0: FaceName$ = "YOU"
+ CASE -1, 0: FaceName$ = "YOU"
  CASE 1: FaceName$ = "JAMES"
  CASE 2: FaceName$ = "ELIAS HART"
  CASE 3: FaceName$ = "ADA FINCH"
@@ -24,6 +24,7 @@ FUNCTION PortraitFile$ (person, mood, quiet)
 END FUNCTION
 
 SUB BeginTalk (person)
+ ' Person -1 is the player's solo reading voice; no second portrait is loaded.
  CALL EndTalk
  convperson = person
  faceKey = -1: youKey = -1
@@ -45,7 +46,7 @@ SUB PrepareFaces
  ' Only two pre-sized faces are resident. No disk reads in the frame loop.
  quiet = 0
  cacheid = convperson * 16 + faceMood * 2
- IF faceKey <> cacheid THEN
+ IF convperson > 0 AND faceKey <> cacheid THEN
   IF faceDC <> 0 THEN uglDel faceDC: faceDC = 0
   path$ = PortraitFile$(convperson, faceMood, quiet)
   faceDC = uglNewBMPEx(UGL.MEM, UGL.8BIT, path$, BMPOPT.NO332)
@@ -64,10 +65,10 @@ SUB PrepareFaces
 END SUB
 
 SUB DrawFaces
- ' You always stand on the left, they stand on the right facing you. Their lower rows
+ ' You stand on the left; a conversation partner stands on the right. Their lower rows
  ' tuck behind the conversation panel.
  uglPutMsk back, 2, pnY0 - 70, youDC
- uglPutMskFlip back, 222, pnY0 - 70, UGL.HFLIP, faceDC
+ IF faceDC <> 0 THEN uglPutMskFlip back, 222, pnY0 - 70, UGL.HFLIP, faceDC
 END SUB
 
 SUB Reply (mood, title$, text$)

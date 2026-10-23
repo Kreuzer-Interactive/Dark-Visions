@@ -43,26 +43,27 @@ END FUNCTION
 SUB DrawDialog
  DIM i, col, y, s$
  IF convperson THEN
-  ' Room above, warm leather band below, both busts facing in, one panel at the bottom.
-  uglClear back, 248
-  uglPut back, 0, 0, art
-  uglLine back, 0, 154, 319, 154, 245
-  CALL Box(0, 0, 320, 10, 240)
-  IF carscene THEN
-   CALL Txt(5, 2, "THE ROAD TO RAVENHURST", 245)
-   CALL Txt(246, 2, "ESC: arrive", 252)
+  IF introshot = 4 THEN
+   CALL DrawOpening(0, 0)
   ELSE
-   CALL Txt(5, 2, rt$(room), 245)
+   ' Keep the toolbar's background beneath the overlaid portraits and speech bubble.
+   uglClear back, 240
+   uglPut back, 0, 0, art
+   uglLine back, 0, 154, 319, 154, 245
+   CALL Box(0, 0, 320, 10, 240)
+   IF carscene THEN
+    CALL Txt(5, 2, "THE ROAD TO RAVENHURST", 245)
+    CALL Txt(246, 2, "ESC: arrive", 252)
+   ELSE
+    CALL Txt(5, 2, rt$(room), 245)
+   END IF
   END IF
   CALL DrawFaces
   CALL DrawSpeech
   hover = ChoiceAt%(mx, my)
   EXIT SUB
  ELSEIF carscene THEN
-  uglClear back, 240: uglPut back, 0, 0, art
-  CALL Box(0, 0, 320, 10, 240)
-  CALL Txt(5, 2, "DARK VISIONS / THE HOUSE BELOW", 246)
-  CALL Txt(12, 160, "Burgundy and gold at the wheel. Rain on the roof.", 245)
+  CALL DrawOpening(0, 0)
  ELSE
   CALL Box(12, 12, 296, 139, 240)
   uglRect back, 12, 12, 307, 150, 245
@@ -156,8 +157,8 @@ FUNCTION Pick% (title$, text$, a$, b$, c$)
     END IF
    END IF
    CALL AdvanceSpeech(TIMER)
-   ' Your own spoken line moves on by itself after a short beat (a click still skips ahead).
-   IF result = -1 AND playerline <> 0 AND Speaking% = 0 AND OnLastPage% THEN
+   ' Spoken replies advance after a beat; the opening letter waits for the reader.
+   IF result = -1 AND playerline <> 0 AND introshot <> 4 AND Speaking% = 0 AND OnLastPage% THEN
     IF hold = 0 THEN hold = TIMER
     IF TIMER - hold > .8 OR TIMER < hold THEN result = 1
    END IF
